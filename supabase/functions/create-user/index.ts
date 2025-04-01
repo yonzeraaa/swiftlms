@@ -56,27 +56,22 @@ serve(async (req) => {
     console.log(`[create-user] Auth user created successfully. User ID: ${userId}`);
 
     // 4. Upsert into public.profiles table
-    // Upsert will insert if the ID doesn't exist, or update if it does.
     const profileData = {
-        id: userId, // This is the primary key
+        id: userId,
         email: email,
         full_name: fullName,
         phone_number: phoneNumber || null,
-        role: 'student',
+        role: 'aluno', // **** CHANGED 'student' to 'aluno' ****
         account_status: 'active'
     };
     console.log(`[create-user] Preparing to UPSERT profile with data:`, profileData);
 
-    // **** CHANGED insert to upsert ****
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .upsert(profileData, { onConflict: 'id' }); // Specify conflict target if needed, default is PK
+      .upsert(profileData, { onConflict: 'id' });
 
     if (profileError) {
-      // Log the specific profile upsert error *first*
       console.error(`[create-user] Supabase Profile Upsert Error for User ID ${userId}:`, profileError);
-
-      // Attempt cleanup if upsert fails for reasons other than conflict resolution
       console.warn(`[create-user] Attempting to delete Auth user ${userId} due to profile upsert failure.`);
       try {
         const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
@@ -88,20 +83,18 @@ serve(async (req) => {
       } catch (deleteCatchError) {
         console.error(`[create-user] Exception during auth user deletion for ${userId}:`, deleteCatchError);
       }
-      // Throw the original profile error
       throw new Error(`User created in Auth, but failed to upsert profile: ${profileError.message}`)
     }
 
     console.log(`[create-user] Profile upserted successfully for user ID: ${userId}`);
 
     // 5. Return success response
-    return new Response(JSON.stringify({ message: `Student user ${email} created or updated successfully.` }), { // Adjusted message
+    return new Response(JSON.stringify({ message: `Student user ${email} created or updated successfully.` }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
     console.error('[create-user] Error in function execution:', error)
-    // Cleanup logic remains important if Auth user was created but upsert failed unexpectedly
     if (userId) {
         console.warn(`[create-user] Function failed after Auth user ${userId} was potentially created. Attempting cleanup.`);
          const supabaseAdminCleanup = createClient(

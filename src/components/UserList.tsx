@@ -175,7 +175,7 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
                 <td>{user.full_name ?? 'N/A'}</td>
                 <td>{user.email ?? 'N/A'}</td>
                 <td>{user.phone_number ?? 'N/A'}</td>
-                <td>{user.role === 'student' ? 'Aluno' : user.role === 'admin' ? 'Admin' : (user.role ?? 'N/A')}</td>
+                <td>{user.role === 'aluno' ? 'Aluno' : user.role === 'admin' ? 'Admin' : (user.role ?? 'N/A')}</td> {/* Check for 'aluno' */}
                 <td>
                   <span className={user.account_status === 'frozen' ? styles.statusFrozen : styles.statusActive}>
                     {user.account_status ?? 'N/A'}
@@ -194,7 +194,7 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
                   )}
                 </td>
                  <td> {/* Reset Password Button Cell */}
-                  {user.role !== 'admin' && (
+                  {user.role === 'aluno' && ( // Only allow actions on 'aluno'
                      <button
                         onClick={() => handleResetPassword(user.id)}
                         className={styles.resetButton}
@@ -205,7 +205,7 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
                   )}
                  </td>
                  <td> {/* Delete Button Cell */}
-                  {user.role !== 'admin' && (
+                  {user.role === 'aluno' && ( // Only allow actions on 'aluno'
                       <button
                         onClick={() => handleDeleteUser(user.id, user.email)}
                         className={styles.deleteButton}

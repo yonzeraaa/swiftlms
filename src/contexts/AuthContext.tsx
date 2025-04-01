@@ -214,7 +214,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: !!user && profile?.account_status === 'active', // User is only truly authenticated if active
     // Roles are valid even if frozen, but isAuthenticated check prevents access
     isAdmin: !!profile && profile.role === 'admin',
-    isStudent: !!profile && profile.role === 'student',
+    isStudent: !!profile && profile.role === 'aluno', // Changed check to 'aluno'
   };
 
   return (

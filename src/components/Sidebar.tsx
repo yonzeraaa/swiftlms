@@ -13,13 +13,13 @@ const Sidebar: React.FC = () => {
     navLinks = [
       { path: '/admin', label: 'Visão Geral' }, // Link to main admin dashboard
       // TODO: Add more admin links later (e.g., /admin/users, /admin/courses)
-      { path: '/admin/settings', label: 'Configurações (Admin)' }, // Placeholder
+      // { path: '/admin/settings', label: 'Configurações (Admin)' }, // Placeholder
     ];
-  } else if (isStudent) {
+  } else if (isStudent) { // isStudent check uses 'aluno' internally now
     navLinks = [
       { path: '/student', label: 'Meu Painel' }, // Link to main student dashboard
       { path: '/student/courses', label: 'Meus Cursos' }, // Placeholder
-      { path: '/student/profile', label: 'Meu Perfil' }, // Placeholder
+      // { path: '/student/profile', label: 'Meu Perfil' }, // Placeholder
     ];
   }
 
@@ -35,7 +35,7 @@ const Sidebar: React.FC = () => {
                   isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
                 }
                 // Use end prop for the main dashboard links to avoid partial matching
-                end={link.path === '/admin' || link.path === '/student'}
+                end={link.path === '/admin' || link.path === '/student'} // Keep paths
               >
                 {link.label}
               </NavLink>

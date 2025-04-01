@@ -83,8 +83,8 @@ function App() {
           <Route path="/admin" element={<AdminDashboard />} />
           {/* Add other admin-specific routes here */}
         </Route>
-        <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-          <Route path="/student" element={<StudentDashboard />} />
+        <Route element={<ProtectedRoute allowedRoles={['aluno']} />}> {/* Changed role */}
+          <Route path="/student" element={<StudentDashboard />} /> {/* Keep path as /student */}
           {/* Add other student-specific routes here */}
         </Route>
       </Route>
