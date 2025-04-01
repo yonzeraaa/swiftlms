@@ -61,7 +61,7 @@ const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
     } finally {
       // This block runs regardless of success or error in try/catch
       setLoading(false);
-      console.log('Finished handleSubmit, loading set to false');
+      // console.log('Finished handleSubmit, loading set to false'); // Keep original log if desired, or remove
     }
   }; // End of handleSubmit
 
