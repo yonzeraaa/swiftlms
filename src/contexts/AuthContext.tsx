@@ -170,8 +170,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function
   // Add return type
   const logout = async (): Promise<void> => {
-    console.log('[AuthContext] Logout function called.'); // Log start
-    setLoading(true);
+    console.log('[AuthContext] Logout function called.');
+    // setLoading(true); // REMOVED - Let onAuthStateChange handle loading state
     try { // Wrap signout in try/catch
       const { error } = await supabase.auth.signOut();
 
@@ -197,7 +197,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('rememberedPassword');
         setRememberedCredentials({ email: '', password: '' });
         // Don't clear user/profile here, let onAuthStateChange handle it
-        setLoading(false); // Set loading false after signout attempt is finished
+        // setLoading(false); // REMOVED - Let onAuthStateChange handle loading state
     }
   };
 
