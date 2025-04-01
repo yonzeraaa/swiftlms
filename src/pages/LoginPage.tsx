@@ -105,14 +105,10 @@ const LoginPage: React.FC = () => {
           <button type="submit" disabled={isSubmitting} className={styles.submitButton}>
           {isSubmitting ? 'Entrando...' : 'Entrar'}
           </button>
-          <button
-            type="button"
-            onClick={handleForgotPassword}
-            disabled={isSubmitting}
-            className={styles.forgotPasswordButton}
-          >
-            Esqueceu a sua senha?
-          </button>
+          {/* Replaced duplicate button with informational text */}
+          <p className={styles.infoText}>
+            Se você ainda não possui credenciais cadastradas, favor entrar em contato com um administrador.
+          </p>
         </form>
       </div>
     </div>
