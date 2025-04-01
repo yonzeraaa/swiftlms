@@ -51,9 +51,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       // Add types to callback parameters
       async (_event: string, session: Session | null) => {
+        console.log('[AuthContext] onAuthStateChange triggered. Event:', _event, 'Session:', session);
         setUser(session?.user ?? null);
+        console.log('[AuthContext] User state set:', session?.user ?? null);
 
         if (session?.user) {
+          console.log('[AuthContext] Session exists, attempting to fetch profile...');
           // Fetch profile when user is logged in
           try {
             const { data, error, status } = await supabase
@@ -62,29 +65,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               .eq('id', session.user.id)
               .single();
 
-            if (error && status !== 406) { // 406 means no rows found, which might happen briefly
-              throw error;
+            // Log the raw response for debugging
+            console.log('[AuthContext] Profile fetch response:', { data, error, status });
+
+            if (error && status !== 406) {
+              console.error('[AuthContext] Supabase profile fetch error details:', error); // Log the specific Supabase error
+              throw error; // Re-throw the original Supabase error
             }
 
             if (data) {
+              console.log('[AuthContext] Profile data fetched:', data);
               setProfile(data);
             } else {
+              console.log('[AuthContext] No profile data found for user.');
               setProfile(null); // Ensure profile is null if not found
             }
           } catch (error) {
+            // Log the caught error more specifically
+            console.error('[AuthContext] Error caught during profile fetch:', error);
             // Type assertion or check for error handling
             if (error instanceof Error) {
-              console.error('Error fetching user profile:', error.message);
+              // Log Supabase specific details if available
+              const supabaseError = error as any; // Use 'any' carefully for logging non-standard props
+              console.error('[AuthContext] Error message:', supabaseError.message);
+              if (supabaseError.details) console.error('[AuthContext] Error details:', supabaseError.details);
+              if (supabaseError.hint) console.error('[AuthContext] Error hint:', supabaseError.hint);
+              if (supabaseError.code) console.error('[AuthContext] Error code:', supabaseError.code);
             } else {
-              console.error('An unknown error occurred while fetching user profile');
+              console.error('[AuthContext] A non-Error object was thrown during profile fetch:', error);
             }
             setProfile(null); // Reset profile on error
           } finally {
-             // Ensure loading is set to false *after* profile fetch attempt is done
-             // but only if we were fetching a profile because a user exists.
+             console.log('[AuthContext] Profile fetch attempt finished. Setting loading=false.');
              setLoading(false);
           }
         } else {
+          console.log('[AuthContext] No session found. Clearing profile and setting loading=false.');
           setProfile(null); // Clear profile on logout
           setLoading(false); // Also set loading false if there's no session
         }
@@ -168,8 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children} {/* Optionally render children only when initial loading is done */}
-      {/* Or just render children immediately: children */}
+      {children} {/* Always render children; internal components handle loading */}
     </AuthContext.Provider>
   );
 };
