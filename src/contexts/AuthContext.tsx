@@ -5,11 +5,12 @@ import { Session, User } from '@supabase/supabase-js'; // Import types
 // Define the shape of the context value
 interface AuthContextType {
   user: User | null;
-  profile: { role: string } | null;
+  profile: { role: string | null; account_status: string | null } | null; // Update interface to match state
   login: (email: string, password: string, rememberMe: boolean) => Promise<void>; // Added types
   logout: () => Promise<void>;
   loading: boolean;
   rememberedCredentials: { email: string; password?: string };
+  authError: string | null; // Add state for auth-related errors (like frozen account)
   isAuthenticated: boolean;
   isAdmin: boolean;
   isStudent: boolean;
@@ -28,9 +29,11 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Add types to state
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<{ role: string } | null>(null);
+  // Update profile state type to include account_status
+  const [profile, setProfile] = useState<{ role: string | null; account_status: string | null } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [rememberedCredentials, setRememberedCredentials] = useState<{ email: string; password?: string }>({ email: '', password: '' });
+  const [authError, setAuthError] = useState<string | null>(null); // Initialize auth error state
 
   // Effect to check local storage for remembered credentials on initial load
   useEffect(() => {
@@ -61,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const { data, error, status } = await supabase
               .from('profiles')
-              .select(`role`) // Select only the role for now
+              .select(`role, account_status`) // Select status as well
               .eq('id', session.user.id)
               .single();
 
@@ -75,10 +78,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             if (data) {
               console.log('[AuthContext] Profile data fetched:', data);
-              setProfile(data);
+              setProfile(data as { role: string | null; account_status: string | null }); // Cast data type
+
+              // Check if account is frozen AFTER setting profile
+              if (data?.account_status === 'frozen') {
+                console.warn('[AuthContext] User account is frozen. Logging out.');
+                setAuthError('Sua conta está congelada. Entre em contato com um administrador.');
+                // Use setTimeout to allow state update before logout triggers another auth change
+                setTimeout(() => logout(), 50);
+              } else {
+                 setAuthError(null); // Clear any previous auth error if status is okay
+              }
+
             } else {
               console.log('[AuthContext] No profile data found for user.');
-              setProfile(null); // Ensure profile is null if not found
+              setProfile(null);
+              setAuthError('Perfil de usuário não encontrado.'); // Set error if profile missing
             }
           } catch (error) {
             // Log the caught error more specifically
@@ -94,15 +109,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             } else {
               console.error('[AuthContext] A non-Error object was thrown during profile fetch:', error);
             }
-            setProfile(null); // Reset profile on error
+            setProfile(null);
+            setAuthError('Erro ao buscar perfil de usuário.'); // Set error on fetch failure
           } finally {
              console.log('[AuthContext] Profile fetch attempt finished. Setting loading=false.');
-             setLoading(false);
+             // Only set loading false if not logging out due to frozen status
+             if (profile?.account_status !== 'frozen') {
+                setLoading(false);
+             }
           }
         } else {
           console.log('[AuthContext] No session found. Clearing profile and setting loading=false.');
-          setProfile(null); // Clear profile on logout
-          setLoading(false); // Also set loading false if there's no session
+          setProfile(null);
+          setAuthError(null); // Clear auth error on logout/no session
+          setLoading(false);
         }
         // setLoading(false); // REMOVED from here
       }
@@ -117,6 +137,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login function
   // Add types to function parameters
   const login = async (email: string, password: string, rememberMe: boolean): Promise<void> => {
+    setAuthError(null); // Clear previous auth errors on new login attempt
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -184,13 +205,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Ensure the value object matches the AuthContextType
   const value: AuthContextType = {
     user,
-    profile,
+    profile, // Profile now includes account_status
     login,
     logout,
     loading,
     rememberedCredentials,
-    isAuthenticated: !!user,
-    // Ensure profile is checked before accessing role
+    authError, // Expose auth error state
+    isAuthenticated: !!user && profile?.account_status === 'active', // User is only truly authenticated if active
+    // Roles are valid even if frozen, but isAuthenticated check prevents access
     isAdmin: !!profile && profile.role === 'admin',
     isStudent: !!profile && profile.role === 'student',
   };

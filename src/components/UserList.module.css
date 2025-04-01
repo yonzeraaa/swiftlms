@@ -53,3 +53,85 @@
   border: 1px solid rgba(217, 83, 79, 0.2);
   border-radius: var(--border-radius-sm);
 }
+
+/* Status Indicator Styles */
+.statusActive,
+.statusFrozen {
+  padding: 0.2em 0.6em;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.statusActive {
+  background-color: rgba(92, 184, 92, 0.15); /* Light green background */
+  color: #3c763d; /* Darker green text */
+}
+
+.statusFrozen {
+  background-color: rgba(108, 117, 125, 0.15); /* Light grey background */
+  color: #383d41; /* Darker grey text */
+}
+
+/* Action Button Styles */
+.freezeButton,
+.unfreezeButton {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.freezeButton {
+  background-color: var(--color-warning);
+  color: var(--color-text-on-accent); /* Assuming dark text on warning */
+  border-color: var(--color-warning);
+}
+.freezeButton:hover {
+  background-color: #ec971f; /* Darker warning */
+  border-color: #ec971f;
+}
+
+.unfreezeButton {
+  background-color: var(--color-info);
+  color: var(--color-text-light); /* Assuming light text on info */
+  border-color: var(--color-info);
+}
+.unfreezeButton:hover {
+  background-color: #31b0d5; /* Darker info */
+  border-color: #31b0d5;
+}
+
+.resetButton,
+.deleteButton {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+  margin-left: 0.5rem; /* Add some space between buttons */
+}
+
+.resetButton {
+  background-color: var(--color-info); /* Use info color */
+  color: var(--color-text-light);
+  border-color: var(--color-info);
+}
+.resetButton:hover {
+  background-color: #31b0d5; /* Darker info */
+  border-color: #31b0d5;
+}
+
+.deleteButton {
+  background-color: var(--color-error); /* Use error color */
+  color: var(--color-text-light);
+  border-color: var(--color-error);
+}
+.deleteButton:hover {
+  background-color: #c9302c; /* Darker error */
+  border-color: #c9302c;
+}

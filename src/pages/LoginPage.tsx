@@ -53,6 +53,7 @@ const LoginPage: React.FC = () => {
   return (
     <div className={styles.loginContainer}>
       <div className={styles.loginForm}>
+        {/* SVG Logo Removed */}
         <h1>Bem-vindo ao SwiftLMS</h1>
         <p className={styles.subtitle}>Faça login para acessar seu painel.</p>
         <form onSubmit={handleSubmit}>

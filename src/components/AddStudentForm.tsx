@@ -1,13 +1,17 @@
 import React, { useState, FormEvent } from 'react';
+import { supabase } from '../services/supabaseClient.ts'; // Import supabase client
 import styles from './AddStudentForm.module.css'; // Import styles
 
 interface AddStudentFormProps {
   // Props might be needed later, e.g., a callback on successful add
+  onStudentAdded?: () => void; // Optional callback
 }
 
-const AddStudentForm: React.FC<AddStudentFormProps> = () => {
+const AddStudentForm: React.FC<AddStudentFormProps> = ({ onStudentAdded }) => {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [fullName, setFullName] = useState<string>(''); // Add state for full name
+  const [phoneNumber, setPhoneNumber] = useState<string>(''); // Add state for phone number
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -18,49 +22,66 @@ const AddStudentForm: React.FC<AddStudentFormProps> = () => {
     setSuccessMessage(null);
     setLoading(true);
 
-    // --- IMPORTANT ---
-    // As per the plan, direct user creation from the frontend using admin
-    // privileges is insecure. This form currently only collects data.
-    // The actual creation should happen via:
-    // 1. A Supabase Edge Function (recommended).
-    // 2. Manually by the admin in the Supabase dashboard.
-    //
-    // This placeholder simulates a successful UI interaction for now.
-    console.log('Simulating Add Student:', { email, password });
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Simulate success (replace with actual logic later)
-    setSuccessMessage(`Aluno "${email}" adicionado (simulado).`);
-    setEmail('');
-    setPassword('');
-    // --- End of Simulation ---
-
-    /*
-    // Example of how it *might* look with an Edge Function call (pseudo-code):
     try {
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { email, password, role: 'student' },
+      // Invoke the deployed Edge Function
+      console.log('Invoking create-user function with:', { email }); // Log before invoke
+      const { data, error: functionError } = await supabase.functions.invoke('create-user', {
+        body: { email, password, fullName, phoneNumber }, // Pass all fields
       });
-      if (error) throw error;
-      setSuccessMessage(`Aluno "${email}" adicionado com sucesso.`);
-      setEmail('');
-      setPassword('');
+      console.log('Function invoke response:', { data, functionError }); // Log response
+
+      if (functionError) {
+        // Handle errors thrown by the function itself
+        console.error("Edge function invocation error:", functionError);
+        // Just use the main functionError message for now
+        setError(functionError.message || 'Falha ao invocar a função de criação.');
+      } else if (data?.error) { // Check for errors returned in the function's JSON response
+         console.error("Error returned from Edge function:", data.error);
+         setError(data.error || 'Erro retornado pela função de criação.');
+         // Don't throw here, let finally handle loading
+      } else {
+        // Success
+        console.log("Edge function success response:", data);
+        setSuccessMessage(data?.message || `Aluno "${email}" adicionado com sucesso.`);
+        setEmail(''); // Clear form on success
+        setPassword('');
+        setFullName(''); // Clear new fields on success
+        setPhoneNumber('');
+        if (onStudentAdded) {
+          onStudentAdded(); // Call the callback if provided
+        }
+      }
     } catch (err: any) {
-      console.error("Failed to add student:", err);
-      setError(err.message || 'Falha ao adicionar aluno.');
+      // Catch errors from the invoke call itself (e.g., network errors)
+      console.error("Failed to add student (catch block):", err);
+      // Set error only if not already set by functionError or data.error checks
+      if (!error && !successMessage) {
+          setError(err.message || 'Falha na comunicação ao adicionar aluno.');
+      }
     } finally {
+      // This block runs regardless of success or error in try/catch
       setLoading(false);
+      console.log('Finished handleSubmit, loading set to false');
     }
-    */
-   setLoading(false); // Make sure loading is set to false in simulation
-  };
+  }; // End of handleSubmit
 
   return (
     <div className={styles.formContainer}> {/* Apply container style */}
       <h2>Adicionar Novo Aluno</h2>
       <form onSubmit={handleSubmit}>
-        <div className={styles.inputGroup}> {/* Apply input group style */}
+        <div className={styles.inputGroup}>
+          <label htmlFor="new-student-fullname">Nome Completo:</label>
+          <input
+            type="text"
+            id="new-student-fullname"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required // Make full name required
+            disabled={loading}
+            placeholder="Nome completo do aluno"
+          />
+        </div>
+        <div className={styles.inputGroup}>
           <label htmlFor="new-student-email">Email do Aluno:</label>
           <input
             type="email"
@@ -72,7 +93,18 @@ const AddStudentForm: React.FC<AddStudentFormProps> = () => {
             placeholder="novo.aluno@email.com"
           />
         </div>
-        <div className={styles.inputGroup}> {/* Apply input group style */}
+        <div className={styles.inputGroup}>
+          <label htmlFor="new-student-phone">Telefone (Opcional):</label>
+          <input
+            type="tel" // Use type="tel" for phone numbers
+            id="new-student-phone"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            disabled={loading}
+            placeholder="(XX) XXXXX-XXXX"
+          />
+        </div>
+        <div className={styles.inputGroup}>
           <label htmlFor="new-student-password">Senha Inicial:</label>
           <input
             type="password"
@@ -91,11 +123,9 @@ const AddStudentForm: React.FC<AddStudentFormProps> = () => {
           {loading ? 'Adicionando...' : 'Adicionar Aluno'}
         </button>
       </form>
-      <p className={styles.note}> {/* Apply note style */}
-        Nota: A criação real de usuários requer configuração adicional (Função Edge) ou ação manual no Supabase.
-      </p>
-    </div>
+      {/* Note removed as function is now implemented */}
+    </div> // Closing tag for formContainer
   );
-};
+}; // End of AddStudentForm component
 
 export default AddStudentForm;
