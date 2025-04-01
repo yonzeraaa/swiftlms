@@ -92,7 +92,7 @@
 
 .rememberMe label {
   font-weight: 400;
-  color: var(--color-accent-light); /* Gold label text */
+  color: var(--color-text-light); /* Use standard light text for better contrast */
   color: var(--color-text-secondary);
   font-size: 0.9rem;
   cursor: pointer;
