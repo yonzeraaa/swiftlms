@@ -6,6 +6,7 @@ import { useAuth } from './contexts/AuthContext.tsx';
 import LoginPage from './pages/LoginPage.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import StudentDashboard from './pages/StudentDashboard.tsx';
+import RootRedirector from './components/RootRedirector.tsx'; // Import the new component
 
 // --- Route Protection Components ---
 
@@ -60,7 +61,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
 // --- Main App Component ---
 
 function App() {
-  const { isAuthenticated, isAdmin, isStudent, loading } = useAuth();
+  const { loading } = useAuth(); // Only need loading for the initial app render check
 
   // Optional: Show global loading state initially
   if (loading) {
@@ -88,15 +89,7 @@ function App() {
       {/* Root path redirection */}
       <Route
         path="/"
-        element={
-          isAuthenticated ? (
-            isAdmin ? <Navigate to="/admin" replace /> :
-            isStudent ? <Navigate to="/student" replace /> :
-            <Navigate to="/login" replace /> // Fallback if role unknown
-          ) : (
-            <Navigate to="/login" replace />
-          )
-        }
+        element={<RootRedirector />} // Use the dedicated component for root redirection
       />
 
       {/* Catch-all for undefined routes (optional) */}
