@@ -183,7 +183,7 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
                 </td>
                 <td>{new Date(user.created_at).toLocaleString()}</td>
                 <td> {/* Freeze/Unfreeze Button Cell */}
-                  {user.role !== 'admin' && (
+                  {user.role === 'aluno' && ( // Only allow actions on 'aluno'
                     <button
                       onClick={() => handleUpdateStatus(user.id, user.account_status)}
                       className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton}
