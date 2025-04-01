@@ -79,11 +79,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               console.error('An unknown error occurred while fetching user profile');
             }
             setProfile(null); // Reset profile on error
+          } finally {
+             // Ensure loading is set to false *after* profile fetch attempt is done
+             // but only if we were fetching a profile because a user exists.
+             setLoading(false);
           }
         } else {
           setProfile(null); // Clear profile on logout
+          setLoading(false); // Also set loading false if there's no session
         }
-        setLoading(false);
+        // setLoading(false); // REMOVED from here
       }
     );
 
