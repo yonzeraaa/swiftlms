@@ -1,0 +1,58 @@
+/* Header specific styles - Modern */
+
+.appHeader {
+  background-color: var(--color-surface); /* Use light surface for header */
+  color: var(--color-text-primary); /* Dark text on light background */
+  box-shadow: var(--shadow-sm); /* Subtle shadow */
+  height: 65px; /* Slightly taller header */
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem; /* Add horizontal padding directly */
+  position: sticky; /* Keep header sticky if needed, but layout handles main structure */
+  top: 0;
+  z-index: 100; /* Ensure header stays on top */
+  border-bottom: 1px solid var(--color-border);
+}
+
+.container {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  font-size: 1.6rem;
+  font-weight: 600; /* Slightly less bold */
+  color: var(--color-primary); /* Use primary color for brand */
+  /* Optional: Add a logo later */
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem; /* Use gap for spacing */
+}
+
+.userEmail {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary); /* Secondary text color */
+}
+
+.logoutButton {
+  background-color: transparent; /* Make logout less prominent */
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary-light);
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.logoutButton:hover {
+  background-color: var(--color-primary-light);
+  color: var(--color-text-on-primary);
+  border-color: var(--color-primary-light);
+}

@@ -53,7 +53,8 @@ const LoginPage: React.FC = () => {
   return (
     <div className={styles.loginContainer}>
       <div className={styles.loginForm}>
-        <h1>SwiftLMS</h1> {/* Simplified title */}
+        <h1>Bem-vindo ao SwiftLMS</h1>
+        <p className={styles.subtitle}>Faça login para acessar seu painel.</p>
         <form onSubmit={handleSubmit}>
           <div className={styles.inputGroup}>
             <label htmlFor="email">Email:</label>
@@ -80,15 +81,26 @@ const LoginPage: React.FC = () => {
             />
           </div>
           <div className={styles.checkboxGroup}>
-            <input
-              type="checkbox"
-              id="rememberMe"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
+            <div className={styles.rememberMe}>
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                disabled={isSubmitting}
+              />
+              <label htmlFor="rememberMe">Lembrar-me</label>
+            </div>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
               disabled={isSubmitting}
-            />
-            <label htmlFor="rememberMe">Lembrar-me</label>
+              className={styles.forgotPasswordButton}
+            >
+              Esqueceu a sua senha?
+            </button>
           </div>
+
           {error && <p className={styles.errorMessage}>{error}</p>}
           <button type="submit" disabled={isSubmitting} className={styles.submitButton}>
           {isSubmitting ? 'Entrando...' : 'Entrar'}

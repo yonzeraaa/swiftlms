@@ -1,0 +1,67 @@
+/* Sidebar specific styles - Modern */
+
+.sidebar {
+  width: 250px; /* Slightly wider */
+  background-color: var(--color-primary-dark); /* Darker primary shade */
+  color: var(--color-text-light);
+  padding: 1rem 0; /* Adjust padding */
+  height: 100%; /* Inherits height from .mainLayout */
+  display: flex;
+  flex-direction: column;
+  transition: width var(--transition-std); /* Add transition for potential collapse later */
+  flex-shrink: 0; /* Prevent sidebar from shrinking */
+  border-right: 1px solid var(--color-primary-darker);
+}
+
+.sidebar nav {
+  flex-grow: 1;
+  margin-top: 1rem; /* Space above nav links */
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sidebar li {
+  margin: 0;
+}
+
+.navLink {
+  display: flex; /* Use flex for icon alignment later */
+  align-items: center;
+  padding: 0.8rem 1.5rem; /* Adjust padding */
+  margin: 0.2rem 0.8rem; /* Add horizontal margin for visual separation */
+  color: rgba(255, 255, 255, 0.75); /* Base link color */
+  text-decoration: none;
+  font-size: 0.95rem;
+  border-radius: var(--border-radius-md); /* Rounded corners */
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  position: relative; /* For pseudo-elements if needed */
+}
+
+.navLink:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.navLink.active {
+  background-color: var(--color-primary); /* Use main primary for active */
+  color: var(--color-accent-light); /* Accent color for active text */
+  font-weight: 500;
+}
+
+/* Optional: Add space for icons later */
+/* .navLink svg {
+  margin-right: 0.8rem;
+  width: 18px;
+  height: 18px;
+  opacity: 0.8;
+  transition: opacity var(--transition-fast);
+} */
+
+/* .navLink:hover svg,
+.navLink.active svg {
+  opacity: 1;
+} */

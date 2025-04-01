@@ -1,84 +1,174 @@
-/* Global Styles & CSS Variables */
+/* === Global Styles & Modern UI Reset === */
 
-:root {
-  /* Font */
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  /* Naval Theme Colors */
-  --color-primary: #00425A; /* Petroleum Blue */
-  --color-secondary: #1F8A70; /* Teal/Green */
-  --color-accent: #FFCF56; /* Gold/Yellow */
-  --color-background: #F8F9FA; /* Very Light Grey */
-  --color-surface: #FFFFFF; /* White for cards, inputs etc. */
-  --color-text: #212529; /* Dark Grey */
-  --color-text-light: #F8F9FA; /* Light Grey/White for dark backgrounds */
-  --color-border: #DEE2E6; /* Light Grey Border */
-  --color-error: #DC3545; /* Red for errors */
-
-  /* Sizes & Shadows */
-  --border-radius: 6px;
-  --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Basic Reset */
+/* Box sizing rules */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+/* Remove default margin */
+body,
+h1, h2, h3, h4, p, ul, ol, li, figure, figcaption, blockquote, dl, dd {
   margin: 0;
+}
+
+/* Remove list styles on ul, ol elements */
+ul, ol {
+  list-style: none;
   padding: 0;
 }
 
-html,
-body {
-  height: 100%;
+/* Set core root defaults */
+html:focus-within {
+  scroll-behavior: smooth;
 }
 
+/* Set core body defaults */
 body {
+  min-height: 100vh;
+  text-rendering: optimizeSpeed;
+  line-height: 1.5;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   background-color: var(--color-background);
-  color: var(--color-text);
-  min-height: 100vh; /* Ensure body takes full viewport height */
+  color: var(--color-text-primary);
 }
 
+/* Make images easier to work with */
+img, picture {
+  max-width: 100%;
+  display: block;
+}
+
+/* Inherit fonts for inputs and buttons */
+input, button, textarea, select {
+  font: inherit;
+}
+
+/* Remove all animations and transitions for people that prefer not to see them */
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+   scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* === Color Palette (Naval Theme - Modern) === */
+:root {
+  /* Primary (Petroleum Blue Tones) */
+  --color-primary-darker: #002a3a;
+  --color-primary-dark: #00394f;
+  --color-primary: #00425A; /* Original */
+  --color-primary-light: #1f8a70; /* Tealish accent from original secondary */
+  --color-primary-lighter: #a0d2db; /* Lighter teal/blue */
+
+  /* Accent (Gold/Amber Tones) */
+  --color-accent: #FFBF00; /* Amber */
+  --color-accent-light: #FFCF56; /* Lighter Gold */
+  --color-accent-dark: #cc9900;
+
+  /* Neutrals (Greys) */
+  --color-background: #f0f4f8; /* Very light cool grey */
+  --color-surface: #ffffff; /* White */
+  --color-border: #d8e1e8; /* Light grey border */
+  --color-text-primary: #212529; /* Dark grey for text */
+  --color-text-secondary: #6c757d; /* Medium grey */
+  --color-text-light: #f8f9fa; /* Light text on dark backgrounds */
+  --color-text-on-primary: var(--color-text-light);
+  --color-text-on-accent: var(--color-primary-darker);
+
+  /* Status Colors */
+  --color-error: #d9534f;
+  --color-success: #5cb85c;
+  --color-warning: #f0ad4e;
+  --color-info: #5bc0de;
+
+  /* UI Elements */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+
+  --transition-fast: 150ms ease-in-out;
+  --transition-std: 250ms ease-in-out;
+}
+
+/* === Base Element Styling === */
 #root {
-  min-height: 100vh; /* Ensure React root takes full height */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
-/* Remove default list styles */
-ul, ol {
-  list-style: none;
-}
-
-/* Basic link styling */
 a {
-  color: var(--color-primary);
+  color: var(--color-primary-light);
   text-decoration: none;
-  transition: opacity 0.2s ease-in-out;
+  transition: color var(--transition-fast);
 }
-
 a:hover {
-  opacity: 0.8;
+  color: var(--color-primary);
   text-decoration: underline;
 }
 
-/* Basic button styling (can be overridden by components) */
 button {
-  font-family: inherit;
   cursor: pointer;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-md);
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
-  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+  transition: background-color var(--transition-std), border-color var(--transition-std), transform var(--transition-fast);
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color; /* Keep default focus */
+  outline-offset: 1px;
+}
+button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
 }
 
-/* Add other global styles or resets as needed */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+textarea {
+    display: block;
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    background-clip: padding-box;
+    border: 1px solid var(--color-border);
+    appearance: none; /* Remove default styling */
+    border-radius: var(--border-radius-md);
+    transition: border-color var(--transition-std), box-shadow var(--transition-std);
+}
+input:focus,
+textarea:focus {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    border-color: var(--color-primary-light);
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(31, 138, 112, 0.25); /* Focus shadow using primary-light */
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0;
+}

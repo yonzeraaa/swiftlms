@@ -6,7 +6,8 @@ import { useAuth } from './contexts/AuthContext.tsx';
 import LoginPage from './pages/LoginPage.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import StudentDashboard from './pages/StudentDashboard.tsx';
-import RootRedirector from './components/RootRedirector.tsx'; // Import the new component
+import RootRedirector from './components/RootRedirector.tsx';
+import Layout from './components/Layout.tsx'; // Import the Layout component
 
 // --- Route Protection Components ---
 
@@ -76,14 +77,16 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
       </Route>
 
-      {/* Protected Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-        <Route path="/admin" element={<AdminDashboard />} />
-        {/* Add other admin-specific routes here */}
-      </Route>
-      <Route element={<ProtectedRoute allowedRoles={['student']} />}>
-        <Route path="/student" element={<StudentDashboard />} />
-        {/* Add other student-specific routes here */}
+      {/* Protected Routes - Wrapped in Layout */}
+      <Route element={<Layout />}> {/* Wrap protected routes with Layout */}
+        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          <Route path="/admin" element={<AdminDashboard />} />
+          {/* Add other admin-specific routes here */}
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+          <Route path="/student" element={<StudentDashboard />} />
+          {/* Add other student-specific routes here */}
+        </Route>
       </Route>
 
       {/* Root path redirection */}

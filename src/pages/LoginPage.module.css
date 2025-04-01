@@ -1,33 +1,45 @@
-/* LoginPage specific styles using CSS Modules */
+/* LoginPage specific styles - Modern */
 
 .loginContainer {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh; /* Take full viewport height */
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--color-primary-darker) 0%, var(--color-primary) 100%);
   padding: 2rem;
-  background-color: var(--color-background); /* Use global variable */
 }
 
 .loginForm {
-  background-color: var(--color-surface); /* White background for the form */
-  padding: 2.5rem;
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+  background-color: var(--color-surface);
+  padding: 2.5rem 3rem; /* Increase padding */
+  border-radius: var(--border-radius-lg); /* Larger radius */
+  box-shadow: var(--shadow-lg); /* More prominent shadow */
   width: 100%;
-  max-width: 400px; /* Limit form width */
+  max-width: 420px;
   text-align: center;
+  animation: fadeIn 0.5s ease-out; /* Add fade-in animation */
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .loginForm h1 {
-  color: var(--color-primary); /* Petroleum Blue */
-  margin-bottom: 1.5rem;
-  font-size: 1.8rem;
+  color: var(--color-primary);
+  margin-bottom: 1rem;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  color: var(--color-text-secondary);
+  margin-bottom: 2rem;
+  font-size: 1rem;
 }
 
 .inputGroup {
-  margin-bottom: 1.2rem;
+  margin-bottom: 1.5rem; /* Increased spacing */
   text-align: left;
 }
 
@@ -35,85 +47,89 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--color-text-primary);
+  font-size: 0.9rem;
 }
 
-.inputGroup input[type="email"],
-.inputGroup input[type="password"] {
-  width: 100%;
-  padding: 0.8rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--border-radius);
-  font-size: 1rem;
-}
-
-.inputGroup input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(0, 66, 90, 0.2); /* Subtle focus ring */
-}
+/* Input styles inherited from index.css */
 
 .checkboxGroup {
   display: flex;
   align-items: center;
-  margin-bottom: 1.2rem;
+  justify-content: space-between; /* Align checkbox and forgot password */
+  margin-bottom: 1.5rem;
   text-align: left;
 }
 
-.checkboxGroup input[type="checkbox"] {
-  margin-right: 0.5rem;
+.rememberMe {
+  display: flex;
+  align-items: center;
 }
 
-.checkboxGroup label {
+.rememberMe input[type="checkbox"] {
+  margin-right: 0.5rem;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-primary-light); /* Style checkbox */
+}
+
+.rememberMe label {
   font-weight: 400;
-  color: var(--color-text);
+  color: var(--color-text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
 .errorMessage {
   color: var(--color-error);
-  margin-bottom: 1rem;
+  background-color: rgba(217, 83, 79, 0.1);
+  border: 1px solid rgba(217, 83, 79, 0.2);
+  padding: 0.8rem;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 1.5rem;
   font-size: 0.9rem;
+  text-align: center;
 }
 
 .submitButton {
   width: 100%;
   padding: 0.9rem;
-  background-color: var(--color-primary); /* Petroleum Blue */
-  color: var(--color-text-light); /* White text */
+  background: linear-gradient(90deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  color: var(--color-text-on-primary);
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-md);
   font-size: 1.1rem;
-  font-weight: 500;
+  font-weight: 600; /* Bolder text */
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
+  transition: all var(--transition-std);
+  box-shadow: var(--shadow-sm);
+  margin-top: 0.5rem; /* Add some top margin */
 }
 
 .submitButton:hover:not(:disabled) {
-  background-color: #00334e; /* Darker shade of primary */
-}
-
-.submitButton:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
+  opacity: 0.9;
+  box-shadow: var(--shadow-md);
 }
 
 .forgotPasswordButton {
   background: none;
   border: none;
-  color: var(--color-secondary); /* Teal/Green */
-  text-decoration: underline;
+  color: var(--color-primary-light);
+  text-decoration: none; /* Remove underline */
   cursor: pointer;
-  padding: 0.5rem 0; /* Add some padding for easier clicking */
-  margin-top: 1rem;
+  padding: 0;
   font-size: 0.9rem;
+  transition: color var(--transition-fast);
 }
 
 .forgotPasswordButton:hover:not(:disabled) {
-  color: #166a55; /* Darker shade of secondary */
+  color: var(--color-primary);
+  text-decoration: underline;
 }
 
 .forgotPasswordButton:disabled {
-  color: #cccccc;
+  color: var(--color-text-secondary);
+  opacity: 0.7;
   cursor: not-allowed;
   text-decoration: none;
 }

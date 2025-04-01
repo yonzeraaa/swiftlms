@@ -1,0 +1,37 @@
+/* Layout specific styles */
+
+.appContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* Use fixed height for viewport */
+  overflow: hidden; /* Prevent body scroll */
+}
+
+.mainLayout {
+  display: flex;
+  flex-grow: 1; /* Allow this section to grow */
+  height: calc(100vh - 65px); /* Adjust for new header height */
+  overflow: hidden; /* Prevent this container from scrolling */
+  display: flex;
+  flex-grow: 1; /* Allow this section to grow and fill remaining space */
+  /* The Sidebar has a fixed width, contentArea will take the rest */
+}
+
+.contentArea {
+  flex-grow: 1;
+  background-color: var(--color-background);
+  overflow-y: auto; /* Add scroll if content overflows */
+}
+
+/* Apply padding directly to the content area */
+.contentArea {
+  flex-grow: 1;
+  background-color: var(--color-background);
+  overflow-y: auto; /* Allow only content area to scroll */
+  padding: 2rem; /* Add padding directly here */
+}
+
+/* Remove the rule targeting child divs as padding is now on contentArea */
+/* .contentArea > div { ... } */
+
+/* Dashboard containers should not have their own margin/padding now */

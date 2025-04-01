@@ -1,44 +1,17 @@
-/* StudentDashboard specific styles */
+/* Styles for StudentDashboard elements can be added here if needed, */
+/* but the main container styling is handled by Layout.module.css */
 
-.studentContainer {
-  padding: 2rem;
-  max-width: 900px;
-  margin: 2rem auto; /* Center the content */
-  background-color: var(--color-primary); /* Use petroleum blue */
-  color: var(--color-text-light); /* Set default text color to light */
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
-}
-
-.studentContainer h1 {
-  color: var(--color-text-light); /* Ensure headings are light */
-  margin-bottom: 0.5rem;
-}
-
-.studentContainer h2 {
-  color: var(--color-accent); /* Use accent color for H2 */
-  margin-top: 2rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Lighter border */
-  padding-bottom: 0.5rem;
-}
-
-.studentContainer p {
+/* Example: Style the h1 specifically if needed */
+/* .pageTitle {
   margin-bottom: 1.5rem;
-  /* Paragraph text will inherit from .studentContainer */
-}
+  color: var(--color-primary-dark);
+} */
 
-.studentContainer button { /* Basic button styling for logout */
-  background-color: var(--color-error);
-  color: var(--color-text-light);
-  border: none;
-  padding: 0.6em 1.2em;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  margin-top: 2rem; /* Add some space above logout */
-  transition: background-color 0.2s ease-in-out;
-}
-
-.studentContainer button:hover {
-  background-color: #c82333; /* Darker red */
-}
+/* Example: Style the course placeholder */
+/* .coursePlaceholder {
+  border: 1px dashed var(--color-border);
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+  border-radius: var(--border-radius-md);
+} */
