@@ -4,26 +4,28 @@
   padding: 2rem;
   max-width: 900px;
   margin: 2rem auto; /* Center the content */
-  background-color: var(--color-surface);
+  background-color: var(--color-primary); /* Use petroleum blue */
+  color: var(--color-text-light); /* Set default text color to light */
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
 }
 
 .studentContainer h1 {
-  color: var(--color-primary);
+  color: var(--color-text-light); /* Ensure headings are light */
   margin-bottom: 0.5rem;
 }
 
 .studentContainer h2 {
-  color: var(--color-secondary);
+  color: var(--color-accent); /* Use accent color for H2 */
   margin-top: 2rem;
   margin-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Lighter border */
   padding-bottom: 0.5rem;
 }
 
 .studentContainer p {
   margin-bottom: 1.5rem;
+  /* Paragraph text will inherit from .studentContainer */
 }
 
 .studentContainer button { /* Basic button styling for logout */

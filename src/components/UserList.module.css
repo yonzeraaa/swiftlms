@@ -1,0 +1,48 @@
+/* UserList specific styles */
+
+.userListContainer {
+  margin-top: 1.5rem;
+}
+
+.userListContainer h2 {
+  color: var(--color-accent); /* Use accent color for heading */
+  margin-bottom: 1rem;
+  font-size: 1.4rem;
+}
+
+.userTable {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--color-text-light); /* Ensure text is light */
+}
+
+.userTable th,
+.userTable td {
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Lighter border */
+  padding: 0.8rem;
+  text-align: left;
+}
+
+.userTable th {
+  background-color: rgba(255, 255, 255, 0.1); /* Slightly lighter header */
+  font-weight: 600;
+}
+
+.userTable tbody tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.05); /* Subtle striping */
+}
+
+.loadingMessage,
+.errorMessage,
+.noUsersMessage {
+  color: var(--color-text-light); /* Ensure messages are light */
+  padding: 1rem;
+  text-align: center;
+}
+
+.errorMessage {
+  color: var(--color-error); /* Keep error message red */
+  background-color: rgba(220, 53, 69, 0.1); /* Light red background */
+  border: 1px solid var(--color-error);
+  border-radius: var(--border-radius);
+}

@@ -1,4 +1,5 @@
 import React, { useState, FormEvent } from 'react';
+import styles from './AddStudentForm.module.css'; // Import styles
 
 interface AddStudentFormProps {
   // Props might be needed later, e.g., a callback on successful add
@@ -56,10 +57,10 @@ const AddStudentForm: React.FC<AddStudentFormProps> = () => {
   };
 
   return (
-    <div>
+    <div className={styles.formContainer}> {/* Apply container style */}
       <h2>Adicionar Novo Aluno</h2>
       <form onSubmit={handleSubmit}>
-        <div>
+        <div className={styles.inputGroup}> {/* Apply input group style */}
           <label htmlFor="new-student-email">Email do Aluno:</label>
           <input
             type="email"
@@ -68,9 +69,10 @@ const AddStudentForm: React.FC<AddStudentFormProps> = () => {
             onChange={(e) => setEmail(e.target.value)}
             required
             disabled={loading}
+            placeholder="novo.aluno@email.com"
           />
         </div>
-        <div>
+        <div className={styles.inputGroup}> {/* Apply input group style */}
           <label htmlFor="new-student-password">Senha Inicial:</label>
           <input
             type="password"
@@ -78,17 +80,18 @@ const AddStudentForm: React.FC<AddStudentFormProps> = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            minLength={6} // Supabase default minimum password length
+            minLength={6}
             disabled={loading}
+            placeholder="Mínimo 6 caracteres"
           />
         </div>
-        {error && <p style={{ color: 'red' }}>Erro: {error}</p>}
-        {successMessage && <p style={{ color: 'green' }}>{successMessage}</p>}
-        <button type="submit" disabled={loading}>
+        {error && <p className={styles.errorMessage}>{error}</p>} {/* Apply error style */}
+        {successMessage && <p className={styles.successMessage}>{successMessage}</p>} {/* Apply success style */}
+        <button type="submit" disabled={loading} className={styles.submitButton}> {/* Apply button style */}
           {loading ? 'Adicionando...' : 'Adicionar Aluno'}
         </button>
       </form>
-      <p style={{ fontSize: '0.8em', marginTop: '10px', color: '#666' }}>
+      <p className={styles.note}> {/* Apply note style */}
         Nota: A criação real de usuários requer configuração adicional (Função Edge) ou ação manual no Supabase.
       </p>
     </div>

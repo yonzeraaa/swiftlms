@@ -1,0 +1,100 @@
+/* AddStudentForm specific styles */
+
+.formContainer {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background-color: rgba(255, 255, 255, 0.05); /* Slightly lighter background */
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.formContainer h2 {
+  color: var(--color-accent); /* Use accent color */
+  margin-bottom: 1.5rem;
+  font-size: 1.4rem;
+}
+
+.inputGroup {
+  margin-bottom: 1rem;
+}
+
+.inputGroup label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 500;
+  color: var(--color-text-light); /* Light text */
+}
+
+.inputGroup input[type="email"],
+.inputGroup input[type="password"] {
+  width: 100%;
+  padding: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Lighter border */
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  background-color: rgba(255, 255, 255, 0.1); /* Slightly transparent background */
+  color: var(--color-text-light); /* Light text */
+}
+
+.inputGroup input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.inputGroup input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(255, 207, 86, 0.3); /* Accent focus ring */
+}
+
+.message {
+  padding: 0.8rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--border-radius);
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.errorMessage {
+  composes: message; /* Inherit base message styles */
+  color: #f8d7da; /* Light red text */
+  background-color: rgba(220, 53, 69, 0.3); /* Red background */
+  border: 1px solid rgba(220, 53, 69, 0.5);
+}
+
+.successMessage {
+  composes: message; /* Inherit base message styles */
+  color: #d1e7dd; /* Light green text */
+  background-color: rgba(25, 135, 84, 0.3); /* Green background */
+  border: 1px solid rgba(25, 135, 84, 0.5);
+}
+
+.submitButton {
+  padding: 0.8rem 1.5rem;
+  background-color: var(--color-secondary); /* Teal/Green */
+  color: var(--color-text-light);
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+  margin-top: 0.5rem;
+}
+
+.submitButton:hover:not(:disabled) {
+  background-color: #166a55; /* Darker shade of secondary */
+}
+
+.submitButton:disabled {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+}
+
+.note {
+  font-size: 0.8em;
+  margin-top: 1.5rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
