@@ -6,7 +6,7 @@
 }
 
 .userListContainer h2 {
-  color: var(--color-primary-dark); /* Use dark primary for heading */
+  color: var(--color-primary-dark); /* Keep heading dark */
   margin-bottom: 1rem;
   font-size: 1.4rem;
 }
@@ -29,8 +29,9 @@
 }
 
 .userTable th {
-  background-color: var(--color-background); /* Use light background for header */
-  color: var(--color-text-secondary); /* Secondary text color for header */
+  background-color: var(--color-background);
+  color: var(--color-text-secondary);
+  border-bottom: 2px solid var(--color-primary-light); /* Add accent border to header */
   font-weight: 600;
 }
 

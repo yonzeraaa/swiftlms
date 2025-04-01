@@ -149,22 +149,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Logout function
   // Add return type
   const logout = async (): Promise<void> => {
+    console.log('[AuthContext] Logout function called.'); // Log start
     setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      // Type assertion or check for error handling
-      if (error instanceof Error) {
-        console.error("Logout error:", error.message);
+    try { // Wrap signout in try/catch
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        // Type assertion or check for error handling
+        if (error instanceof Error) {
+          console.error("[AuthContext] Logout error:", error.message);
+        } else {
+          console.error("[AuthContext] An unknown logout error occurred");
+        }
+        // Optionally re-throw or handle differently
       } else {
-        console.error("An unknown logout error occurred");
+        console.log('[AuthContext] supabase.auth.signOut() successful.'); // Log success
       }
-      // Don't clear user/profile here, let onAuthStateChange handle it
+    } catch (catchError) {
+        // Catch any unexpected errors during signout itself
+        console.error("[AuthContext] Unexpected error during signOut:", catchError);
+    } finally {
+        // This block runs regardless of success or error in try/catch
+        console.log('[AuthContext] Cleaning up after logout attempt.');
+        // Clear remembered credentials on explicit logout attempt
+        localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem('rememberedPassword');
+        setRememberedCredentials({ email: '', password: '' });
+        // Don't clear user/profile here, let onAuthStateChange handle it
+        setLoading(false); // Set loading false after signout attempt is finished
     }
-    // Clear remembered credentials on explicit logout
-    localStorage.removeItem('rememberedEmail');
-    localStorage.removeItem('rememberedPassword');
-    setRememberedCredentials({ email: '', password: '' });
-    setLoading(false); // Set loading false after signout attempt
   };
 
   // Value provided by the context

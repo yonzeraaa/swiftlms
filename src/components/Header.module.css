@@ -1,16 +1,17 @@
 /* Header specific styles - Modern */
 
 .appHeader {
-  background-color: var(--color-surface); /* Use light surface for header */
-  color: var(--color-text-primary); /* Dark text on light background */
-  box-shadow: var(--shadow-sm); /* Subtle shadow */
-  height: 65px; /* Slightly taller header */
+  background-color: var(--color-primary-dark); /* Dark blue header */
+  color: var(--color-text-light); /* Light text */
+  box-shadow: var(--shadow-md); /* Slightly stronger shadow */
+  height: 65px;
   display: flex;
   align-items: center;
   padding: 0 1.5rem; /* Add horizontal padding directly */
   position: sticky; /* Keep header sticky if needed, but layout handles main structure */
   top: 0;
-  z-index: 100; /* Ensure header stays on top */
+  z-index: 100;
+  /* border-bottom: 1px solid var(--color-border); /* Remove light border */
   border-bottom: 1px solid var(--color-border);
 }
 
@@ -24,7 +25,7 @@
 .brand {
   font-size: 1.6rem;
   font-weight: 600; /* Slightly less bold */
-  color: var(--color-primary); /* Use primary color for brand */
+  color: var(--color-accent-light); /* Gold brand */
   /* Optional: Add a logo later */
 }
 
@@ -36,13 +37,13 @@
 
 .userEmail {
   font-size: 0.9rem;
-  color: var(--color-text-secondary); /* Secondary text color */
+  color: rgba(255, 255, 255, 0.75); /* Lighter secondary text */
 }
 
 .logoutButton {
-  background-color: transparent; /* Make logout less prominent */
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary-light);
+  background-color: transparent;
+  color: var(--color-accent-light); /* Gold text */
+  border: 1px solid var(--color-accent); /* Gold border */
   padding: 0.4rem 0.8rem;
   border-radius: var(--border-radius-sm);
   cursor: pointer;
@@ -52,7 +53,7 @@
 }
 
 .logoutButton:hover {
-  background-color: var(--color-primary-light);
-  color: var(--color-text-on-primary);
+  background-color: var(--color-accent); /* Gold background on hover */
+  color: var(--color-text-on-accent); /* Dark text on hover */
   border-color: var(--color-primary-light);
 }

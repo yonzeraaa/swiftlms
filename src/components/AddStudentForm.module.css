@@ -11,7 +11,7 @@
 }
 
 .formContainer h2 {
-  color: var(--color-primary-dark); /* Use dark primary for heading */
+  color: var(--color-primary-dark); /* Keep heading dark */
   margin-bottom: 1.5rem;
   font-size: 1.4rem;
 }
@@ -44,8 +44,8 @@
 
 .inputGroup input:focus {
   outline: none;
-  border-color: var(--color-primary-light); /* Use primary-light like global focus */
-  box-shadow: 0 0 0 0.2rem rgba(31, 138, 112, 0.25); /* Use primary-light like global focus */
+  border-color: var(--color-accent); /* Gold focus border */
+  box-shadow: 0 0 0 0.2rem rgba(255, 191, 0, 0.25); /* Gold focus shadow */
 }
 
 .message {
@@ -73,8 +73,9 @@
 
 .submitButton {
   padding: 0.8rem 1.5rem;
-  background-color: var(--color-secondary); /* Teal/Green */
-  color: var(--color-text-light);
+  /* Gold accent button */
+  background: linear-gradient(90deg, var(--color-accent-light) 0%, var(--color-accent) 100%);
+  color: var(--color-text-on-accent); /* Dark text on gold */
   border: none;
   border-radius: var(--border-radius-md); /* Use standard radius */
   font-size: 1rem;
@@ -85,12 +86,13 @@
 }
 
 .submitButton:hover:not(:disabled) {
-  background-color: #166a55; /* Darker shade of secondary */
+  opacity: 0.95;
+  filter: brightness(1.05);
 }
 
 .submitButton:disabled {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.5);
+  background: var(--color-border); /* Use light grey for disabled */
+  color: var(--color-text-secondary);
   cursor: not-allowed;
 }
 

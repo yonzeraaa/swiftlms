@@ -10,10 +10,12 @@
 }
 
 .loginForm {
-  background-color: var(--color-surface);
-  padding: 2.5rem 3rem; /* Increase padding */
-  border-radius: var(--border-radius-lg); /* Larger radius */
-  box-shadow: var(--shadow-lg); /* More prominent shadow */
+  /* Dark blue gradient background */
+  background: linear-gradient(145deg, var(--color-primary-darker) 0%, var(--color-primary-dark) 100%);
+  color: var(--color-text-light); /* Default text light */
+  padding: 2.5rem 3rem;
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 420px;
   text-align: center;
@@ -26,14 +28,14 @@
 }
 
 .loginForm h1 {
-  color: var(--color-primary);
+  color: var(--color-accent-light); /* Gold accent for title */
   margin-bottom: 1rem;
   font-size: 2rem;
   font-weight: 600;
 }
 
 .subtitle {
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.8); /* Lighter secondary text */
   margin-bottom: 2rem;
   font-size: 1rem;
 }
@@ -47,11 +49,26 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--color-text-primary);
+  color: var(--color-text-light); /* Light label text */
   font-size: 0.9rem;
 }
 
-/* Input styles inherited from index.css */
+/* Adjust input styles for dark background */
+.inputGroup input[type="email"],
+.inputGroup input[type="password"] {
+  background-color: rgba(0, 0, 0, 0.2); /* Darker input background */
+  border: 1px solid var(--color-primary); /* Primary border */
+  color: var(--color-text-light); /* Light input text */
+}
+.inputGroup input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+.inputGroup input:focus {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-color: var(--color-accent-light); /* Gold focus border */
+  box-shadow: 0 0 0 0.2rem rgba(255, 207, 86, 0.25); /* Gold focus shadow */
+}
+
 
 .checkboxGroup {
   display: flex;
@@ -70,20 +87,21 @@
   margin-right: 0.5rem;
   width: 16px;
   height: 16px;
-  accent-color: var(--color-primary-light); /* Style checkbox */
+  accent-color: var(--color-accent); /* Gold checkbox */
 }
 
 .rememberMe label {
   font-weight: 400;
+  color: var(--color-accent-light); /* Gold label text */
   color: var(--color-text-secondary);
   font-size: 0.9rem;
   cursor: pointer;
 }
 
 .errorMessage {
-  color: var(--color-error);
-  background-color: rgba(217, 83, 79, 0.1);
-  border: 1px solid rgba(217, 83, 79, 0.2);
+  color: #f8d7da; /* Lighter error text for dark background */
+  background-color: rgba(217, 83, 79, 0.3); /* Slightly stronger error background */
+  border: 1px solid rgba(217, 83, 79, 0.5);
   padding: 0.8rem;
   border-radius: var(--border-radius-sm);
   margin-bottom: 1.5rem;
@@ -93,13 +111,14 @@
 
 .submitButton {
   width: 100%;
+  /* Gold accent button */
+  background: linear-gradient(90deg, var(--color-accent-light) 0%, var(--color-accent) 100%);
+  color: var(--color-text-on-accent); /* Dark text on gold */
   padding: 0.9rem;
-  background: linear-gradient(90deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
-  color: var(--color-text-on-primary);
   border: none;
   border-radius: var(--border-radius-md);
   font-size: 1.1rem;
-  font-weight: 600; /* Bolder text */
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-std);
   box-shadow: var(--shadow-sm);
@@ -107,14 +126,15 @@
 }
 
 .submitButton:hover:not(:disabled) {
-  opacity: 0.9;
+  opacity: 0.95;
+  filter: brightness(1.05); /* Slight brightness increase */
   box-shadow: var(--shadow-md);
 }
 
 .forgotPasswordButton {
   background: none;
   border: none;
-  color: var(--color-primary-light);
+  color: var(--color-accent-light); /* Gold for forgot password */
   text-decoration: none; /* Remove underline */
   cursor: pointer;
   padding: 0;
@@ -123,12 +143,12 @@
 }
 
 .forgotPasswordButton:hover:not(:disabled) {
-  color: var(--color-primary);
+  color: var(--color-accent); /* Darker gold on hover */
   text-decoration: underline;
 }
 
 .forgotPasswordButton:disabled {
-  color: var(--color-text-secondary);
+  color: rgba(255, 255, 255, 0.5); /* Dim disabled text */
   opacity: 0.7;
   cursor: not-allowed;
   text-decoration: none;
