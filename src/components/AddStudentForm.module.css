@@ -3,14 +3,15 @@
 .formContainer {
   /* margin-top: 1.5rem; /* Can likely remove if spacing is consistent */
   padding: 1.5rem;
-  background-color: rgba(255, 255, 255, 0.05);
-  border-radius: var(--border-radius);
-  margin-bottom: 2rem; /* Add space below this component */
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--color-surface); /* Use white surface */
+  border-radius: var(--border-radius-md); /* Use standard radius */
+  margin-bottom: 2rem;
+  border: 1px solid var(--color-border); /* Use standard border */
+  box-shadow: var(--shadow-sm); /* Add subtle shadow */
 }
 
 .formContainer h2 {
-  color: var(--color-accent); /* Use accent color */
+  color: var(--color-primary-dark); /* Use dark primary for heading */
   margin-bottom: 1.5rem;
   font-size: 1.4rem;
 }
@@ -23,51 +24,51 @@
   display: block;
   margin-bottom: 0.4rem;
   font-weight: 500;
-  color: var(--color-text-light); /* Light text */
+  color: var(--color-text-primary); /* Use primary dark text */
 }
 
 .inputGroup input[type="email"],
 .inputGroup input[type="password"] {
   width: 100%;
   padding: 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.3); /* Lighter border */
-  border-radius: var(--border-radius);
+  border: 1px solid var(--color-border); /* Use standard border */
+  border-radius: var(--border-radius-md); /* Use standard radius */
   font-size: 1rem;
-  background-color: rgba(255, 255, 255, 0.1); /* Slightly transparent background */
-  color: var(--color-text-light); /* Light text */
+  background-color: var(--color-surface); /* Use standard surface */
+  color: var(--color-text-primary); /* Use primary dark text */
 }
 
 .inputGroup input::placeholder {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-text-secondary); /* Use secondary text for placeholder */
 }
 
 .inputGroup input:focus {
   outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(255, 207, 86, 0.3); /* Accent focus ring */
+  border-color: var(--color-primary-light); /* Use primary-light like global focus */
+  box-shadow: 0 0 0 0.2rem rgba(31, 138, 112, 0.25); /* Use primary-light like global focus */
 }
 
 .message {
   padding: 0.8rem;
   margin-top: 1rem;
   margin-bottom: 1rem;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-sm); /* Use standard small radius */
   text-align: center;
   font-size: 0.9rem;
 }
 
 .errorMessage {
   composes: message; /* Inherit base message styles */
-  color: #f8d7da; /* Light red text */
-  background-color: rgba(220, 53, 69, 0.3); /* Red background */
-  border: 1px solid rgba(220, 53, 69, 0.5);
+  color: var(--color-error); /* Use dark error text */
+  background-color: rgba(217, 83, 79, 0.1); /* Light error background */
+  border: 1px solid rgba(217, 83, 79, 0.2); /* Light error border */
 }
 
 .successMessage {
   composes: message; /* Inherit base message styles */
-  color: #d1e7dd; /* Light green text */
-  background-color: rgba(25, 135, 84, 0.3); /* Green background */
-  border: 1px solid rgba(25, 135, 84, 0.5);
+  color: var(--color-success); /* Use dark success text */
+  background-color: rgba(92, 184, 92, 0.1); /* Light success background */
+  border: 1px solid rgba(92, 184, 92, 0.2); /* Light success border */
 }
 
 .submitButton {
@@ -75,7 +76,7 @@
   background-color: var(--color-secondary); /* Teal/Green */
   color: var(--color-text-light);
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-md); /* Use standard radius */
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -96,6 +97,6 @@
 .note {
   font-size: 0.8em;
   margin-top: 1.5rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--color-text-secondary); /* Use secondary text color */
   text-align: center;
 }
