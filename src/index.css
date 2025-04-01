@@ -1,68 +1,84 @@
+/* Global Styles & CSS Variables */
+
 :root {
+  /* Font */
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Naval Theme Colors */
+  --color-primary: #00425A; /* Petroleum Blue */
+  --color-secondary: #1F8A70; /* Teal/Green */
+  --color-accent: #FFCF56; /* Gold/Yellow */
+  --color-background: #F8F9FA; /* Very Light Grey */
+  --color-surface: #FFFFFF; /* White for cards, inputs etc. */
+  --color-text: #212529; /* Dark Grey */
+  --color-text-light: #F8F9FA; /* Light Grey/White for dark backgrounds */
+  --color-border: #DEE2E6; /* Light Grey Border */
+  --color-error: #DC3545; /* Red for errors */
+
+  /* Sizes & Shadows */
+  --border-radius: 6px;
+  --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+/* Basic Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
-a:hover {
-  color: #535bf2;
+
+html,
+body {
+  height: 100%;
 }
 
 body {
-  margin: 0;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  min-height: 100vh; /* Ensure body takes full viewport height */
+}
+
+#root {
+  min-height: 100vh; /* Ensure React root takes full height */
   display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  flex-direction: column;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Remove default list styles */
+ul, ol {
+  list-style: none;
 }
 
+/* Basic link styling */
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: opacity 0.2s ease-in-out;
+}
+
+a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* Basic button styling (can be overridden by components) */
 button {
-  border-radius: 8px;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: var(--border-radius);
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
+/* Add other global styles or resets as needed */

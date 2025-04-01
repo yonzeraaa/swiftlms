@@ -1,35 +1,110 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { useAuth } from './contexts/AuthContext.tsx';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Import Page Components
+import LoginPage from './pages/LoginPage.tsx';
+import AdminDashboard from './pages/AdminDashboard.tsx';
+import StudentDashboard from './pages/StudentDashboard.tsx';
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+// --- Route Protection Components ---
+
+// Component for routes accessible only when NOT authenticated (e.g., Login)
+const PublicRoute: React.FC = () => {
+  const { isAuthenticated, isAdmin, isStudent } = useAuth();
+
+  if (isAuthenticated) {
+    // Redirect logged-in users away from public-only pages
+    if (isAdmin) return <Navigate to="/admin" replace />;
+    if (isStudent) return <Navigate to="/student" replace />;
+    // Fallback if role isn't determined yet or is unexpected (should ideally not happen)
+    return <Navigate to="/" replace />;
+  }
+
+  return <Outlet />; // Render child route component (e.g., LoginPage)
+};
+
+// Component for routes accessible only WHEN authenticated
+// Optional role prop for role-specific protection
+interface ProtectedRouteProps {
+  allowedRoles?: string[];
 }
 
-export default App
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
+  const { isAuthenticated, profile, loading } = useAuth();
+  const userRole = profile?.role;
+
+  if (loading) {
+    // Show loading indicator while checking auth status
+    // TODO: Replace with a proper loading spinner/component
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    // Redirect unauthenticated users to login
+    return <Navigate to="/login" replace />;
+  }
+
+  // Check role if allowedRoles are specified
+  if (allowedRoles && (!userRole || !allowedRoles.includes(userRole))) {
+    // Redirect if user role is not allowed for this route
+    // Could redirect to a generic dashboard or an "Unauthorized" page
+    console.warn(`User role "${userRole}" not allowed for this route. Redirecting.`);
+    // For now, redirect to login, but a better destination might be needed
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Outlet />; // Render child route component (e.g., AdminDashboard)
+};
+
+// --- Main App Component ---
+
+function App() {
+  const { isAuthenticated, isAdmin, isStudent, loading } = useAuth();
+
+  // Optional: Show global loading state initially
+  if (loading) {
+     // TODO: Replace with a proper loading spinner/component
+    return <div>Loading Application...</div>;
+  }
+
+  return (
+    <Routes>
+      {/* Public Routes (e.g., Login) */}
+      <Route element={<PublicRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
+
+      {/* Protected Routes */}
+      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+        <Route path="/admin" element={<AdminDashboard />} />
+        {/* Add other admin-specific routes here */}
+      </Route>
+      <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+        <Route path="/student" element={<StudentDashboard />} />
+        {/* Add other student-specific routes here */}
+      </Route>
+
+      {/* Root path redirection */}
+      <Route
+        path="/"
+        element={
+          isAuthenticated ? (
+            isAdmin ? <Navigate to="/admin" replace /> :
+            isStudent ? <Navigate to="/student" replace /> :
+            <Navigate to="/login" replace /> // Fallback if role unknown
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      {/* Catch-all for undefined routes (optional) */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Or display a 404 component: <Route path="*" element={<NotFoundPage />} /> */}
+
+    </Routes>
+  );
+}
+
+export default App;

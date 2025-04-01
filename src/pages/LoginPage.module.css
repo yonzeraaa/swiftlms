@@ -1,0 +1,119 @@
+/* LoginPage specific styles using CSS Modules */
+
+.loginContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh; /* Take full viewport height */
+  padding: 2rem;
+  background-color: var(--color-background); /* Use global variable */
+}
+
+.loginForm {
+  background-color: var(--color-surface); /* White background for the form */
+  padding: 2.5rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  width: 100%;
+  max-width: 400px; /* Limit form width */
+  text-align: center;
+}
+
+.loginForm h1 {
+  color: var(--color-primary); /* Petroleum Blue */
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+}
+
+.inputGroup {
+  margin-bottom: 1.2rem;
+  text-align: left;
+}
+
+.inputGroup label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.inputGroup input[type="email"],
+.inputGroup input[type="password"] {
+  width: 100%;
+  padding: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+}
+
+.inputGroup input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(0, 66, 90, 0.2); /* Subtle focus ring */
+}
+
+.checkboxGroup {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.2rem;
+  text-align: left;
+}
+
+.checkboxGroup input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.checkboxGroup label {
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+.errorMessage {
+  color: var(--color-error);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.submitButton {
+  width: 100%;
+  padding: 0.9rem;
+  background-color: var(--color-primary); /* Petroleum Blue */
+  color: var(--color-text-light); /* White text */
+  border: none;
+  border-radius: var(--border-radius);
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.submitButton:hover:not(:disabled) {
+  background-color: #00334e; /* Darker shade of primary */
+}
+
+.submitButton:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.forgotPasswordButton {
+  background: none;
+  border: none;
+  color: var(--color-secondary); /* Teal/Green */
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.5rem 0; /* Add some padding for easier clicking */
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+.forgotPasswordButton:hover:not(:disabled) {
+  color: #166a55; /* Darker shade of secondary */
+}
+
+.forgotPasswordButton:disabled {
+  color: #cccccc;
+  cursor: not-allowed;
+  text-decoration: none;
+}
