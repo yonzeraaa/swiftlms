@@ -1,6 +1,7 @@
 /* UserList specific styles */
 
 .userListContainer {
+  margin-bottom: 2rem; /* Add space below this component */
   margin-top: 1.5rem;
 }
 

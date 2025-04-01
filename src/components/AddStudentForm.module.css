@@ -1,10 +1,11 @@
 /* AddStudentForm specific styles */
 
 .formContainer {
-  margin-top: 1.5rem;
+  /* margin-top: 1.5rem; /* Can likely remove if spacing is consistent */
   padding: 1.5rem;
-  background-color: rgba(255, 255, 255, 0.05); /* Slightly lighter background */
+  background-color: rgba(255, 255, 255, 0.05);
   border-radius: var(--border-radius);
+  margin-bottom: 2rem; /* Add space below this component */
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
