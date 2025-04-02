@@ -251,21 +251,46 @@ const CourseViewPage: React.FC = () => {
                                         <h3>{lesson.number ? `Aula ${lesson.number}: ` : ''}{lesson.title}</h3>
                                         {/* Basic content display */}
                                         {lesson.content && <p className={styles.lessonContent}>{lesson.content}</p>}
-                                        {/* Embed Video Player */}
-                                        {lesson.video_url && (
-                                            <div className={styles.playerWrapper}>
-                                                <ReactPlayer
-                                                    className={styles.reactPlayer}
-                                                    url={lesson.video_url}
-                                                    width='100%'
-                                                    height='100%'
-                                                    controls={true} // Show player controls
-                                                    // light={true} // Optional: Show thumbnail until clicked
-                                                    // playing={false} // Optional: Start paused
-                                                    onPlay={() => handleMarkLessonAsViewed(lesson.id)} // Mark as viewed when played
-                                                />
-                                            </div>
-                                        )}
+                                        {/* Embed Media Player (Video or PDF) */}
+                                       {lesson.video_url && (() => {
+                                           const url = lesson.video_url.toLowerCase();
+                                           if (url.endsWith('.mp4')) {
+                                               return (
+                                                   <div className={styles.playerWrapper}>
+                                                       <ReactPlayer
+                                                           className={styles.reactPlayer}
+                                                           url={lesson.video_url} // Use original URL case
+                                                           width='100%'
+                                                           height='100%'
+                                                           controls={true}
+                                                           onPlay={() => handleMarkLessonAsViewed(lesson.id)}
+                                                       />
+                                                   </div>
+                                               );
+                                           } else if (url.endsWith('.pdf')) {
+                                               return (
+                                                   <div className={styles.pdfWrapper}>
+                                                       <iframe
+                                                           src={lesson.video_url} // Use original URL case
+                                                           className={styles.pdfViewer}
+                                                           title={`PDF Viewer: ${lesson.title}`}
+                                                           onLoad={() => handleMarkLessonAsViewed(lesson.id)} // Mark as viewed when PDF loads
+                                                       >
+                                                           Seu navegador não suporta iframes para visualização de PDF. Você pode <a href={lesson.video_url} target="_blank" rel="noopener noreferrer">baixar o PDF aqui</a>.
+                                                       </iframe>
+                                                   </div>
+                                               );
+                                           } else {
+                                               // Optional: Handle other types or show a link
+                                               return (
+                                                   <p>
+                                                       <a href={lesson.video_url} target="_blank" rel="noopener noreferrer">
+                                                           Abrir conteúdo da aula (tipo desconhecido)
+                                                       </a>
+                                                   </p>
+                                               );
+                                           }
+                                       })()}
                                     </li>
                                 ))}
                             </ul>
