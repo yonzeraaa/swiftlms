@@ -1,8 +1,9 @@
-// src/components/EditCourseModal.tsx
+// src/components/EditCourseModal.tsx (Updated with Activity Logging)
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
-import { generateCourseCode } from '../utils/courseUtils'; // Reuse code generator
-import styles from './EditCourseModal.module.css'; // Create styles later
+import { generateCourseCode } from '../utils/courseUtils';
+import { useAuth } from '../contexts/AuthContext'; // Import useAuth
+import styles from './EditCourseModal.module.css';
 
 interface Course {
     id: string;
@@ -12,27 +13,26 @@ interface Course {
 }
 
 interface EditCourseModalProps {
-    course: Course | null; // Course data to edit, or null if modal is closed
-    onClose: () => void; // Function to close the modal
-    onCourseUpdated: () => void; // Function to refresh list after update
+    course: Course | null;
+    onClose: () => void;
+    onCourseUpdated: () => void;
 }
 
 const EditCourseModal: React.FC<EditCourseModalProps> = ({ course, onClose, onCourseUpdated }) => {
+    const { user } = useAuth(); // Get the current user
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [currentCode, setCurrentCode] = useState(''); // Store original code for comparison
+    const [currentCode, setCurrentCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Pre-fill form when course data changes (modal opens)
     useEffect(() => {
         if (course) {
             setTitle(course.title);
             setDescription(course.description || '');
-            setCurrentCode(course.code || ''); // Store original code
-            setError(null); // Clear previous errors
+            setCurrentCode(course.code || '');
+            setError(null);
         } else {
-            // Reset form when modal closes
             setTitle('');
             setDescription('');
             setCurrentCode('');
@@ -41,14 +41,17 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({ course, onClose, onCo
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!course) return; // Should not happen if modal is open
+        if (!course || !user) { // Ensure course and user exist
+             setError("Curso ou usuário não encontrado.");
+             return;
+        }
 
         setLoading(true);
         setError(null);
 
         const trimmedTitle = title.trim();
         const trimmedDescription = description.trim() || null;
-        const newCode = generateCourseCode(trimmedTitle); // Generate new code based on potentially new title
+        const newCode = generateCourseCode(trimmedTitle);
 
         if (!trimmedTitle) {
             setError('O título do curso é obrigatório.');
@@ -62,14 +65,14 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({ course, onClose, onCo
         }
 
         try {
-            // Prepare update data
             const updateData: Partial<Course> = {
                 title: trimmedTitle,
                 description: trimmedDescription,
             };
-            // Only update code if it changed AND is different from original
+            let codeChanged = false;
             if (newCode !== currentCode) {
                 updateData.code = newCode;
+                codeChanged = true;
             }
 
             const { error: updateError } = await supabase
@@ -84,6 +87,28 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({ course, onClose, onCo
                 throw updateError;
             }
 
+            // Log the activity after successful update
+            const logDetails: Record<string, any> = { course_title: trimmedTitle };
+            if (codeChanged) {
+                logDetails.old_code = currentCode;
+                logDetails.new_code = newCode;
+            }
+            // Add other changed fields if needed
+
+            const { error: logError } = await supabase.from('activity_log').insert({
+                user_id: user.id,
+                action_type: 'course_updated',
+                target_id: course.id,
+                target_type: 'course',
+                details: logDetails
+            });
+
+            if (logError) {
+                console.error("Error logging course update activity:", logError);
+                // Don't block user flow, just log the error
+            }
+
+
             alert('Curso atualizado com sucesso!');
             onCourseUpdated(); // Refresh list in parent
             onClose(); // Close modal
@@ -96,15 +121,13 @@ const EditCourseModal: React.FC<EditCourseModalProps> = ({ course, onClose, onCo
         }
     };
 
-    // Don't render anything if no course is selected (modal closed)
     if (!course) {
         return null;
     }
 
-    // Render the modal
     return (
-        <div className={styles.modalBackdrop} onClick={onClose}> {/* Close on backdrop click */}
-            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}> {/* Prevent closing when clicking inside */}
+        <div className={styles.modalBackdrop} onClick={onClose}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
                 <h2>Editar Curso: {course.title}</h2>
                 <form onSubmit={handleSubmit}>
                     <div className={styles.formGroup}>
