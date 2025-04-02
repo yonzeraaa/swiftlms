@@ -305,22 +305,22 @@ const CourseViewPage: React.FC = () => {
                                                         } catch (e) { console.error("Error parsing Google Drive URL:", e); }
                                                     }
 
-                                                    // Existing checks for .mp4 and .pdf
-                                                    if (lowerCaseUrl.endsWith('.mp4')) {
+                                                    // Check for YouTube URLs OR direct .mp4 URLs
+                                                    if (lowerCaseUrl.includes('youtube.com') || lowerCaseUrl.includes('youtu.be') || lowerCaseUrl.endsWith('.mp4')) {
                                                         return (
                                                             <div className={styles.playerWrapper}>
                                                                 <ReactPlayer
                                                                     className={styles.reactPlayer}
-                                                                    url={originalUrl}
+                                                                    url={originalUrl} // ReactPlayer handles YouTube & MP4
                                                                     width='100%'
                                                                     height='100%'
                                                                     controls={true}
                                                                     playing={true} // Start playing when selected
-                                                                    // Removed onPlay handler
+                                                                    // Removed onPlay handler - handled by click
                                                                 />
                                                             </div>
                                                         );
-                                                    } else if (lowerCaseUrl.endsWith('.pdf')) {
+                                                    } else if (lowerCaseUrl.endsWith('.pdf')) { // Check for PDF next
                                                         return (
                                                             <div className={styles.pdfWrapper}>
                                                                 <iframe
