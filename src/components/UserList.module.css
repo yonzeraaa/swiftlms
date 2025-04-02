@@ -135,3 +135,71 @@
   background-color: #c9302c; /* Darker error */
   border-color: #c9302c;
 }
+
+
+/* --- Responsive Table Styles --- */
+@media (max-width: 768px) {
+  .userTable thead {
+    /* Hide table headers */
+    border: none;
+    clip: rect(0 0 0 0);
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    width: 1px;
+  }
+
+  .userTable tr {
+    /* Make rows behave like cards */
+    display: block;
+    margin-bottom: 1rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    box-shadow: var(--shadow-sm);
+    background-color: var(--color-surface); /* Ensure background */
+  }
+
+  .userTable td {
+    /* Make cells stack vertically */
+    display: block;
+    text-align: right; /* Align data to the right */
+    padding-left: 50%; /* Create space for the label */
+    position: relative;
+    border: none; /* Remove cell borders */
+    border-bottom: 1px dashed var(--color-border-light); /* Add separator */
+  }
+   .userTable td:last-child {
+     border-bottom: none; /* Remove border from last cell */
+   }
+
+
+  .userTable td::before {
+    /* Add the header label before the cell content */
+    content: attr(data-label); /* Use data-label attribute */
+    position: absolute;
+    left: 10px; /* Adjust padding */
+    width: calc(50% - 20px); /* Adjust width based on padding */
+    padding-right: 10px;
+    white-space: nowrap;
+    text-align: left; /* Align label to the left */
+    font-weight: bold;
+    color: var(--color-text-secondary);
+  }
+
+   /* Adjust action buttons container */
+   .userTable td:has(button) { /* Target cells containing buttons */
+      text-align: left; /* Align buttons left */
+      padding-left: 10px; /* Reset padding */
+   }
+    .userTable td:has(button)::before {
+       content: "Ações"; /* Add label for actions */
+   }
+    .userTable td button {
+       margin-left: 0; /* Remove left margin */
+       margin-right: 0.5rem; /* Add right margin */
+       margin-top: 0.3rem; /* Add top margin */
+   }
+
+}

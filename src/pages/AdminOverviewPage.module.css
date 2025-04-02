@@ -35,6 +35,13 @@
     margin-bottom: 20px;
 }
 
+/* Responsive adjustments for stats grid */
+@media (max-width: 480px) { /* Target smaller mobile screens */
+  .statsGrid {
+    grid-template-columns: 1fr; /* Stack cards into a single column */
+  }
+}
+
 .statCard {
     background-color: var(--color-background); /* Use lighter background for cards */
     padding: 20px;
@@ -109,4 +116,18 @@
     margin-left: 15px;
     white-space: nowrap; /* Prevent timestamp from wrapping */
     flex-shrink: 0; /* Prevent timestamp from shrinking */
+}
+
+/* Responsive adjustments for activity list items */
+@media (max-width: 480px) { /* Target smaller mobile screens */
+    .activityItem {
+        flex-direction: column; /* Stack content vertically */
+        align-items: flex-start; /* Align items to the start */
+        gap: 5px; /* Add gap between main text and timestamp */
+    }
+    .activityTimestamp {
+        margin-left: 0; /* Remove left margin when stacked */
+        width: 100%; /* Allow timestamp to take full width if needed */
+        text-align: left; /* Align timestamp left */
+    }
 }

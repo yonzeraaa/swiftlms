@@ -209,7 +209,31 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
           </thead>
           <tbody>
             {users.map(user => (
-              <tr key={user.id}><td>{user.full_name ?? 'N/A'}</td><td>{user.email ?? 'N/A'}</td><td>{user.phone_number ?? 'N/A'}</td><td>{user.role === 'aluno' ? 'Aluno' : user.role === 'admin' ? 'Admin' : (user.role ?? 'N/A')}</td><td><span className={user.account_status === 'frozen' ? styles.statusFrozen : styles.statusActive}>{user.account_status ?? 'N/A'}</span></td><td>{new Date(user.created_at).toLocaleString()}</td><td>{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Nunca'}</td> {/* Add last login cell */}<td> {/* Freeze/Unfreeze Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleUpdateStatus(user.id, user.account_status)} className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton} title={user.account_status === 'frozen' ? 'Reativar conta do usuário' : 'Congelar conta do usuário'}>{user.account_status === 'frozen' ? 'Reativar' : 'Congelar'}</button>)}</td><td> {/* Reset Password Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleResetPassword(user.id)} className={styles.resetButton} title="Redefinir senha do usuário">Senha</button>)}</td><td> {/* Delete Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleDeleteUser(user.id, user.email)} className={styles.deleteButton} title="Excluir usuário permanentemente">Excluir</button>)}</td></tr>
+              <tr key={user.id}>
+                  <td data-label="Nome Completo">{user.full_name ?? 'N/A'}</td>
+                  <td data-label="Email">{user.email ?? 'N/A'}</td>
+                  <td data-label="Telefone">{user.phone_number ?? 'N/A'}</td>
+                  <td data-label="Role">{user.role === 'aluno' ? 'Aluno' : user.role === 'admin' ? 'Admin' : (user.role ?? 'N/A')}</td>
+                  <td data-label="Status"><span className={user.account_status === 'frozen' ? styles.statusFrozen : styles.statusActive}>{user.account_status ?? 'N/A'}</span></td>
+                  <td data-label="Criado em">{new Date(user.created_at).toLocaleString()}</td>
+                  <td data-label="Último Login">{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Nunca'}</td>
+                  {/* Actions - Combine into one cell for mobile layout */}
+                  <td data-label="Ações">
+                      {user.role === 'aluno' && (
+                          <>
+                              <button onClick={() => handleUpdateStatus(user.id, user.account_status)} className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton} title={user.account_status === 'frozen' ? 'Reativar conta do usuário' : 'Congelar conta do usuário'}>
+                                  {user.account_status === 'frozen' ? 'Reativar' : 'Congelar'}
+                              </button>
+                              <button onClick={() => handleResetPassword(user.id)} className={styles.resetButton} title="Redefinir senha do usuário">
+                                  Senha
+                              </button>
+                              <button onClick={() => handleDeleteUser(user.id, user.email)} className={styles.deleteButton} title="Excluir usuário permanentemente">
+                                  Excluir
+                              </button>
+                          </>
+                      )}
+                  </td>
+              </tr>
             ))}
           </tbody>
         </table>
