@@ -91,10 +91,46 @@
     margin-left: 8px;
 }
 
-.lessonItem h3 {
+.lessonItem h3.lessonTitleClickable { /* Style for the clickable title */
     color: var(--color-primary-dark);
     font-size: 1.15rem;
     margin-bottom: 8px;
+    cursor: pointer;
+    transition: color var(--transition-fast), background-color var(--transition-fast);
+    display: inline-block; /* Allow hover effect to fit text */
+    padding: 4px 8px; /* Add padding for hover/selection */
+    border-radius: var(--border-radius-sm);
+    user-select: none; /* Prevent text selection on click */
+}
+.lessonItem h3.lessonTitleClickable:hover {
+    color: var(--color-primary);
+    background-color: var(--color-surface-hover); /* Subtle background on hover */
+}
+
+.lessonToggleIndicator {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 0.8em;
+    color: var(--color-text-secondary);
+}
+
+/* Style for the selected lesson item */
+.lessonSelected {
+    /* Optional: Add a border or background to highlight */
+    /* background-color: var(--color-background-light); */
+    /* border-left: 3px solid var(--color-accent); */
+}
+.lessonSelected h3.lessonTitleClickable {
+    color: var(--color-accent-dark); /* Change title color when selected */
+    font-weight: 600; /* Make selected title bolder */
+    background-color: var(--color-accent-light-translucent, rgba(255, 207, 86, 0.1)); /* Subtle accent background */
+}
+
+/* Container for the viewer/content that appears */
+.lessonViewerContainer {
+    margin-top: 15px; /* Space between title and content */
+    padding-left: 10px; /* Indent the content slightly */
+    border-left: 2px solid var(--color-border); /* Add a subtle left border */
 }
 
 .lessonContent {
