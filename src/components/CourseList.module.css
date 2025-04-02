@@ -128,3 +128,32 @@
     color: var(--color-error);
     font-weight: bold;
 }
+
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+  .listItem {
+    flex-direction: column; /* Stack content and actions vertically */
+    align-items: stretch; /* Stretch items to full width */
+    gap: 15px; /* Adjust gap for vertical layout */
+  }
+
+  .actionsContainer {
+    /* Reset flex properties if needed, ensure buttons stack nicely */
+    display: flex;
+    flex-wrap: wrap; /* Allow buttons to wrap */
+    gap: 10px; /* Add gap between buttons */
+    margin-top: 10px; /* Add space above buttons */
+    justify-content: flex-start; /* Align buttons to the start */
+  }
+
+  .listItem button {
+    margin-left: 0; /* Remove left margin */
+    /* Optionally make buttons take more width */
+    /* flex-grow: 1; */
+  }
+
+  .editButton, .deleteButton {
+     margin-left: 0; /* Ensure no left margin */
+  }
+}

@@ -69,3 +69,25 @@
     color: var(--color-error);
     font-weight: bold;
 }
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+  .listItem {
+    flex-direction: column; /* Stack content and actions vertically */
+    align-items: flex-start; /* Align items to the start */
+    gap: 10px; /* Add gap for vertical layout */
+  }
+
+  .actionsContainer {
+    margin-top: 5px; /* Add a small space above buttons */
+    width: 100%; /* Allow container to take full width */
+  }
+
+  .actionsContainer button {
+    margin-left: 0; /* Remove left margin */
+    margin-right: 8px; /* Add right margin */
+    /* Optionally make buttons wider */
+    /* width: 100%; */
+    /* text-align: center; */
+  }
+}
