@@ -4,7 +4,7 @@
   display: flex;
   flex-direction: column;
   height: 100vh; /* Use fixed height for viewport */
-  overflow: hidden; /* Prevent body scroll */
+  overflow: hidden; /* Prevent body scroll on desktop */
 }
 
 .mainLayout {
@@ -12,8 +12,6 @@
   flex-grow: 1; /* Allow this section to grow */
   height: calc(100vh - 65px); /* Adjust for new header height */
   overflow: hidden; /* Prevent this container from scrolling */
-  display: flex;
-  flex-grow: 1; /* Allow this section to grow and fill remaining space */
   /* The Sidebar has a fixed width, contentArea will take the rest */
 }
 
@@ -21,13 +19,6 @@
   flex-grow: 1;
   background-color: var(--color-background);
   overflow-y: auto; /* Add scroll if content overflows */
-}
-
-/* Apply padding directly to the content area */
-.contentArea {
-  flex-grow: 1;
-  background-color: var(--color-background);
-  overflow-y: auto; /* Allow only content area to scroll */
   padding: 2rem; /* Add padding directly here */
 }
 
@@ -35,3 +26,72 @@
 /* .contentArea > div { ... } */
 
 /* Dashboard containers should not have their own margin/padding now */
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+  .appContainer {
+     overflow: visible; /* Allow body scroll on mobile */
+  }
+
+  .mainLayout {
+    /* Stack sidebar and content vertically if sidebar were visible,
+       but since we hide sidebar, this mainly affects content area */
+    flex-direction: column;
+    height: auto; /* Allow height to adjust */
+    overflow: visible; /* Allow scrolling on the main layout */
+  }
+
+  /* Default hidden state for sidebar on mobile */
+  /* We target the direct child 'aside' which corresponds to the Sidebar component */
+  .mainLayout > aside {
+    display: none; /* Hidden initially */
+    position: fixed; /* Fixed position for overlay */
+    left: -270px; /* Start off-screen (width + some buffer) */
+    top: 0;
+    height: 100vh;
+    width: 250px; /* Use the original width from Sidebar.module.css */
+    z-index: 1000; /* Ensure it's above content */
+    transition: left 0.3s ease-in-out; /* Slide transition */
+    box-shadow: var(--shadow-lg); /* Add shadow when open */
+    /* Ensure background and other styles from Sidebar.module.css apply */
+    background-color: var(--color-primary-dark);
+    color: var(--color-text-light);
+    padding: 1rem 0;
+    border-right: 1px solid var(--color-primary-darker);
+  }
+
+  /* State when open - targets the <aside> element when it ALSO has the .sidebarOpen class */
+  /* The .sidebarOpen class is added dynamically in Layout.tsx */
+  .mainLayout > aside.sidebarOpen {
+     display: flex; /* Show it as a flex container (its default display) */
+     left: 0; /* Slide it in */
+  }
+
+  .contentArea {
+    padding: 1rem; /* Reduce padding on smaller screens */
+    width: 100%; /* Ensure content takes full width */
+    flex-grow: 0; /* Remove flex-grow as it's not needed in column layout */
+    overflow-y: visible; /* Scrolling handled by window */
+  }
+}
+
+/* Overlay for mobile when sidebar is open */
+.overlay {
+  display: none; /* Hidden by default */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black */
+  z-index: 999; /* Below sidebar (1000) but above content */
+  cursor: pointer; /* Indicate it's clickable */
+}
+
+@media (max-width: 768px) {
+  /* Show overlay only when sidebar is open on mobile */
+  /* Uses adjacent sibling selector (+) to show overlay when it follows an open sidebar */
+  .mainLayout > aside.sidebarOpen + .overlay {
+     display: block;
+  }
+}
