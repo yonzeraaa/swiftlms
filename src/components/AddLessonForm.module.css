@@ -1,0 +1,94 @@
+/* Styles for AddLessonForm */
+.formContainer {
+    padding: 15px;
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-border);
+    margin-bottom: 20px;
+}
+
+.formContainer h4 {
+    color: var(--color-primary-dark);
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+
+.formRow {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.formRow label {
+    color: var(--color-text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    margin-right: 5px; /* Add spacing after label */
+}
+
+.formGroup { /* For elements that need full width like textarea */
+     margin-bottom: 15px;
+}
+.formGroup label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+
+/* Use global input/textarea styles defined in index.css */
+.formRow input[type="text"],
+.formRow input[type="number"],
+.formGroup textarea,
+.formGroup input[type="url"] {
+    /* Inherits from index.css */
+    padding: 8px 10px;
+    font-size: 0.95rem;
+}
+
+.submitButton {
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+    padding: 8px 12px;
+    font-weight: 500; /* Match global button style */
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    margin-top: 5px;
+}
+
+.submitButton:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+.submitButton:disabled {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.message {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    padding: 8px;
+    border-radius: var(--border-radius-sm);
+}
+
+.errorMessage {
+    composes: message;
+    color: var(--color-error);
+    background-color: rgba(217, 83, 79, 0.1);
+    border: 1px solid var(--color-error);
+}
+
+.successMessage {
+    composes: message;
+    color: var(--color-success);
+    background-color: rgba(92, 184, 92, 0.1);
+    border: 1px solid var(--color-success);
+}

@@ -6,7 +6,10 @@ import { useAuth } from './contexts/AuthContext.tsx';
 import LoginPage from './pages/LoginPage.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import StudentDashboard from './pages/StudentDashboard.tsx';
-import AdminCoursesPage from './pages/AdminCoursesPage.tsx'; // Import the new page
+import AdminCoursesPage from './pages/AdminCoursesPage.tsx';
+import AdminDisciplinesPage from './pages/AdminDisciplinesPage.tsx';
+import AdminLessonsPage from './pages/AdminLessonsPage.tsx'; // Import lessons page
+// import AdminCoursesPageWrapper from './pages/AdminCoursesPageWrapper.tsx'; // Remove wrapper import
 import RootRedirector from './components/RootRedirector.tsx';
 import Layout from './components/Layout.tsx'; // Import the Layout component
 
@@ -37,11 +40,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
   const { isAuthenticated, profile, loading } = useAuth();
   const userRole = profile?.role;
 
-  if (loading) {
-    // Show loading indicator while checking auth status
-    // TODO: Replace with a proper loading spinner/component
-    return <div>Loading...</div>;
-  }
+  // REMOVED: Top-level loading check based on AuthContext.
+  // Child components will manage their own data loading state.
+  // if (loading) {
+  //   return <div>Loading...</div>;
+  // }
 
   if (!isAuthenticated) {
     // Redirect unauthenticated users to login
@@ -82,7 +85,9 @@ function App() {
       <Route element={<Layout />}> {/* Wrap protected routes with Layout */}
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/courses" element={<AdminCoursesPage />} /> {/* Add route for courses */}
+          <Route path="/admin/courses" element={<AdminCoursesPage />} />
+          <Route path="/admin/courses/:courseId/disciplines" element={<AdminDisciplinesPage />} />
+          <Route path="/admin/courses/:courseId/disciplines/:disciplineId/lessons" element={<AdminLessonsPage />} /> {/* Add route for lessons */}
           {/* Add other admin-specific routes here */}
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['aluno']} />}> {/* Changed role */}

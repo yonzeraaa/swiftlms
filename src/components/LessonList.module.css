@@ -1,0 +1,79 @@
+/* Styles for LessonList */
+.listContainer {
+    margin-top: 20px;
+}
+
+.listContainer h4 { /* Changed from h3 */
+    color: var(--color-primary-dark);
+    margin-bottom: 15px;
+    font-size: 1.1rem; /* Slightly smaller */
+}
+
+.listContainer ul {
+    list-style: none;
+    padding: 0;
+}
+
+.listItem {
+    background-color: #ffffff; /* White background */
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm);
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.listItem strong {
+    color: var(--color-primary);
+    font-size: 1rem;
+}
+
+.listItem small {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    margin-left: 8px;
+}
+
+.listItem small a { /* Style the video link */
+    color: var(--color-primary-light);
+    text-decoration: underline;
+}
+.listItem small a:hover {
+    color: var(--color-primary);
+}
+
+
+.actionsContainer {
+    /* Container for buttons */
+}
+
+.actionsContainer button { /* Basic button styling */
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    font-weight: 500; /* Ensure consistency */
+    border-radius: var(--border-radius-sm);
+    margin-left: 8px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.actionsContainer button:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+.loadingMessage, .errorMessage, .noItemsMessage {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    margin-top: 15px;
+}
+
+.errorMessage {
+    color: var(--color-error);
+    font-weight: bold;
+}

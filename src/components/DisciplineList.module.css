@@ -1,0 +1,71 @@
+/* Styles for DisciplineList */
+.listContainer {
+    margin-top: 20px;
+}
+
+.listContainer h3 { /* Changed from h2 */
+    color: var(--color-primary-dark);
+    margin-bottom: 15px;
+    font-size: 1.2rem; /* Slightly smaller */
+}
+
+.listContainer ul {
+    list-style: none;
+    padding: 0;
+}
+
+.listItem {
+    background-color: #fdfdfd; /* Slightly off-white */
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-sm); /* Smaller radius */
+    padding: 10px 15px;
+    margin-bottom: 10px;
+    /* box-shadow: var(--shadow-sm); */ /* Remove shadow for less emphasis */
+    display: flex; /* Use flexbox for alignment */
+    justify-content: space-between; /* Space out content and buttons */
+    align-items: center; /* Vertically align items */
+}
+
+.listItem strong {
+    color: var(--color-primary);
+    font-size: 1.05rem;
+}
+
+.listItem small {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    margin-left: 8px;
+}
+
+.actionsContainer {
+    /* Container for buttons */
+}
+
+.actionsContainer button { /* Basic button styling */
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+    padding: 4px 8px; /* Smaller padding */
+    font-size: 0.85rem; /* Smaller font */
+    font-weight: 500; /* Ensure consistency */
+    border-radius: var(--border-radius-sm);
+    margin-left: 8px; /* Spacing for buttons */
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.actionsContainer button:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+.loadingMessage, .errorMessage, .noItemsMessage {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    margin-top: 15px;
+}
+
+.errorMessage {
+    color: var(--color-error);
+    font-weight: bold;
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'; // Added forwardRef, useImperativeHandle
+import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { supabase } from '../services/supabaseClient.ts';
 import styles from './UserList.module.css';
 
@@ -21,50 +21,62 @@ export interface UserListHandle {
 // Wrap component with forwardRef
 const UserList = forwardRef<UserListHandle>((_props, ref) => {
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false); // Start loading false
   const [error, setError] = useState<string | null>(null);
 
   // Define fetchUsers using useCallback
   const fetchUsers = useCallback(async () => {
-    // console.log('Fetching users...'); // Removed log
-    setLoading(true);
+    // **** ADDED CHECK: Don't fetch if already loading ****
+    if (loading) {
+      console.log('[UserList] Fetch already in progress, skipping.');
+      return;
+    }
+    console.log('[UserList] Fetching users...');
+    setLoading(true); // Set loading true only when starting fetch
     setError(null);
     try {
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('id, full_name, phone_number, email, role, account_status, created_at')
-        .order('created_at', { ascending: false });
-
-      if (fetchError) {
-        // console.error('[UserList] Supabase fetch error:', fetchError); // Removed log
-        throw fetchError;
+      // **** ADDED: Explicit session check ****
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !sessionData?.session) {
+        console.error('[UserList] Error getting session or session is null:', sessionError);
+        setError('Sessão inválida. Por favor, faça login novamente.');
+        setLoading(false); // Ensure loading stops if session is invalid
+        // Optionally trigger logout here if logout function is available
+        return; // Stop fetching if session is invalid
       }
-      // console.log('[UserList] Fetch successful. Setting users data.'); // Removed log
+      console.log('[UserList] Session check successful, proceeding with fetch.');
+      // **** END ADDED ****
+
+      // **** MODIFIED: Invoke Edge Function ****
+      const { data, error: functionError } = await supabase.functions.invoke('get-all-profiles', {
+        // No body needed, auth token is passed via Supabase client automatically
+      });
+      // **** END MODIFIED ****
+
+      if (functionError) {
+         console.error('[UserList] Edge function invocation error:', functionError);
+         throw functionError; // Throw the error to be caught by the catch block
+      }
+      console.log('[UserList] Edge function invocation successful.');
       setUsers(data as UserProfile[] || []);
     } catch (err: any) {
-      console.error("[UserList] Error fetching users:", err);
-      // Check if it's a Supabase Auth error (e.g., invalid session/token)
-      // Supabase client errors often have a specific structure or status code
+      console.error("[UserList] Error fetching users via Edge Function:", err);
       if (err?.message.includes('JWT') || err?.status === 401 || err?.message.includes('invalid claim')) {
         setError('Sessão inválida ou expirada. Por favor, faça login novamente.');
-        // Optionally trigger logout automatically - requires access to logout function
-        // from useAuth() context. We need to import useAuth here.
         console.warn("[UserList] Invalid session detected during fetch.");
-        // Example: logout(); // If logout was available here
       } else {
         setError(err.message || 'Failed to fetch user list.');
       }
     } finally {
-      // console.log('[UserList] Entering fetchUsers finally block.'); // Removed log
+      console.log('[UserList] Fetch finally block. Setting loading false.');
       setLoading(false);
-      // console.log('[UserList] Exiting fetchUsers finally block. setLoading(false) called.'); // Removed log
     }
-  }, []);
+  }, []); // CORRECTED: Empty dependency array - fetch logic doesn't depend on loading state
 
-  // useEffect to call fetchUsers on component mount
+  // --- ADDED BACK useEffect for initial fetch ---
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+  }, [fetchUsers]); // fetchUsers dependency is stable due to useCallback
 
   // Expose the fetchUsers function via the ref handle
   useImperativeHandle(ref, () => ({
@@ -157,6 +169,7 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
   };
 
   // Render logic
+  // Display loading indicator based on loading state
   if (loading && users.length === 0) {
     return <div className={styles.loadingMessage}>Loading user list...</div>;
   }
@@ -167,7 +180,8 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
   return (
     <div className={styles.userListContainer}>
       <h2>Usuários Cadastrados</h2>
-      {loading && <p>Refreshing...</p>}
+      {/* Show refreshing indicator only when loading is true but users already exist */}
+      {loading && users.length > 0 && <p>Refreshing...</p>}
       {users.length === 0 && !loading ? (
         <p className={styles.noUsersMessage}>Nenhum usuário encontrado.</p>
       ) : (

@@ -1,45 +1,39 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '../services/supabaseClient.ts'; // Corrected extension
-import { Session, User } from '@supabase/supabase-js'; // Import types
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react'; // Added useCallback
+import { supabase } from '../services/supabaseClient.ts';
+import { Session, User } from '@supabase/supabase-js';
 
 // Define the shape of the context value
 interface AuthContextType {
   user: User | null;
-  profile: { role: string | null; account_status: string | null } | null; // Update interface to match state
-  login: (email: string, password: string, rememberMe: boolean) => Promise<void>; // Added types
+  profile: { role: string | null; account_status: string | null } | null;
+  login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   logout: () => Promise<void>;
-  loading: boolean;
+  loading: boolean; // Represents initial auth check + profile fetch
   rememberedCredentials: { email: string; password?: string };
-  authError: string | null; // Add state for auth-related errors (like frozen account)
+  authError: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isStudent: boolean;
 }
 
-// Create the context with a default value (or null/undefined and handle it)
-// Providing null requires checks in useAuth or consumers
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// Create the provider component
-// Define props type for AuthProvider
 interface AuthProviderProps {
   children: React.ReactNode;
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // Add types to state
   const [user, setUser] = useState<User | null>(null);
-  // Update profile state type to include account_status
   const [profile, setProfile] = useState<{ role: string | null; account_status: string | null } | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(true); // True until initial auth check AND profile fetch complete
   const [rememberedCredentials, setRememberedCredentials] = useState<{ email: string; password?: string }>({ email: '', password: '' });
-  const [authError, setAuthError] = useState<string | null>(null); // Initialize auth error state
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  // Effect to check local storage for remembered credentials on initial load
+  // --- Remember Me Effect (Unchanged) ---
   useEffect(() => {
     try {
       const rememberedEmail = localStorage.getItem('rememberedEmail');
-      const rememberedPassword = localStorage.getItem('rememberedPassword'); // SECURITY RISK: Storing plain password
+      const rememberedPassword = localStorage.getItem('rememberedPassword');
       if (rememberedEmail) {
         setRememberedCredentials({ email: rememberedEmail, password: rememberedPassword || '' });
       }
@@ -48,185 +42,239 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Effect to listen for Supabase auth state changes
+  // --- Auth State Change Listener ---
   useEffect(() => {
-    setLoading(true);
+    setLoading(true); // Start loading on initial check
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      // Add types to callback parameters
-      async (_event: string, session: Session | null) => {
-        console.log('[AuthContext] onAuthStateChange triggered. Event:', _event, 'Session:', session);
-        setUser(session?.user ?? null);
-        console.log('[AuthContext] User state set:', session?.user ?? null);
+      (_event: string, session: Session | null) => {
+        console.log('[AuthContext] onAuthStateChange triggered. Event:', _event, 'Session:', session ? 'Exists' : 'Null');
+        const newUser = session?.user ?? null;
+        setUser(newUser); // Set user state immediately
 
-        // Fetch profile only if we have a user session AND profile data is not already loaded
-        if (session?.user && !profile) {
-          console.log('[AuthContext] Session exists and profile not loaded, fetching profile...');
-          try {
-            const { data, error, status } = await supabase
-              .from('profiles')
-              .select(`role, account_status`) // Select status as well
-              .eq('id', session.user.id)
-              .single();
-
-            // Log the raw response for debugging
-            console.log('[AuthContext] Profile fetch response:', { data, error, status });
-
-            if (error && status !== 406) {
-              console.error('[AuthContext] Supabase profile fetch error details:', error); // Log the specific Supabase error
-              throw error; // Re-throw the original Supabase error
-            }
-
-            if (data) {
-              console.log('[AuthContext] Profile data fetched:', data);
-              setProfile(data as { role: string | null; account_status: string | null }); // Cast data type
-
-              // Check if account is frozen AFTER setting profile
-              if (data?.account_status === 'frozen') {
-                console.warn('[AuthContext] User account is frozen. Logging out.');
-                setAuthError('Sua conta está congelada. Entre em contato com um administrador.');
-                // Use setTimeout to allow state update before logout triggers another auth change
-                setTimeout(() => logout(), 50);
-              } else {
-                 setAuthError(null); // Clear any previous auth error if status is okay
-              }
-
-            } else {
-              console.log('[AuthContext] No profile data found for user.');
-              setProfile(null);
-              setAuthError('Perfil de usuário não encontrado.'); // Set error if profile missing
-            }
-          } catch (error) {
-            // Log the caught error more specifically
-            console.error('[AuthContext] Error caught during profile fetch:', error);
-            // Type assertion or check for error handling
-            if (error instanceof Error) {
-              // Log Supabase specific details if available
-              const supabaseError = error as any; // Use 'any' carefully for logging non-standard props
-              console.error('[AuthContext] Error message:', supabaseError.message);
-              if (supabaseError.details) console.error('[AuthContext] Error details:', supabaseError.details);
-              if (supabaseError.hint) console.error('[AuthContext] Error hint:', supabaseError.hint);
-              if (supabaseError.code) console.error('[AuthContext] Error code:', supabaseError.code);
-            } else {
-              console.error('[AuthContext] A non-Error object was thrown during profile fetch:', error);
-            }
-            setProfile(null);
-            setAuthError('Erro ao buscar perfil de usuário.'); // Set error on fetch failure
-          } finally {
-             console.log('[AuthContext] Profile fetch attempt finished. Setting loading=false.');
-             // Set loading false after profile fetch attempt,
-             // but ensure it's also set if profile *was* already loaded and we skipped the fetch.
-             setLoading(false);
-          }
-        } else if (!session?.user) { // Explicitly check if session is null/undefined
-          console.log('[AuthContext] No session found. Clearing profile and setting loading=false.');
+        if (!newUser) {
+          // If user logs out or session expires, clear profile and stop loading
           setProfile(null);
-          setAuthError(null); // Clear auth error on logout/no session
+          setAuthError(null);
           setLoading(false);
+          console.log('[AuthContext] No session/user found. Cleared state.');
         }
-        // setLoading(false); // REMOVED from here
+        // If newUser exists, the profile fetch effect will handle loading state
       }
     );
 
-    // Cleanup subscription on unmount
     return () => {
       subscription?.unsubscribe();
     };
-  }, []);
+  }, []); // Empty dependency array: runs once on mount
 
-  // Login function
-  // Add types to function parameters
+  // --- Logout Function (Moved Up) ---
+  // Wrap in useCallback because it's used as a dependency
+  const logout = useCallback(async (): Promise<void> => {
+    console.log('[AuthContext] Logout function called.');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        if (error instanceof Error) {
+          console.error("[AuthContext] Logout error:", error.message);
+        } else {
+          console.error("[AuthContext] An unknown logout error occurred");
+        }
+      } else {
+        console.log('[AuthContext] supabase.auth.signOut() successful.');
+      }
+    } catch (catchError) {
+        console.error("[AuthContext] Unexpected error during signOut:", catchError);
+    } finally {
+        console.log('[AuthContext] Cleaning up after logout attempt.');
+        localStorage.removeItem('rememberedEmail');
+        localStorage.removeItem('rememberedPassword');
+        setRememberedCredentials({ email: '', password: '' });
+        // State updates (user, profile, loading) handled by onAuthStateChange
+    }
+  }, []); // useCallback dependency array
+
+  // --- Profile Fetch Effect (Triggered by User Change) ---
+  const fetchProfileData = useCallback(async (currentUser: User) => {
+    console.log('[AuthContext] fetchProfileData called for user:', currentUser.id);
+    setLoading(true); // Ensure loading is true while fetching profile
+    setAuthError(null); // Clear previous errors
+    let fetchedRole: string | null = null;
+    let fetchedStatus: string | null = null;
+    let fetchError: string | null = null;
+
+    const profileFetchTimeout = 20000; // 20 seconds timeout for combined fetch
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    try {
+      const fetchPromise = Promise.allSettled([
+        // Fetch role via RPC
+        supabase.rpc('get_my_role').then(({ data, error }) => {
+          if (error) {
+            console.error('[AuthContext] Error fetching role via RPC:', error);
+            throw new Error(`Erro ao buscar papel (role): ${error.message}`);
+          }
+          console.log('[AuthContext] Role fetched via RPC:', data);
+          return data as string | null;
+        }),
+        // Fetch status directly (relies on individual read RLS)
+        supabase
+          .from('profiles')
+          .select('account_status')
+          .eq('id', currentUser.id)
+          .single()
+          .then(({ data, error, status }) => {
+            if (error && status !== 406) { // 406 means no rows found, which is handled below
+              console.error('[AuthContext] Error fetching account_status:', error);
+              throw new Error(`Erro ao buscar status da conta: ${error.message}`);
+            }
+            console.log('[AuthContext] Account status fetched:', data);
+            return data?.account_status ?? null; // Return null if no profile found
+          }),
+      ]);
+
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new Error('Profile fetch timed out'));
+        }, profileFetchTimeout);
+      });
+
+      // Race the fetch against the timeout
+      const results = await Promise.race([fetchPromise, timeoutPromise]) as PromiseSettledResult<string | null>[];
+
+      if (timeoutId) clearTimeout(timeoutId); // Clear timeout if fetch finished first
+
+      // Process results if fetch didn't time out
+      if (results && Array.isArray(results)) {
+        if (results[0].status === 'fulfilled') {
+          fetchedRole = results[0].value;
+        } else {
+          console.error('[AuthContext] Role fetch promise rejected:', results[0].reason);
+          fetchError = results[0].reason instanceof Error ? results[0].reason.message : 'Erro desconhecido ao buscar papel.';
+        }
+
+        if (results[1].status === 'fulfilled') {
+          fetchedStatus = results[1].value;
+        } else {
+          console.error('[AuthContext] Status fetch promise rejected:', results[1].reason);
+          // Prioritize status fetch error message if role fetch also failed
+          fetchError = results[1].reason instanceof Error ? results[1].reason.message : 'Erro desconhecido ao buscar status.';
+        }
+
+        if (fetchedStatus === null && results[1].status === 'fulfilled') {
+             console.warn('[AuthContext] Profile not found for user ID:', currentUser.id);
+             fetchError = 'Perfil de usuário não encontrado.';
+        }
+
+      } else {
+         // This case should ideally not happen if Promise.race works as expected
+         // but handles the case where results is not the expected array (e.g., timeout occurred)
+         if (!fetchError) { // Only set timeout error if no specific fetch error occurred
+            console.error('[AuthContext] Profile fetch timed out after', profileFetchTimeout / 1000, 'seconds.');
+            fetchError = 'Tempo limite excedido ao buscar perfil.';
+         }
+      }
+
+    } catch (error) { // Catch errors from Promise.race (like timeout) or setup errors
+      if (timeoutId) clearTimeout(timeoutId);
+      console.error('[AuthContext] Error during profile data fetch:', error);
+      fetchError = error instanceof Error ? error.message : 'Erro inesperado ao buscar perfil.';
+    } finally {
+      if (fetchError) {
+        setAuthError(fetchError);
+        setProfile(null); // Clear profile on error
+        // Consider logging out if profile is essential and fetch failed critically
+        // setTimeout(() => logout(), 50);
+      } else if (fetchedStatus === 'frozen') {
+         console.warn('[AuthContext] User account is frozen. Logging out.');
+         setAuthError('Sua conta está congelada. Entre em contato com um administrador.');
+         setProfile({ role: fetchedRole, account_status: fetchedStatus }); // Set profile before logout triggers state change
+         setTimeout(() => logout(), 50); // Logout slightly delayed
+      } else if (fetchedStatus === null) {
+         // Handle case where profile doesn't exist but status fetch didn't error
+         setAuthError('Perfil de usuário não encontrado.');
+         setProfile(null);
+      }
+      else {
+        setProfile({ role: fetchedRole, account_status: fetchedStatus });
+        setAuthError(null); // Clear error on success
+      }
+      setLoading(false); // Stop loading regardless of outcome
+      console.log('[AuthContext] fetchProfileData finished. Profile:', { role: fetchedRole, account_status: fetchedStatus }, 'Error:', fetchError);
+    }
+  }, [logout]); // Added logout to dependency array
+
+  useEffect(() => {
+    if (user) {
+      fetchProfileData(user);
+    } else {
+      // Ensure loading is false if user becomes null (handled in onAuthStateChange too, but belt-and-suspenders)
+      if (loading) {
+         setLoading(false);
+      }
+    }
+  }, [user, fetchProfileData]); // Depend on user and the memoized fetch function
+
+
+  // --- Login Function (Small adjustment for loading) ---
   const login = async (email: string, password: string, rememberMe: boolean): Promise<void> => {
-    setAuthError(null); // Clear previous auth errors on new login attempt
-    setLoading(true);
+    setAuthError(null);
+    // Don't set loading here, onAuthStateChange and fetchProfileData handle it
+    // setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-
-      // Handle Remember Me
+      // Remember me logic (unchanged)
       if (rememberMe) {
         localStorage.setItem('rememberedEmail', email);
-        localStorage.setItem('rememberedPassword', password); // SECURITY RISK
+        localStorage.setItem('rememberedPassword', password);
         setRememberedCredentials({ email, password });
       } else {
         localStorage.removeItem('rememberedEmail');
         localStorage.removeItem('rememberedPassword');
         setRememberedCredentials({ email: '', password: '' });
       }
-      // User state and profile will be updated by onAuthStateChange listener
     } catch (error) {
-      // Type assertion or check for error handling
       if (error instanceof Error) {
         console.error("Login error:", error.message);
+        setAuthError(`Erro no login: ${error.message}`); // Set specific login error
       } else {
         console.error("An unknown login error occurred");
+        setAuthError('Ocorreu um erro desconhecido no login.');
       }
-      setLoading(false); // Ensure loading is false on error
-      throw error; // Re-throw error to be caught by the calling component
+      // setLoading(false); // Loading is handled by auth state change now
+      setUser(null); // Ensure user is null on login failure
+      setProfile(null);
+      throw error; // Re-throw for the component to handle if needed
     }
-    // setLoading(false) will be called by the onAuthStateChange listener
+    // No finally setLoading(false) here
   };
 
-  // Logout function
-  // Add return type
-  const logout = async (): Promise<void> => {
-    console.log('[AuthContext] Logout function called.');
-    // setLoading(true); // REMOVED - Let onAuthStateChange handle loading state
-    try { // Wrap signout in try/catch
-      const { error } = await supabase.auth.signOut();
+  // --- Logout Function (Moved Up) ---
 
-      if (error) {
-        // Type assertion or check for error handling
-        if (error instanceof Error) {
-          console.error("[AuthContext] Logout error:", error.message);
-        } else {
-          console.error("[AuthContext] An unknown logout error occurred");
-        }
-        // Optionally re-throw or handle differently
-      } else {
-        console.log('[AuthContext] supabase.auth.signOut() successful.'); // Log success
-      }
-    } catch (catchError) {
-        // Catch any unexpected errors during signout itself
-        console.error("[AuthContext] Unexpected error during signOut:", catchError);
-    } finally {
-        // This block runs regardless of success or error in try/catch
-        console.log('[AuthContext] Cleaning up after logout attempt.');
-        // Clear remembered credentials on explicit logout attempt
-        localStorage.removeItem('rememberedEmail');
-        localStorage.removeItem('rememberedPassword');
-        setRememberedCredentials({ email: '', password: '' });
-        // Don't clear user/profile here, let onAuthStateChange handle it
-        // setLoading(false); // REMOVED - Let onAuthStateChange handle loading state
-    }
-  };
-
-  // Value provided by the context
-  // Ensure the value object matches the AuthContextType
+  // --- Context Value ---
   const value: AuthContextType = {
     user,
-    profile, // Profile now includes account_status
+    profile,
     login,
     logout,
     loading,
     rememberedCredentials,
-    authError, // Expose auth error state
-    isAuthenticated: !!user && profile?.account_status === 'active', // User is only truly authenticated if active
-    // Roles are valid even if frozen, but isAuthenticated check prevents access
+    authError,
+    isAuthenticated: !!user && profile?.account_status === 'active', // Logic remains the same
     isAdmin: !!profile && profile.role === 'admin',
-    isStudent: !!profile && profile.role === 'aluno', // Changed check to 'aluno'
+    isStudent: !!profile && profile.role === 'aluno', // Assuming 'aluno' is the student role text
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children} {/* Always render children; internal components handle loading */}
+      {children}
     </AuthContext.Provider>
   );
 };
 
-// Custom hook to use the Auth context
-export const useAuth = (): AuthContextType => { // Add return type
+// --- useAuth Hook (Unchanged) ---
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  // Check if context is null (if createContext had null default) or undefined
   if (context === null || context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }

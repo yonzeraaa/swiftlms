@@ -1,0 +1,90 @@
+/* Styles for CourseList */
+.listContainer {
+    margin-top: 20px;
+}
+
+.listContainer h2 {
+    color: var(--color-primary-dark);
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.listContainer ul {
+    list-style: none;
+    padding: 0;
+}
+
+.listItem {
+    /* Use the main background color for items to contrast with the white page surface */
+    background-color: var(--color-background);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    padding: 15px 20px; /* Slightly more horizontal padding */
+    margin-bottom: 20px; /* Increased margin */
+    box-shadow: var(--shadow-sm);
+    display: flex; /* Use flexbox */
+    justify-content: space-between; /* Push actions to the right */
+    align-items: flex-start; /* Align items to the top */
+    gap: 20px; /* Add some gap between content and actions */
+    transition: box-shadow var(--transition-std);
+}
+
+.listItem:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.contentGroup { /* Style for the new content group div */
+    flex-grow: 1; /* Allow content to take available space */
+}
+
+.listItem strong {
+    color: var(--color-primary);
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+
+.listItem p {
+    color: var(--color-text-secondary);
+    margin-bottom: 10px;
+    font-size: 0.95rem;
+}
+
+.listItem small {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+}
+
+.actionsContainer { /* Style for the actions container */
+    flex-shrink: 0; /* Prevent actions container from shrinking */
+    /* Buttons inside will determine the width */
+}
+
+.listItem button { /* Basic button styling */
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    font-weight: 500; /* Ensure consistency */
+    border-radius: var(--border-radius-sm);
+    margin-left: 10px; /* Spacing for buttons */
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.listItem button:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+.loadingMessage, .errorMessage, .noItemsMessage {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    margin-top: 15px;
+}
+
+.errorMessage {
+    color: var(--color-error);
+    font-weight: bold;
+}
