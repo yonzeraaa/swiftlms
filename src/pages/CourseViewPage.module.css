@@ -138,6 +138,7 @@
     position: absolute;
     top: 0;
     left: 0;
+}
 /* PDF Viewer Styles */
 .pdfWrapper {
     position: relative;
@@ -165,5 +166,4 @@
 
 .pdfViewer a { /* Style fallback link inside iframe */
     color: var(--color-primary-light);
-}
 }
