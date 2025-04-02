@@ -1,12 +1,12 @@
 import React, { useRef, useEffect } from 'react'; // Import useRef, useEffect
-import { useAuth } from '../contexts/AuthContext.tsx';
+// import { useAuth } from '../contexts/AuthContext.tsx'; // Removed unused import
 import UserList, { UserListHandle } from '../components/UserList.tsx';
 import AddStudentForm from '../components/AddStudentForm.tsx';
 // import styles from './AdminDashboard.module.css'; // REMOVED - Styles handled by Layout/Components
 import styles from './AdminStudentsPage.module.css'; // Update style import path
 
 const AdminStudentsPage: React.FC = () => { // Rename component
-  const { logout } = useAuth();
+  // const { logout } = useAuth(); // Removed unused logout
   const userListRef = useRef<UserListHandle>(null); // Create a ref for UserList
 
   // Callback function to refresh the user list

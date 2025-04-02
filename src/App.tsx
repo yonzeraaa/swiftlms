@@ -41,7 +41,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
-  const { isAuthenticated, profile, loading } = useAuth();
+  const { isAuthenticated, profile } = useAuth(); // Removed unused 'loading'
   const userRole = profile?.role;
 
   // REMOVED: Top-level loading check based on AuthContext.

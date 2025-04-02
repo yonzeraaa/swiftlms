@@ -16,12 +16,14 @@ interface UserProfile { // Using the profile structure
     full_name: string | null;
     role: string | null;
 }
-
+/* // Commented out as it's currently unused
 interface Enrollment {
     id: string;
     user_id: string;
     course_id: string;
 }
+*/
+// Removed extra closing brace
 
 const AdminEnrollmentsPage: React.FC = () => {
     const { courseId } = useParams<{ courseId: string }>();

@@ -17,15 +17,15 @@ interface RecentUser {
     full_name: string | null; // Add full_name
 }
 
-// Adjust RecentEnrollment interface based on TS error feedback
+/* // Commented out as it's not explicitly used after refactoring
 interface RecentEnrollment {
     user_id: string;
-    // Supabase might return courses as an array even for a single relationship
     courses: Array<{
         id: string;
         title: string | null;
     }> | null;
 }
+*/
 
 interface Profile {
     id: string;

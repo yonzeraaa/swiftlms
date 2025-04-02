@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'; // Removed unused 'React' import
 import { supabase } from '../services/supabaseClient.ts';
 import styles from './UserList.module.css';
 
