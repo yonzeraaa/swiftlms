@@ -173,28 +173,26 @@
    .userTable td:last-child {
      border-bottom: none; /* Remove border from last cell */
    }
-
-
-  .userTable td::before {
-    /* Add the header label before the cell content */
-    content: attr(data-label); /* Use data-label attribute */
-    position: absolute;
-    left: 10px; /* Adjust padding */
-    width: calc(50% - 20px); /* Adjust width based on padding */
-    padding-right: 10px;
+ 
+   /* Apply labels only to data cells, not the last actions cell */
+   .userTable td:not(:last-child)::before {
+     /* Add the header label before the cell content */
+     content: attr(data-label); /* Use data-label attribute */
+     position: absolute;
+     left: 10px; /* Adjust padding */
+     width: calc(50% - 20px); /* Adjust width based on padding */
+     padding-right: 10px;
     white-space: nowrap;
     text-align: left; /* Align label to the left */
     font-weight: bold;
     color: var(--color-text-secondary);
   }
 
-   /* Adjust action buttons container */
-   .userTable td:has(button) { /* Target cells containing buttons */
+   /* Adjust action buttons container (last cell) */
+   .userTable td:last-child {
       text-align: left; /* Align buttons left */
-      padding-left: 10px; /* Reset padding */
-   }
-    .userTable td:has(button)::before {
-       content: "Ações"; /* Add label for actions */
+      padding-left: 10px; /* Reset padding for actions cell */
+      /* Remove the specific ::before rule for the actions cell */
    }
     .userTable td button {
        margin-left: 0; /* Remove left margin */
