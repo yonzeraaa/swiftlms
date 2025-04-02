@@ -13,14 +13,9 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => { // Destructure 
   return (
     <header className={styles.appHeader}>
       <div className={styles.container}>
-        {/* Hamburger Button - shown only on mobile via CSS */}
-        <button className={styles.hamburgerButton} onClick={onToggleSidebar} aria-label="Toggle Menu">
-          {/* Simple hamburger icon using spans */}
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-        <div className={styles.brand}>SwiftLMS</div>
+        {/* Remove Hamburger Button */}
+        {/* Add onClick to brand, potentially only active on mobile via CSS/JS logic if needed */}
+        <div className={styles.brand} onClick={onToggleSidebar}>SwiftLMS</div>
         {user && ( // Show logout only if user is logged in
           <div className={styles.userInfo}>
             <span className={styles.userEmail}>{user.email}</span>
