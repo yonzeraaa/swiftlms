@@ -1,17 +1,172 @@
-/* Styles for StudentDashboard elements can be added here if needed, */
-/* but the main container styling is handled by Layout.module.css */
+/* src/pages/StudentDashboard.module.css */
+.dashboardContainer {
+    padding: 20px;
+    /* background-color: var(--color-surface); */ /* Use Layout's background */
+    /* border-radius: var(--border-radius-lg); */
+    /* box-shadow: var(--shadow-md); */
+    /* margin: 20px; */ /* Let Layout handle margins */
+}
 
-/* Example: Style the h1 specifically if needed */
-/* .pageTitle {
-  margin-bottom: 1.5rem;
-  color: var(--color-primary-dark);
-} */
+.dashboardContainer h1 {
+    color: var(--color-primary-dark);
+    margin-bottom: 10px;
+}
+.dashboardContainer h2 {
+    color: var(--color-primary);
+    margin-top: 25px; /* Space above "Meus Cursos" */
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+    border-bottom: 2px solid var(--color-accent-light); /* Accent underline */
+    padding-bottom: 5px;
+}
 
-/* Example: Style the course placeholder */
-/* .coursePlaceholder {
-  border: 1px dashed var(--color-border);
-  padding: 2rem;
-  text-align: center;
-  color: var(--color-text-secondary);
-  border-radius: var(--border-radius-md);
-} */
+.welcomeMessage { /* Specific style for welcome message */
+    color: var(--color-text-secondary);
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+}
+
+.dashboardContainer p { /* General paragraph styling */
+    color: var(--color-text-secondary);
+    margin-bottom: 10px;
+}
+
+.dashboardContainer hr {
+    margin: 20px 0;
+    border-color: var(--color-border);
+}
+
+.errorMessage {
+    color: var(--color-error);
+    background-color: rgba(217, 83, 79, 0.1);
+    border: 1px solid var(--color-error);
+    padding: 10px;
+    border-radius: var(--border-radius-sm);
+    margin-top: 15px;
+}
+
+/* Widget Container */
+.widget {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    padding: 20px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow-sm);
+}
+
+.widget h2 {
+    color: var(--color-primary);
+    margin-top: 0; /* Remove top margin for widget titles */
+    margin-bottom: 15px;
+    font-size: 1.3rem; /* Slightly smaller widget titles */
+    border-bottom: 2px solid var(--color-accent-light);
+    padding-bottom: 5px;
+}
+
+/* Continue Learning Widget */
+.continueLink {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background-color: var(--color-background); /* Slightly different background */
+    padding: 15px;
+    border-radius: var(--border-radius-sm);
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+    border: 1px solid var(--color-border-light);
+}
+.continueLink:hover {
+    background-color: var(--color-surface-hover);
+    box-shadow: var(--shadow-xs);
+}
+.continueLink p {
+    margin: 0 0 5px 0;
+    font-size: 1rem;
+    color: var(--color-text-primary);
+}
+.continueLink strong {
+    color: var(--color-primary-dark);
+}
+.continueLink small {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+
+/* Course Progress Summary Widget */
+.summaryCourseList {
+    list-style: none;
+    padding: 0;
+    margin: 0; /* Remove default ul margin */
+}
+
+.summaryCourseItem {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+.summaryCourseItem:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.summaryCourseItem a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    padding: 5px 0; /* Add some padding for hover */
+    border-radius: var(--border-radius-xs);
+    transition: background-color var(--transition-fast);
+}
+.summaryCourseItem a:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.summaryCourseItem strong {
+    color: var(--color-primary);
+    display: block;
+    margin-bottom: 8px; /* Space between title and progress */
+    font-size: 1rem;
+}
+
+/* Re-use progress bar styles from MyCoursesPage.module.css */
+.progressContainer {
+    width: 100%; /* Full width in summary */
+    text-align: left; /* Align text left */
+}
+
+.progressText {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+}
+
+.progressBarBackground {
+    background-color: var(--color-border-light);
+    border-radius: var(--border-radius-sm);
+    height: 8px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.progressBarForeground {
+    background-color: var(--color-accent); /* Gold color */
+    height: 100%;
+    border-radius: var(--border-radius-sm);
+    transition: width 0.3s ease-in-out;
+    width: 0%;
+}
+
+.viewAllLink {
+    display: inline-block;
+    margin-top: 15px;
+    color: var(--color-primary-light);
+    text-decoration: none;
+    font-weight: 500;
+}
+.viewAllLink:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}

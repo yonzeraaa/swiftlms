@@ -78,6 +78,46 @@
     border-color: var(--color-accent);
 }
 
+/* Specific styles for Edit/Delete buttons */
+.editButton {
+    composes: button from global; /* Attempt to inherit global button styles if possible, might need adjustment */
+    /* Or copy base styles if composes doesn't work as expected in this setup */
+    background-color: var(--color-info);
+    border-color: #46b8da; /* Slightly darker info */
+    color: white;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: var(--border-radius-sm);
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.editButton:hover:not(:disabled) {
+    background-color: #31b0d5;
+    border-color: #269abc;
+}
+
+.deleteButton {
+    composes: button from global; /* Attempt inheritance */
+    /* Or copy base styles */
+    background-color: var(--color-error);
+    border-color: #d43f3a; /* Slightly darker error */
+    color: white;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: var(--border-radius-sm);
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.deleteButton:hover:not(:disabled) {
+    background-color: #c9302c;
+    border-color: #ac2925;
+}
+
+
 .loadingMessage, .errorMessage, .noItemsMessage {
     color: var(--color-text-secondary);
     font-style: italic;

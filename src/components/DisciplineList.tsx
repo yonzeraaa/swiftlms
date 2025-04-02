@@ -76,7 +76,7 @@ const DisciplineListComponent: React.ForwardRefRenderFunction<DisciplineListHand
                             <strong>{discipline.number ? `${discipline.number}. ` : ''}{discipline.title}</strong>
                             <small> (Ordem: {discipline.order ?? 'N/A'})</small>
                             <div className={styles.actionsContainer}>
-                                <Link to={`lessons`}>
+                                <Link to={`${discipline.id}/lessons`}> {/* Include discipline ID in relative path */}
                                     <button>Gerenciar Aulas</button>
                                 </Link>
                                 {/* Add Edit/Delete buttons later */}

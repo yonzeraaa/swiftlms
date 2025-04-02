@@ -11,8 +11,9 @@ const Sidebar: React.FC = () => {
 
   if (isAdmin) {
     navLinks = [
-      { path: '/admin', label: 'Visão Geral' },
-      { path: '/admin/courses', label: 'Cursos' }, // Add link to courses
+      { path: '/admin', label: 'Visão Geral' }, // Keep overview link
+      { path: '/admin/students', label: 'Alunos' }, // Add students link
+      { path: '/admin/courses', label: 'Cursos' },
       // { path: '/admin/settings', label: 'Configurações (Admin)' },
     ];
   } else if (isStudent) { // isStudent check uses 'aluno' internally now

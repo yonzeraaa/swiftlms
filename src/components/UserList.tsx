@@ -11,6 +11,7 @@ interface UserProfile {
   role: string | null;
   account_status: string | null;
   created_at: string;
+  last_sign_in_at?: string | null; // Add last login (optional from auth.users)
 }
 
 // Define the type for the exposed handle
@@ -58,7 +59,15 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
          throw functionError; // Throw the error to be caught by the catch block
       }
       console.log('[UserList] Edge function invocation successful.');
-      setUsers(data as UserProfile[] || []);
+      console.log('[UserList] Raw data received from function:', data); // DEBUG: Log raw data
+      // DEBUG: Check the first user object specifically
+      if (Array.isArray(data) && data.length > 0) {
+          console.log('[UserList] Checking first user object for last_sign_in_at:', data[0]);
+          console.log('[UserList] Does first user have last_sign_in_at property?', data[0]?.hasOwnProperty('last_sign_in_at'));
+          console.log('[UserList] Value of last_sign_in_at for first user:', data[0]?.last_sign_in_at);
+      }
+      // Remove type assertion to let TypeScript infer and potentially show errors
+      setUsers(data || []);
     } catch (err: any) {
       console.error("[UserList] Error fetching users via Edge Function:", err);
       if (err?.message.includes('JWT') || err?.status === 401 || err?.message.includes('invalid claim')) {
@@ -194,12 +203,13 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
               <th>Role</th>
               <th>Status</th>
               <th>Criado em</th>
-              <th colSpan={3}>Ações</th>
+              <th>Último Login</th> {/* Add new header */}
+              <th colSpan={3}>Ações</th> {/* Keep colSpan as 3 */}
             </tr>
           </thead>
           <tbody>
             {users.map(user => (
-              <tr key={user.id}><td>{user.full_name ?? 'N/A'}</td><td>{user.email ?? 'N/A'}</td><td>{user.phone_number ?? 'N/A'}</td><td>{user.role === 'aluno' ? 'Aluno' : user.role === 'admin' ? 'Admin' : (user.role ?? 'N/A')}</td><td><span className={user.account_status === 'frozen' ? styles.statusFrozen : styles.statusActive}>{user.account_status ?? 'N/A'}</span></td><td>{new Date(user.created_at).toLocaleString()}</td><td> {/* Freeze/Unfreeze Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleUpdateStatus(user.id, user.account_status)} className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton} title={user.account_status === 'frozen' ? 'Reativar conta do usuário' : 'Congelar conta do usuário'}>{user.account_status === 'frozen' ? 'Reativar' : 'Congelar'}</button>)}</td><td> {/* Reset Password Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleResetPassword(user.id)} className={styles.resetButton} title="Redefinir senha do usuário">Senha</button>)}</td><td> {/* Delete Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleDeleteUser(user.id, user.email)} className={styles.deleteButton} title="Excluir usuário permanentemente">Excluir</button>)}</td></tr>
+              <tr key={user.id}><td>{user.full_name ?? 'N/A'}</td><td>{user.email ?? 'N/A'}</td><td>{user.phone_number ?? 'N/A'}</td><td>{user.role === 'aluno' ? 'Aluno' : user.role === 'admin' ? 'Admin' : (user.role ?? 'N/A')}</td><td><span className={user.account_status === 'frozen' ? styles.statusFrozen : styles.statusActive}>{user.account_status ?? 'N/A'}</span></td><td>{new Date(user.created_at).toLocaleString()}</td><td>{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Nunca'}</td> {/* Add last login cell */}<td> {/* Freeze/Unfreeze Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleUpdateStatus(user.id, user.account_status)} className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton} title={user.account_status === 'frozen' ? 'Reativar conta do usuário' : 'Congelar conta do usuário'}>{user.account_status === 'frozen' ? 'Reativar' : 'Congelar'}</button>)}</td><td> {/* Reset Password Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleResetPassword(user.id)} className={styles.resetButton} title="Redefinir senha do usuário">Senha</button>)}</td><td> {/* Delete Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleDeleteUser(user.id, user.email)} className={styles.deleteButton} title="Excluir usuário permanentemente">Excluir</button>)}</td></tr>
             ))}
           </tbody>
         </table>

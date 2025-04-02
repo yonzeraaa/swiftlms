@@ -1,0 +1,100 @@
+/* src/pages/MyCoursesPage.module.css */
+.pageContainer {
+    padding: 20px;
+    /* margin: 20px; */ /* Let Layout handle margins */
+}
+
+.pageContainer h1 {
+    color: var(--color-primary-dark);
+    margin-bottom: 20px; /* More space below title */
+    font-size: 1.8rem;
+    border-bottom: 2px solid var(--color-accent-light);
+    padding-bottom: 5px;
+}
+
+.pageContainer p { /* General paragraph styling */
+    color: var(--color-text-secondary);
+    margin-bottom: 10px;
+}
+
+.errorMessage {
+    color: var(--color-error);
+    background-color: rgba(217, 83, 79, 0.1);
+    border: 1px solid var(--color-error);
+    padding: 10px;
+    border-radius: var(--border-radius-sm);
+    margin-top: 15px;
+}
+
+.courseList {
+    list-style: none;
+    padding: 0;
+}
+
+.courseItem {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-std);
+}
+.courseItem:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.courseItem strong {
+    color: var(--color-primary);
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+
+.courseItem p {
+    font-size: 0.95rem;
+    margin-bottom: 0;
+    color: var(--color-text-secondary); /* Ensure description color */
+}
+
+.courseLink {
+    text-decoration: none;
+    color: inherit;
+    display: flex; /* Use flexbox to align info and progress */
+    justify-content: space-between; /* Push info and progress apart */
+    align-items: center; /* Vertically align items */
+    gap: 20px; /* Space between info and progress */
+}
+
+.courseInfo {
+    flex-grow: 1; /* Allow info section to take available space */
+}
+
+.progressContainer {
+    flex-shrink: 0; /* Prevent progress bar from shrinking */
+    width: 150px; /* Fixed width for progress bar area */
+    text-align: right;
+}
+
+.progressText {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+}
+
+.progressBarBackground {
+    background-color: var(--color-border-light); /* Lighter background for the bar */
+    border-radius: var(--border-radius-sm);
+    height: 8px;
+    overflow: hidden; /* Ensure foreground stays within bounds */
+    width: 100%;
+}
+
+.progressBarForeground {
+    background-color: var(--color-accent); /* Gold color for progress */
+    height: 100%;
+    border-radius: var(--border-radius-sm);
+    transition: width 0.3s ease-in-out; /* Smooth transition for width changes */
+    width: 0%; /* Default width */
+}

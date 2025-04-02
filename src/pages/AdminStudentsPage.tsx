@@ -3,9 +3,9 @@ import { useAuth } from '../contexts/AuthContext.tsx';
 import UserList, { UserListHandle } from '../components/UserList.tsx';
 import AddStudentForm from '../components/AddStudentForm.tsx';
 // import styles from './AdminDashboard.module.css'; // REMOVED - Styles handled by Layout/Components
-import styles from './AdminDashboard.module.css'; // Import styles
+import styles from './AdminStudentsPage.module.css'; // Update style import path
 
-const AdminDashboard: React.FC = () => {
+const AdminStudentsPage: React.FC = () => { // Rename component
   const { logout } = useAuth();
   const userListRef = useRef<UserListHandle>(null); // Create a ref for UserList
 
@@ -27,17 +27,16 @@ const AdminDashboard: React.FC = () => {
   }, []); // Empty dependency array ensures it runs only once on mount
 
   return (
-    // Container div removed - Layout provides structure and padding
-    <>
-      <h1>Painel do Administrador</h1>
-      <p>Bem-vindo!</p>
+    <div className={styles.pageContainer}> {/* Use consistent class name */}
+      <h1>Gerenciar Alunos</h1> {/* Update title */}
+      {/* <p>Bem-vindo!</p> */} {/* Remove generic welcome */}
       <hr />
       <AddStudentForm onStudentAdded={handleStudentAdded} /> {/* Pass callback */}
       <hr />
       <UserList ref={userListRef} /> {/* Assign ref */}
       {/* Logout button removed, now handled by Header */}
-    </>
+    </div>
   );
 };
 
-export default AdminDashboard;
+export default AdminStudentsPage; // Update export

@@ -1,0 +1,112 @@
+/* src/pages/AdminOverviewPage.module.css */
+.pageContainer {
+    padding: 20px;
+    margin: 20px;
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.pageContainer h1 {
+    color: var(--color-primary-dark);
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+}
+
+.pageContainer hr {
+    margin: 30px 0;
+    border-color: var(--color-border);
+}
+
+.errorMessage {
+    color: var(--color-error);
+    background-color: rgba(217, 83, 79, 0.1);
+    border: 1px solid var(--color-error);
+    padding: 10px 15px;
+    border-radius: var(--border-radius-sm);
+    margin: 20px 0;
+}
+
+/* Restore Stat Card Styles */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Responsive grid */
+    gap: 20px; /* Space between cards */
+    margin-bottom: 20px;
+}
+
+.statCard {
+    background-color: var(--color-background); /* Use lighter background for cards */
+    padding: 20px;
+    border-radius: var(--border-radius-md);
+    text-align: center;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-fast);
+}
+.statCard:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.statCard h2 {
+    color: var(--color-primary);
+    font-size: 2.5rem; /* Large number */
+    margin: 0 0 5px 0;
+    line-height: 1;
+}
+
+.statCard p {
+    color: var(--color-text-secondary);
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* Activity Feed Styles */
+.activitySection {
+    margin-top: 20px; /* Space above activity section */
+}
+
+.activitySection h2 {
+    color: var(--color-primary);
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+    border-bottom: 2px solid var(--color-accent-light);
+    padding-bottom: 5px;
+}
+
+.activityList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 300px; /* Limit height and make scrollable */
+    overflow-y: auto;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-sm);
+    padding: 10px;
+    background-color: var(--color-background);
+}
+
+.activityItem {
+    padding: 8px 5px;
+    border-bottom: 1px dashed var(--color-border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+    color: var(--color-text-primary);
+}
+.activityItem:last-child {
+    border-bottom: none;
+}
+.activityItem strong {
+    color: var(--color-primary-dark);
+    font-weight: 600;
+}
+
+.activityTimestamp {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-left: 15px;
+    white-space: nowrap; /* Prevent timestamp from wrapping */
+    flex-shrink: 0; /* Prevent timestamp from shrinking */
+}

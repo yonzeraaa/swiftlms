@@ -1,0 +1,195 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../services/supabaseClient';
+import styles from './MyCoursesPage.module.css'; // Ensure this CSS module exists
+
+// Define the shape of a basic course object fetched initially
+interface BaseCourse {
+    id: string;
+    title: string;
+    description: string | null;
+    code: string | null;
+}
+
+// Define the shape of a course object with progress
+interface CourseWithProgress extends BaseCourse {
+    totalLessons: number;
+    viewedLessons: number;
+}
+
+// Define the shape for discipline IDs
+interface DisciplineId {
+    id: string;
+}
+
+// Define the shape for lesson IDs
+interface LessonId {
+    id: string;
+}
+
+const MyCoursesPage: React.FC = () => {
+    const { user } = useAuth();
+    const [enrolledCourses, setEnrolledCourses] = useState<CourseWithProgress[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchEnrolledCourses = useCallback(async () => {
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        try {
+            // 1. Fetch enrollments with basic course details
+            // Supabase types should infer enrollmentData as: { courses: BaseCourse | null }[] | null
+            const { data: enrollmentData, error: enrollmentError } = await supabase
+                .from('enrollments')
+                .select(`
+                    courses (
+                        id,
+                        title,
+                        description,
+                        code
+                    )
+                `)
+                .eq('user_id', user.id);
+
+            if (enrollmentError) throw enrollmentError;
+
+            // 2. Extract valid course objects, handling potential array in 'courses'
+            const validBaseCourses: BaseCourse[] = (enrollmentData ?? [])
+                .map(enrollment => {
+                    // If courses is an array, take the first element, otherwise use it directly (or null)
+                    const courseData = Array.isArray(enrollment.courses)
+                        ? enrollment.courses[0]
+                        : enrollment.courses;
+                    return courseData;
+                })
+                .filter((course): course is BaseCourse => course !== null); // Filter out nulls and assert type
+
+            // 3. Fetch progress for each valid course concurrently
+            const coursesWithProgressPromises = validBaseCourses.map(async (course): Promise<CourseWithProgress> => { // Explicitly type the course parameter and return promise
+                let totalLessonsCount = 0;
+                let viewedLessonsCount = 0;
+
+                try {
+                    // Get discipline IDs
+                    const { data: disciplineData, error: disciplineError } = await supabase
+                        .from('disciplines')
+                        .select('id')
+                        .eq('course_id', course.id); // Use course.id
+
+                    if (disciplineError) {
+                        console.warn(`Error fetching disciplines for course ${course.id}:`, disciplineError.message);
+                    } else {
+                        const disciplineIds = (disciplineData as DisciplineId[])?.map(d => d.id) || [];
+
+                        if (disciplineIds.length > 0) {
+                            // Fetch total lessons count
+                            const { count: lessonCount, error: totalLessonsError } = await supabase
+                                .from('lessons')
+                                .select('id', { count: 'exact', head: true })
+                                .in('discipline_id', disciplineIds);
+
+                            totalLessonsCount = totalLessonsError ? 0 : (lessonCount ?? 0);
+                            if (totalLessonsError) console.warn(`Error fetching total lessons for course ${course.id}:`, totalLessonsError.message);
+
+                            // Fetch viewed lessons count only if there are lessons
+                            if (totalLessonsCount > 0) {
+                                // Get lesson IDs for the course
+                                const { data: lessonData, error: lessonError } = await supabase
+                                    .from('lessons')
+                                    .select('id')
+                                    .in('discipline_id', disciplineIds);
+
+                                if (lessonError) {
+                                    console.warn(`Error fetching lesson IDs for course ${course.id}:`, lessonError.message);
+                                } else {
+                                    const lessonIds = (lessonData as LessonId[])?.map(l => l.id) || [];
+                                    if (lessonIds.length > 0) {
+                                        const { count: viewedCount, error: viewedLessonsError } = await supabase
+                                            .from('lesson_views')
+                                            .select('lesson_id', { count: 'exact', head: true })
+                                            .eq('user_id', user.id)
+                                            .in('lesson_id', lessonIds);
+
+                                        viewedLessonsCount = viewedLessonsError ? 0 : (viewedCount ?? 0);
+                                        if (viewedLessonsError) console.warn(`Error fetching viewed lessons for course ${course.id}:`, viewedLessonsError.message);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (progressError: any) {
+                    console.error(`Failed to fetch progress for course ${course.id}:`, progressError);
+                }
+
+                // Return the combined object matching CourseWithProgress
+                return {
+                    id: course.id,
+                    title: course.title,
+                    description: course.description,
+                    code: course.code,
+                    totalLessons: totalLessonsCount,
+                    viewedLessons: viewedLessonsCount,
+                };
+            });
+
+            // 4. Resolve all promises and update state
+            const resolvedCoursesWithProgress = await Promise.all(coursesWithProgressPromises);
+            setEnrolledCourses(resolvedCoursesWithProgress); // Type should now match
+
+        } catch (err: any) {
+            console.error("Error fetching enrolled courses:", err);
+            setError(err.message || 'Falha ao buscar seus cursos inscritos.');
+        } finally {
+            setLoading(false);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        fetchEnrolledCourses();
+    }, [fetchEnrolledCourses]);
+
+    return (
+        <div className={styles.pageContainer}>
+            <h1>Meus Cursos</h1>
+            {loading && <p>Carregando cursos...</p>}
+            {error && <p className={styles.errorMessage}>Erro: {error}</p>}
+            {!loading && !error && (
+                enrolledCourses.length === 0 ? (
+                    <p>Você ainda não está inscrito em nenhum curso.</p>
+                ) : (
+                    <ul className={styles.courseList}>
+                        {enrolledCourses.map((course) => (
+                            <li key={course.id} className={styles.courseItem}>
+                                <Link to={`/student/courses/${course.id}`} className={styles.courseLink}>
+                                    <div className={styles.courseInfo}>
+                                        <strong>{course.title} {course.code ? `(${course.code})` : ''}</strong>
+                                        <p>{course.description || 'Sem descrição.'}</p>
+                                    </div>
+                                    <div className={styles.progressContainer}>
+                                        <span className={styles.progressText}>
+                                            {course.viewedLessons} / {course.totalLessons} aulas
+                                        </span>
+                                        <div className={styles.progressBarBackground}>
+                                            <div
+                                                className={styles.progressBarForeground}
+                                                style={{ width: `${course.totalLessons > 0 ? (course.viewedLessons / course.totalLessons) * 100 : 0}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                )
+            )}
+        </div>
+    );
+};
+
+export default MyCoursesPage;

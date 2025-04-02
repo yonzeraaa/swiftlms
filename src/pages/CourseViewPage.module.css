@@ -1,0 +1,141 @@
+/* src/pages/CourseViewPage.module.css */
+.pageContainer {
+    padding: 20px;
+    margin: 20px;
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.pageContainer h1 {
+    color: var(--color-primary-dark);
+    margin-bottom: 10px;
+    font-size: 1.8rem;
+}
+
+.courseDescription {
+    color: var(--color-text-secondary);
+    margin-bottom: 20px;
+    font-size: 1.05rem;
+}
+
+.pageContainer hr {
+    margin: 25px 0;
+    border-color: var(--color-border);
+}
+
+.backLink {
+    display: inline-block;
+    margin-bottom: 15px;
+    color: var(--color-primary-light);
+    text-decoration: none;
+    font-weight: 500;
+}
+.backLink:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.errorMessage {
+    color: var(--color-error);
+    background-color: rgba(217, 83, 79, 0.1);
+    border: 1px solid var(--color-error);
+    padding: 10px 15px;
+    border-radius: var(--border-radius-sm);
+    margin: 20px 0;
+}
+.errorMessage a { /* Style link within error */
+    color: var(--color-error);
+    font-weight: bold;
+    text-decoration: underline;
+}
+
+.disciplineSection {
+    margin-bottom: 30px;
+    padding-left: 10px; /* Indent disciplines slightly */
+    border-left: 3px solid var(--color-accent-light); /* Accent border */
+}
+
+.disciplineSection h2 {
+    color: var(--color-primary);
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+}
+
+.lessonList {
+    list-style: none;
+    padding-left: 15px; /* Indent lessons */
+}
+
+.lessonItem {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px dashed var(--color-border);
+}
+.lessonItem:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+/* Style for viewed lessons */
+.lessonViewed {
+    opacity: 0.7; /* Slightly fade viewed lessons */
+    /* Add a subtle indicator, like a checkmark or different background */
+    /* Example: Add a pseudo-element checkmark */
+}
+.lessonViewed h3::after {
+    content: ' ✔'; /* Add a checkmark after the title */
+    color: var(--color-success); /* Use a success color */
+    font-size: 0.9em;
+    margin-left: 8px;
+}
+
+.lessonItem h3 {
+    color: var(--color-primary-dark);
+    font-size: 1.15rem;
+    margin-bottom: 8px;
+}
+
+.lessonContent {
+    color: var(--color-text-primary);
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.videoLink {
+    display: inline-block;
+    background-color: var(--color-primary-light);
+    color: var(--color-text-on-primary);
+    padding: 5px 12px;
+    border-radius: var(--border-radius-sm);
+    text-decoration: none;
+    font-weight: 500;
+    transition: background-color var(--transition-fast);
+}
+.videoLink:hover {
+    background-color: var(--color-primary);
+    text-decoration: none;
+    color: var(--color-text-on-primary);
+}
+
+.noLessons {
+    color: var(--color-text-secondary);
+    font-style: italic;
+}
+/* Styles for React Player */
+.playerWrapper {
+    position: relative;
+    padding-top: 56.25%; /* 16:9 Aspect Ratio */
+    margin-top: 15px;
+    margin-bottom: 15px;
+    background-color: #000; /* Black background while loading */
+    border-radius: var(--border-radius-md);
+    overflow: hidden; /* Ensure player stays within bounds */
+}
+
+.reactPlayer {
+    position: absolute;
+    top: 0;
+    left: 0;
+}

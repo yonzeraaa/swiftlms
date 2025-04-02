@@ -62,7 +62,10 @@ const AdminDisciplinesPage: React.FC = () => {
         <div className={styles.pageContainer}> {/* Apply container style */}
             <Link to="/admin/courses" className={styles.backLink}>&larr; Voltar para Cursos</Link> {/* Use static path and update text */}
             <h1>Gerenciar Disciplinas - {course.title} ({course.code})</h1>
-            <p>Adicione, edite e organize as disciplinas para este curso.</p>
+            <Link to={`/admin/courses/${course.id}/enrollments`} style={{ marginLeft: '15px' }}> {/* Link to enrollments page */}
+                <button>Inscrever Alunos</button>
+            </Link>
+            <p style={{ marginTop: '10px' }}>Adicione, edite e organize as disciplinas para este curso.</p> {/* Add margin */}
             <hr />
             <AddDisciplineForm courseId={course.id} onDisciplineAdded={handleDisciplineAdded} /> {/* Render the form */}
             <hr />

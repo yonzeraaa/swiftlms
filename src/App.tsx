@@ -4,11 +4,15 @@ import { useAuth } from './contexts/AuthContext.tsx';
 
 // Import Page Components
 import LoginPage from './pages/LoginPage.tsx';
-import AdminDashboard from './pages/AdminDashboard.tsx';
+import AdminStudentsPage from './pages/AdminStudentsPage.tsx'; // Renamed import
+import AdminOverviewPage from './pages/AdminOverviewPage.tsx'; // Import new overview page
 import StudentDashboard from './pages/StudentDashboard.tsx';
 import AdminCoursesPage from './pages/AdminCoursesPage.tsx';
 import AdminDisciplinesPage from './pages/AdminDisciplinesPage.tsx';
-import AdminLessonsPage from './pages/AdminLessonsPage.tsx'; // Import lessons page
+import AdminLessonsPage from './pages/AdminLessonsPage.tsx';
+import AdminEnrollmentsPage from './pages/AdminEnrollmentsPage.tsx';
+import CourseViewPage from './pages/CourseViewPage.tsx';
+import MyCoursesPage from './pages/MyCoursesPage.tsx'; // Import my courses page
 // import AdminCoursesPageWrapper from './pages/AdminCoursesPageWrapper.tsx'; // Remove wrapper import
 import RootRedirector from './components/RootRedirector.tsx';
 import Layout from './components/Layout.tsx'; // Import the Layout component
@@ -82,18 +86,27 @@ function App() {
       </Route>
 
       {/* Protected Routes - Wrapped in Layout */}
-      <Route element={<Layout />}> {/* Wrap protected routes with Layout */}
+      <Route element={<Layout />}>
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin" element={<AdminOverviewPage />} /> {/* Point /admin to overview */}
+          <Route path="/admin/students" element={<AdminStudentsPage />} /> {/* Add route for students */}
           <Route path="/admin/courses" element={<AdminCoursesPage />} />
           <Route path="/admin/courses/:courseId/disciplines" element={<AdminDisciplinesPage />} />
-          <Route path="/admin/courses/:courseId/disciplines/:disciplineId/lessons" element={<AdminLessonsPage />} /> {/* Add route for lessons */}
+          <Route path="/admin/courses/:courseId/disciplines/:disciplineId/lessons" element={<AdminLessonsPage />} />
+          <Route path="/admin/courses/:courseId/enrollments" element={<AdminEnrollmentsPage />} /> {/* Add route for enrollments */}
           {/* Add other admin-specific routes here */}
         </Route>
-        <Route element={<ProtectedRoute allowedRoles={['aluno']} />}> {/* Changed role */}
-          <Route path="/student" element={<StudentDashboard />} /> {/* Keep path as /student */}
+        <Route element={<ProtectedRoute allowedRoles={['aluno']} />}>
+          <Route path="/student" element={<StudentDashboard />} />
+          <Route path="/student/courses" element={<MyCoursesPage />} />
+          {/* Move Course View inside student routes */}
+          <Route path="/student/courses/:courseId" element={<CourseViewPage />} /> {/* Change path */}
           {/* Add other student-specific routes here */}
         </Route>
+        {/* Course View Route moved inside /student */}
+        {/* <Route element={<ProtectedRoute />}>
+           <Route path="/courses/:courseId" element={<CourseViewPage />} />
+        </Route> */}
       </Route>
 
       {/* Root path redirection */}
