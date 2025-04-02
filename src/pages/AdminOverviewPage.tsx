@@ -3,6 +3,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient';
 import styles from './AdminOverviewPage.module.css';
 
+// --- Constants ---
+const ACTIVITY_PAGE_SIZE = 20;
+
 // --- Interfaces ---
 interface Stats {
     studentCount: number;
@@ -11,16 +14,19 @@ interface Stats {
     adminCount: number;
 }
 
-// Updated interface to match the RPC function's return columns
+interface ProfileInfo {
+    email: string | null;
+    full_name: string | null;
+}
+
 interface ActivityLogEntry {
     id: string;
-    user_id: string; // Admin who performed the action
-    action_type: string; // e.g., 'course_created', 'user_deleted'
+    user_id: string;
+    action_type: string;
     target_id: string | null;
-    target_type: string | null; // e.g., 'course', 'user'
-    details: Record<string, any> | null; // JSON details
+    target_type: string | null;
+    details: Record<string, any> | null;
     created_at: string;
-    // Fields directly returned by the RPC function
     admin_email: string | null;
     admin_full_name: string | null;
 }
@@ -33,13 +39,15 @@ const AdminOverviewPage: React.FC = () => {
     const [statsLoading, setStatsLoading] = useState(true);
     const [statsError, setStatsError] = useState<string | null>(null);
 
-    // State uses the updated interface
     const [recentActivity, setRecentActivity] = useState<ActivityLogEntry[]>([]);
     const [activityLoading, setActivityLoading] = useState(true);
     const [activityError, setActivityError] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(1); // Start at page 1
+    const [isLastPage, setIsLastPage] = useState(false); // Track if on the last page
 
     // --- Data Fetching Callbacks ---
     const fetchStats = useCallback(async () => {
+        // ... (fetchStats logic remains the same)
         setStatsLoading(true);
         setStatsError(null);
         try {
@@ -61,45 +69,66 @@ const AdminOverviewPage: React.FC = () => {
         }
     }, []);
 
-    // Updated function to call the RPC
-    const fetchRecentActivity = useCallback(async () => {
+    // Updated function to call the RPC with pagination
+    const fetchRecentActivity = useCallback(async (page: number) => {
         setActivityLoading(true);
         setActivityError(null);
+        const offset = (page - 1) * ACTIVITY_PAGE_SIZE;
+
         try {
-            // Call the RPC function
             const { data, error } = await supabase.rpc(
                 'get_recent_activity_with_profiles',
-                { limit_count: 15 } // Pass the limit parameter
+                {
+                    page_limit: ACTIVITY_PAGE_SIZE,
+                    page_offset: offset
+                }
             );
 
             if (error) throw error;
 
-            // The data returned by RPC should match ActivityLogEntry[]
-            setRecentActivity(data || []);
+            const fetchedData = data || [];
+            setRecentActivity(fetchedData);
+            // Check if this is the last page
+            setIsLastPage(fetchedData.length < ACTIVITY_PAGE_SIZE);
 
         } catch (err: any) {
             console.error("Error fetching recent activity log via RPC:", err);
-            // Check for specific RPC errors if needed, e.g., function not found
-            if (err.message.includes('function public.get_recent_activity_with_profiles(limit_count => integer) does not exist')) {
+            if (err.message.includes('function public.get_recent_activity_with_profiles')) {
                  setActivityError('Erro: A função necessária para buscar atividades não foi encontrada no banco de dados.');
             } else {
                  setActivityError(err.message || 'Falha ao buscar atividade recente.');
             }
             setRecentActivity([]);
+            setIsLastPage(true); // Assume last page on error
         } finally {
             setActivityLoading(false);
         }
-    }, []);
+    }, []); // Removed currentPage dependency, pass page as argument
 
     // --- Effects ---
     useEffect(() => {
         fetchStats();
-        fetchRecentActivity();
-    }, [fetchStats, fetchRecentActivity]);
+    }, [fetchStats]);
+
+    useEffect(() => {
+        // Fetch activity for the current page whenever currentPage changes
+        fetchRecentActivity(currentPage);
+    }, [currentPage, fetchRecentActivity]); // Add fetchRecentActivity dependency
+
+    // --- Event Handlers ---
+    const handleNextPage = () => {
+        if (!isLastPage) {
+            setCurrentPage(prevPage => prevPage + 1);
+        }
+    };
+
+    const handlePrevPage = () => {
+        setCurrentPage(prevPage => Math.max(1, prevPage - 1)); // Ensure page doesn't go below 1
+    };
 
     // --- Helper to render activity log item ---
     const renderActivityItem = (activity: ActivityLogEntry) => {
-        // Use the fields directly returned by the RPC
+        // ... (renderActivityItem logic remains the same)
         const adminName = activity.admin_full_name ?? activity.admin_email ?? 'Admin desconhecido';
         const timestamp = new Date(activity.created_at).toLocaleString();
         let message = `${adminName} `;
@@ -171,18 +200,30 @@ const AdminOverviewPage: React.FC = () => {
 
             <hr />
 
-            {/* Recent Activity Section (Updated) */}
+            {/* Recent Activity Section (Updated with Pagination) */}
             <div className={styles.activitySection}>
                 <h2>Atividade Recente</h2>
                 {activityLoading && <p>Carregando atividade...</p>}
                 {activityError && <p className={styles.errorMessage}>Erro ao carregar atividade: {activityError}</p>}
                 {!activityLoading && !activityError && (
-                    recentActivity.length === 0 ? (
+                    recentActivity.length === 0 && currentPage === 1 ? ( // Show only if no results on page 1
                         <p>Nenhuma atividade recente encontrada.</p>
                     ) : (
-                        <ul className={styles.activityList}>
-                            {recentActivity.map(renderActivityItem)}
-                        </ul>
+                        <>
+                            <ul className={styles.activityList}>
+                                {recentActivity.map(renderActivityItem)}
+                            </ul>
+                            {/* Pagination Controls */}
+                            <div className={styles.paginationControls}>
+                                <button onClick={handlePrevPage} disabled={currentPage === 1 || activityLoading}>
+                                    Anterior
+                                </button>
+                                <span>Página {currentPage}</span>
+                                <button onClick={handleNextPage} disabled={isLastPage || activityLoading}>
+                                    Próxima
+                                </button>
+                            </div>
+                        </>
                     )
                 )}
             </div>
