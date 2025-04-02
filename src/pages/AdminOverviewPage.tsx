@@ -11,13 +11,7 @@ interface Stats {
     adminCount: number;
 }
 
-// Interface for the profile data as returned by the join
-interface ProfileInfo {
-    email: string | null;
-    full_name: string | null;
-}
-
-// Updated interface for Activity Log entries
+// Updated interface to match the RPC function's return columns
 interface ActivityLogEntry {
     id: string;
     user_id: string; // Admin who performed the action
@@ -26,8 +20,9 @@ interface ActivityLogEntry {
     target_type: string | null; // e.g., 'course', 'user'
     details: Record<string, any> | null; // JSON details
     created_at: string;
-    // Expect profile_info as an array from Supabase join
-    profile_info: ProfileInfo[] | null;
+    // Fields directly returned by the RPC function
+    admin_email: string | null;
+    admin_full_name: string | null;
 }
 
 
@@ -66,36 +61,30 @@ const AdminOverviewPage: React.FC = () => {
         }
     }, []);
 
-    // Updated function to fetch from activity_log with explicit join hint
+    // Updated function to call the RPC
     const fetchRecentActivity = useCallback(async () => {
         setActivityLoading(true);
         setActivityError(null);
         try {
-            // Fetch latest activity logs, joining with profiles using explicit FK hint
-            // and aliasing the joined data to profile_info
-            const { data, error } = await supabase
-                .from('activity_log')
-                .select(`
-                    id,
-                    user_id,
-                    action_type,
-                    target_id,
-                    target_type,
-                    details,
-                    created_at,
-                    profile_info:user_id ( email, full_name )
-                `)
-                .order('created_at', { ascending: false })
-                .limit(15);
+            // Call the RPC function
+            const { data, error } = await supabase.rpc(
+                'get_recent_activity_with_profiles',
+                { limit_count: 15 } // Pass the limit parameter
+            );
 
             if (error) throw error;
 
-            // Let TypeScript infer the type, handle potential null
+            // The data returned by RPC should match ActivityLogEntry[]
             setRecentActivity(data || []);
 
         } catch (err: any) {
-            console.error("Error fetching recent activity log:", err);
-            setActivityError(err.message || 'Falha ao buscar atividade recente.');
+            console.error("Error fetching recent activity log via RPC:", err);
+            // Check for specific RPC errors if needed, e.g., function not found
+            if (err.message.includes('function public.get_recent_activity_with_profiles(limit_count => integer) does not exist')) {
+                 setActivityError('Erro: A função necessária para buscar atividades não foi encontrada no banco de dados.');
+            } else {
+                 setActivityError(err.message || 'Falha ao buscar atividade recente.');
+            }
             setRecentActivity([]);
         } finally {
             setActivityLoading(false);
@@ -110,9 +99,8 @@ const AdminOverviewPage: React.FC = () => {
 
     // --- Helper to render activity log item ---
     const renderActivityItem = (activity: ActivityLogEntry) => {
-        // Safely access the first profile in the profile_info array
-        const profile = activity.profile_info && activity.profile_info.length > 0 ? activity.profile_info[0] : null;
-        const adminName = profile?.full_name ?? profile?.email ?? 'Admin desconhecido';
+        // Use the fields directly returned by the RPC
+        const adminName = activity.admin_full_name ?? activity.admin_email ?? 'Admin desconhecido';
         const timestamp = new Date(activity.created_at).toLocaleString();
         let message = `${adminName} `;
 
