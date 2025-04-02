@@ -253,13 +253,47 @@ const CourseViewPage: React.FC = () => {
                                         {lesson.content && <p className={styles.lessonContent}>{lesson.content}</p>}
                                         {/* Embed Media Player (Video or PDF) */}
                                        {lesson.video_url && (() => {
-                                           const url = lesson.video_url.toLowerCase();
-                                           if (url.endsWith('.mp4')) {
+                                           const originalUrl = lesson.video_url;
+                                           const lowerCaseUrl = originalUrl.toLowerCase();
+
+                                           // Check for Google Drive link first
+                                           if (lowerCaseUrl.includes('drive.google.com/file/d/')) {
+                                               try {
+                                                   const urlObject = new URL(originalUrl);
+                                                   const pathSegments = urlObject.pathname.split('/');
+                                                   // Find the segment after /d/, which should be the file ID
+                                                   const fileIdIndex = pathSegments.findIndex(segment => segment === 'd');
+                                                   if (fileIdIndex !== -1 && pathSegments.length > fileIdIndex + 1) {
+                                                       const fileId = pathSegments[fileIdIndex + 1];
+                                                       const embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+                                                       return (
+                                                           // Reuse pdfWrapper styles for consistent iframe sizing
+                                                           <div className={styles.pdfWrapper}>
+                                                               <iframe
+                                                                   src={embedUrl}
+                                                                   className={styles.pdfViewer} // Reuse pdfViewer styles
+                                                                   title={`Google Drive Viewer: ${lesson.title}`}
+                                                                   allow="autoplay"
+                                                                   onLoad={() => handleMarkLessonAsViewed(lesson.id)} // Mark viewed on load
+                                                               >
+                                                                   Seu navegador não suporta iframes ou o conteúdo não pode ser embutido. <a href={originalUrl} target="_blank" rel="noopener noreferrer">Abrir no Google Drive</a>.
+                                                               </iframe>
+                                                           </div>
+                                                       );
+                                                   }
+                                               } catch (e) {
+                                                   console.error("Error parsing Google Drive URL:", e);
+                                                   // Fall through to default link if parsing fails
+                                               }
+                                           }
+
+                                           // Existing checks for .mp4 and .pdf
+                                           if (lowerCaseUrl.endsWith('.mp4')) {
                                                return (
                                                    <div className={styles.playerWrapper}>
                                                        <ReactPlayer
                                                            className={styles.reactPlayer}
-                                                           url={lesson.video_url} // Use original URL case
+                                                           url={originalUrl} // Use original URL case
                                                            width='100%'
                                                            height='100%'
                                                            controls={true}
@@ -267,7 +301,7 @@ const CourseViewPage: React.FC = () => {
                                                        />
                                                    </div>
                                                );
-                                           } else if (url.endsWith('.pdf')) {
+                                           } else if (lowerCaseUrl.endsWith('.pdf')) {
                                                return (
                                                    <div className={styles.pdfWrapper}>
                                                        <iframe
