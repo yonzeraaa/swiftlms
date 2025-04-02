@@ -92,3 +92,30 @@
     background-color: rgba(92, 184, 92, 0.1);
     border: 1px solid var(--color-success);
 }
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+  .formRow {
+    flex-direction: column; /* Stack label and inputs vertically */
+    align-items: stretch; /* Stretch items to full width */
+    gap: 5px; /* Reduce gap for vertical layout */
+  }
+
+  .formRow label {
+      white-space: normal; /* Allow labels to wrap */
+      margin-right: 0; /* Remove right margin */
+      margin-bottom: 3px; /* Add small space below label */
+  }
+
+  /* Remove fixed widths set inline and allow inputs to take full width */
+  .formRow input[type="text"],
+  .formRow input[type="number"] {
+      width: 100% !important; /* Override inline style */
+      margin-right: 0 !important; /* Override inline style */
+      box-sizing: border-box; /* Include padding/border in width */
+  }
+
+  .submitButton {
+      width: 100%; /* Make button full width */
+  }
+}
