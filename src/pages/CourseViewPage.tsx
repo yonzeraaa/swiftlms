@@ -281,12 +281,10 @@ const CourseViewPage: React.FC = () => {
                                                    </div>
                                                );
                                            } else {
-                                               // Optional: Handle other types or show a link
+                                               // Fallback: Display message and download link for unsupported types
                                                return (
-                                                   <p>
-                                                       <a href={lesson.video_url} target="_blank" rel="noopener noreferrer">
-                                                           Abrir conteúdo da aula (tipo desconhecido)
-                                                       </a>
+                                                   <p className={styles.unsupportedContent}>
+                                                       Este tipo de conteúdo não pode ser visualizado diretamente. <a href={lesson.video_url} download>Baixar conteúdo da aula</a>.
                                                    </p>
                                                );
                                            }

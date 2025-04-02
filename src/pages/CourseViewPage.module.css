@@ -155,6 +155,25 @@
     overflow: hidden; /* Ensure iframe stays within bounds */
 }
 
+/* Style for unsupported content message */
+.unsupportedContent {
+    margin-top: 10px;
+    font-style: italic;
+    color: var(--color-text-secondary);
+    background-color: var(--color-background); /* Light background */
+    padding: 10px;
+    border-radius: var(--border-radius-sm);
+    border: 1px dashed var(--color-border);
+}
+.unsupportedContent a {
+    color: var(--color-primary-light);
+    font-weight: 500;
+    text-decoration: underline;
+}
+.unsupportedContent a:hover {
+    color: var(--color-primary);
+}
+
 .pdfViewer {
     position: absolute;
     top: 0;
