@@ -34,3 +34,35 @@
     color: var(--color-primary);
     text-decoration: underline;
 }
+
+/* Added styles for the enroll button */
+.enrollButton {
+    /* Inherit base button styles from index.css */
+    cursor: pointer;
+    border-radius: var(--border-radius-md);
+    padding: 0.6em 1.2em; /* Match global button padding */
+    font-size: 1em; /* Match global button font size */
+    font-weight: 500; /* Match global button font weight */
+    transition: background-color var(--transition-std), border-color var(--transition-std), transform var(--transition-fast);
+
+    /* Apply gold accent theme */
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+}
+
+.enrollButton:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+.enrollButton:disabled {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.enrollButton:active:not(:disabled) {
+    transform: scale(0.98); /* Match global active state */
+}
