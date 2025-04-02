@@ -217,20 +217,26 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
                   <td data-label="Status"><span className={user.account_status === 'frozen' ? styles.statusFrozen : styles.statusActive}>{user.account_status ?? 'N/A'}</span></td>
                   <td data-label="Criado em">{new Date(user.created_at).toLocaleString()}</td>
                   <td data-label="Último Login">{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Nunca'}</td>
-                  {/* Actions - Combine into one cell for mobile layout */}
-                  <td data-label="Ações">
+                  {/* Actions in separate cells for desktop layout */}
+                  <td data-label="Ação Congelar/Reativar">
                       {user.role === 'aluno' && (
-                          <>
-                              <button onClick={() => handleUpdateStatus(user.id, user.account_status)} className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton} title={user.account_status === 'frozen' ? 'Reativar conta do usuário' : 'Congelar conta do usuário'}>
-                                  {user.account_status === 'frozen' ? 'Reativar' : 'Congelar'}
-                              </button>
-                              <button onClick={() => handleResetPassword(user.id)} className={styles.resetButton} title="Redefinir senha do usuário">
-                                  Senha
-                              </button>
-                              <button onClick={() => handleDeleteUser(user.id, user.email)} className={styles.deleteButton} title="Excluir usuário permanentemente">
-                                  Excluir
-                              </button>
-                          </>
+                          <button onClick={() => handleUpdateStatus(user.id, user.account_status)} className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton} title={user.account_status === 'frozen' ? 'Reativar conta do usuário' : 'Congelar conta do usuário'}>
+                              {user.account_status === 'frozen' ? 'Reativar' : 'Congelar'}
+                          </button>
+                      )}
+                  </td>
+                  <td data-label="Ação Redefinir Senha">
+                      {user.role === 'aluno' && (
+                          <button onClick={() => handleResetPassword(user.id)} className={styles.resetButton} title="Redefinir senha do usuário">
+                              Senha
+                          </button>
+                      )}
+                  </td>
+                  <td data-label="Ação Excluir">
+                      {user.role === 'aluno' && (
+                          <button onClick={() => handleDeleteUser(user.id, user.email)} className={styles.deleteButton} title="Excluir usuário permanentemente">
+                              Excluir
+                          </button>
                       )}
                   </td>
               </tr>
