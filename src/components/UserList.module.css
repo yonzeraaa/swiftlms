@@ -190,27 +190,13 @@
     /* Style action cells specifically for mobile card view */
     .userTable td[data-label^="Ação"] {
        text-align: left; /* Align buttons left */
-       padding-left: 10px; /* Reset padding */
-       padding-top: 5px;
-       padding-bottom: 5px;
+       padding: 10px; /* Consistent padding */
        border-bottom: none; /* Remove bottom border for action cells */
-    }
-    /* Group the action buttons together visually */
-    .userTable td[data-label="Ação Congelar/Reativar"] {
-        padding-bottom: 0;
-    }
-     .userTable td[data-label="Ação Redefinir Senha"] {
-        padding-top: 0;
-        padding-bottom: 0;
-    }
-    .userTable td[data-label="Ação Excluir"] {
-        padding-top: 0;
+       /* Remove rules that were grouping vertically */
    }
-    /* Ensure buttons have appropriate margin in mobile view */
+    /* Ensure buttons display inline with spacing */
     .userTable td[data-label^="Ação"] button {
-       margin-left: 0;
-       margin-right: 0.5rem;
-       margin-top: 0.3rem;
-       margin-bottom: 0.3rem; /* Add bottom margin */
+       margin: 0.2rem 0.5rem 0.2rem 0; /* Adjust margins for inline display */
+       display: inline-block; /* Ensure buttons are inline */
    }
 }
