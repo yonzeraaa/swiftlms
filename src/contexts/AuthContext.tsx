@@ -89,7 +89,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('rememberedEmail');
         localStorage.removeItem('rememberedPassword');
         setRememberedCredentials({ email: '', password: '' });
-        // State updates (user, profile, loading) handled by onAuthStateChange
+        // Explicitly clear user and profile state immediately on logout attempt
+        setUser(null);
+        setProfile(null);
+        setAuthError(null); // Clear any previous auth errors
+        setLoading(false); // Ensure loading is false after logout attempt
     }
   }, []); // useCallback dependency array
 
