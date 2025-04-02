@@ -26,7 +26,7 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
 
   // Define fetchUsers using useCallback
   const fetchUsers = useCallback(async () => {
-    console.log('Fetching users...');
+    // console.log('Fetching users...'); // Removed log
     setLoading(true);
     setError(null);
     try {
@@ -36,14 +36,28 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
         .order('created_at', { ascending: false });
 
       if (fetchError) {
+        // console.error('[UserList] Supabase fetch error:', fetchError); // Removed log
         throw fetchError;
       }
+      // console.log('[UserList] Fetch successful. Setting users data.'); // Removed log
       setUsers(data as UserProfile[] || []);
     } catch (err: any) {
-      console.error("Error fetching users:", err);
-      setError(err.message || 'Failed to fetch user list.');
+      console.error("[UserList] Error fetching users:", err);
+      // Check if it's a Supabase Auth error (e.g., invalid session/token)
+      // Supabase client errors often have a specific structure or status code
+      if (err?.message.includes('JWT') || err?.status === 401 || err?.message.includes('invalid claim')) {
+        setError('Sessão inválida ou expirada. Por favor, faça login novamente.');
+        // Optionally trigger logout automatically - requires access to logout function
+        // from useAuth() context. We need to import useAuth here.
+        console.warn("[UserList] Invalid session detected during fetch.");
+        // Example: logout(); // If logout was available here
+      } else {
+        setError(err.message || 'Failed to fetch user list.');
+      }
     } finally {
+      // console.log('[UserList] Entering fetchUsers finally block.'); // Removed log
       setLoading(false);
+      // console.log('[UserList] Exiting fetchUsers finally block. setLoading(false) called.'); // Removed log
     }
   }, []);
 
@@ -171,51 +185,7 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
           </thead>
           <tbody>
             {users.map(user => (
-              <tr key={user.id}>
-                <td>{user.full_name ?? 'N/A'}</td>
-                <td>{user.email ?? 'N/A'}</td>
-                <td>{user.phone_number ?? 'N/A'}</td>
-                <td>{user.role === 'aluno' ? 'Aluno' : user.role === 'admin' ? 'Admin' : (user.role ?? 'N/A')}</td> {/* Check for 'aluno' */}
-                <td>
-                  <span className={user.account_status === 'frozen' ? styles.statusFrozen : styles.statusActive}>
-                    {user.account_status ?? 'N/A'}
-                  </span>
-                </td>
-                <td>{new Date(user.created_at).toLocaleString()}</td>
-                <td> {/* Freeze/Unfreeze Button Cell */}
-                  {user.role === 'aluno' && ( // Only allow actions on 'aluno'
-                    <button
-                      onClick={() => handleUpdateStatus(user.id, user.account_status)}
-                      className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton}
-                      title={user.account_status === 'frozen' ? 'Reativar conta do usuário' : 'Congelar conta do usuário'}
-                    >
-                      {user.account_status === 'frozen' ? 'Reativar' : 'Congelar'}
-                    </button>
-                  )}
-                </td>
-                 <td> {/* Reset Password Button Cell */}
-                  {user.role === 'aluno' && ( // Only allow actions on 'aluno'
-                     <button
-                        onClick={() => handleResetPassword(user.id)}
-                        className={styles.resetButton}
-                        title="Redefinir senha do usuário"
-                      >
-                        Senha
-                      </button>
-                  )}
-                 </td>
-                 <td> {/* Delete Button Cell */}
-                  {user.role === 'aluno' && ( // Only allow actions on 'aluno'
-                      <button
-                        onClick={() => handleDeleteUser(user.id, user.email)}
-                        className={styles.deleteButton}
-                        title="Excluir usuário permanentemente"
-                      >
-                        Excluir
-                      </button>
-                  )}
-                 </td>
-              </tr>
+              <tr key={user.id}><td>{user.full_name ?? 'N/A'}</td><td>{user.email ?? 'N/A'}</td><td>{user.phone_number ?? 'N/A'}</td><td>{user.role === 'aluno' ? 'Aluno' : user.role === 'admin' ? 'Admin' : (user.role ?? 'N/A')}</td><td><span className={user.account_status === 'frozen' ? styles.statusFrozen : styles.statusActive}>{user.account_status ?? 'N/A'}</span></td><td>{new Date(user.created_at).toLocaleString()}</td><td> {/* Freeze/Unfreeze Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleUpdateStatus(user.id, user.account_status)} className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton} title={user.account_status === 'frozen' ? 'Reativar conta do usuário' : 'Congelar conta do usuário'}>{user.account_status === 'frozen' ? 'Reativar' : 'Congelar'}</button>)}</td><td> {/* Reset Password Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleResetPassword(user.id)} className={styles.resetButton} title="Redefinir senha do usuário">Senha</button>)}</td><td> {/* Delete Button Cell */}{user.role === 'aluno' && (<button onClick={() => handleDeleteUser(user.id, user.email)} className={styles.deleteButton} title="Excluir usuário permanentemente">Excluir</button>)}</td></tr>
             ))}
           </tbody>
         </table>

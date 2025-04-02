@@ -6,6 +6,7 @@ import { useAuth } from './contexts/AuthContext.tsx';
 import LoginPage from './pages/LoginPage.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import StudentDashboard from './pages/StudentDashboard.tsx';
+import AdminCoursesPage from './pages/AdminCoursesPage.tsx'; // Import the new page
 import RootRedirector from './components/RootRedirector.tsx';
 import Layout from './components/Layout.tsx'; // Import the Layout component
 
@@ -81,6 +82,7 @@ function App() {
       <Route element={<Layout />}> {/* Wrap protected routes with Layout */}
         <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/courses" element={<AdminCoursesPage />} /> {/* Add route for courses */}
           {/* Add other admin-specific routes here */}
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['aluno']} />}> {/* Changed role */}

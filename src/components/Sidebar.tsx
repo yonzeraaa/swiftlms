@@ -11,9 +11,9 @@ const Sidebar: React.FC = () => {
 
   if (isAdmin) {
     navLinks = [
-      { path: '/admin', label: 'Visão Geral' }, // Link to main admin dashboard
-      // TODO: Add more admin links later (e.g., /admin/users, /admin/courses)
-      // { path: '/admin/settings', label: 'Configurações (Admin)' }, // Placeholder
+      { path: '/admin', label: 'Visão Geral' },
+      { path: '/admin/courses', label: 'Cursos' }, // Add link to courses
+      // { path: '/admin/settings', label: 'Configurações (Admin)' },
     ];
   } else if (isStudent) { // isStudent check uses 'aluno' internally now
     navLinks = [

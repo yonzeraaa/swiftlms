@@ -58,9 +58,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(session?.user ?? null);
         console.log('[AuthContext] User state set:', session?.user ?? null);
 
-        if (session?.user) {
-          console.log('[AuthContext] Session exists, attempting to fetch profile...');
-          // Fetch profile when user is logged in
+        // Fetch profile only if we have a user session AND profile data is not already loaded
+        if (session?.user && !profile) {
+          console.log('[AuthContext] Session exists and profile not loaded, fetching profile...');
           try {
             const { data, error, status } = await supabase
               .from('profiles')
@@ -113,12 +113,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setAuthError('Erro ao buscar perfil de usuário.'); // Set error on fetch failure
           } finally {
              console.log('[AuthContext] Profile fetch attempt finished. Setting loading=false.');
-             // Only set loading false if not logging out due to frozen status
-             if (profile?.account_status !== 'frozen') {
-                setLoading(false);
-             }
+             // Set loading false after profile fetch attempt,
+             // but ensure it's also set if profile *was* already loaded and we skipped the fetch.
+             setLoading(false);
           }
-        } else {
+        } else if (!session?.user) { // Explicitly check if session is null/undefined
           console.log('[AuthContext] No session found. Clearing profile and setting loading=false.');
           setProfile(null);
           setAuthError(null); // Clear auth error on logout/no session
