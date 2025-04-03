@@ -39,6 +39,14 @@
   border-radius: var(--border-radius-md); /* Rounded corners */
   transition: background-color var(--transition-fast), color var(--transition-fast);
   position: relative; /* For pseudo-elements if needed */
+  /* Add button resets to ensure consistency when used on a button element */
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 100%; /* Ensure button takes full width if needed */
 }
 
 .navLink:hover {
