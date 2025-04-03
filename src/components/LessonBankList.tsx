@@ -115,7 +115,7 @@ const LessonBankListComponent: React.ForwardRefRenderFunction<LessonBankListHand
           {lessons.map(lesson => (
             <li key={lesson.id} className={styles.listItem}>
               <div className={styles.contentGroup}>
-                <strong>{lesson.number ? `Aula ${lesson.number}: ` : ''}{lesson.title}</strong>
+                <strong>{lesson.title}</strong> {/* Removed number display */}
                 {/* Optional: Display snippet of content or video URL */}
                 {/* <p>{lesson.content?.substring(0, 50) ?? ''}... </p> */}
                 {lesson.video_url && <small> (Vídeo/PDF: <a href={lesson.video_url} target="_blank" rel="noopener noreferrer">Link</a>)</small>}

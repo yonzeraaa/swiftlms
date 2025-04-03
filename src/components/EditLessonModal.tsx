@@ -20,7 +20,7 @@ interface EditLessonModalProps {
 
 const EditLessonModal: React.FC<EditLessonModalProps> = ({ lesson, onClose, onLessonUpdated }) => {
     const [title, setTitle] = useState('');
-    const [number, setNumber] = useState('');
+    // const [number, setNumber] = useState(''); // Removed number state
     const [order, setOrder] = useState<number | ''>('');
     const [content, setContent] = useState('');
     const [videoUrl, setVideoUrl] = useState('');
@@ -31,7 +31,7 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ lesson, onClose, onLe
     useEffect(() => {
         if (lesson) {
             setTitle(lesson.title);
-            setNumber(lesson.number || '');
+            // setNumber(lesson.number || ''); // Removed number pre-fill
             setOrder(lesson.order ?? '');
             setContent(lesson.content || '');
             setVideoUrl(lesson.video_url || '');
@@ -39,7 +39,7 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ lesson, onClose, onLe
         } else {
             // Clear form if no lesson is selected (modal closed)
             setTitle('');
-            setNumber('');
+            // setNumber(''); // Removed number clear
             setOrder('');
             setContent('');
             setVideoUrl('');
@@ -47,23 +47,10 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ lesson, onClose, onLe
         }
     }, [lesson]);
 
-    // Helper to format number (copied from AddLessonBankForm)
-    const formatNumber = (numStr: string): string => {
-        const num = parseInt(numStr, 10);
-        if (isNaN(num) || num <= 0) return '';
-        return num < 10 ? `0${num}` : `${num}`;
-    };
-
-    const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value;
-        if (/^\d*$/.test(rawValue)) {
-            setNumber(rawValue);
-        }
-    };
-
-    const handleNumberBlur = () => {
-        setNumber(formatNumber(number));
-    };
+    // Removed number formatting and handling functions
+    // const formatNumber = ...
+    // const handleNumberChange = ...
+    // const handleNumberBlur = ...
 
     const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -77,7 +64,7 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ lesson, onClose, onLe
         setLoading(true);
         setError(null);
 
-        const formattedNumber = formatNumber(number);
+        // const formattedNumber = formatNumber(number); // Removed number formatting
         const finalOrder = order === '' ? null : order;
         const trimmedTitle = title.trim();
         const trimmedContent = content.trim() || null;
@@ -88,16 +75,13 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ lesson, onClose, onLe
             setLoading(false);
             return;
         }
-        if (!formattedNumber) {
-            setError('O número da aula é obrigatório (ex: 01, 02).');
-            setLoading(false);
-            return;
-        }
+        // Removed validation for number
+        // if (!formattedNumber) { ... }
 
         try {
             const updateData = {
                 title: trimmedTitle,
-                number: formattedNumber,
+                number: null, // Set number to null or keep existing if needed, depends on desired behavior
                 order: finalOrder,
                 content: trimmedContent,
                 video_url: finalVideoUrl,
@@ -135,20 +119,7 @@ const EditLessonModal: React.FC<EditLessonModalProps> = ({ lesson, onClose, onLe
                 <form onSubmit={handleSubmit}>
                     {/* Row 1: Number and Title */}
                     <div className={styles.formRow}>
-                        <label htmlFor="editLessonNumber">Número:</label>
-                        <input
-                            type="text"
-                            id="editLessonNumber"
-                            value={number}
-                            onChange={handleNumberChange}
-                            onBlur={handleNumberBlur}
-                            required
-                            disabled={loading}
-                            placeholder="Ex: 01"
-                            pattern="\d+"
-                            title="Digite o número da aula (ex: 1, 2, 10)"
-                            style={{ width: '60px', marginRight: '10px' }}
-                        />
+                        {/* Removed Number Input */}
                         <label htmlFor="editLessonTitle">Título:</label>
                         <input
                             type="text"

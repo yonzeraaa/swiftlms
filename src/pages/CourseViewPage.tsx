@@ -318,7 +318,7 @@ const CourseViewPage: React.FC = () => {
                                     <li key={lesson.id} className={`${styles.lessonItem} ${viewedLessonIds.has(lesson.id) ? styles.lessonViewed : ''} ${selectedLessonId === lesson.id ? styles.lessonSelected : ''}`}>
                                         {/* Make title clickable */}
                                         <h3 onClick={() => handleLessonClick(lesson.id)} className={styles.lessonTitleClickable}>
-                                            {lesson.number ? `Aula ${lesson.number}: ` : ''}{lesson.title}
+                                            {lesson.title} {/* Removed number display */}
                                             {/* Indicator for open/closed state */}
                                             <span className={styles.lessonToggleIndicator}>
                                                 {selectedLessonId === lesson.id ? ' ▲' : ' ▼'}

@@ -8,7 +8,7 @@ interface AddLessonBankFormProps {
 
 const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }) => {
   const [title, setTitle] = useState('');
-  const [number, setNumber] = useState(''); // Store as string "01", "02" etc.
+  // const [number, setNumber] = useState(''); // Removed number state
   const [content, setContent] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [order, setOrder] = useState<number | ''>(''); // Optional explicit order
@@ -16,23 +16,10 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Helper to format number (e.g., 1 -> "01", 10 -> "10")
-  const formatNumber = (numStr: string): string => {
-    const num = parseInt(numStr, 10);
-    if (isNaN(num) || num <= 0) return '';
-    return num < 10 ? `0${num}` : `${num}`;
-  };
-
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    if (/^\d*$/.test(rawValue)) {
-        setNumber(rawValue);
-    }
-  };
-
-  const handleNumberBlur = () => {
-    setNumber(formatNumber(number));
-  };
+  // Removed number formatting and handling functions
+  // const formatNumber = ...
+  // const handleNumberChange = ...
+  // const handleNumberBlur = ...
 
    const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -46,7 +33,7 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
     setError(null);
     setSuccess(null);
 
-    const formattedNumber = formatNumber(number);
+    // const formattedNumber = formatNumber(number); // Removed number formatting
     const finalOrder = order === '' ? null : order;
     const finalVideoUrl = videoUrl.trim() || null;
     const trimmedTitle = title.trim();
@@ -56,11 +43,8 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
       setLoading(false);
       return;
     }
-     if (!formattedNumber) {
-      setError('O número da aula é obrigatório (ex: 01, 02).');
-      setLoading(false);
-      return;
-    }
+    // Removed validation for number
+    //  if (!formattedNumber) { ... }
 
     try {
       // Admin role allows insert via RLS policy
@@ -69,7 +53,7 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
         .insert([{
             // discipline_id is removed
             title: trimmedTitle,
-            number: formattedNumber,
+            number: null, // Set number to null explicitly or remove if DB default is null
             content: content.trim() || null,
             video_url: finalVideoUrl,
             order: finalOrder
@@ -77,10 +61,10 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
 
       if (insertError) throw insertError;
 
-      setSuccess(`Aula "${trimmedTitle}" (${formattedNumber}) adicionada ao banco com sucesso!`);
+      setSuccess(`Aula "${trimmedTitle}" adicionada ao banco com sucesso!`); // Removed number from success message
       // Clear form
       setTitle('');
-      setNumber('');
+      // setNumber(''); // Removed number clearing
       setContent('');
       setVideoUrl('');
       setOrder('');
@@ -99,20 +83,7 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
       <form onSubmit={handleSubmit}>
          {/* Row 1: Number and Title */}
          <div className={styles.formRow}> {/* Apply row style */}
-            <label htmlFor="lessonBankNumber" style={{ marginRight: '5px' }}>Número:</label>
-            <input
-                type="text"
-                id="lessonBankNumber"
-                value={number}
-                onChange={handleNumberChange}
-                onBlur={handleNumberBlur}
-                required
-                disabled={loading}
-                placeholder="Ex: 01"
-                pattern="\d+"
-                title="Digite o número da aula (ex: 1, 2, 10)"
-                style={{ width: '50px', marginRight: '15px' }}
-            />
+            {/* Removed Number Input */}
             <label htmlFor="lessonBankTitle" style={{ marginRight: '5px' }}>Título:</label>
             <input
                 type="text"
@@ -122,7 +93,7 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
                 required
                 disabled={loading}
                 placeholder="Ex: Variáveis"
-                style={{ width: '300px', marginRight: '15px' }}
+                style={{ flexGrow: 1, marginRight: '15px' }} /* Allow title to grow */
             />
              <label htmlFor="lessonBankOrder" style={{ marginRight: '5px' }}>Ordem (Opcional):</label>
              <input

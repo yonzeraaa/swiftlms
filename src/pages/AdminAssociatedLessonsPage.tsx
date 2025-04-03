@@ -203,7 +203,7 @@ const AdminAssociatedLessonsPage: React.FC = () => {
                                 disabled={saving || loading}
                             />
                             <label htmlFor={`assoc-lesson-${lesson.id}`}>
-                                {lesson.number ? `Aula ${lesson.number}: ` : ''}{lesson.title}
+                                {lesson.title} {/* Removed number display */}
                             </label>
                         </div>
                     ))
