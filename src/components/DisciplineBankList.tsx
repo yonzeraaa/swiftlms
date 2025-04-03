@@ -23,7 +23,7 @@ const DisciplineBankListComponent: React.ForwardRefRenderFunction<DisciplineBank
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingDiscipline, setEditingDiscipline] = useState<Discipline | null>(null); // For modal
+  // const [editingDiscipline, setEditingDiscipline] = useState<Discipline | null>(null); // TODO: For modal
 
   const fetchDisciplines = useCallback(async () => {
     setLoading(true);
@@ -75,13 +75,17 @@ const DisciplineBankListComponent: React.ForwardRefRenderFunction<DisciplineBank
     }
   };
 
+  /* // TODO: Implement Edit Modal Logic
   const handleCloseModal = () => {
     setEditingDiscipline(null);
   };
+  */
 
+  /*
   const handleDisciplineUpdated = () => {
     fetchDisciplines();
   };
+  */
 
 
   if (loading) return <div>Carregando disciplinas...</div>; // TODO: Use styled loading message

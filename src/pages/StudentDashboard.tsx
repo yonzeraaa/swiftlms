@@ -14,7 +14,7 @@ interface CourseWithProgress extends BaseCourse {
     totalLessons: number;
     viewedLessons: number;
 }
-interface DisciplineId { id: string; }
+// Removed unused DisciplineId interface definition
 interface LessonId { id: string; }
 
 interface LastViewedInfo {

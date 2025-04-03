@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react'; // Import useRef
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../services/supabaseClient';
 import DisciplineList, { DisciplineListHandle } from '../components/DisciplineList'; // Import DisciplineList and handle
-import AddDisciplineForm from '../components/AddDisciplineForm'; // Import the form
+// import AddDisciplineForm from '../components/AddDisciplineForm'; // No longer adding disciplines here
 import styles from './AdminDisciplinesPage.module.css'; // Import the CSS module
 
 interface Course {
@@ -50,9 +50,9 @@ const AdminDisciplinesPage: React.FC = () => {
         fetchCourse();
     }, [courseId]);
 
-    const handleDisciplineAdded = () => {
-        disciplineListRef.current?.refreshDisciplines();
-    };
+    // const handleDisciplineAdded = () => {
+    //     disciplineListRef.current?.refreshDisciplines();
+    // };
 
     if (loading) return <div>Carregando detalhes do curso...</div>;
     if (error) return <div style={{ color: 'red' }}>Erro: {error}</div>;
@@ -65,9 +65,12 @@ const AdminDisciplinesPage: React.FC = () => {
             <Link to={`/admin/courses/${course.id}/enrollments`} style={{ marginLeft: '15px' }}> {/* Link to enrollments page */}
                 <button className={styles.enrollButton}>Inscrever Alunos</button>
             </Link>
-            <p style={{ marginTop: '10px' }}>Adicione, edite e organize as disciplinas para este curso.</p> {/* Add margin */}
+            {/* TODO: Update description for managing *associated* disciplines */}
+            <p style={{ marginTop: '10px' }}>Visualize e gerencie as disciplinas associadas a este curso.</p> {/* Add margin */}
             <hr />
-            <AddDisciplineForm courseId={course.id} onDisciplineAdded={handleDisciplineAdded} /> {/* Render the form */}
+            {/* <AddDisciplineForm courseId={course.id} onDisciplineAdded={handleDisciplineAdded} /> */} {/* REMOVED Add form */}
+            {/* TODO: Add UI to associate existing disciplines from the bank */}
+            <p>[Placeholder: UI para associar/desassociar disciplinas do banco a este curso]</p>
             <hr />
             <DisciplineList courseId={course.id} ref={disciplineListRef} /> {/* Render DisciplineList */}
         </div>

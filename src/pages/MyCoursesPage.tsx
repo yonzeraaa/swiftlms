@@ -18,10 +18,7 @@ interface CourseWithProgress extends BaseCourse {
     viewedLessons: number;
 }
 
-// Define the shape for discipline IDs
-interface DisciplineId {
-    id: string;
-}
+// Removed unused DisciplineId interface definition
 
 // Define the shape for lesson IDs
 interface LessonId {

@@ -1,5 +1,5 @@
 // src/components/EditCourseModal.tsx (Updated with Activity Logging)
-import React, { useState, useEffect, useCallback } from 'react'; // Import useCallback
+import React, { useState, useEffect } from 'react'; // Removed unused useCallback
 import { supabase } from '../services/supabaseClient';
 import { generateCourseCode } from '../utils/courseUtils';
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
