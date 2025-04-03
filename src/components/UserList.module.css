@@ -136,26 +136,6 @@
   border-color: #c9302c;
 }
 
-.viewAsButton {
-  padding: 0.3rem 0.7rem;
-  font-size: 0.8rem;
-  border-radius: var(--border-radius-sm);
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all var(--transition-fast);
-  margin-left: 0.5rem; /* Match other buttons */
-  background-color: var(--color-info); /* Use info color */
-  color: var(--color-text-light);
-  border-color: var(--color-info);
-}
-.viewAsButton:hover {
-  background-color: #31b0d5; /* Darker info */
-  border-color: #31b0d5;
-}
-
-
-
-
 /* --- Responsive Table Styles --- */
 @media (max-width: 768px) {
   .userTable thead {
