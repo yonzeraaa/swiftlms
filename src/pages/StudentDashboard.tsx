@@ -15,7 +15,7 @@ interface CourseWithProgress extends BaseCourse {
     viewedLessons: number;
 }
 // Removed unused DisciplineId interface definition
-interface LessonId { id: string; }
+// interface LessonId { id: string; } // Removed as it's no longer used directly here
 
 interface LastViewedInfo {
     courseId: string;

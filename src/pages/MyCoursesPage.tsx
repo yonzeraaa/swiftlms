@@ -20,10 +20,10 @@ interface CourseWithProgress extends BaseCourse {
 
 // Removed unused DisciplineId interface definition
 
-// Define the shape for lesson IDs
-interface LessonId {
-    id: string;
-}
+// Define the shape for lesson IDs (Removed as it's no longer used directly here)
+// interface LessonId {
+//     id: string;
+// }
 
 const MyCoursesPage: React.FC = () => {
     const { user } = useAuth();
