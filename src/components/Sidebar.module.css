@@ -44,6 +44,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   box-sizing: border-box; /* Ensure padding is included in width */
+  /* Add button resets */
+  background: none;
+  border: none;
+  font: inherit; /* Use the font from the parent */
+  color: inherit; /* Use the color from the parent */
+  cursor: pointer;
+  text-align: left; /* Align text like links */
+  width: 100%; /* Ensure button takes full width */
 }
 
 .navLink:hover {
