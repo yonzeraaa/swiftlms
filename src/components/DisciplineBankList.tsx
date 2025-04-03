@@ -122,7 +122,7 @@ const DisciplineBankListComponent: React.ForwardRefRenderFunction<DisciplineBank
           {disciplines.map(discipline => (
             <li key={discipline.id} className={styles.listItem}>
               <div className={styles.contentGroup}>
-                <strong>{discipline.number ? `${discipline.number}. ` : ''}{discipline.title}</strong>
+                <strong>{discipline.title}</strong> {/* Removed number display */}
                 {/* Optional: Display description or other details */}
                 {/* <p>{discipline.description || 'Sem descrição.'}</p> */}
                 <small> (Ordem: {discipline.order ?? 'N/A'})</small>

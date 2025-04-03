@@ -316,7 +316,7 @@ const CourseViewPage: React.FC = () => {
             ) : (
                 disciplines.map(discipline => (
                     <div key={discipline.id} className={styles.disciplineSection}>
-                        <h2>{discipline.number ? `${discipline.number}. ` : ''}{discipline.title}</h2>
+                        <h2>{discipline.title}</h2> {/* Removed number display */}
                         {discipline.lessons.length === 0 ? (
                             <p className={styles.noLessons}>Nenhuma aula encontrada para esta disciplina.</p>
                         ) : (

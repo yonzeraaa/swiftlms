@@ -19,7 +19,7 @@ interface EditDisciplineModalProps {
 
 const EditDisciplineModal: React.FC<EditDisciplineModalProps> = ({ discipline, onClose, onDisciplineUpdated }) => {
     const [title, setTitle] = useState('');
-    const [number, setNumber] = useState('');
+    // const [number, setNumber] = useState(''); // Removed number state
     const [order, setOrder] = useState<number | ''>('');
     const [description, setDescription] = useState(''); // Add state for description if needed
     const [loading, setLoading] = useState(false);
@@ -29,37 +29,24 @@ const EditDisciplineModal: React.FC<EditDisciplineModalProps> = ({ discipline, o
     useEffect(() => {
         if (discipline) {
             setTitle(discipline.title);
-            setNumber(discipline.number || '');
+            // setNumber(discipline.number || ''); // Removed number pre-fill
             setOrder(discipline.order ?? '');
             setDescription(discipline.description || ''); // Pre-fill description
             setError(null); // Clear previous errors
         } else {
             // Clear form if no discipline is selected (modal closed)
             setTitle('');
-            setNumber('');
+            // setNumber(''); // Removed number clear
             setOrder('');
             setDescription('');
             setError(null);
         }
     }, [discipline]);
 
-    // Helper to format number (copied from AddDisciplineForm)
-    const formatNumber = (numStr: string): string => {
-        const num = parseInt(numStr, 10);
-        if (isNaN(num) || num <= 0) return '';
-        return num < 10 ? `0${num}` : `${num}`;
-    };
-
-    const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawValue = e.target.value;
-        if (/^\d*$/.test(rawValue)) {
-            setNumber(rawValue);
-        }
-    };
-
-    const handleNumberBlur = () => {
-        setNumber(formatNumber(number));
-    };
+    // Removed number formatting and handling functions
+    // const formatNumber = ...
+    // const handleNumberChange = ...
+    // const handleNumberBlur = ...
 
     const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -73,7 +60,7 @@ const EditDisciplineModal: React.FC<EditDisciplineModalProps> = ({ discipline, o
         setLoading(true);
         setError(null);
 
-        const formattedNumber = formatNumber(number);
+        // const formattedNumber = formatNumber(number); // Removed number formatting
         const finalOrder = order === '' ? null : order;
         const trimmedTitle = title.trim();
         const trimmedDescription = description.trim() || null; // Handle description
@@ -83,16 +70,13 @@ const EditDisciplineModal: React.FC<EditDisciplineModalProps> = ({ discipline, o
             setLoading(false);
             return;
         }
-        if (!formattedNumber) {
-            setError('O número da disciplina é obrigatório (ex: 01, 02).');
-            setLoading(false);
-            return;
-        }
+        // Removed validation for number
+        // if (!formattedNumber) { ... }
 
         try {
             const updateData = {
                 title: trimmedTitle,
-                number: formattedNumber,
+                number: null, // Set number to null or keep existing if needed
                 order: finalOrder,
                 description: trimmedDescription, // Include description
                 // updated_at will be handled by trigger if exists
@@ -129,20 +113,7 @@ const EditDisciplineModal: React.FC<EditDisciplineModalProps> = ({ discipline, o
                 <form onSubmit={handleSubmit}>
                     {/* Form Row: Number and Title */}
                     <div className={styles.formRow}>
-                        <label htmlFor="editDisciplineNumber">Número:</label>
-                        <input
-                            type="text"
-                            id="editDisciplineNumber"
-                            value={number}
-                            onChange={handleNumberChange}
-                            onBlur={handleNumberBlur}
-                            required
-                            disabled={loading}
-                            placeholder="Ex: 01"
-                            pattern="\d+"
-                            title="Digite o número da disciplina (ex: 1, 2, 10)"
-                            style={{ width: '60px', marginRight: '10px' }}
-                        />
+                        {/* Removed Number Input */}
                         <label htmlFor="editDisciplineTitle">Título:</label>
                         <input
                             type="text"

@@ -10,31 +10,16 @@ interface AddDisciplineFormProps {
 
 const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ onDisciplineCreated }) => {
   const [title, setTitle] = useState('');
-  const [number, setNumber] = useState(''); // Store as string "01", "02" etc.
+  // const [number, setNumber] = useState(''); // Removed number state
   const [order, setOrder] = useState<number | ''>(''); // Optional explicit order
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Helper to format number (e.g., 1 -> "01", 10 -> "10")
-  const formatNumber = (numStr: string): string => {
-    const num = parseInt(numStr, 10);
-    if (isNaN(num) || num <= 0) return '';
-    return num < 10 ? `0${num}` : `${num}`;
-  };
-
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    // Allow only digits
-    if (/^\d*$/.test(rawValue)) {
-        setNumber(rawValue); // Store raw input temporarily
-    }
-  };
-
-  const handleNumberBlur = () => {
-    // Format on blur
-    setNumber(formatNumber(number));
-  };
+  // Removed number formatting and handling functions
+  // const formatNumber = ...
+  // const handleNumberChange = ...
+  // const handleNumberBlur = ...
 
    const handleOrderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -48,7 +33,7 @@ const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ onDisciplineCreat
     setError(null);
     setSuccess(null);
 
-    const formattedNumber = formatNumber(number); // Ensure formatting before submit
+    // const formattedNumber = formatNumber(number); // Removed number formatting
     const finalOrder = order === '' ? null : order; // Handle empty string for order
 
     if (!title.trim()) {
@@ -56,11 +41,8 @@ const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ onDisciplineCreat
       setLoading(false);
       return;
     }
-     if (!formattedNumber) {
-      setError('O número da disciplina é obrigatório (ex: 01, 02).');
-      setLoading(false);
-      return;
-    }
+    // Removed validation for number
+    // if (!formattedNumber) { ... }
 
 
     try {
@@ -70,15 +52,15 @@ const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ onDisciplineCreat
         .insert([{
             // course_id is removed as disciplines are independent now
             title: title.trim(),
-            number: formattedNumber, // Use formatted number
+            number: null, // Set number to null or remove if DB default is null
             order: finalOrder // Use final order value
         }]);
 
       if (insertError) throw insertError;
 
-      setSuccess(`Disciplina "${title.trim()}" (${formattedNumber}) adicionada com sucesso!`);
+      setSuccess(`Disciplina "${title.trim()}" adicionada com sucesso!`); // Removed number from success message
       setTitle(''); // Clear form
-      setNumber('');
+      // setNumber(''); // Removed number clearing
       setOrder('');
       onDisciplineCreated(); // Trigger callback in parent
     } catch (err: any) {
@@ -94,20 +76,7 @@ const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ onDisciplineCreat
       <h3>Adicionar Nova Disciplina</h3>
       <form onSubmit={handleSubmit}>
         <div className={styles.formRow}> {/* Apply row style */}
-          <label htmlFor="disciplineNumber">Número:</label>
-          <input
-            type="text" // Use text to allow leading zero input
-            id="disciplineNumber"
-            value={number}
-            onChange={handleNumberChange}
-            onBlur={handleNumberBlur} // Format on blur
-            required
-            disabled={loading}
-            placeholder="Ex: 01"
-            pattern="\d+" // Basic pattern for digits
-            title="Digite o número da disciplina (ex: 1, 2, 10)"
-            style={{ width: '50px', marginRight: '10px' }}
-          />
+          {/* Removed Number Input */}
            <label htmlFor="disciplineTitle">Título:</label>
           <input
             type="text"
@@ -117,7 +86,7 @@ const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ onDisciplineCreat
             required
             disabled={loading}
             placeholder="Ex: Introdução"
-            style={{ width: '300px', marginRight: '10px' }}
+            style={{ flexGrow: 1, marginRight: '10px' }} /* Allow title to grow */
           />
            <label htmlFor="disciplineOrder">Ordem (Opcional):</label>
            <input

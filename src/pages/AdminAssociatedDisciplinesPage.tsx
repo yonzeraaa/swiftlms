@@ -203,7 +203,7 @@ const AdminAssociatedDisciplinesPage: React.FC = () => {
                                 disabled={saving || loading}
                             />
                             <label htmlFor={`assoc-disc-${discipline.id}`}>
-                                {discipline.number ? `${discipline.number}. ` : ''}{discipline.title}
+                                {discipline.title} {/* Removed number display */}
                             </label>
                         </div>
                     ))
