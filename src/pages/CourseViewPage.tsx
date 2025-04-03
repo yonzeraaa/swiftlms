@@ -250,6 +250,7 @@ const CourseViewPage: React.FC = () => {
         };
 
         // If already marked in state, just save to localStorage
+        const alreadyViewedInState = viewedLessonIds.has(lessonId); // Re-added variable definition
         if (alreadyViewedInState) {
             saveLastViewed();
             return;
@@ -279,7 +280,7 @@ const CourseViewPage: React.FC = () => {
         } catch (err: any) {
             console.error(`Error marking lesson ${lessonId} as viewed:`, err);
         }
-    }, [user, viewedLessonIds, courseData, disciplines]); // Added courseData and disciplines as dependencies
+    }, [user, viewedLessonIds, courseData, disciplines]); // Dependencies remain correct
 
     // Toggle selected lesson
     const handleLessonClick = (lessonId: string) => {
