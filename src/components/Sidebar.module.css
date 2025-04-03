@@ -31,14 +31,19 @@
 .navLink {
   display: flex; /* Use flex for icon alignment later */
   align-items: center;
-  padding: 0.8rem 1.5rem; /* Adjust padding */
-  margin: 0.2rem 0.8rem; /* Add horizontal margin for visual separation */
+  padding: 0.8rem 1rem; /* Reduced horizontal padding */
+  margin: 0.2rem 0.5rem; /* Reduced horizontal margin */
   color: rgba(255, 255, 255, 0.75); /* Base link color */
   text-decoration: none;
   font-size: 0.95rem;
   border-radius: var(--border-radius-md); /* Rounded corners */
   transition: background-color var(--transition-fast), color var(--transition-fast);
   position: relative; /* For pseudo-elements if needed */
+  /* Prevent text wrapping and show ellipsis for overflow */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box; /* Ensure padding is included in width */
 }
 
 .navLink:hover {
