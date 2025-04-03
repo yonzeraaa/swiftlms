@@ -6,33 +6,50 @@ import styles from './Sidebar.module.css';
 // Define props type to accept className and toggle function
 interface SidebarProps {
   className?: string;
-  onLinkClick?: () => void; // Function to call when a link is clicked (e.g., close sidebar)
-  // Removed viewMode props
+  onLinkClick?: () => void;
+  // Add props for view mode
+  viewMode: 'admin' | 'student';
+  isAdmin: boolean;
+  onToggleViewMode: () => void;
 }
 
-// Reverted destructuring
-const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick }) => {
-  // Get roles from useAuth again
-  const { isAdmin, isStudent } = useAuth();
+// Destructure new props
+const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, viewMode, isAdmin, onToggleViewMode }) => {
+  // No longer need isAdmin from useAuth
+  const { isStudent } = useAuth(); // Still need isStudent for non-admin users
 
   // Define links based on role
   let navLinks: { path: string; label: string }[] = [];
 
-  // Reverted link definition logic
+  // Determine links based on admin status and view mode
   if (isAdmin) {
+    if (viewMode === 'student') {
+      // Admin viewing as student: Show student links
+      navLinks = [
+        // Use NavLink for consistency, but might not navigate correctly within Layout's conditional render
+        // Consider using buttons that call a function to change the rendered component in Layout if needed
+        { path: '#', label: 'Meu Painel (Visualização)' }, // Using '#' as placeholder path
+        { path: '#', label: 'Meus Cursos (Visualização)' },
+        // Add other relevant student links for testing if needed
+      ];
+    } else {
+      // Admin viewing admin panel: Show admin links + toggle button
+      navLinks = [
+        { path: '/admin', label: 'Visão Geral' },
+        { path: '/admin/students', label: 'Alunos' },
+        { path: '/admin/courses', label: 'Cursos' },
+        { path: '/admin/disciplines-bank', label: 'Banco de Disciplinas' },
+        { path: '/admin/lessons-bank', label: 'Banco de Aulas' },
+        // Add other admin links...
+      ];
+      // Note: The toggle button will be added separately below
+    }
+  } else if (isStudent) {
+    // Regular student view
     navLinks = [
-      { path: '/admin', label: 'Visão Geral' },
-      { path: '/admin/students', label: 'Alunos' },
-      { path: '/admin/courses', label: 'Cursos' },
-      { path: '/admin/disciplines-bank', label: 'Banco de Disciplinas' },
-      { path: '/admin/lessons-bank', label: 'Banco de Aulas' },
-      // { path: '/admin/settings', label: 'Configurações (Admin)' },
-    ];
-  } else if (isStudent) { // isStudent check uses 'aluno' internally now
-    navLinks = [
-      { path: '/student', label: 'Meu Painel' }, // Link to main student dashboard
-      { path: '/student/courses', label: 'Meus Cursos' }, // Placeholder
-      // { path: '/student/profile', label: 'Meu Perfil' }, // Placeholder
+      { path: '/student', label: 'Meu Painel' },
+      { path: '/student/courses', label: 'Meus Cursos' },
+      // Add other student links...
     ];
   }
 
@@ -57,7 +74,15 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick }) => {
             </li>
           ))}
 
-          {/* Removed "View as Student" toggle button */}
+          {/* Add "View as Student" toggle button for admins in admin view mode */}
+          {isAdmin && viewMode === 'admin' && (
+            <li>
+              {/* Use a button styled as a link */}
+              <button onClick={onToggleViewMode} className={styles.navLink} style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'left', cursor: 'pointer', padding: '0.8rem 1.5rem', margin: '0.2rem 0.8rem' }}>
+                Visualizar como Aluno
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
     </aside>
