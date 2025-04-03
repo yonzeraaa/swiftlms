@@ -51,10 +51,20 @@ const AdminViewStudentDashboard: React.FC = () => {
                 .from('profiles')
                 .select('id, email, full_name')
                 .eq('id', studentId)
-                .single();
+                .maybeSingle(); // Use maybeSingle instead of single to return null if not found
 
-            if (profileError) throw new Error(`Erro ao buscar perfil do aluno: ${profileError.message}`);
-            if (!profileData) throw new Error("Aluno não encontrado.");
+            // Handle potential error from the query itself
+            if (profileError) {
+                // Don't throw if the error is just "No rows found" from maybeSingle, handle that below
+                if (profileError.code !== 'PGRST116') { // PGRST116 = "Searched for a single row, but found no rows"
+                    throw new Error(`Erro ao buscar perfil do aluno: ${profileError.message}`);
+                }
+                // If error is PGRST116, profileData will be null, handled next
+            }
+            // Handle the case where no profile was found (profileData is null)
+            if (!profileData) {
+                throw new Error(`Aluno com ID ${studentId} não encontrado na tabela de perfis.`);
+            }
             setStudentProfile(profileData);
 
             // 2. Fetch enrollments for the student
