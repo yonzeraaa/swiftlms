@@ -6,16 +6,25 @@ import styles from './Sidebar.module.css';
 // Define props type to accept className and toggle function
 interface SidebarProps {
   className?: string;
-  onLinkClick?: () => void; // Function to call when a link is clicked (e.g., close sidebar)
-  // Removed viewMode props
+  onLinkClick?: () => void;
+  // Add props for view mode
+  viewMode: 'admin' | 'student';
+  isAdmin: boolean;
+  onToggleViewMode: () => void;
 }
 
-// Reverted destructuring
-const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick }) => {
-  // Get roles from useAuth again
-  const { isAdmin, isStudent } = useAuth();
+// Destructure new props
+const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, viewMode, isAdmin, onToggleViewMode }) => {
+  // No longer need isAdmin from useAuth
+  const { isStudent } = useAuth(); // Still need isStudent for non-admin users
 
   // Define links based on role
+  // Define student view links first, so it's available in the scope below
+  const studentViewLinks = [
+    { label: 'Meu Painel (Visualização)' },
+    { label: 'Meus Cursos (Visualização)' },
+    // Add other relevant student links for testing if needed
+  ];
   let navLinks: { path: string; label: string }[] = [];
 
   // Reverted link definition logic
@@ -41,23 +50,41 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick }) => {
     <aside className={`${styles.sidebar} ${className || ''}`}>
       <nav>
         <ul>
-          {navLinks.map((link) => (
+          {/* Render normal NavLinks if not in student view mode */}
+          {viewMode === 'admin' && navLinks.map((link) => (
             <li key={link.path}>
               <NavLink
                 to={link.path}
                 className={({ isActive }) =>
                   isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
                 }
-                // Use end prop for the main dashboard links to avoid partial matching
                 end={link.path === '/admin' || link.path === '/student'}
-                onClick={onLinkClick} // Call the passed function on click
+                onClick={onLinkClick} // Pass click handler for closing sidebar
               >
                 {link.label}
               </NavLink>
             </li>
-          ))}
+          ))} {/* End map for admin navLinks */}
 
-          {/* Removed "View as Student" toggle button */}
+          {/* Render non-clickable links if admin is in student view mode */}
+          {isAdmin && viewMode === 'student' && studentViewLinks.map((link) => (
+            <li key={link.label}>
+              {/* Use a div styled like a navLink but without navigation */}
+              <div className={styles.navLink} style={{ cursor: 'default' }}>
+                {link.label}
+              </div>
+            </li>
+          ))} {/* End map for studentViewLinks */}
+          {/* Add "View as Student" toggle button for admins in admin view mode */}
+          {isAdmin && viewMode === 'admin' && (
+            <li>
+              {/* Use a button styled as a link */}
+              {/* Apply navLink class directly for consistent styling */}
+              <button onClick={onToggleViewMode} className={styles.navLink}> {/* Removed all inline styles */}
+                Visualizar como Aluno
+              </button>
+            </li>
+          )}
         </ul>
       </nav>
     </aside>
