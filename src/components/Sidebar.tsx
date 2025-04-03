@@ -35,7 +35,6 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick }) => {
       // { path: '/student/profile', label: 'Meu Perfil' }, // Placeholder
     ];
   }
-  }
 
   return (
     // Combine base sidebar class with the passed className
