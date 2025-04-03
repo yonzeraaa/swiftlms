@@ -22,7 +22,7 @@ interface UserProfile { // Para o perfil do aluno visualizado
 
 const AdminViewStudentDashboard: React.FC = () => {
     const { studentId } = useParams<{ studentId: string }>();
-    const { user: adminUser, isAdmin } = useAuth(); // Get current admin user info
+    const { isAdmin } = useAuth(); // Get current admin user info (removed unused adminUser)
     const [studentProfile, setStudentProfile] = useState<UserProfile | null>(null);
     const [summaryCourses, setSummaryCourses] = useState<CourseWithProgress[]>([]);
     const [loading, setLoading] = useState(true);
