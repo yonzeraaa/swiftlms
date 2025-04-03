@@ -28,13 +28,13 @@ interface Enrollment {
 const AdminEnrollmentsPage: React.FC = () => {
     const { courseId } = useParams<{ courseId: string }>();
     const [course, setCourse] = useState<Course | null>(null);
-    const [allStudents, setAllStudents] = useState<UserProfile[]>([]);
-    const [enrolledStudentIds, setEnrolledStudentIds] = useState<Set<string>>(new Set());
+    const [allUsers, setAllUsers] = useState<UserProfile[]>([]); // Renamed state variable
+    const [enrolledUserIds, setEnrolledUserIds] = useState<Set<string>>(new Set()); // Renamed state variable
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [saving, setSaving] = useState<Record<string, boolean>>({}); // Track saving state per student
+    const [saving, setSaving] = useState<Record<string, boolean>>({}); // Track saving state per user
 
-    // Fetch Course Details, All Students, and Current Enrollments
+    // Fetch Course Details, All Users, and Current Enrollments
     const fetchData = useCallback(async () => {
         if (!courseId) {
             setError("ID do curso não encontrado na URL.");
@@ -61,23 +61,23 @@ const AdminEnrollmentsPage: React.FC = () => {
             if (!courseResult.data) throw new Error("Curso não encontrado.");
             setCourse(courseResult.data);
 
-            // Process Students Result
-            if (studentsResult.error) throw new Error(`Falha ao buscar alunos: ${studentsResult.error.message}`);
-            // Filter only students (role === 'aluno') from the result
-            const students = (studentsResult.data as UserProfile[] || []).filter(u => u.role === 'aluno');
-            setAllStudents(students);
+            // Process Users Result
+            if (studentsResult.error) throw new Error(`Falha ao buscar usuários: ${studentsResult.error.message}`);
+            // No longer filter by role, include all users (admins and students)
+            const users = (studentsResult.data as UserProfile[] || []);
+            setAllUsers(users); // Update state with all users
 
             // Process Enrollments Result
             if (enrollmentsResult.error) throw new Error(`Falha ao buscar inscrições: ${enrollmentsResult.error.message}`);
             const enrolledIds = new Set(enrollmentsResult.data?.map(e => e.user_id) || []);
-            setEnrolledStudentIds(enrolledIds);
+            setEnrolledUserIds(enrolledIds); // Update state with enrolled user IDs
 
         } catch (err: any) {
             console.error("Error fetching enrollment data:", err);
             setError(err.message || 'Falha ao carregar dados de inscrição.');
             setCourse(null);
-            setAllStudents([]);
-            setEnrolledStudentIds(new Set());
+            setAllUsers([]); // Clear all users state on error
+            setEnrolledUserIds(new Set()); // Clear enrolled IDs state on error
         } finally {
             setLoading(false);
         }
@@ -88,44 +88,47 @@ const AdminEnrollmentsPage: React.FC = () => {
     }, [fetchData]);
 
     // Handle checkbox change (enroll/unenroll)
-    const handleEnrollmentChange = async (studentId: string, isCurrentlyEnrolled: boolean) => {
-        setSaving(prev => ({ ...prev, [studentId]: true })); // Set saving state for this student
+    // Renamed parameter from studentId to userId for clarity
+    const handleEnrollmentChange = async (userId: string, isCurrentlyEnrolled: boolean) => {
+        setSaving(prev => ({ ...prev, [userId]: true })); // Set saving state for this user
         setError(null); // Clear previous errors
 
         try {
             if (isCurrentlyEnrolled) {
                 // Unenroll: Delete from enrollments table
-                console.log(`Attempting to unenroll student ${studentId} from course ${courseId}`);
+                // Unenroll: Delete from enrollments table
+                console.log(`Attempting to unenroll user ${userId} from course ${courseId}`);
                 const { error: deleteError } = await supabase
                     .from('enrollments')
                     .delete()
-                    .eq('user_id', studentId)
-                    .eq('course_id', courseId); // Ensure both match
+                    .eq('user_id', userId) // Use userId
+                    .eq('course_id', courseId);
 
                 if (deleteError) throw deleteError;
-                console.log(`Student ${studentId} unenrolled successfully.`);
-                setEnrolledStudentIds(prev => {
+                console.log(`User ${userId} unenrolled successfully.`);
+                setEnrolledUserIds(prev => { // Update enrolledUserIds state
                     const newSet = new Set(prev);
-                    newSet.delete(studentId);
+                    newSet.delete(userId);
                     return newSet;
                 });
             } else {
                 // Enroll: Insert into enrollments table
-                 console.log(`Attempting to enroll student ${studentId} in course ${courseId}`);
+                // Enroll: Insert into enrollments table
+                 console.log(`Attempting to enroll user ${userId} in course ${courseId}`);
                 const { error: insertError } = await supabase
                     .from('enrollments')
-                    .insert({ user_id: studentId, course_id: courseId });
+                    .insert({ user_id: userId, course_id: courseId }); // Use userId
 
                 if (insertError) throw insertError;
-                 console.log(`Student ${studentId} enrolled successfully.`);
-                setEnrolledStudentIds(prev => new Set(prev).add(studentId));
+                 console.log(`User ${userId} enrolled successfully.`);
+                setEnrolledUserIds(prev => new Set(prev).add(userId)); // Update enrolledUserIds state
             }
         } catch (err: any) {
-            console.error(`Error updating enrollment for student ${studentId}:`, err);
-            setError(`Falha ao ${isCurrentlyEnrolled ? 'remover inscrição' : 'inscrever'} aluno: ${err.message}`);
+            console.error(`Error updating enrollment for user ${userId}:`, err);
+            setError(`Falha ao ${isCurrentlyEnrolled ? 'remover inscrição' : 'inscrever'} usuário: ${err.message}`);
             // Revert UI state on error? Maybe not necessary if we refetch or show error clearly.
         } finally {
-            setSaving(prev => ({ ...prev, [studentId]: false })); // Clear saving state
+            setSaving(prev => ({ ...prev, [userId]: false })); // Clear saving state for this user
         }
     };
 
@@ -139,28 +142,32 @@ const AdminEnrollmentsPage: React.FC = () => {
     return (
         <div className={styles.pageContainer}> {/* Style already applied */}
             <Link to={backToDisciplinesUrl} className={styles.backLink}>&larr; Voltar para Disciplinas</Link> {/* Style already applied */}
-            <h1>Inscrever Alunos - {course.title} ({course.code})</h1>
-            <p>Marque os alunos que devem ser inscritos neste curso.</p>
+            <h1>Inscrever Usuários - {course.title} ({course.code})</h1>
+            <p>Marque os usuários (alunos e administradores) que devem ser inscritos neste curso.</p>
 
             {/* Error message display handled by the conditional return above */}
 
             <div className={styles.studentList}> {/* Style already applied */}
-                {allStudents.length === 0 && <p>Nenhum aluno encontrado no sistema.</p>}
-                {allStudents.map(student => {
-                    const isEnrolled = enrolledStudentIds.has(student.id);
-                    const isSaving = saving[student.id] || false;
+                {allUsers.length === 0 && <p>Nenhum usuário encontrado no sistema.</p>}
+                {allUsers.map(userItem => { // Renamed map variable
+                    const isEnrolled = enrolledUserIds.has(userItem.id); // Check enrolledUserIds
+                    const isSaving = saving[userItem.id] || false;
                     return (
-                        <div key={student.id} className={styles.studentItem}> {/* Style already applied */}
+                        <div key={userItem.id} className={styles.studentItem}> {/* Keep existing style name for now */}
                             <input
                                 type="checkbox"
-                                id={`enroll-${student.id}`}
+                                id={`enroll-${userItem.id}`}
                                 checked={isEnrolled}
-                                onChange={() => handleEnrollmentChange(student.id, isEnrolled)}
+                                onChange={() => handleEnrollmentChange(userItem.id, isEnrolled)}
                                 disabled={isSaving}
                             />
-                            <label htmlFor={`enroll-${student.id}`} className={isSaving ? styles.savingLabel : ''}> {/* Style already applied */}
-                                {student.full_name || student.email || student.id}
-                                {isSaving && <span className={styles.savingIndicator}> (Salvando...)</span>} {/* Style already applied */}
+                            <label htmlFor={`enroll-${userItem.id}`} className={isSaving ? styles.savingLabel : ''}>
+                                {userItem.full_name || userItem.email || userItem.id}
+                                {/* Display role for clarity */}
+                                <span style={{ marginLeft: '10px', fontSize: '0.8em', color: 'grey' }}>
+                                    ({userItem.role === 'admin' ? 'Admin' : userItem.role === 'aluno' ? 'Aluno' : userItem.role})
+                                </span>
+                                {isSaving && <span className={styles.savingIndicator}> (Salvando...)</span>}
                             </label>
                         </div>
                     );

@@ -14,8 +14,8 @@ const AdminDisciplinesBankPage: React.FC = () => {
 
   return (
     <div className={styles.pageContainer}>
-      <h1>Banco de Disciplinas</h1>
-      <p>Crie, edite e gerencie todas as disciplinas reutilizáveis da plataforma.</p>
+      <h1>Disciplinas</h1> {/* Renamed */}
+      <p>Crie, edite e gerencie todas as disciplinas da plataforma.</p> {/* Adjusted text */}
       <hr />
       {/* TODO: Render modified AddDisciplineForm */}
       {/* Pass the renamed callback prop */}

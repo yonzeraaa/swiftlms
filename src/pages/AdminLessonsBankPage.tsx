@@ -13,8 +13,8 @@ const AdminLessonsBankPage: React.FC = () => {
 
   return (
     <div className={styles.pageContainer}>
-      <h1>Banco de Aulas</h1>
-      <p>Crie, edite e gerencie todas as aulas reutilizáveis da plataforma.</p>
+      <h1>Aulas</h1> {/* Renamed */}
+      <p>Crie, edite e gerencie todas as aulas da plataforma.</p> {/* Adjusted text */}
       <hr />
       {/* Formulário para adicionar aulas ao banco */}
       <AddLessonBankForm onLessonCreated={handleLessonAction} />

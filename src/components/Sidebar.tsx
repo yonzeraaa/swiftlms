@@ -38,8 +38,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, viewMode, isA
         { path: '/admin', label: 'Visão Geral' },
         { path: '/admin/students', label: 'Alunos' },
         { path: '/admin/courses', label: 'Cursos' },
-        { path: '/admin/disciplines-bank', label: 'Banco de Disciplinas' },
-        { path: '/admin/lessons-bank', label: 'Banco de Aulas' },
+        { path: '/admin/disciplines-bank', label: 'Disciplinas' }, // Renamed
+        { path: '/admin/lessons-bank', label: 'Aulas' }, // Renamed
         // Add other admin links...
       ];
       // Note: The toggle button will be added separately below

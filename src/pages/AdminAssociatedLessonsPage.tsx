@@ -178,7 +178,7 @@ const AdminAssociatedLessonsPage: React.FC = () => {
     return (
         <div className={styles.pageContainer}>
             {/* Update back link to point to the discipline bank */}
-            <Link to="/admin/disciplines-bank" className={styles.backLink}>&larr; Voltar para Banco de Disciplinas</Link>
+            <Link to="/admin/disciplines-bank" className={styles.backLink}>&larr; Voltar para Disciplinas</Link> {/* Renamed */}
             {discipline ? (
                 <h1>Gerenciar Aulas Associadas - {discipline.number ? `${discipline.number}. ` : ''}{discipline.title}</h1>
             ) : (
