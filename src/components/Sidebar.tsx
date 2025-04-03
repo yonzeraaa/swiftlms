@@ -20,18 +20,19 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, viewMode, isA
 
   // Define links based on role
   let navLinks: { path: string; label: string }[] = [];
+  // Define student view links outside the if block
+  const studentViewLinks = [
+    { label: 'Meu Painel (Visualização)' },
+    { label: 'Meus Cursos (Visualização)' },
+    // Add other relevant student links for testing if needed
+  ];
 
   // Determine links based on admin status and view mode
   if (isAdmin) {
     if (viewMode === 'student') {
-      // Admin viewing as student: Show student links
-      navLinks = [
-        // Use NavLink for consistency, but might not navigate correctly within Layout's conditional render
-        // Consider using buttons that call a function to change the rendered component in Layout if needed
-        { path: '#', label: 'Meu Painel (Visualização)' }, // Using '#' as placeholder path
-        { path: '#', label: 'Meus Cursos (Visualização)' },
-        // Add other relevant student links for testing if needed
-      ];
+      // Admin viewing as student: Use the pre-defined studentViewLinks
+      // navLinks remains empty as we render studentViewLinks directly below
+      navLinks = [];
     } else {
       // Admin viewing admin panel: Show admin links + toggle button
       navLinks = [
@@ -58,19 +59,29 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, viewMode, isA
     <aside className={`${styles.sidebar} ${className || ''}`}>
       <nav>
         <ul>
-          {navLinks.map((link) => (
+          {/* Render normal NavLinks if not in student view mode */}
+          {viewMode === 'admin' && navLinks.map((link) => (
             <li key={link.path}>
               <NavLink
                 to={link.path}
                 className={({ isActive }) =>
                   isActive ? `${styles.navLink} ${styles.active}` : styles.navLink
                 }
-                // Use end prop for the main dashboard links to avoid partial matching
                 end={link.path === '/admin' || link.path === '/student'}
-                onClick={onLinkClick} // Call the passed function on click
+                onClick={onLinkClick}
               >
                 {link.label}
               </NavLink>
+            </li>
+          ))}
+
+          {/* Render non-clickable links if admin is in student view mode */}
+          {isAdmin && viewMode === 'student' && studentViewLinks.map((link) => (
+            <li key={link.label}>
+              {/* Use a div styled like a navLink but without navigation */}
+              <div className={styles.navLink} style={{ cursor: 'default' }}>
+                {link.label}
+              </div>
             </li>
           ))}
 
@@ -78,7 +89,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, viewMode, isA
           {isAdmin && viewMode === 'admin' && (
             <li>
               {/* Use a button styled as a link */}
-              <button onClick={onToggleViewMode} className={styles.navLink} style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'left', cursor: 'pointer', padding: '0.8rem 1.5rem', margin: '0.2rem 0.8rem' }}>
+              {/* Apply navLink class directly for consistent styling */}
+              <button onClick={onToggleViewMode} className={styles.navLink} style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'left', cursor: 'pointer' }}>
                 Visualizar como Aluno
               </button>
             </li>
