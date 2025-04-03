@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react'; // Removed useState
 // Removed unused Link import
 import { useAuth } from '../contexts/AuthContext';
 // Removed unused supabase import
@@ -11,17 +11,15 @@ const StudentDashboard: React.FC = () => {
     const { user } = useAuth();
     // Removed summaryCourses state
     // Removed unused state variables
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    // Removed unused loading and error states
 
     const fetchDashboardData = useCallback(async () => {
         if (!user) {
-            setLoading(false);
+            // setLoading(false); // Removed call
             return;
         }
         // Reset states
-        setLoading(true);
-        setError(null);
+        // Removed setLoading and setError calls
         // Removed summaryCourses reset
 
         try {
@@ -31,9 +29,9 @@ const StudentDashboard: React.FC = () => {
 
         } catch (err: any) {
             console.error("Error fetching dashboard data:", err);
-            setError(err.message || 'Falha ao carregar dados do painel.');
+            // Removed setError call
         } finally {
-            setLoading(false);
+            // Removed setLoading call
         }
     }, [user]);
 

@@ -4,7 +4,7 @@ import styles from './LoginPage.module.css'; // Import the CSS module
 // import styles from './LoginPage.module.css'; // We'll add styling later
 
 const LoginPage: React.FC = () => {
-  const { login, rememberedCredentials, loading: authLoading } = useAuth();
+  const { login, rememberedCredentials, profileLoading: authLoading } = useAuth(); // Use profileLoading aliased as authLoading
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [rememberMe, setRememberMe] = useState<boolean>(false);
