@@ -72,7 +72,11 @@
     font-weight: 500;
     border-radius: var(--border-radius-sm);
     cursor: pointer;
-    transition: background-color var(--transition-fast);
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+    /* Ensure consistent gold theme */
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
 }
 
 .actionsContainer button:hover:not(:disabled) {
@@ -80,40 +84,21 @@
     border-color: var(--color-accent);
 }
 
-/* Specific styles for Edit/Delete buttons */
-.editButton {
-    composes: button from global; /* Attempt inheritance */
-    background-color: var(--color-info);
-    border-color: #46b8da;
-    color: white;
-    padding: 5px 10px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    transition: background-color var(--transition-fast), border-color var(--transition-fast);
-}
-.editButton:hover:not(:disabled) {
-    background-color: #31b0d5;
-    border-color: #269abc;
+.actionsContainer button:active:not(:disabled) {
+    transform: scale(0.98);
 }
 
-.deleteButton {
-    composes: button from global; /* Attempt inheritance */
-    background-color: var(--color-error);
-    border-color: #d43f3a;
-    color: white;
-    padding: 5px 10px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    border-radius: var(--border-radius-sm);
-    cursor: pointer;
-    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+.actionsContainer button:disabled {
+    background-color: var(--color-border);
+    border-color: var(--color-border);
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+    cursor: not-allowed;
 }
-.deleteButton:hover:not(:disabled) {
-    background-color: #c9302c;
-    border-color: #ac2925;
-}
+
+/* Remove specific edit/delete button styles as they now use the default gold theme */
+/* .editButton { ... } */
+/* .deleteButton { ... } */
 
 
 .loadingMessage, .errorMessage, .noItemsMessage {

@@ -74,6 +74,7 @@
     cursor: pointer;
     width: 17px;
     height: 17px;
+    accent-color: var(--color-accent); /* Make checkbox gold */
     accent-color: var(--color-primary);
 }
 .disciplineItem input[type="checkbox"]:disabled {

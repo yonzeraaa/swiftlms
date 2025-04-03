@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { supabase } from '../services/supabaseClient';
-// TODO: Import styles: import styles from './DisciplineBankList.module.css';
-// TODO: Import EditDisciplineModal (to be created)
+import styles from './DisciplineBankList.module.css'; // Import styles
+import EditDisciplineModal from './EditDisciplineModal'; // Import the modal
 
 interface Discipline {
   id: string;
@@ -20,10 +21,11 @@ export interface DisciplineBankListHandle {
 interface DisciplineBankListProps {}
 
 const DisciplineBankListComponent: React.ForwardRefRenderFunction<DisciplineBankListHandle, DisciplineBankListProps> = (_props, ref) => {
+  const navigate = useNavigate(); // Initialize navigate hook
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  // const [editingDiscipline, setEditingDiscipline] = useState<Discipline | null>(null); // TODO: For modal
+  const [editingDiscipline, setEditingDiscipline] = useState<Discipline | null>(null); // State for modal
 
   const fetchDisciplines = useCallback(async () => {
     setLoading(true);
@@ -59,70 +61,88 @@ const DisciplineBankListComponent: React.ForwardRefRenderFunction<DisciplineBank
     }
   }));
 
+  // Navigate to the lesson management page for the given discipline
+  const handleManageLessons = (disciplineId: string) => {
+    navigate(`/admin/disciplines/${disciplineId}/lessons`);
+  };
+
+  // Open the edit modal with the selected discipline
   const handleEdit = (discipline: Discipline) => {
-    // setEditingDiscipline(discipline);
-    console.log("TODO: Open Edit Modal for:", discipline);
-    alert("Funcionalidade de Edição a ser implementada.");
+    // setEditingDiscipline(discipline); // Will be uncommented later
+    setEditingDiscipline(discipline);
   };
 
   const handleDelete = async (disciplineId: string, disciplineTitle: string) => {
-    console.log("TODO: Implement Delete Logic for:", disciplineId);
-    if (window.confirm(`Tem certeza que deseja excluir a disciplina "${disciplineTitle}"? Esta ação não pode ser desfeita e pode afetar cursos que a utilizam.`)) {
-        // TODO: Implement actual deletion logic using Supabase client
-        // Consider checking if the discipline is linked in course_disciplines before deleting, or handle cascade
-        alert("Funcionalidade de Exclusão a ser implementada.");
-        // fetchDisciplines(); // Refresh after delete
+    if (window.confirm(`Tem certeza que deseja excluir a disciplina "${disciplineTitle}"? Esta ação não pode ser desfeita e removerá a disciplina de todos os cursos associados.`)) {
+      setError(null); // Clear previous errors
+      try {
+        // RLS should allow admin delete access
+        // ON DELETE CASCADE on course_disciplines and lessons should handle cleanup
+        const { error: deleteError } = await supabase
+          .from('disciplines')
+          .delete()
+          .eq('id', disciplineId);
+
+        if (deleteError) throw deleteError;
+
+        alert(`Disciplina "${disciplineTitle}" excluída com sucesso.`);
+        fetchDisciplines(); // Refresh the list
+      } catch (err: any) {
+        console.error("Error deleting discipline:", err);
+        setError(`Falha ao excluir disciplina: ${err.message}`);
+        alert(`Erro ao excluir disciplina: ${err.message}`);
+      }
     }
   };
 
-  /* // TODO: Implement Edit Modal Logic
+  // Close the edit modal
   const handleCloseModal = () => {
     setEditingDiscipline(null);
   };
-  */
 
-  /*
+  // Refresh the list after a discipline is updated
   const handleDisciplineUpdated = () => {
     fetchDisciplines();
+    // Optional: Keep modal open or close it after update
+    // handleCloseModal();
   };
-  */
 
 
-  if (loading) return <div>Carregando disciplinas...</div>; // TODO: Use styled loading message
-  if (error) return <div style={{ color: 'red' }}>Erro: {error}</div>; // TODO: Use styled error message
+  if (loading) return <div className={styles.loadingMessage}>Carregando disciplinas...</div>;
+  if (error) return <div className={styles.errorMessage}>Erro: {error}</div>;
 
   return (
-    <div /* className={styles.listContainer} */>
+    <div className={styles.listContainer}>
       <h2>Disciplinas no Banco</h2>
       {disciplines.length === 0 ? (
-        <p /* className={styles.noItemsMessage} */>Nenhuma disciplina encontrada no banco.</p>
+        <p className={styles.noItemsMessage}>Nenhuma disciplina encontrada no banco.</p>
       ) : (
-        <ul /* className={styles.list} */>
+        <ul /* className={styles.list} */> {/* Assuming no specific list style needed */}
           {disciplines.map(discipline => (
-            <li key={discipline.id} /* className={styles.listItem} */>
-              <div /* className={styles.contentGroup} */>
+            <li key={discipline.id} className={styles.listItem}>
+              <div className={styles.contentGroup}>
                 <strong>{discipline.number ? `${discipline.number}. ` : ''}{discipline.title}</strong>
                 {/* Optional: Display description or other details */}
                 {/* <p>{discipline.description || 'Sem descrição.'}</p> */}
                 <small> (Ordem: {discipline.order ?? 'N/A'})</small>
                 <small> Criado em: {new Date(discipline.created_at).toLocaleDateString()}</small>
               </div>
-              <div /* className={styles.actionsContainer} */>
+              <div className={styles.actionsContainer}>
                  {/* TODO: Add Link to manage lessons for this discipline */}
-                 <button onClick={() => alert(`Gerenciar Aulas para: ${discipline.title}`)}>Gerenciar Aulas</button>
-                 <button /* className={styles.editButton} */ onClick={() => handleEdit(discipline)}>Editar</button>
-                 <button /* className={styles.deleteButton} */ onClick={() => handleDelete(discipline.id, discipline.title)}>Excluir</button>
+                 <button onClick={() => handleManageLessons(discipline.id)}>Gerenciar Aulas</button>
+                 <button onClick={() => handleEdit(discipline)}>Editar</button>
+                 <button onClick={() => handleDelete(discipline.id, discipline.title)}>Excluir</button>
               </div>
             </li>
           ))}
         </ul>
       )}
-      {/* TODO: Render EditDisciplineModal */}
-      {/* <EditDisciplineModal
+      {/* Render EditDisciplineModal */}
+      <EditDisciplineModal
         discipline={editingDiscipline}
         onClose={handleCloseModal}
         onDisciplineUpdated={handleDisciplineUpdated}
-      /> */}
+      />
     </div>
   );
 };
