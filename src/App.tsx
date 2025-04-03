@@ -8,7 +8,7 @@ import AdminStudentsPage from './pages/AdminStudentsPage.tsx'; // Renamed import
 import AdminOverviewPage from './pages/AdminOverviewPage.tsx'; // Import new overview page
 import StudentDashboard from './pages/StudentDashboard.tsx';
 import AdminCoursesPage from './pages/AdminCoursesPage.tsx';
-import AdminDisciplinesPage from './pages/AdminDisciplinesPage.tsx'; // Will be repurposed or replaced
+// import AdminDisciplinesPage from './pages/AdminDisciplinesPage.tsx'; // No longer used directly here
 import AdminDisciplinesBankPage from './pages/AdminDisciplinesBankPage.tsx'; // Import the new bank page
 import AdminAssociatedDisciplinesPage from './pages/AdminAssociatedDisciplinesPage.tsx'; // Import the new associated disciplines page
 import AdminLessonsPage from './pages/AdminLessonsPage.tsx';
