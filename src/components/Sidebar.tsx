@@ -90,7 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, viewMode, isA
             <li>
               {/* Use a button styled as a link */}
               {/* Apply navLink class directly for consistent styling */}
-              <button onClick={onToggleViewMode} className={styles.navLink} style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'left', cursor: 'pointer' }}>
+              <button onClick={onToggleViewMode} className={styles.navLink} style={{ background: 'none', border: 'none', color: 'inherit', width: '100%', textAlign: 'left', cursor: 'pointer' }}> {/* Remove inline styles except essential resets */}
                 Visualizar como Aluno
               </button>
             </li>
