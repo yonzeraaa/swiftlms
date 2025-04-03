@@ -118,15 +118,27 @@ const LessonBankListComponent: React.ForwardRefRenderFunction<LessonBankListHand
                 <strong>{lesson.title}</strong> {/* Removed number display */}
                 {/* Optional: Display snippet of content or video URL */}
                 {/* <p>{lesson.content?.substring(0, 50) ?? ''}... </p> */}
+                {/* Display all video/PDF URLs */}
                 {lesson.video_urls && lesson.video_urls.length > 0 && (
-                    <small> ({lesson.video_urls.length} Vídeo(s)/PDF(s): <a href={lesson.video_urls[0]} target="_blank" rel="noopener noreferrer">Ver primeiro</a>)</small>
+                    <div style={{ marginTop: '5px', fontSize: '0.85rem' }}> {/* Container for URLs */}
+                        <strong>Links:</strong>
+                        {lesson.video_urls.map((url, index) => (
+                            <span key={index} style={{ display: 'block', marginLeft: '10px', marginTop: '2px' }}> {/* Display each URL on a new line */}
+                                <a href={url} target="_blank" rel="noopener noreferrer">
+                                    Link {index + 1}: {url.length > 40 ? `${url.substring(0, 40)}...` : url} {/* Truncate long URLs */}
+                                </a>
+                            </span>
+                        ))}
+                    </div>
                 )}
+                <br/> {/* Add line break for better spacing */}
                 <small> (Ordem: {lesson.order ?? 'N/A'})</small>
                 <small> Criado em: {new Date(lesson.created_at).toLocaleDateString()}</small>
               </div>
               <div className={styles.actionsContainer}>
                  {/* Link para gerenciar associações pode ser adicionado aqui ou na página de disciplinas */}
                  {/* <button>Gerenciar Associações</button> */}
+                 {/* Buttons remain the same */}
                  <button onClick={() => handleEdit(lesson)} className={styles.editButton}>Editar</button>
                  <button onClick={() => handleDelete(lesson.id, lesson.title)} className={styles.deleteButton}>Excluir</button>
               </div>
@@ -138,7 +150,7 @@ const LessonBankListComponent: React.ForwardRefRenderFunction<LessonBankListHand
       <EditLessonModal
         lesson={editingLesson}
         onClose={handleCloseModal}
-        onLessonUpdated={handleLessonUpdated} // Renomear callback se necessário
+        onLessonUpdated={handleLessonUpdated}
       />
     </div>
   );
