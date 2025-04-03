@@ -68,11 +68,15 @@ const StudentDashboard: React.FC = () => {
                 let totalLessonsCount = 0;
                 let viewedLessonsCount = 0;
                 try {
-                    const { data: disciplineData, error: disciplineError } = await supabase
-                        .from('disciplines').select('id').eq('course_id', course.id);
-                    if (disciplineError) throw disciplineError;
+                    // Get associated discipline IDs from the junction table
+                    const { data: associationData, error: associationError } = await supabase
+                        .from('course_disciplines')
+                        .select('discipline_id')
+                        .eq('course_id', course.id);
+                    if (associationError) throw associationError; // Throw error if fetching associations fails
 
-                    const disciplineIds = (disciplineData as DisciplineId[])?.map(d => d.id) || [];
+                    // Extract discipline IDs from the association data
+                    const disciplineIds = associationData?.map(assoc => assoc.discipline_id) || [];
                     if (disciplineIds.length > 0) {
                         const { count: lessonCount, error: totalLessonsError } = await supabase
                             .from('lessons').select('id', { count: 'exact', head: true }).in('discipline_id', disciplineIds);

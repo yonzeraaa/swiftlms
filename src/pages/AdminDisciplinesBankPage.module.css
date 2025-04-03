@@ -1,0 +1,23 @@
+/* Styles for AdminDisciplinesBankPage */
+.pageContainer {
+    padding: 20px;
+    background-color: var(--color-surface); /* Use surface color for page background */
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    margin: 20px; /* Add some margin around the page content */
+}
+
+.pageContainer h1 {
+    color: var(--color-primary-dark);
+    margin-bottom: 10px;
+}
+
+.pageContainer p {
+    color: var(--color-text-secondary);
+    margin-bottom: 20px;
+}
+
+.pageContainer hr {
+    margin: 25px 0;
+    border-color: var(--color-border);
+}

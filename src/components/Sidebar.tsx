@@ -20,6 +20,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick }) => { // Des
       { path: '/admin', label: 'Visão Geral' }, // Keep overview link
       { path: '/admin/students', label: 'Alunos' }, // Add students link
       { path: '/admin/courses', label: 'Cursos' },
+      { path: '/admin/disciplines-bank', label: 'Banco de Disciplinas' }, // Add link to discipline bank
       // { path: '/admin/settings', label: 'Configurações (Admin)' },
     ];
   } else if (isStudent) { // isStudent check uses 'aluno' internally now

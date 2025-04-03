@@ -4,11 +4,11 @@ import { supabase } from '../services/supabaseClient';
 import styles from './AddDisciplineForm.module.css'; // Import styles
 
 interface AddDisciplineFormProps {
-  courseId: string; // ID of the course to add the discipline to
-  onDisciplineAdded: () => void; // Callback to refresh the list
+  // courseId is no longer needed as disciplines are managed centrally
+  onDisciplineCreated: () => void; // Callback after creation
 }
 
-const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ courseId, onDisciplineAdded }) => {
+const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ onDisciplineCreated }) => {
   const [title, setTitle] = useState('');
   const [number, setNumber] = useState(''); // Store as string "01", "02" etc.
   const [order, setOrder] = useState<number | ''>(''); // Optional explicit order
@@ -68,7 +68,7 @@ const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ courseId, onDisci
       const { error: insertError } = await supabase
         .from('disciplines')
         .insert([{
-            course_id: courseId,
+            // course_id is removed as disciplines are independent now
             title: title.trim(),
             number: formattedNumber, // Use formatted number
             order: finalOrder // Use final order value
@@ -80,7 +80,7 @@ const AddDisciplineForm: React.FC<AddDisciplineFormProps> = ({ courseId, onDisci
       setTitle(''); // Clear form
       setNumber('');
       setOrder('');
-      onDisciplineAdded(); // Trigger refresh in parent
+      onDisciplineCreated(); // Trigger callback in parent
     } catch (err: any) {
       console.error("Error adding discipline:", err);
       setError(err.message || 'Falha ao adicionar disciplina.');

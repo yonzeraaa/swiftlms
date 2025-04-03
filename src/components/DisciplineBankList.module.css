@@ -1,0 +1,133 @@
+/* Styles for DisciplineBankList */
+.listContainer {
+    margin-top: 20px;
+}
+
+.listContainer h2 {
+    color: var(--color-primary-dark);
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.listContainer ul {
+    list-style: none;
+    padding: 0;
+}
+
+.listItem {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    justify-content: space-between;
+    align-items: center; /* Align items vertically */
+    gap: 15px;
+    transition: box-shadow var(--transition-std);
+}
+.listItem:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.contentGroup {
+    flex-grow: 1; /* Allow content to take available space */
+    min-width: 200px; /* Ensure content doesn't get too squished */
+}
+
+.listItem strong {
+    color: var(--color-primary);
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+
+.listItem p {
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.listItem small {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    margin-right: 10px; /* Spacing between small elements */
+}
+
+.actionsContainer {
+    flex-shrink: 0; /* Prevent actions container from shrinking */
+    display: flex;
+    gap: 10px; /* Space between buttons */
+    flex-wrap: wrap; /* Allow buttons to wrap */
+}
+
+.actionsContainer button { /* Basic button styling */
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.actionsContainer button:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+/* Specific styles for Edit/Delete buttons */
+.editButton {
+    composes: button from global; /* Attempt inheritance */
+    background-color: var(--color-info);
+    border-color: #46b8da;
+    color: white;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.editButton:hover:not(:disabled) {
+    background-color: #31b0d5;
+    border-color: #269abc;
+}
+
+.deleteButton {
+    composes: button from global; /* Attempt inheritance */
+    background-color: var(--color-error);
+    border-color: #d43f3a;
+    color: white;
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: var(--border-radius-sm);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.deleteButton:hover:not(:disabled) {
+    background-color: #c9302c;
+    border-color: #ac2925;
+}
+
+
+.loadingMessage, .errorMessage, .noItemsMessage {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    margin-top: 15px;
+    padding: 10px;
+    text-align: center;
+}
+
+.errorMessage {
+    color: var(--color-error);
+    font-weight: bold;
+    background-color: rgba(217, 83, 79, 0.1);
+    border: 1px solid var(--color-error);
+    border-radius: var(--border-radius-sm);
+}

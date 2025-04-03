@@ -76,16 +76,18 @@ const MyCoursesPage: React.FC = () => {
                 let viewedLessonsCount = 0;
 
                 try {
-                    // Get discipline IDs
-                    const { data: disciplineData, error: disciplineError } = await supabase
-                        .from('disciplines')
-                        .select('id')
-                        .eq('course_id', course.id); // Use course.id
+                    // Get associated discipline IDs from the junction table
+                    const { data: associationData, error: associationError } = await supabase
+                        .from('course_disciplines')
+                        .select('discipline_id')
+                        .eq('course_id', course.id);
 
-                    if (disciplineError) {
-                        console.warn(`Error fetching disciplines for course ${course.id}:`, disciplineError.message);
+                    // Rename variables for clarity
+                    if (associationError) {
+                        console.warn(`Error fetching associated disciplines for course ${course.id}:`, associationError.message);
                     } else {
-                        const disciplineIds = (disciplineData as DisciplineId[])?.map(d => d.id) || [];
+                        // Extract discipline IDs from the association data
+                        const disciplineIds = associationData?.map(assoc => assoc.discipline_id) || [];
 
                         if (disciplineIds.length > 0) {
                             // Fetch total lessons count

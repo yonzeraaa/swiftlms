@@ -76,17 +76,34 @@ const CourseViewPage: React.FC = () => {
             console.log("User is enrolled. Fetching course data...");
             setIsEnrolled(true);
 
-            // 2. Fetch course, disciplines, and lessons (RLS should allow if enrolled - needs refinement)
-            // IMPORTANT: This query relies on RLS allowing enrolled users to read course/discipline/lesson data.
-            // We will need to add/refine RLS policies later (Phase 2, Step 5).
-            const { data, error: fetchError } = await supabase
+            // --- New Fetching Logic ---
+            // 2. Fetch basic course details
+            const { data: courseDetailsData, error: courseError } = await supabase
                 .from('courses')
-                .select(`
-                    id,
-                    title,
-                    description,
-                    code,
-                    disciplines (
+                .select('id, title, description, code')
+                .eq('id', courseId)
+                .single();
+
+            if (courseError) throw new Error(`Erro ao buscar detalhes do curso: ${courseError.message}`);
+            if (!courseDetailsData) throw new Error("Detalhes do curso não encontrados.");
+            setCourseData(courseDetailsData);
+
+            // 3. Fetch associated discipline IDs
+            const { data: associationData, error: associationError } = await supabase
+                .from('course_disciplines')
+                .select('discipline_id')
+                .eq('course_id', courseId);
+
+            if (associationError) throw new Error(`Erro ao buscar disciplinas associadas: ${associationError.message}`);
+
+            const associatedDisciplineIds = associationData?.map(item => item.discipline_id) || [];
+
+            let fetchedDisciplines: Discipline[] = [];
+            if (associatedDisciplineIds.length > 0) {
+                // 4. Fetch details for associated disciplines, including lessons
+                const { data: disciplinesData, error: disciplinesError } = await supabase
+                    .from('disciplines')
+                    .select(`
                         id,
                         title,
                         number,
@@ -99,26 +116,23 @@ const CourseViewPage: React.FC = () => {
                             content,
                             video_url
                         )
-                    )
-                `)
-                .eq('id', courseId)
-                .order('order', { referencedTable: 'disciplines', ascending: true, nullsFirst: false })
-                .order('number', { referencedTable: 'disciplines', ascending: true })
-                .order('order', { referencedTable: 'disciplines.lessons', ascending: true, nullsFirst: false })
-                .order('number', { referencedTable: 'disciplines.lessons', ascending: true })
-                .single();
+                    `)
+                    .in('id', associatedDisciplineIds)
+                    .order('order', { ascending: true, nullsFirst: false }) // Order disciplines
+                    .order('number', { ascending: true })
+                    .order('order', { referencedTable: 'lessons', ascending: true, nullsFirst: false }) // Order lessons within disciplines
+                    .order('number', { referencedTable: 'lessons', ascending: true });
 
-            if (fetchError) throw fetchError;
-            if (!data) throw new Error("Curso não encontrado após verificação de inscrição.");
-
-            // Separate course data from disciplines
-            const { disciplines: fetchedDisciplines, ...courseDetails } = data;
-            setCourseData(courseDetails as CourseDetails);
-            setDisciplines(fetchedDisciplines as Discipline[] || []);
+                if (disciplinesError) throw new Error(`Erro ao buscar detalhes das disciplinas: ${disciplinesError.message}`);
+                fetchedDisciplines = disciplinesData || [];
+            }
+            setDisciplines(fetchedDisciplines);
+            // --- End New Fetching Logic ---
 
             // 3. Fetch viewed lessons for this course *after* confirming enrollment and fetching course data
             if (user && courseId) {
-                const lessonIdsInCourse = (fetchedDisciplines as Discipline[] || [])
+                // Use the fetchedDisciplines state variable which is now populated
+                const lessonIdsInCourse = (disciplines || [])
                     .flatMap(d => d.lessons?.map(l => l.id) || [])
                     .filter(id => id); // Get all valid lesson IDs
 

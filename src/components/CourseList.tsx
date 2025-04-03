@@ -139,8 +139,9 @@ const CourseListComponent: React.ForwardRefRenderFunction<CourseListHandle, Cour
                   <small>Criado em: {new Date(course.created_at).toLocaleDateString()}</small>
                 </div>
                 <div className={styles.actionsContainer}>
-                  <Link to={`/admin/courses/${course.id}/disciplines`}>
-                    <button>Gerenciar Disciplinas</button>
+                  {/* Update link to point to the new associated disciplines view */}
+                  <Link to={`/admin/courses/${course.id}/associated-disciplines`}>
+                    <button>Gerenciar Disciplinas Associadas</button>
                   </Link>
                   <button className={styles.editButton} onClick={() => handleEdit(course)}>Editar</button>
                   {/* Pass courseId directly to handleDelete */}
