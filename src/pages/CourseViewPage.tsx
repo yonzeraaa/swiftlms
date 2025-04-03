@@ -31,7 +31,7 @@ interface Lesson {
 
 const CourseViewPage: React.FC = () => {
     const { courseId } = useParams<{ courseId: string }>();
-    const { user } = useAuth(); // Get current user (removed isAdmin)
+    const { user } = useAuth(); // Get current user (reverted: removed isAdmin)
     const [courseData, setCourseData] = useState<CourseDetails | null>(null);
     const [disciplines, setDisciplines] = useState<Discipline[]>([]);
     const [loading, setLoading] = useState(true);
@@ -217,10 +217,8 @@ const CourseViewPage: React.FC = () => {
              console.warn("Cannot mark lesson viewed: missing user, courseData, or disciplines");
              return;
         }
-        // Reverted: Allow anyone enrolled (including admin if they enroll themselves)
-        // to mark lessons as viewed for their own progress tracking / testing.
-        // Reverted: Allow anyone enrolled (including admin if they enroll themselves)
-        // to mark lessons as viewed for their own progress tracking / testing.
+        // Only allow marking as viewed if NOT an admin (or adjust based on desired behavior)
+        // For now, let admins also mark viewed for testing purposes
 
         // Find lesson title (needed for localStorage)
         let lessonTitle = 'Aula desconhecida';
@@ -280,7 +278,7 @@ const CourseViewPage: React.FC = () => {
         } catch (err: any) {
             console.error(`Error marking lesson ${lessonId} as viewed:`, err);
         }
-    }, [user, viewedLessonIds, courseData, disciplines]); // Dependencies remain correct
+    }, [user, viewedLessonIds, courseData, disciplines]); // Added courseData and disciplines as dependencies
 
     // Toggle selected lesson
     const handleLessonClick = (lessonId: string) => {
