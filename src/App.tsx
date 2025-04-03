@@ -10,6 +10,7 @@ import StudentDashboard from './pages/StudentDashboard.tsx';
 import AdminCoursesPage from './pages/AdminCoursesPage.tsx';
 import AdminDisciplinesPage from './pages/AdminDisciplinesPage.tsx'; // Will be repurposed or replaced
 import AdminDisciplinesBankPage from './pages/AdminDisciplinesBankPage.tsx'; // Import the new bank page
+import AdminAssociatedDisciplinesPage from './pages/AdminAssociatedDisciplinesPage.tsx'; // Import the new associated disciplines page
 import AdminLessonsPage from './pages/AdminLessonsPage.tsx';
 import AdminEnrollmentsPage from './pages/AdminEnrollmentsPage.tsx';
 import CourseViewPage from './pages/CourseViewPage.tsx';
@@ -96,7 +97,7 @@ function App() {
           <Route path="/admin/disciplines-bank" element={<AdminDisciplinesBankPage />} /> {/* ADDED: Route for central discipline bank */}
           {/* ADDED: Route for viewing/managing disciplines associated with a specific course */}
           {/* TODO: Create/Adapt a component for this view (using AdminDisciplinesPage as placeholder) */}
-          <Route path="/admin/courses/:courseId/associated-disciplines" element={<AdminDisciplinesPage />} />
+          <Route path="/admin/courses/:courseId/associated-disciplines" element={<AdminAssociatedDisciplinesPage />} />
           {/* UPDATED: Lesson management route now only needs disciplineId */}
           <Route path="/admin/disciplines/:disciplineId/lessons" element={<AdminLessonsPage />} />
           <Route path="/admin/courses/:courseId/enrollments" element={<AdminEnrollmentsPage />} /> {/* Add route for enrollments */}
