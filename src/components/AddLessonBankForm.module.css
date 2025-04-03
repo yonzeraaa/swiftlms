@@ -1,0 +1,132 @@
+/* Styles for AddLessonBankForm */
+.formContainer {
+    padding: 15px;
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--color-border);
+    margin-bottom: 20px;
+    background-color: var(--color-background); /* Light background for form */
+}
+
+.formContainer h3 { /* Changed from h4 */
+    color: var(--color-primary-dark);
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.2rem; /* Adjusted size */
+}
+
+.formRow {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.formRow label {
+    color: var(--color-text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    margin-right: 5px; /* Add spacing after label */
+}
+
+.formGroup { /* For elements that need full width like textarea */
+     margin-bottom: 15px;
+}
+.formGroup label {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+
+/* Use global input/textarea styles defined in index.css */
+.formRow input[type="text"],
+.formRow input[type="number"],
+.formGroup textarea,
+.formGroup input[type="url"] {
+    /* Inherits from index.css */
+    padding: 8px 10px;
+    font-size: 0.95rem;
+}
+
+.submitButton {
+    /* Inherit base button styles from index.css */
+    cursor: pointer;
+    border-radius: var(--border-radius-md);
+    padding: 0.7em 1.4em; /* Slightly larger padding */
+    font-size: 1em;
+    font-weight: 500;
+    transition: background-color var(--transition-std), border-color var(--transition-std), transform var(--transition-fast);
+    margin-top: 5px;
+
+    /* Apply accent theme */
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+}
+
+.submitButton:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+.submitButton:disabled {
+    background-color: var(--color-border);
+    border-color: var(--color-border);
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+.submitButton:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+
+.message {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    padding: 8px;
+    border-radius: var(--border-radius-sm);
+}
+
+.errorMessage {
+    composes: message;
+    color: var(--color-error);
+    background-color: rgba(217, 83, 79, 0.1);
+    border: 1px solid var(--color-error);
+}
+
+.successMessage {
+    composes: message;
+    color: var(--color-success);
+    background-color: rgba(92, 184, 92, 0.1);
+    border: 1px solid var(--color-success);
+}
+
+/* --- Responsive Adjustments --- */
+@media (max-width: 768px) {
+  .formRow {
+    flex-direction: column; /* Stack label and inputs vertically */
+    align-items: stretch; /* Stretch items to full width */
+    gap: 5px; /* Reduce gap for vertical layout */
+  }
+
+  .formRow label {
+      white-space: normal; /* Allow labels to wrap */
+      margin-right: 0; /* Remove right margin */
+      margin-bottom: 3px; /* Add small space below label */
+  }
+
+  /* Remove fixed widths set inline and allow inputs to take full width */
+  .formRow input[type="text"],
+  .formRow input[type="number"] {
+      width: 100% !important; /* Override inline style */
+      margin-right: 0 !important; /* Override inline style */
+      box-sizing: border-box; /* Include padding/border in width */
+  }
+
+  .submitButton {
+      width: 100%; /* Make button full width */
+  }
+}

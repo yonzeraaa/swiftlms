@@ -87,37 +87,28 @@ const MyCoursesPage: React.FC = () => {
                         const disciplineIds = associationData?.map(assoc => assoc.discipline_id) || [];
 
                         if (disciplineIds.length > 0) {
-                            // Fetch total lessons count
-                            const { count: lessonCount, error: totalLessonsError } = await supabase
-                                .from('lessons')
-                                .select('id', { count: 'exact', head: true })
+                            // Fetch lesson IDs associated with these disciplines
+                            const { data: lessonAssocData, error: lessonAssocError } = await supabase
+                                .from('discipline_lessons')
+                                .select('lesson_id')
                                 .in('discipline_id', disciplineIds);
 
-                            totalLessonsCount = totalLessonsError ? 0 : (lessonCount ?? 0);
-                            if (totalLessonsError) console.warn(`Error fetching total lessons for course ${course.id}:`, totalLessonsError.message);
+                            if (lessonAssocError) {
+                                console.warn(`Error fetching lesson associations for course ${course.id}:`, lessonAssocError.message);
+                            } else {
+                                const lessonIds = [...new Set(lessonAssocData?.map(assoc => assoc.lesson_id) || [])]; // Get unique lesson IDs
+                                totalLessonsCount = lessonIds.length;
 
-                            // Fetch viewed lessons count only if there are lessons
-                            if (totalLessonsCount > 0) {
-                                // Get lesson IDs for the course
-                                const { data: lessonData, error: lessonError } = await supabase
-                                    .from('lessons')
-                                    .select('id')
-                                    .in('discipline_id', disciplineIds);
+                                // Fetch viewed lessons count only if there are lessons associated
+                                if (totalLessonsCount > 0) {
+                                    const { count: viewedCount, error: viewedLessonsError } = await supabase
+                                        .from('lesson_views')
+                                        .select('lesson_id', { count: 'exact', head: true })
+                                        .eq('user_id', user.id)
+                                        .in('lesson_id', lessonIds);
 
-                                if (lessonError) {
-                                    console.warn(`Error fetching lesson IDs for course ${course.id}:`, lessonError.message);
-                                } else {
-                                    const lessonIds = (lessonData as LessonId[])?.map(l => l.id) || [];
-                                    if (lessonIds.length > 0) {
-                                        const { count: viewedCount, error: viewedLessonsError } = await supabase
-                                            .from('lesson_views')
-                                            .select('lesson_id', { count: 'exact', head: true })
-                                            .eq('user_id', user.id)
-                                            .in('lesson_id', lessonIds);
-
-                                        viewedLessonsCount = viewedLessonsError ? 0 : (viewedCount ?? 0);
-                                        if (viewedLessonsError) console.warn(`Error fetching viewed lessons for course ${course.id}:`, viewedLessonsError.message);
-                                    }
+                                    viewedLessonsCount = viewedLessonsError ? 0 : (viewedCount ?? 0);
+                                    if (viewedLessonsError) console.warn(`Error fetching viewed lessons for course ${course.id}:`, viewedLessonsError.message);
                                 }
                             }
                         }

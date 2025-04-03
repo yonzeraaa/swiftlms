@@ -1,0 +1,134 @@
+/* Styles for LessonBankList */
+.listContainer {
+    margin-top: 20px;
+}
+
+.listContainer h2 {
+    color: var(--color-primary-dark);
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.listContainer ul.list { /* Target the ul specifically */
+    list-style: none;
+    padding: 0;
+    margin: 0; /* Remove default ul margin */
+}
+
+.listItem {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+    justify-content: space-between;
+    align-items: center; /* Align items vertically */
+    gap: 15px;
+    transition: box-shadow var(--transition-std);
+}
+.listItem:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.contentGroup {
+    flex-grow: 1; /* Allow content to take available space */
+    min-width: 200px; /* Ensure content doesn't get too squished */
+}
+
+.listItem strong {
+    color: var(--color-primary);
+    display: block;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+
+.listItem p { /* Style for potential content snippet */
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.listItem small {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    margin-right: 10px; /* Spacing between small elements */
+    display: inline-block; /* Ensure small tags stay inline */
+    margin-top: 3px; /* Add a bit of top margin */
+}
+.listItem small a { /* Style link within small tag */
+    color: var(--color-primary-light);
+}
+.listItem small a:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+
+.actionsContainer {
+    flex-shrink: 0; /* Prevent actions container from shrinking */
+    display: flex;
+    gap: 10px; /* Space between buttons */
+    flex-wrap: wrap; /* Allow buttons to wrap */
+}
+
+/* Base button style (can inherit from global if set up) */
+.actionsContainer button {
+    cursor: pointer;
+    border-radius: var(--border-radius-sm);
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+.actionsContainer button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+.actionsContainer button:disabled {
+    background-color: var(--color-border);
+    border-color: var(--color-border);
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Edit Button (Gold Theme) */
+.editButton {
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+}
+.editButton:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+/* Delete Button (Error Theme) */
+.deleteButton {
+    background-color: var(--color-error);
+    color: white;
+    border: 1px solid #d43f3a; /* Slightly darker error */
+}
+.deleteButton:hover:not(:disabled) {
+    background-color: #c9302c;
+    border-color: #ac2925;
+}
+
+
+.loadingMessage, .errorMessage, .noItemsMessage {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    margin-top: 15px;
+    padding: 10px;
+    text-align: center;
+}
+
+.errorMessage {
+    color: var(--color-error);
+    font-weight: bold;
+    background-color: rgba(217, 83, 79, 0.1);
+    border: 1px solid var(--color-error);
+    border-radius: var(--border-radius-sm);
+}

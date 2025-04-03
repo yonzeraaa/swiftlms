@@ -63,7 +63,8 @@ const DisciplineBankListComponent: React.ForwardRefRenderFunction<DisciplineBank
 
   // Navigate to the lesson management page for the given discipline
   const handleManageLessons = (disciplineId: string) => {
-    navigate(`/admin/disciplines/${disciplineId}/lessons`);
+    // Update navigation to point to the new associated lessons page
+    navigate(`/admin/disciplines/${disciplineId}/associated-lessons`);
   };
 
   // Open the edit modal with the selected discipline
@@ -129,7 +130,8 @@ const DisciplineBankListComponent: React.ForwardRefRenderFunction<DisciplineBank
               </div>
               <div className={styles.actionsContainer}>
                  {/* TODO: Add Link to manage lessons for this discipline */}
-                 <button onClick={() => handleManageLessons(discipline.id)}>Gerenciar Aulas</button>
+                 {/* Update button text for clarity */}
+                 <button onClick={() => handleManageLessons(discipline.id)}>Gerenciar Aulas Associadas</button>
                  <button onClick={() => handleEdit(discipline)}>Editar</button>
                  <button onClick={() => handleDelete(discipline.id, discipline.title)}>Excluir</button>
               </div>

@@ -98,43 +98,86 @@ const CourseViewPage: React.FC = () => {
 
             const associatedDisciplineIds = associationData?.map(item => item.discipline_id) || [];
 
-            let fetchedDisciplines: Discipline[] = [];
+            let fetchedDisciplinesWithLessons: Discipline[] = [];
             if (associatedDisciplineIds.length > 0) {
-                // 4. Fetch details for associated disciplines, including lessons
+                // 4a. Fetch details for associated disciplines (without lessons initially)
                 const { data: disciplinesData, error: disciplinesError } = await supabase
                     .from('disciplines')
-                    .select(`
-                        id,
-                        title,
-                        number,
-                        order,
-                        lessons (
-                            id,
-                            title,
-                            number,
-                            order,
-                            content,
-                            video_url
-                        )
-                    `)
+                    .select('id, title, number, order') // Fetch basic details
                     .in('id', associatedDisciplineIds)
-                    .order('order', { ascending: true, nullsFirst: false }) // Order disciplines
-                    .order('number', { ascending: true })
-                    .order('order', { referencedTable: 'lessons', ascending: true, nullsFirst: false }) // Order lessons within disciplines
-                    .order('number', { referencedTable: 'lessons', ascending: true });
+                    .order('order', { ascending: true, nullsFirst: false })
+                    .order('number', { ascending: true });
 
                 if (disciplinesError) throw new Error(`Erro ao buscar detalhes das disciplinas: ${disciplinesError.message}`);
-                fetchedDisciplines = disciplinesData || [];
+                if (!disciplinesData) throw new Error("Disciplinas associadas não encontradas.");
+
+                // 4b. Fetch all lesson associations for these disciplines
+                const { data: lessonAssociations, error: assocError } = await supabase
+                    .from('discipline_lessons')
+                    .select('discipline_id, lesson_id')
+                    .in('discipline_id', associatedDisciplineIds);
+
+                if (assocError) throw new Error(`Erro ao buscar associações de aulas: ${assocError.message}`);
+
+                const lessonIdMap = new Map<string, string[]>(); // Map disciplineId -> [lessonId]
+                const allLessonIds = new Set<string>();
+                (lessonAssociations || []).forEach(assoc => {
+                    if (!lessonIdMap.has(assoc.discipline_id)) {
+                        lessonIdMap.set(assoc.discipline_id, []);
+                    }
+                    lessonIdMap.get(assoc.discipline_id)!.push(assoc.lesson_id);
+                    allLessonIds.add(assoc.lesson_id);
+                });
+
+                // 4c. Fetch details for all unique lessons needed
+                let allLessonsData: Lesson[] = [];
+                if (allLessonIds.size > 0) {
+                    const { data: lessonsData, error: lessonsError } = await supabase
+                        .from('lessons')
+                        .select('id, title, number, order, content, video_url')
+                        .in('id', Array.from(allLessonIds))
+                        // Order lessons globally here; specific order per discipline can be handled client-side if needed
+                        .order('order', { ascending: true, nullsFirst: false })
+                        .order('number', { ascending: true });
+
+
+                    if (lessonsError) throw new Error(`Erro ao buscar detalhes das aulas: ${lessonsError.message}`);
+                    allLessonsData = lessonsData || [];
+                }
+
+                // 4d. Map lessons back to disciplines
+                const lessonsById = new Map(allLessonsData.map(lesson => [lesson.id, lesson]));
+
+                fetchedDisciplinesWithLessons = disciplinesData.map(discipline => {
+                    const associatedLessonIdsForThisDisc = lessonIdMap.get(discipline.id) || [];
+                    const lessonsForDiscipline = associatedLessonIdsForThisDisc
+                        .map(lessonId => lessonsById.get(lessonId))
+                        .filter((lesson): lesson is Lesson => lesson !== undefined)
+                         // Re-sort lessons based on their own order properties
+                        .sort((a, b) => {
+                            const orderA = a.order ?? Infinity;
+                            const orderB = b.order ?? Infinity;
+                            if (orderA !== orderB) return orderA - orderB;
+                            const numA = a.number ?? '';
+                            const numB = b.number ?? '';
+                            return numA.localeCompare(numB);
+                        });
+
+                    return {
+                        ...discipline,
+                        lessons: lessonsForDiscipline,
+                    };
+                });
             }
-            setDisciplines(fetchedDisciplines);
+            setDisciplines(fetchedDisciplinesWithLessons); // Update state
             // --- End New Fetching Logic ---
 
             // 3. Fetch viewed lessons for this course *after* confirming enrollment and fetching course data
             if (user && courseId) {
                 // Use the fetchedDisciplines state variable which is now populated
-                const lessonIdsInCourse = (disciplines || [])
+                const lessonIdsInCourse = fetchedDisciplinesWithLessons // Use the data fetched in this run
                     .flatMap(d => d.lessons?.map(l => l.id) || [])
-                    .filter(id => id); // Get all valid lesson IDs
+                    .filter((id): id is string => !!id); // Get all valid lesson IDs and ensure type
 
                 if (lessonIdsInCourse.length > 0) {
                     const { data: viewedData, error: viewedError } = await supabase

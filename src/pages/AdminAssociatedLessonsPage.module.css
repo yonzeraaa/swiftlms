@@ -1,0 +1,125 @@
+/* Styles for AdminAssociatedLessonsPage */
+.pageContainer {
+    padding: 20px;
+    background-color: var(--color-surface);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-md);
+    margin: 20px;
+}
+
+.pageContainer h1 {
+    color: var(--color-primary-dark);
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.pageContainer p {
+    color: var(--color-text-secondary);
+    margin-bottom: 20px;
+}
+
+.backLink {
+    display: inline-block;
+    margin-bottom: 15px;
+    color: var(--color-primary-light);
+    text-decoration: none;
+    font-weight: 500;
+}
+.backLink:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.errorMessage, .successMessage {
+    padding: 10px 15px;
+    border-radius: var(--border-radius-sm);
+    margin: 15px 0;
+    font-size: 0.9rem;
+}
+
+.errorMessage {
+    color: var(--color-error);
+    background-color: rgba(217, 83, 79, 0.1);
+    border: 1px solid var(--color-error);
+}
+
+.successMessage {
+    color: var(--color-success);
+    background-color: rgba(92, 184, 92, 0.1);
+    border: 1px solid var(--color-success);
+}
+
+.lessonListContainer { /* Changed class name */
+    margin-top: 20px;
+    max-height: 400px; /* Adjust as needed */
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-md);
+    padding: 15px;
+    background-color: var(--color-background); /* Slightly different background */
+}
+
+.lessonItem { /* Changed class name */
+    display: flex;
+    align-items: center;
+    padding: 8px 5px;
+    border-bottom: 1px solid var(--color-border-light);
+}
+.lessonItem:last-child {
+    border-bottom: none;
+}
+
+.lessonItem input[type="checkbox"] {
+    margin-right: 10px;
+    cursor: pointer;
+    width: 17px;
+    height: 17px;
+    accent-color: var(--color-primary); /* Use primary color for checkbox */
+}
+.lessonItem input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.lessonItem label {
+    cursor: pointer;
+    flex-grow: 1;
+    color: var(--color-text-primary);
+}
+
+.buttonContainer {
+    margin-top: 25px;
+    text-align: right; /* Align button to the right */
+}
+
+.saveButton {
+    /* Inherit base button styles from index.css */
+    cursor: pointer;
+    border-radius: var(--border-radius-md);
+    padding: 0.7em 1.4em; /* Slightly larger padding */
+    font-size: 1em;
+    font-weight: 500;
+    transition: background-color var(--transition-std), border-color var(--transition-std), transform var(--transition-fast);
+
+    /* Apply accent theme */
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+}
+
+.saveButton:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+.saveButton:disabled {
+    background-color: var(--color-border);
+    border-color: var(--color-border);
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.saveButton:active:not(:disabled) {
+    transform: scale(0.98);
+}

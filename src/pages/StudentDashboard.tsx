@@ -78,27 +78,35 @@ const StudentDashboard: React.FC = () => {
                     // Extract discipline IDs from the association data
                     const disciplineIds = associationData?.map(assoc => assoc.discipline_id) || [];
                     if (disciplineIds.length > 0) {
-                        const { count: lessonCount, error: totalLessonsError } = await supabase
-                            .from('lessons').select('id', { count: 'exact', head: true }).in('discipline_id', disciplineIds);
-                        totalLessonsCount = totalLessonsError ? 0 : (lessonCount ?? 0);
+                        // Fetch lesson IDs associated with these disciplines
+                        const { data: lessonAssocData, error: lessonAssocError } = await supabase
+                            .from('discipline_lessons')
+                            .select('lesson_id')
+                            .in('discipline_id', disciplineIds);
 
-                        if (totalLessonsCount > 0) {
-                            const { data: lessonData, error: lessonError } = await supabase
-                                .from('lessons').select('id').in('discipline_id', disciplineIds);
-                            if (!lessonError && lessonData) {
-                                const lessonIds = (lessonData as LessonId[])?.map(l => l.id) || [];
-                                if (lessonIds.length > 0) {
-                                    const { count: viewedCount, error: viewedLessonsError } = await supabase
-                                        .from('lesson_views').select('lesson_id', { count: 'exact', head: true })
-                                        .eq('user_id', user.id).in('lesson_id', lessonIds);
-                                    viewedLessonsCount = viewedLessonsError ? 0 : (viewedCount ?? 0);
-                                }
+                        if (lessonAssocError) {
+                            console.warn(`Error fetching lesson associations for course ${course.id} on dashboard:`, lessonAssocError.message);
+                        } else {
+                            const lessonIds = [...new Set(lessonAssocData?.map(assoc => assoc.lesson_id) || [])]; // Get unique lesson IDs
+                            totalLessonsCount = lessonIds.length;
+
+                            // Fetch viewed lessons count only if there are lessons associated
+                            if (totalLessonsCount > 0) {
+                                const { count: viewedCount, error: viewedLessonsError } = await supabase
+                                    .from('lesson_views')
+                                    .select('lesson_id', { count: 'exact', head: true })
+                                    .eq('user_id', user.id)
+                                    .in('lesson_id', lessonIds);
+
+                                viewedLessonsCount = viewedLessonsError ? 0 : (viewedCount ?? 0);
+                                if (viewedLessonsError) console.warn(`Error fetching viewed lessons for course ${course.id} on dashboard:`, viewedLessonsError.message);
                             }
                         }
-                    }
-                } catch (progressError: any) {
+                    } // End of disciplineIds.length > 0 check
+                } catch (progressError: any) { // Catch errors specific to fetching progress for *this* course
                     console.warn(`Failed to fetch progress for course ${course.id} on dashboard:`, progressError);
-                }
+                    // Keep counts at 0 if progress fetch fails
+                } // End try-catch for progress fetching
                 return { ...course, totalLessons: totalLessonsCount, viewedLessons: viewedLessonsCount };
             });
 
