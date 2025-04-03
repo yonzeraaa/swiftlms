@@ -10,7 +10,7 @@ interface Lesson {
   number: string | null;
   order: number | null;
   content: string | null; // Incluir para possível exibição ou edição
-  video_url: string | null; // Incluir para possível exibição ou edição
+  video_urls: string[] | null; // Changed to array
   created_at: string;
   // updated_at: string; // Adicionar se existir
 }
@@ -35,7 +35,7 @@ const LessonBankListComponent: React.ForwardRefRenderFunction<LessonBankListHand
       // Fetch all lessons, ordered as desired
       const { data, error: fetchError } = await supabase
         .from('lessons')
-        .select('id, title, number, order, content, video_url, created_at') // Selecionar todos os campos relevantes
+        .select('id, title, number, order, content, video_urls, created_at') // Select the new array column
         .order('order', { ascending: true, nullsFirst: false }) // Use nullsFirst: false for NULLS LAST
         .order('number', { ascending: true })
         .order('title', { ascending: true });
@@ -118,7 +118,9 @@ const LessonBankListComponent: React.ForwardRefRenderFunction<LessonBankListHand
                 <strong>{lesson.title}</strong> {/* Removed number display */}
                 {/* Optional: Display snippet of content or video URL */}
                 {/* <p>{lesson.content?.substring(0, 50) ?? ''}... </p> */}
-                {lesson.video_url && <small> (Vídeo/PDF: <a href={lesson.video_url} target="_blank" rel="noopener noreferrer">Link</a>)</small>}
+                {lesson.video_urls && lesson.video_urls.length > 0 && (
+                    <small> ({lesson.video_urls.length} Vídeo(s)/PDF(s): <a href={lesson.video_urls[0]} target="_blank" rel="noopener noreferrer">Ver primeiro</a>)</small>
+                )}
                 <small> (Ordem: {lesson.order ?? 'N/A'})</small>
                 <small> Criado em: {new Date(lesson.created_at).toLocaleDateString()}</small>
               </div>

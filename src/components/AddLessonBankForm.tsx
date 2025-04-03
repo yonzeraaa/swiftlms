@@ -10,7 +10,7 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
   const [title, setTitle] = useState('');
   // const [number, setNumber] = useState(''); // Removed number state
   const [content, setContent] = useState('');
-  const [videoUrl, setVideoUrl] = useState('');
+  const [videoUrlsInput, setVideoUrlsInput] = useState(''); // State for the textarea content
   const [order, setOrder] = useState<number | ''>(''); // Optional explicit order
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,12 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
 
     // const formattedNumber = formatNumber(number); // Removed number formatting
     const finalOrder = order === '' ? null : order;
-    const finalVideoUrl = videoUrl.trim() || null;
+    // Process video URLs from textarea
+    const urlsArray = videoUrlsInput
+      .split('\n') // Split by newline
+      .map(url => url.trim()) // Trim whitespace
+      .filter(url => url !== ''); // Filter out empty lines
+    const finalVideoUrls = urlsArray.length > 0 ? urlsArray : null; // Send null if no valid URLs
     const trimmedTitle = title.trim();
 
     if (!trimmedTitle) {
@@ -55,7 +60,7 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
             title: trimmedTitle,
             number: null, // Set number to null explicitly or remove if DB default is null
             content: content.trim() || null,
-            video_url: finalVideoUrl,
+            video_urls: finalVideoUrls, // Use the new column name and array
             order: finalOrder
         }]);
 
@@ -66,7 +71,7 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
       setTitle('');
       // setNumber(''); // Removed number clearing
       setContent('');
-      setVideoUrl('');
+      setVideoUrlsInput(''); // Clear the textarea state
       setOrder('');
       onLessonCreated(); // Trigger refresh in parent
     } catch (err: any) {
@@ -124,15 +129,15 @@ const AddLessonBankForm: React.FC<AddLessonBankFormProps> = ({ onLessonCreated }
 
          {/* Row 3: Video URL */}
          <div className={styles.formGroup}> {/* Apply group style */}
-          <label htmlFor="lessonBankVideoUrl">URL do Vídeo/PDF (Opcional):</label><br />
-          <input
-            type="url"
-            id="lessonBankVideoUrl"
-            value={videoUrl}
-            onChange={(e) => setVideoUrl(e.target.value)}
+          <label htmlFor="lessonBankVideoUrls">URLs de Vídeo/PDF (Opcional - uma por linha):</label><br />
+          <textarea
+            id="lessonBankVideoUrls"
+            value={videoUrlsInput}
+            onChange={(e) => setVideoUrlsInput(e.target.value)}
             disabled={loading}
-            placeholder="https://... (YouTube, Vimeo, MP4, PDF, Google Drive)"
-            style={{ width: '100%', boxSizing: 'border-box' }}
+            rows={4} // Adjust rows as needed
+            placeholder="https://exemplo.com/video1.mp4&#10;https://exemplo.com/documento.pdf&#10;https://youtube.com/watch?v=..."
+            style={{ width: '100%', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }} // Ensure newlines are preserved visually
           />
         </div>
 

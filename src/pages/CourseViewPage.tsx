@@ -26,7 +26,7 @@ interface Lesson {
     number: string | null;
     order: number | null;
     content: string | null;
-    video_url: string | null;
+    video_urls: string[] | null; // Changed to array
 }
 
 const CourseViewPage: React.FC = () => {
@@ -134,7 +134,7 @@ const CourseViewPage: React.FC = () => {
                 if (allLessonIds.size > 0) {
                     const { data: lessonsData, error: lessonsError } = await supabase
                         .from('lessons')
-                        .select('id, title, number, order, content, video_url')
+                        .select('id, title, number, order, content, video_urls') // Select the new array column
                         .in('id', Array.from(allLessonIds))
                         // Order lessons globally here; specific order per discipline can be handled client-side if needed
                         .order('order', { ascending: true, nullsFirst: false })
@@ -332,73 +332,77 @@ const CourseViewPage: React.FC = () => {
                                                 {lesson.content && <p className={styles.lessonContent}>{lesson.content}</p>}
 
                                                 {/* Embed Media Player (Video or PDF) */}
-                                                {lesson.video_url && (() => {
-                                                    const originalUrl = lesson.video_url;
-                                                    const lowerCaseUrl = originalUrl.toLowerCase();
+                                                {/* Iterate over video_urls array */}
+                                                {lesson.video_urls && lesson.video_urls.length > 0 && (
+                                                    lesson.video_urls.map((url, index) => {
+                                                        const originalUrl = url; // Use the current URL from the array
+                                                        const lowerCaseUrl = originalUrl.toLowerCase();
 
-                                                    // Check for Google Drive link first
-                                                    if (lowerCaseUrl.includes('drive.google.com/file/d/')) {
-                                                        try {
-                                                            const urlObject = new URL(originalUrl);
-                                                            const pathSegments = urlObject.pathname.split('/');
-                                                            const fileIdIndex = pathSegments.findIndex(segment => segment === 'd');
-                                                            if (fileIdIndex !== -1 && pathSegments.length > fileIdIndex + 1) {
-                                                                const fileId = pathSegments[fileIdIndex + 1];
-                                                                const embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
-                                                                return (
-                                                                    <div className={styles.pdfWrapper}>
-                                                                        <iframe
-                                                                            src={embedUrl}
-                                                                            className={styles.pdfViewer}
-                                                                            title={`Google Drive Viewer: ${lesson.title}`}
-                                                                            allow="autoplay"
-                                                                            // Removed onLoad handler
-                                                                        >
-                                                                            Seu navegador não suporta iframes ou o conteúdo não pode ser embutido. <a href={originalUrl} target="_blank" rel="noopener noreferrer">Abrir no Google Drive</a>.
-                                                                        </iframe>
-                                                                    </div>
-                                                                );
-                                                            }
-                                                        } catch (e) { console.error("Error parsing Google Drive URL:", e); }
-                                                    }
+                                                        // Unique key for each item in the map
+                                                        const itemKey = `${lesson.id}-url-${index}`;
 
-                                                    // Check for YouTube URLs OR direct .mp4 URLs
-                                                    if (lowerCaseUrl.includes('youtube.com') || lowerCaseUrl.includes('youtu.be') || lowerCaseUrl.endsWith('.mp4')) {
-                                                        return (
-                                                            <div className={styles.playerWrapper}>
-                                                                <ReactPlayer
-                                                                    className={styles.reactPlayer}
-                                                                    url={originalUrl} // ReactPlayer handles YouTube & MP4
-                                                                    width='100%'
-                                                                    height='100%'
-                                                                    controls={true}
-                                                                    playing={true} // Start playing when selected
-                                                                    // Removed onPlay handler - handled by click
-                                                                />
-                                                            </div>
-                                                        );
-                                                    } else if (lowerCaseUrl.endsWith('.pdf')) { // Check for PDF next
-                                                        return (
-                                                            <div className={styles.pdfWrapper}>
-                                                                <iframe
-                                                                    src={originalUrl} // Use original URL case
-                                                                    className={styles.pdfViewer}
-                                                                    title={`PDF Viewer: ${lesson.title}`}
-                                                                    // Removed onLoad handler
-                                                                >
-                                                                    Seu navegador não suporta iframes para visualização de PDF. Você pode <a href={originalUrl} target="_blank" rel="noopener noreferrer">baixar o PDF aqui</a>.
-                                                                </iframe>
-                                                            </div>
-                                                        );
-                                                    } else {
-                                                        // Fallback: Display message and download link
-                                                        return (
-                                                            <p className={styles.unsupportedContent}>
-                                                                Este tipo de conteúdo não pode ser visualizado diretamente. <a href={originalUrl} download>Baixar conteúdo da aula</a>.
-                                                            </p>
-                                                        );
-                                                    }
-                                                })()}
+                                                        // Check for Google Drive link first
+                                                        if (lowerCaseUrl.includes('drive.google.com/file/d/')) {
+                                                            try {
+                                                                const urlObject = new URL(originalUrl);
+                                                                const pathSegments = urlObject.pathname.split('/');
+                                                                const fileIdIndex = pathSegments.findIndex(segment => segment === 'd');
+                                                                if (fileIdIndex !== -1 && pathSegments.length > fileIdIndex + 1) {
+                                                                    const fileId = pathSegments[fileIdIndex + 1];
+                                                                    const embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+                                                                    return (
+                                                                        <div key={itemKey} className={styles.pdfWrapper}>
+                                                                            <iframe
+                                                                                src={embedUrl}
+                                                                                className={styles.pdfViewer}
+                                                                                title={`Google Drive Viewer ${index + 1}: ${lesson.title}`}
+                                                                                allow="autoplay"
+                                                                            >
+                                                                                Seu navegador não suporta iframes ou o conteúdo não pode ser embutido. <a href={originalUrl} target="_blank" rel="noopener noreferrer">Abrir no Google Drive</a>.
+                                                                            </iframe>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                            } catch (e) { console.error("Error parsing Google Drive URL:", e); }
+                                                        }
+
+                                                        // Check for YouTube URLs OR direct .mp4 URLs
+                                                        if (lowerCaseUrl.includes('youtube.com') || lowerCaseUrl.includes('youtu.be') || lowerCaseUrl.endsWith('.mp4')) {
+                                                            return (
+                                                                <div key={itemKey} className={styles.playerWrapper}>
+                                                                    <ReactPlayer
+                                                                        className={styles.reactPlayer}
+                                                                        url={originalUrl} // ReactPlayer handles YouTube & MP4
+                                                                        width='100%'
+                                                                        height='100%'
+                                                                        controls={true}
+                                                                        // Consider setting playing={false} by default for multiple videos
+                                                                        playing={false}
+                                                                    />
+                                                                </div>
+                                                            );
+                                                        } else if (lowerCaseUrl.endsWith('.pdf')) { // Check for PDF next
+                                                            return (
+                                                                <div key={itemKey} className={styles.pdfWrapper}>
+                                                                    <iframe
+                                                                        src={originalUrl} // Use original URL case
+                                                                        className={styles.pdfViewer}
+                                                                        title={`PDF Viewer ${index + 1}: ${lesson.title}`}
+                                                                    >
+                                                                        Seu navegador não suporta iframes para visualização de PDF. Você pode <a href={originalUrl} target="_blank" rel="noopener noreferrer">baixar o PDF aqui</a>.
+                                                                    </iframe>
+                                                                </div>
+                                                            );
+                                                        } else {
+                                                            // Fallback: Display message and download link for each unsupported URL
+                                                            return (
+                                                                <p key={itemKey} className={styles.unsupportedContent}>
+                                                                    Conteúdo #{index + 1}: Este tipo não pode ser visualizado diretamente. <a href={originalUrl} download>Baixar conteúdo</a>.
+                                                                </p>
+                                                            );
+                                                        }
+                                                    }) // End map over urls
+                                                )}
                                             </div> // End lessonViewerContainer
                                         )}
                                     </li>
