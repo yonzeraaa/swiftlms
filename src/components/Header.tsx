@@ -5,9 +5,11 @@ import styles from './Header.module.css';
 // Define props to accept the toggle function
 interface HeaderProps {
   onToggleSidebar: () => void;
+  // Removed viewMode props
 }
 
-const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => { // Destructure prop
+// Reverted destructuring
+const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { logout, user } = useAuth();
 
   return (
@@ -18,6 +20,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => { // Destructure 
         <div className={styles.brand} onClick={onToggleSidebar}>SwiftLMS</div>
         {user && ( // Show logout only if user is logged in
           <div className={styles.userInfo}>
+            {/* Removed "Return to Admin" button logic */}
             <span className={styles.userEmail}>{user.email}</span>
             <button onClick={logout} className={styles.logoutButton}>
               Logout

@@ -7,21 +7,25 @@ import styles from './Sidebar.module.css';
 interface SidebarProps {
   className?: string;
   onLinkClick?: () => void; // Function to call when a link is clicked (e.g., close sidebar)
+  // Removed viewMode props
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick }) => { // Destructure props
+// Reverted destructuring
+const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick }) => {
+  // Get roles from useAuth again
   const { isAdmin, isStudent } = useAuth();
 
   // Define links based on role
   let navLinks: { path: string; label: string }[] = [];
 
+  // Reverted link definition logic
   if (isAdmin) {
     navLinks = [
-      { path: '/admin', label: 'Visão Geral' }, // Keep overview link
-      { path: '/admin/students', label: 'Alunos' }, // Add students link
+      { path: '/admin', label: 'Visão Geral' },
+      { path: '/admin/students', label: 'Alunos' },
       { path: '/admin/courses', label: 'Cursos' },
-      { path: '/admin/disciplines-bank', label: 'Banco de Disciplinas' }, // Add link to discipline bank
-      { path: '/admin/lessons-bank', label: 'Banco de Aulas' }, // Add link to lesson bank
+      { path: '/admin/disciplines-bank', label: 'Banco de Disciplinas' },
+      { path: '/admin/lessons-bank', label: 'Banco de Aulas' },
       // { path: '/admin/settings', label: 'Configurações (Admin)' },
     ];
   } else if (isStudent) { // isStudent check uses 'aluno' internally now
@@ -52,6 +56,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick }) => { // Des
               </NavLink>
             </li>
           ))}
+
+          {/* Removed "View as Student" toggle button */}
         </ul>
       </nav>
     </aside>

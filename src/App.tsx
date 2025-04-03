@@ -111,7 +111,7 @@ function App() {
           {/* <Route path="/admin/view-student/:studentId" element={<AdminViewStudentDashboard />} /> */}
           {/* Add other admin-specific routes here */}
         </Route>
-        <Route element={<ProtectedRoute allowedRoles={['aluno', 'admin']} />}> {/* Allow admin access */}
+        <Route element={<ProtectedRoute allowedRoles={['aluno']} />}> {/* Reverted: Only allow 'aluno' role */}
           <Route path="/student" element={<StudentDashboard />} />
           <Route path="/student/courses" element={<MyCoursesPage />} />
           {/* Move Course View inside student routes */}

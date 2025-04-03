@@ -1,11 +1,13 @@
-import React, { useState } from 'react'; // Import useState
-import { Outlet } from 'react-router-dom';
+import React, { useState } from 'react'; // Keep useState
+import { Outlet } from 'react-router-dom'; // Remove useLocation
 import Header from './Header.tsx';
-import Sidebar from './Sidebar.tsx'; // Import Sidebar
-import styles from './Layout.module.css'; // Import Layout styles
+import Sidebar from './Sidebar.tsx'; // Keep Sidebar import
+// Removed unused imports: useAuth, StudentDashboard
+import styles from './Layout.module.css'; // Keep Layout styles
 
 const Layout: React.FC = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // State for mobile sidebar
+  // Removed isAdmin check, location, viewMode state, and toggleViewMode function
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Keep sidebar state
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -13,14 +15,19 @@ const Layout: React.FC = () => {
 
   return (
     <div className={styles.appContainer}> {/* Overall container */}
-      <Header onToggleSidebar={toggleSidebar} /> {/* Pass toggle function */}
-      <div className={styles.mainLayout}> {/* Container for sidebar + content */}
-        {/* Conditionally apply 'sidebarOpen' class based on state */}
-        <Sidebar className={isSidebarOpen ? styles.sidebarOpen : ''} onLinkClick={toggleSidebar} />
+      {/* Reverted Header props */}
+      <Header onToggleSidebar={toggleSidebar} />
+      <div className={styles.mainLayout}>
+        {/* Reverted Sidebar props */}
+        <Sidebar
+          className={isSidebarOpen ? styles.sidebarOpen : ''}
+          onLinkClick={toggleSidebar}
+        />
         {/* Add overlay div, conditionally rendered and styled via CSS */}
         {isSidebarOpen && <div className={styles.overlay} onClick={toggleSidebar}></div>}
         <main className={styles.contentArea}> {/* Content area */}
-          <Outlet /> {/* Renders the matched child route component */}
+          {/* Reverted conditional rendering, always render Outlet */}
+          <Outlet />
         </main>
       </div>
       {/* Add Footer component here later if needed */}

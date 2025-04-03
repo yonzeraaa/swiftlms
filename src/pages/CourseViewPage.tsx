@@ -31,7 +31,7 @@ interface Lesson {
 
 const CourseViewPage: React.FC = () => {
     const { courseId } = useParams<{ courseId: string }>();
-    const { user, isAdmin } = useAuth(); // Get current user and admin status
+    const { user } = useAuth(); // Get current user (removed isAdmin)
     const [courseData, setCourseData] = useState<CourseDetails | null>(null);
     const [disciplines, setDisciplines] = useState<Discipline[]>([]);
     const [loading, setLoading] = useState(true);
@@ -53,33 +53,29 @@ const CourseViewPage: React.FC = () => {
         setIsEnrolled(null); // Reset enrollment status
 
         try {
-            // 1. Check enrollment ONLY if the current user is NOT an admin
-            if (!isAdmin) {
-                const { data: enrollmentData, error: enrollmentError } = await supabase
-                    .from('enrollments')
-                    .select('id')
-                    .eq('user_id', user.id) // Check enrollment for the logged-in user
-                    .eq('course_id', courseId)
-                    .maybeSingle();
+            // 1. Check enrollment first (RLS allows reading own enrollment)
+            // Reverted: Check enrollment for ALL users accessing this page
+            const { data: enrollmentData, error: enrollmentError } = await supabase
+                .from('enrollments')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('course_id', courseId)
+                .maybeSingle(); // Use maybeSingle to return null if not found
 
-                if (enrollmentError) {
-                    throw new Error(`Erro ao verificar inscrição: ${enrollmentError.message}`);
-                }
-
-                if (!enrollmentData) {
-                    console.log("Student user not enrolled in this course.");
-                    setIsEnrolled(false);
-                    setError("Você não está inscrito neste curso.");
-                    setLoading(false);
-                    return; // Stop if student is not enrolled
-                }
-                console.log("Student user is enrolled.");
-                setIsEnrolled(true);
-            } else {
-                // If user IS an admin, skip enrollment check and assume access
-                console.log("Admin user accessing course view. Skipping enrollment check.");
-                setIsEnrolled(true); // Allow admin to view content
+            if (enrollmentError) {
+                throw new Error(`Erro ao verificar inscrição: ${enrollmentError.message}`);
             }
+
+            if (!enrollmentData) {
+                console.log("User not enrolled in this course.");
+                setIsEnrolled(false);
+                setError("Você não está inscrito neste curso.");
+                setLoading(false);
+                return; // Stop if not enrolled
+            }
+
+            console.log("User is enrolled. Fetching course data...");
+            setIsEnrolled(true);
 
             // --- New Fetching Logic ---
             // 2. Fetch basic course details
@@ -183,17 +179,17 @@ const CourseViewPage: React.FC = () => {
             if (user && courseId) {
                 const lessonIdsInCourse = fetchedDisciplinesWithLessons
                     .flatMap(d => d.lessons?.map(l => l.id) || [])
-                    .filter((id): id is string => !!id);
+                    .filter((id): id is string => !!id); // Get all valid lesson IDs and ensure type
 
                 if (lessonIdsInCourse.length > 0) {
                     const { data: viewedData, error: viewedError } = await supabase
                         .from('lesson_views')
                         .select('lesson_id')
-                        .eq('user_id', user.id) // Always use the logged-in user's ID
+                        .eq('user_id', user.id)
                         .in('lesson_id', lessonIdsInCourse);
 
                     if (viewedError) {
-                        console.warn("Error fetching viewed lessons for current user:", viewedError);
+                        console.warn("Error fetching viewed lessons:", viewedError);
                     } else if (viewedData) {
                         setViewedLessonIds(new Set(viewedData.map(v => v.lesson_id)));
                     }
@@ -209,7 +205,7 @@ const CourseViewPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [user, courseId, isAdmin]); // Add isAdmin to dependency array
+    }, [user, courseId]); // Removed isAdmin from dependency array
 
     useEffect(() => {
         checkEnrollmentAndFetchData();
@@ -217,14 +213,14 @@ const CourseViewPage: React.FC = () => {
 
     // Function to mark a lesson as viewed and save to localStorage
     const handleMarkLessonAsViewed = useCallback(async (lessonId: string) => {
-        // Only allow marking as viewed if NOT an admin (or adjust based on desired behavior)
-        // For now, let admins also mark viewed for testing purposes
         if (!user || !courseData || !disciplines) {
              console.warn("Cannot mark lesson viewed: missing user, courseData, or disciplines");
              return;
         }
-
-        const alreadyViewedInState = viewedLessonIds.has(lessonId);
+        // Reverted: Allow anyone enrolled (including admin if they enroll themselves)
+        // to mark lessons as viewed for their own progress tracking / testing.
+        // Reverted: Allow anyone enrolled (including admin if they enroll themselves)
+        // to mark lessons as viewed for their own progress tracking / testing.
 
         // Find lesson title (needed for localStorage)
         let lessonTitle = 'Aula desconhecida';
@@ -283,7 +279,7 @@ const CourseViewPage: React.FC = () => {
         } catch (err: any) {
             console.error(`Error marking lesson ${lessonId} as viewed:`, err);
         }
-    }, [user, viewedLessonIds, courseData, disciplines]); // Dependencies are correct
+    }, [user, viewedLessonIds, courseData, disciplines]); // Added courseData and disciplines as dependencies
 
     // Toggle selected lesson
     const handleLessonClick = (lessonId: string) => {
@@ -300,16 +296,16 @@ const CourseViewPage: React.FC = () => {
     // Show specific enrollment error first
     // Apply style to error messages
     // Error messages already have styles applied from previous attempt
-    // Show enrollment error only if the user is NOT an admin
-    if (!isAdmin && isEnrolled === false) return <div className={styles.errorMessage}>Acesso negado: Você não está inscrito neste curso. <Link to="/student">Voltar ao Painel</Link></div>;
-    // Show general errors
-    if (error) return <div className={styles.errorMessage}>Erro: {error} <Link to={isAdmin ? "/admin" : "/student"}>Voltar</Link></div>;
-    if (!courseData) return <div className={styles.errorMessage}>Curso não encontrado. <Link to={isAdmin ? "/admin" : "/student"}>Voltar</Link></div>;
+    // Reverted: Show enrollment error for any user not enrolled
+    if (isEnrolled === false) return <div className={styles.errorMessage}>Acesso negado: Você não está inscrito neste curso. <Link to="/student">Voltar ao Painel</Link></div>;
+    // Reverted: Show general errors with link back to student panel
+    if (error) return <div className={styles.errorMessage}>Erro: {error} <Link to="/student">Voltar ao Painel</Link></div>;
+    if (!courseData) return <div className={styles.errorMessage}>Curso não encontrado. <Link to="/student">Voltar ao Painel</Link></div>;
 
 
     return (
         <div className={styles.pageContainer}>
-            <Link to={isAdmin ? "/admin/courses" : "/student/courses"} className={styles.backLink}>&larr; Voltar para Cursos</Link>
+            <Link to="/student/courses" className={styles.backLink}>&larr; Voltar para Meus Cursos</Link> {/* Reverted back link */}
             <h1>{courseData.title} {courseData.code ? `(${courseData.code})` : ''}</h1>
             {courseData.description && <p className={styles.courseDescription}>{courseData.description}</p>}
             <hr />
