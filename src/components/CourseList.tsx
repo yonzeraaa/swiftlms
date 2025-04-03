@@ -143,6 +143,11 @@ const CourseListComponent: React.ForwardRefRenderFunction<CourseListHandle, Cour
                   <Link to={`/admin/courses/${course.id}/associated-disciplines`}>
                     <button>Gerenciar Disciplinas Associadas</button>
                   </Link>
+                  {/* Added Enroll Students button/link */}
+                  <Link to={`/admin/courses/${course.id}/enrollments`}>
+                    {/* Reuse existing button style or create a new one */}
+                    <button className={styles.enrollButton}>Inscrever Alunos</button>
+                  </Link>
                   <button className={styles.editButton} onClick={() => handleEdit(course)}>Editar</button>
                   {/* Pass courseId directly to handleDelete */}
                   <button className={styles.deleteButton} onClick={() => handleDelete(course.id)}>Excluir</button>

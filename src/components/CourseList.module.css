@@ -117,6 +117,25 @@
     border-color: #ac2925;
 }
 
+/* Added styles for Enroll button (gold theme) */
+.enrollButton {
+    background-color: var(--color-accent);
+    color: var(--color-text-on-accent);
+    border: 1px solid var(--color-accent-dark);
+    padding: 5px 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: var(--border-radius-sm);
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+.enrollButton:hover:not(:disabled) {
+    background-color: var(--color-accent-light);
+    border-color: var(--color-accent);
+}
+
+
 
 .loadingMessage, .errorMessage, .noItemsMessage {
     color: var(--color-text-secondary);
@@ -153,7 +172,7 @@
     /* flex-grow: 1; */
   }
 
-  .editButton, .deleteButton {
+  .editButton, .deleteButton, .enrollButton { /* Added enrollButton */
      margin-left: 0; /* Ensure no left margin */
   }
 }
