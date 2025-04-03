@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+// Removed unused Link import
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../services/supabaseClient';
+// Removed unused supabase import
 import styles from './StudentDashboard.module.css';
 
 // Removed unused Course interfaces

@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom'; // Removed useNavigate, useLocation
 import Header from './Header.tsx';
 import Sidebar from './Sidebar.tsx';
 import { useAuth } from '../contexts/AuthContext.tsx';
-import StudentDashboard from '../pages/StudentDashboard.tsx'; // Import StudentDashboard for view mode
+// Removed unused StudentDashboard import
 // Potentially import other student pages if needed for direct rendering in view mode
 import styles from './Layout.module.css';
 
 const Layout: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
+  // Removed unused navigate and location variables
   // Get necessary auth state, including the combined loading flags
   const { isAdmin, initialAuthCheckComplete, profileLoading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

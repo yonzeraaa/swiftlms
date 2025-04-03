@@ -3,10 +3,10 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.tsx';
 
 const RootRedirector: React.FC = () => {
-  const { isAuthenticated, isAdmin, isStudent, loading } = useAuth();
+  const { isAuthenticated, isAdmin, isStudent, initialAuthCheckComplete } = useAuth(); // Use initialAuthCheckComplete
 
   // Wait until the authentication status and profile are loaded
-  if (loading) {
+  if (!initialAuthCheckComplete) { // Check if initial check is NOT complete
     // TODO: Replace with a proper loading spinner/component
     return <div>Loading...</div>;
   }
