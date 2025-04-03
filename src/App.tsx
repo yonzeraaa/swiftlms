@@ -15,6 +15,7 @@ import AdminAssociatedDisciplinesPage from './pages/AdminAssociatedDisciplinesPa
 import AdminLessonsBankPage from './pages/AdminLessonsBankPage.tsx'; // Import the new lesson bank page
 // import AdminAssociatedLessonsPage from './pages/AdminAssociatedLessonsPage.tsx'; // TODO: Create this page
 import AdminEnrollmentsPage from './pages/AdminEnrollmentsPage.tsx';
+import AdminViewStudentDashboard from './pages/AdminViewStudentDashboard.tsx'; // Import admin view for student dashboard
 import CourseViewPage from './pages/CourseViewPage.tsx';
 import MyCoursesPage from './pages/MyCoursesPage.tsx'; // Import my courses page
 // import AdminCoursesPageWrapper from './pages/AdminCoursesPageWrapper.tsx'; // Remove wrapper import
@@ -106,6 +107,8 @@ function App() {
           {/* REMOVED: Old lesson management route */}
           {/* <Route path="/admin/disciplines/:disciplineId/lessons" element={<AdminLessonsPage />} /> */}
           <Route path="/admin/courses/:courseId/enrollments" element={<AdminEnrollmentsPage />} /> {/* Add route for enrollments */}
+          {/* ADDED: Route for admin to view a specific student's dashboard */}
+          <Route path="/admin/view-student/:studentId" element={<AdminViewStudentDashboard />} />
           {/* Add other admin-specific routes here */}
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['aluno']} />}>

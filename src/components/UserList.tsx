@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'; // Removed unused 'React' import
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { Link } from 'react-router-dom'; // Import Link
 import { supabase } from '../services/supabaseClient.ts';
 import styles from './UserList.module.css';
 
@@ -204,7 +205,7 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
               <th>Status</th>
               <th>Criado em</th>
               <th>Último Login</th> {/* Add new header */}
-              <th colSpan={3}>Ações</th> {/* Keep colSpan as 3 */}
+              <th colSpan={4}>Ações</th> {/* Increase colSpan to 4 */}
             </tr>
           </thead>
           <tbody>
@@ -218,6 +219,16 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
                   <td data-label="Criado em">{new Date(user.created_at).toLocaleString()}</td>
                   <td data-label="Último Login">{user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Nunca'}</td>
                   {/* Actions in separate cells for desktop layout */}
+                  <td data-label="Ação Ver Como">
+                      {user.role === 'aluno' && (
+                          <Link to={`/admin/view-student/${user.id}`}>
+                              {/* Use a button style similar to others, maybe info color? */}
+                              <button className={styles.viewAsButton} title="Ver painel como este aluno">
+                                  Ver Como
+                              </button>
+                          </Link>
+                      )}
+                  </td>
                   <td data-label="Ação Congelar/Reativar">
                       {user.role === 'aluno' && (
                           <button onClick={() => handleUpdateStatus(user.id, user.account_status)} className={user.account_status === 'frozen' ? styles.unfreezeButton : styles.freezeButton} title={user.account_status === 'frozen' ? 'Reativar conta do usuário' : 'Congelar conta do usuário'}>
