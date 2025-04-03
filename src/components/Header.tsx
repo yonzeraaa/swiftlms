@@ -1,19 +1,18 @@
 import React from 'react';
+import { NavLink, useLocation } from 'react-router-dom'; // Import NavLink and useLocation
 import { useAuth } from '../contexts/AuthContext.tsx';
 import styles from './Header.module.css';
 
 // Define props to accept the toggle function
 interface HeaderProps {
   onToggleSidebar: () => void;
-  // Add props for view mode toggle
-  viewMode: 'admin' | 'student';
-  isAdmin: boolean;
-  onToggleViewMode: () => void;
+  isAdmin: boolean; // Keep isAdmin prop
 }
 
 // Destructure new props
-const Header: React.FC<HeaderProps> = ({ onToggleSidebar, viewMode, isAdmin, onToggleViewMode }) => {
+const Header: React.FC<HeaderProps> = ({ onToggleSidebar, isAdmin }) => {
   const { logout, user } = useAuth();
+  const location = useLocation(); // Get location
 
   return (
     <header className={styles.appHeader}>
@@ -23,13 +22,13 @@ const Header: React.FC<HeaderProps> = ({ onToggleSidebar, viewMode, isAdmin, onT
         <div className={styles.brand} onClick={onToggleSidebar}>SwiftLMS</div>
         {user && ( // Show logout only if user is logged in
           <div className={styles.userInfo}>
-            {/* Show "Return to Admin" button if admin is in student view mode */}
-            {isAdmin && viewMode === 'student' && (
-              <button onClick={onToggleViewMode} className={styles.logoutButton} style={{ marginRight: '10px', borderColor: 'var(--color-info)' }}>
-                Voltar ao Admin
-              </button>
-            )}
             <span className={styles.userEmail}>{user.email}</span>
+            {/* Show "Return to Admin" link if admin is on a student page */}
+            {isAdmin && location.pathname.startsWith('/student') && (
+              <NavLink to="/admin" className={styles.logoutButton}> {/* Use NavLink and same style */}
+                Voltar ao Admin
+              </NavLink>
+            )}
             <button onClick={logout} className={styles.logoutButton}>
               Logout
             </button>

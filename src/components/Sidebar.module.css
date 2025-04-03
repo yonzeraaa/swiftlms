@@ -20,7 +20,7 @@
 
 .sidebar ul {
   list-style: none;
-  padding: 0;
+  padding: 0 0.5rem; /* Add horizontal padding */
   margin: 0;
 }
 
@@ -31,8 +31,8 @@
 .navLink {
   display: flex; /* Use flex for icon alignment later */
   align-items: center;
-  padding: 0.8rem 1rem; /* Reduced horizontal padding */
-  margin: 0.2rem 0.5rem; /* Reduced horizontal margin */
+  padding: 0.8rem 1rem; /* Keep vertical/horizontal padding */
+  margin: 0.2rem 0; /* Remove horizontal margin */
   color: rgba(255, 255, 255, 0.75); /* Base link color */
   text-decoration: none;
   font-size: 0.95rem;
@@ -51,7 +51,7 @@
   color: inherit; /* Use the color from the parent */
   cursor: pointer;
   text-align: left; /* Align text like links */
-  width: 100%; /* Ensure button takes full width */
+  width: 100%; /* Restore: Ensure button takes full width */
 }
 
 .navLink:hover {

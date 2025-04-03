@@ -197,16 +197,7 @@ const UserList = forwardRef<UserListHandle>((_props, ref) => {
       ) : (
         <table className={styles.userTable}>
           <thead>
-            <tr>
-              <th>Nome Completo</th>
-              <th>Email</th>
-              <th>Telefone</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Criado em</th>
-              <th>Último Login</th> {/* Add new header */}
-              <th colSpan={3}>Ações</th> {/* Revert colSpan to 3 */}
-            </tr>
+            <tr><th>Nome Completo</th><th>Email</th><th>Telefone</th><th>Role</th><th>Status</th><th>Criado em</th><th>Último Login</th><th colSpan={3}>Ações</th></tr>
           </thead>
           <tbody>
             {users.map(user => (

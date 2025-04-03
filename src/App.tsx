@@ -26,15 +26,33 @@ import Layout from './components/Layout.tsx'; // Import the Layout component
 
 // Component for routes accessible only when NOT authenticated (e.g., Login)
 const PublicRoute: React.FC = () => {
-  const { isAuthenticated, isAdmin, isStudent } = useAuth();
+  const { isAuthenticated, isAdmin, isStudent, initialAuthCheckComplete } = useAuth(); // Add initialAuthCheckComplete
+  // Add logging
+  const path = window.location.pathname;
+  console.log(`[PublicRoute] Path: ${path}, initialAuthCheckComplete: ${initialAuthCheckComplete}, isAuthenticated: ${isAuthenticated}, isAdmin: ${isAdmin}`);
+
+  // Wait for initial check before redirecting logged-in users
+  if (!initialAuthCheckComplete) {
+    console.log(`[PublicRoute] Path: ${path}, Waiting for initial auth check...`);
+    return <div>Initializing...</div>; // Or null, or a spinner
+  }
 
   if (isAuthenticated) {
+    console.log(`[PublicRoute] Path: ${path}, Authenticated. Redirecting...`);
     // Redirect logged-in users away from public-only pages
-    if (isAdmin) return <Navigate to="/admin" replace />;
-    if (isStudent) return <Navigate to="/student" replace />;
-    // Fallback if role isn't determined yet or is unexpected (should ideally not happen)
+    if (isAdmin) {
+        console.log(`[PublicRoute] Path: ${path}, Redirecting admin to /admin.`);
+        return <Navigate to="/admin" replace />;
+    }
+    if (isStudent) {
+        console.log(`[PublicRoute] Path: ${path}, Redirecting student to /student.`);
+        return <Navigate to="/student" replace />;
+    }
+    // Fallback should ideally not happen if profile loads correctly
+    console.warn(`[PublicRoute] Path: ${path}, Authenticated but role unknown? Redirecting to /.`);
     return <Navigate to="/" replace />;
   }
+  console.log(`[PublicRoute] Path: ${path}, Not authenticated. Rendering Outlet.`);
 
   return <Outlet />; // Render child route component (e.g., LoginPage)
 };
@@ -46,39 +64,81 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) => {
-  const { isAuthenticated, profile } = useAuth(); // Removed unused 'loading'
-  const userRole = profile?.role;
+  const { isAuthenticated, profile, initialAuthCheckComplete, profileLoading } = useAuth(); // Use new loading states
+  // Removed first userRole declaration
 
-  // REMOVED: Top-level loading check based on AuthContext.
-  // Child components will manage their own data loading state.
-  // if (loading) {
-  //   return <div>Loading...</div>;
-  // }
+  const path = window.location.pathname; // Get current path for logging
 
+
+
+  // 1. Wait for initial Supabase auth check
+  console.log(`[ProtectedRoute] Path: ${path}, Step 1: Checking initialAuthCheckComplete: ${initialAuthCheckComplete}`);
+  if (!initialAuthCheckComplete) {
+    return <div>Initializing Session...</div>;
+  }
+
+  // 2. Wait for profile loading to complete
+  console.log(`[ProtectedRoute] Path: ${path}, Step 2: Checking profileLoading: ${profileLoading}`);
+  if (profileLoading) {
+     return <div>Loading Profile...</div>;
+  }
+
+  // --- At this point, initial check is done AND profile loading is done ---
+
+  // 3. Check if profile exists (essential for role and status checks)
+  console.log(`[ProtectedRoute] Path: ${path}, Step 3: Checking profile exists: ${!!profile}`);
+  if (!profile) {
+      // This could happen if profile fetch failed or user has no profile row
+      console.error(`[ProtectedRoute] Path: ${path}, Profile data missing after loading. Redirecting to login.`);
+      // Consider calling logout() from context here if profile is mandatory
+      return <Navigate to="/login" replace />;
+  }
+
+  // 4. Check authentication status (which includes account_status check)
+  console.log(`[ProtectedRoute] Path: ${path}, Step 4: Checking isAuthenticated: ${isAuthenticated}`);
   if (!isAuthenticated) {
-    // Redirect unauthenticated users to login
+    // This implies account_status is not 'active' or user became null unexpectedly
+    console.log(`[ProtectedRoute] Path: ${path}, Not authenticated (likely inactive status). Redirecting to /login.`);
     return <Navigate to="/login" replace />;
   }
 
-  // Check role if allowedRoles are specified
-  if (allowedRoles && (!userRole || !allowedRoles.includes(userRole))) {
-    // Redirect if user role is not allowed for this route
-    // Could redirect to a generic dashboard or an "Unauthorized" page
-    console.warn(`User role "${userRole}" not allowed for this route. Redirecting.`);
-    // For now, redirect to login, but a better destination might be needed
-    return <Navigate to="/login" replace />;
+  // 5. Check role existence (redundant check given step 3, but safe)
+  console.log(`[ProtectedRoute] Path: ${path}, Step 5: Checking profile.role: ${profile.role}`);
+  if (!profile.role) {
+      console.error(`[ProtectedRoute] Path: ${path}, Authenticated but role missing. Redirecting to login.`);
+      return <Navigate to="/login" replace />;
   }
 
-  return <Outlet />; // Render child route component (e.g., AdminDashboard)
+  // Role is guaranteed to exist here
+  const currentRole = profile.role;
+  console.log(`[ProtectedRoute] Path: ${path}, Step 6: Role confirmed: ${currentRole}`);
+
+  // 7. Handle Admin role
+  if (currentRole === 'admin') {
+    console.log(`[ProtectedRoute] Path: ${path}, Admin detected. Rendering Outlet.`);
+    return <Outlet />;
+  }
+
+  // 8. Handle non-admin roles
+  console.log(`[ProtectedRoute] Path: ${path}, Step 8: Checking non-admin roles. Allowed: ${allowedRoles?.join(', ')}`);
+  if (allowedRoles && !allowedRoles.includes(currentRole)) {
+      console.warn(`[ProtectedRoute] Path: ${path}, User role "${currentRole}" not allowed. Allowed: ${allowedRoles.join(', ')}. Redirecting.`);
+      if (currentRole === 'aluno') return <Navigate to="/student" replace />;
+      return <Navigate to="/login" replace />;
+  }
+
+  // 9. Role allowed or no roles specified
+  console.log(`[ProtectedRoute] Path: ${path}, Non-admin role allowed or no specific roles required. Rendering Outlet.`);
+  return <Outlet />;
 };
 
 // --- Main App Component ---
 
 function App() {
-  const { loading } = useAuth(); // Only need loading for the initial app render check
+  const { initialAuthCheckComplete } = useAuth(); // Use initialAuthCheckComplete
 
   // Optional: Show global loading state initially
-  if (loading) {
+  if (!initialAuthCheckComplete) { // Wait for the initial check
      // TODO: Replace with a proper loading spinner/component
     return <div>Loading Application...</div>;
   }

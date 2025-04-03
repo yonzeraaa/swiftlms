@@ -118,6 +118,8 @@
     padding: 5px 0; /* Add some padding for hover */
     border-radius: var(--border-radius-xs);
     transition: background-color var(--transition-fast);
+    position: relative; /* Ensure link is in stacking context */
+    z-index: 1; /* Ensure link is clickable above children */
 }
 .summaryCourseItem a:hover {
     background-color: var(--color-surface-hover);

@@ -1,62 +1,48 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Header from './Header.tsx';
 import Sidebar from './Sidebar.tsx';
-import { useAuth } from '../contexts/AuthContext.tsx'; // Import useAuth
+import { useAuth } from '../contexts/AuthContext.tsx';
 import StudentDashboard from '../pages/StudentDashboard.tsx'; // Import StudentDashboard for view mode
 // Potentially import other student pages if needed for direct rendering in view mode
 import styles from './Layout.module.css';
 
 const Layout: React.FC = () => {
-  const { isAdmin } = useAuth(); // Check if the user is an admin
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Get necessary auth state, including the combined loading flags
+  const { isAdmin, initialAuthCheckComplete, profileLoading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  // Add state for view mode, default to 'admin'
-  const [viewMode, setViewMode] = useState<'admin' | 'student'>('admin');
-
+  // Removed viewMode state and related logic
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  // Function to toggle view mode, only available for admins
-  const toggleViewMode = () => {
-    if (isAdmin) {
-      setViewMode(prevMode => (prevMode === 'admin' ? 'student' : 'admin'));
-      // Close mobile sidebar when switching modes
-      setIsSidebarOpen(false);
-    }
-  };
+  // Removed toggleViewMode function
 
   return (
-    <div className={styles.appContainer}> {/* Overall container */}
-      {/* Pass viewMode and toggleViewMode to Header */}
+    <div className={styles.appContainer}>
       <Header
         onToggleSidebar={toggleSidebar}
-        viewMode={viewMode}
-        isAdmin={isAdmin}
-        onToggleViewMode={toggleViewMode}
+        isAdmin={isAdmin} // Pass isAdmin
       />
-      <div className={styles.mainLayout}>
-        {/* Pass viewMode and toggleViewMode to Sidebar */}
-        <Sidebar
-          className={isSidebarOpen ? styles.sidebarOpen : ''}
-          onLinkClick={toggleSidebar}
-          viewMode={viewMode}
-          isAdmin={isAdmin}
-          onToggleViewMode={toggleViewMode}
-        />
-        {/* Add overlay div, conditionally rendered and styled via CSS */}
-        {isSidebarOpen && <div className={styles.overlay} onClick={toggleSidebar}></div>}
-        <main className={styles.contentArea}> {/* Content area */}
-          {/* Conditionally render based on viewMode */}
-          {isAdmin && viewMode === 'student' ? (
-            // Render Student Dashboard when admin is in student view mode
-            <StudentDashboard />
-          ) : (
-            // Render the normal admin/student routes via Outlet otherwise
+      {/* Use combined loading state check */}
+      {/* Use combined loading state check */}
+      {(!initialAuthCheckComplete || profileLoading) ? (
+        <div className={styles.loadingPlaceholder}>Loading User...</div>
+      ) : (
+        <div className={styles.mainLayout}>
+          <Sidebar
+            className={isSidebarOpen ? styles.sidebarOpen : ''}
+            onLinkClick={toggleSidebar}
+            isAdmin={isAdmin} // Pass isAdmin
+          />
+          {isSidebarOpen && <div className={styles.overlay} onClick={toggleSidebar}></div>}
+          <main className={styles.contentArea}>
             <Outlet />
-          )}
-        </main>
-      </div>
+          </main>
+        </div>
+      )}
       {/* Add Footer component here later if needed */}
     </div>
   );

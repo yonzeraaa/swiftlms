@@ -8,7 +8,8 @@ interface AuthContextType {
   profile: { role: string | null; account_status: string | null } | null;
   login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
   logout: () => Promise<void>;
-  loading: boolean; // Represents initial auth check + profile fetch
+  profileLoading: boolean; // Represents profile fetch status
+  initialAuthCheckComplete: boolean; // Represents initial auth check status
   rememberedCredentials: { email: string; password?: string };
   authError: string | null;
   isAuthenticated: boolean;
@@ -25,7 +26,8 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<{ role: string | null; account_status: string | null } | null>(null);
-  const [loading, setLoading] = useState<boolean>(true); // True until initial auth check AND profile fetch complete
+  const [profileLoading, setProfileLoading] = useState<boolean>(false); // Start false, true only during profile fetch
+  const [initialAuthCheckComplete, setInitialAuthCheckComplete] = useState<boolean>(false); // Starts false
   const [rememberedCredentials, setRememberedCredentials] = useState<{ email: string; password?: string }>({ email: '', password: '' });
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -44,21 +46,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // --- Auth State Change Listener ---
   useEffect(() => {
-    setLoading(true); // Start loading on initial check
+    let initialCheckDone = false; // Flag to ensure we only set complete once
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event: string, session: Session | null) => {
         console.log('[AuthContext] onAuthStateChange triggered. Event:', _event, 'Session:', session ? 'Exists' : 'Null');
         const newUser = session?.user ?? null;
         setUser(newUser); // Set user state immediately
 
+        // Determine if this is the initial check
+        const isInitialCheck = !initialCheckDone;
+
         if (!newUser) {
           // If user logs out or session expires, clear profile and stop loading
           setProfile(null);
           setAuthError(null);
-          setLoading(false);
-          console.log('[AuthContext] No session/user found. Cleared state.');
+          setProfileLoading(false);
+          // If this was the initial check and there's no user, mark check complete
+          if (isInitialCheck) {
+            setInitialAuthCheckComplete(true);
+            console.log('[AuthContext] Initial auth check complete (No User).');
+            initialCheckDone = true;
+          }
+        } else {
+          // User exists. Profile fetch will be triggered by the other useEffect.
+          // If this was the initial check and there IS a user, mark check complete
+          if (isInitialCheck) {
+            setInitialAuthCheckComplete(true);
+            console.log('[AuthContext] Initial auth check complete (User Found).');
+            initialCheckDone = true;
+          }
         }
-        // If newUser exists, the profile fetch effect will handle loading state
       }
     );
 
@@ -93,14 +110,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
         setProfile(null);
         setAuthError(null); // Clear any previous auth errors
-        setLoading(false); // Ensure loading is false after logout attempt
+        setProfileLoading(false); // Ensure profile loading is false after logout attempt
+        setInitialAuthCheckComplete(true); // Ensure initial check is marked complete on logout
     }
   }, []); // useCallback dependency array
 
   // --- Profile Fetch Effect (Triggered by User Change) ---
   const fetchProfileData = useCallback(async (currentUser: User) => {
     console.log('[AuthContext] fetchProfileData called for user:', currentUser.id);
-    setLoading(true); // Ensure loading is true while fetching profile
+    setProfileLoading(true); // Use profileLoading here
     setAuthError(null); // Clear previous errors
     let fetchedRole: string | null = null;
     let fetchedStatus: string | null = null;
@@ -202,7 +220,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setProfile({ role: fetchedRole, account_status: fetchedStatus });
         setAuthError(null); // Clear error on success
       }
-      setLoading(false); // Stop loading regardless of outcome
+      setProfileLoading(false); // Use profileLoading here
       console.log('[AuthContext] fetchProfileData finished. Profile:', { role: fetchedRole, account_status: fetchedStatus }, 'Error:', fetchError);
     }
   }, [logout]); // Added logout to dependency array
@@ -211,9 +229,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (user) {
       fetchProfileData(user);
     } else {
-      // Ensure loading is false if user becomes null (handled in onAuthStateChange too, but belt-and-suspenders)
-      if (loading) {
-         setLoading(false);
+      // Ensure profile loading is false if user becomes null
+      if (profileLoading) {
+         setProfileLoading(false);
       }
     }
   }, [user, fetchProfileData]); // Depend on user and the memoized fetch function
@@ -261,10 +279,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     profile,
     login,
     logout,
-    loading,
+    profileLoading,
+    initialAuthCheckComplete,
     rememberedCredentials,
     authError,
-    isAuthenticated: !!user && profile?.account_status === 'active', // Logic remains the same
+    // isAuthenticated depends on initial check being complete AND user existing AND status being active
+    isAuthenticated: initialAuthCheckComplete && !!user && profile?.account_status === 'active',
     isAdmin: !!profile && profile.role === 'admin',
     isStudent: !!profile && profile.role === 'aluno', // Assuming 'aluno' is the student role text
   };
