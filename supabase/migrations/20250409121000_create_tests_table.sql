@@ -1,5 +1,9 @@
 -- supabase/migrations/20250409121000_create_tests_table.sql
 
+-- Enable the moddatetime extension if it doesn't exist
+CREATE EXTENSION IF NOT EXISTS moddatetime WITH SCHEMA extensions;
+
+
 CREATE TABLE public.tests (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     discipline_id uuid NOT NULL REFERENCES public.disciplines(id) ON DELETE CASCADE,
