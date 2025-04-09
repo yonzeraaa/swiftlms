@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-// TODO: Import Supabase client
+import { supabase } from '../services/supabaseClient'; // Import Supabase client
 
 interface Discipline {
   id: string;
@@ -23,21 +23,30 @@ const AddTestForm: React.FC<AddTestFormProps> = ({ onClose, onTestAdded }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // TODO: Fetch disciplines from Supabase on component mount
   useEffect(() => {
     const fetchDisciplines = async () => {
-      // Replace with actual Supabase fetch logic
-      console.log('Fetching disciplines...');
-      // Example data:
-      const fetchedDisciplines = [
-        { id: 'abc', title: 'Disciplina A' },
-        { id: 'def', title: 'Disciplina B' },
-        { id: 'ghi', title: 'Disciplina C' },
-      ];
-      setDisciplines(fetchedDisciplines);
-    };
-    fetchDisciplines();
-  }, []);
+      console.log('[AddTestForm] Fetching disciplines...');
+      setError(null); // Clear previous errors
+      try {
+        const { data, error } = await supabase
+          .from('disciplines')
+          .select('id, title') // Select only needed fields
+          .order('title', { ascending: true }); // Order alphabetically
+
+        if (error) throw error;
+
+        setDisciplines(data || []);
+        console.log('[AddTestForm] Disciplines fetched:', data);
+      } catch (err: any) {
+        console.error('[AddTestForm] Error fetching disciplines:', err);
+        setError(`Erro ao carregar disciplinas: ${err.message}`);
+        setDisciplines([]); // Clear disciplines on error
+      }
+    }; // End of fetchDisciplines function
+
+    fetchDisciplines(); // Call fetchDisciplines inside the useEffect callback
+
+  }, []); // Empty dependency array ensures it runs once on mount
 
   const handleAnswerChange = (questionNumber: number, answer: string) => {
     setCorrectAnswers(prev => ({ ...prev, [questionNumber]: answer.toUpperCase() }));
