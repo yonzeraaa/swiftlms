@@ -21,6 +21,7 @@ import MyCoursesPage from './pages/MyCoursesPage.tsx'; // Import my courses page
 // import AdminCoursesPageWrapper from './pages/AdminCoursesPageWrapper.tsx'; // Remove wrapper import
 import RootRedirector from './components/RootRedirector.tsx';
 import Layout from './components/Layout.tsx'; // Import the Layout component
+import AdminTestsPage from './pages/AdminTestsPage.tsx'; // Import the new tests page
 
 // --- Route Protection Components ---
 
@@ -169,6 +170,7 @@ function App() {
           <Route path="/admin/courses/:courseId/enrollments" element={<AdminEnrollmentsPage />} /> {/* Add route for enrollments */}
           {/* REMOVED: Route for admin to view a specific student's dashboard */}
           {/* <Route path="/admin/view-student/:studentId" element={<AdminViewStudentDashboard />} /> */}
+          <Route path="/admin/tests" element={<AdminTestsPage />} /> {/* ADDED: Route for managing tests */}
           {/* Add other admin-specific routes here */}
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['aluno', 'admin']} />}> {/* Allow admin access again */}
