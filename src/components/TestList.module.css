@@ -1,0 +1,8 @@
+/* src/components/TestList.module.css */
+.listContainer {
+  /* Add specific styles for the list container if needed */
+  width: 100%;
+}
+
+/* Styles for table are currently handled by Tailwind classes in TestList.tsx */
+/* You can add more specific overrides or styles here if necessary */
