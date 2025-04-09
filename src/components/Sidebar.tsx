@@ -22,6 +22,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, isAdmin }) =>
 
   // Reverted link definition logic
   // Determine links based on actual role
+  console.log('[Sidebar] Received isAdmin prop:', isAdmin); // Log the received prop value
   if (isAdmin) {
     navLinks = [
       { path: '/admin', label: 'Visão Geral' },
@@ -29,6 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, isAdmin }) =>
       { path: '/admin/courses', label: 'Cursos' },
       { path: '/admin/disciplines-bank', label: 'Disciplinas' },
       { path: '/admin/lessons-bank', label: 'Aulas' },
+      { path: '/admin/tests', label: 'Testes' }, // ADDED: Link to manage tests
       // Add a link for admin to view student dashboard
       { path: '/student', label: 'Visualizar como Aluno' },
     ];
@@ -38,6 +40,8 @@ const Sidebar: React.FC<SidebarProps> = ({ className, onLinkClick, isAdmin }) =>
       { path: '/student/courses', label: 'Meus Cursos' },
     ];
   }
+
+  console.log('[Sidebar] Determined navLinks:', navLinks); // Log the final links array
 
   return (
     // Combine base sidebar class with the passed className
