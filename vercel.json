@@ -1,1 +1,42 @@
-{}
+{
+  "routes": [
+    {
+      "src": "/site.webmanifest",
+      "dest": "/site.webmanifest",
+      "continue": false
+    },
+    {
+      "src": "/favicon.ico",
+      "dest": "/favicon.ico",
+      "continue": false
+    },
+     {
+      "src": "/favicon-16x16.png",
+      "dest": "/favicon-16x16.png",
+      "continue": false
+    },
+     {
+      "src": "/favicon-32x32.png",
+      "dest": "/favicon-32x32.png",
+      "continue": false
+    },
+     {
+      "src": "/apple-touch-icon.png",
+      "dest": "/apple-touch-icon.png",
+      "continue": false
+    },
+     {
+      "src": "/android-chrome-192x192.png",
+      "dest": "/android-chrome-192x192.png",
+      "continue": false
+    },
+     {
+      "src": "/android-chrome-512x512.png",
+      "dest": "/android-chrome-512x512.png",
+      "continue": false
+    }
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
