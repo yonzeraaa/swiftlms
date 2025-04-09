@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'; // Added useRef
+import React, { useState, useRef } from 'react'; // Removed useEffect
 import AddTestForm from '../components/AddTestForm'; // Import the form component
 import styles from './AdminTestsPage.module.css'; // Import the CSS module
 import TestList, { TestListHandle } from '../components/TestList'; // Import TestList and its handle type
@@ -10,7 +10,7 @@ const AdminTestsPage: React.FC = () => {
   const [isAddFormVisible, setIsAddFormVisible] = useState(false);
   // Removed isLoading and error state, as TestList will handle its own loading/error
   const testListRef = useRef<TestListHandle>(null); // Ref for TestList
-  const [error, setError] = useState<string | null>(null); // Keep error state for page-level errors if needed
+  // Removed error state as it's not used at the page level currently
 
   // Removed placeholder tests array and fetchTests logic from this page
 
@@ -53,7 +53,7 @@ const AdminTestsPage: React.FC = () => {
       <p>Adicione, edite e gerencie os testes de múltipla escolha.</p>
       <hr />
 
-      {error && <div className="mb-4 text-red-600 bg-red-100 p-3 rounded">{error}</div>}
+      {/* Error display removed */}
 
       {/* Button to open the Add Test form */}
       <div className="mb-6">
