@@ -67,12 +67,12 @@ const AdminTestsPage: React.FC = () => {
       // 3. Refresh the list
       testListRef.current?.refreshTests();
 
-      // TODO: Consider deleting the associated PDF from storage as well
-      // This requires knowing the pdf_storage_path, which might need fetching first
-      // or passed from TestList if available.
-      // Example:
-      // const { error: storageError } = await supabase.storage.from('swiftlms-pdfs').remove([pdfPathToDelete]);
-      // if (storageError) console.error("Error deleting PDF from storage:", storageError);
+      // Note: Deleting the associated PDF from storage is not implemented here.
+      // Consider implementing a cleanup mechanism if needed.
+
+
+
+
 
 
     } catch (err: any) {
@@ -110,7 +110,7 @@ const AdminTestsPage: React.FC = () => {
 
       {/* Button to open the Add Test form */}
       <div className="mb-6">
-        {/* TODO: Adicionar filtro por disciplina */}
+        {/* Filter by discipline could be added here later */}
         <button
           onClick={handleAddTest}
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"

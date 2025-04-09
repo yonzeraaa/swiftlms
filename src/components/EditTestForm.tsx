@@ -109,10 +109,8 @@ const EditTestForm: React.FC<EditTestFormProps> = ({ test, onClose, onTestUpdate
             pdfStoragePath = uploadData.path; // Update path to the new file
             console.log('[EditTestForm] New PDF Upload Success:', uploadData);
 
-            // TODO: Optionally delete the OLD PDF file from storage if pdfStoragePath was not null before
-            // if (test.pdf_storage_path) {
-            //    await supabase.storage.from('swiftlms-pdfs').remove([test.pdf_storage_path]);
-            // }
+            // Note: Deleting the old PDF is not implemented here.
+            // Consider implementing a cleanup mechanism if needed.
         }
 
         // 2. Prepare data for update

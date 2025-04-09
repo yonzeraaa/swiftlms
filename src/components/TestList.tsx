@@ -1,6 +1,6 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'; // Removed React import
-import styles from './TestList.module.css'; // Create this CSS module later
-// TODO: Import Supabase client
+import styles from './TestList.module.css';
+import { supabase } from '../services/supabaseClient'; // Import Supabase client
 
 // Define the shape of a test object (adjust based on actual data needed)
 interface Test {
@@ -34,24 +34,25 @@ const TestList = forwardRef<TestListHandle, TestListProps>(({ onEditTest, onDele
         setError(null);
         console.log("[TestList] Fetching tests...");
         try {
-            // --- TODO: Replace with actual Supabase fetch logic ---
-            // const { data, error } = await supabase
-            //     .from('tests')
-            //     .select('id, name, discipline_id, num_questions') // Select necessary fields
-            //     .order('name', { ascending: true });
-            // if (error) throw error;
-            // setTests(data || []);
-            // --- End Supabase Logic ---
+            // Fetch tests from Supabase
+            const { data, error } = await supabase
+                .from('tests')
+                .select('id, name, discipline_id, num_questions') // Select necessary fields
+                .order('name', { ascending: true });
 
-            // Placeholder data:
-            await new Promise(resolve => setTimeout(resolve, 700)); // Simulate fetch
-             const placeholderTests = [
-                { id: '1', name: 'Teste de Estabilidade 1', discipline_id: 'abc', num_questions: 10 },
-                { id: '2', name: 'Teste de Carga 1', discipline_id: 'def', num_questions: 5 },
-                { id: '3', name: 'Avaliação Final Mecânica', discipline_id: 'xyz', num_questions: 20 },
-            ];
-            setTests(placeholderTests);
+            if (error) throw error;
 
+            setTests(data || []);
+            console.log("[TestList] Tests fetched:", data);
+
+            // --- Remove Placeholder ---
+            // await new Promise(resolve => setTimeout(resolve, 700)); // Simulate fetch
+            //  const placeholderTests = [
+            //     { id: '1', name: 'Teste de Estabilidade 1', discipline_id: 'abc', num_questions: 10 },
+            //     { id: '2', name: 'Teste de Carga 1', discipline_id: 'def', num_questions: 5 },
+            //     { id: '3', name: 'Avaliação Final Mecânica', discipline_id: 'xyz', num_questions: 20 },
+            // ];
+            // setTests(placeholderTests);
 
         } catch (err: any) {
             console.error("[TestList] Error fetching tests:", err);
@@ -85,7 +86,7 @@ const TestList = forwardRef<TestListHandle, TestListProps>(({ onEditTest, onDele
                         <thead>
                             <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
                                 <th className="py-3 px-6 text-left">Nome do Teste</th>
-                                <th className="py-3 px-6 text-left">Disciplina ID</th> {/* TODO: Display Name */}
+                                <th className="py-3 px-6 text-left">Disciplina ID</th>
                                 <th className="py-3 px-6 text-center">Nº Questões</th>
                                 <th className="py-3 px-6 text-center">Ações</th>
                             </tr>
@@ -97,7 +98,7 @@ const TestList = forwardRef<TestListHandle, TestListProps>(({ onEditTest, onDele
                                         {test.name}
                                     </td>
                                     <td className="py-3 px-6 text-left">
-                                        {test.discipline_id} {/* TODO: Fetch and display discipline name */}
+                                        {test.discipline_id}
                                     </td>
                                     <td className="py-3 px-6 text-center">
                                         {test.num_questions}

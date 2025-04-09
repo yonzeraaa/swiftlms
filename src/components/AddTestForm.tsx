@@ -86,27 +86,63 @@ const AddTestForm: React.FC<AddTestFormProps> = ({ onClose, onTestAdded }) => {
         correctAnswers,
     });
 
-    // --- TODO: Implement Supabase Logic ---
-    // 1. Upload PDF to Supabase Storage
-    //    - Generate a unique path (e.g., `tests/${selectedDiscipline}/${pdfFile.name}`)
-    //    - Get the storage path after upload.
-    // 2. Insert test data into the 'tests' table
-    //    - Include the pdf_storage_path obtained from step 1.
-    //    - Store correctAnswers as JSONB.
-    // --- End Supabase Logic ---
+    try {
+        // 1. Upload PDF to Supabase Storage
+        const fileExt = pdfFile.name.split('.').pop();
+        const uniqueFileName = `${Date.now()}.${fileExt}`; // Simple unique name
+        const filePath = `public/tests/${selectedDiscipline}/${uniqueFileName}`; // Path within the bucket
 
-    // Placeholder for success simulation
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+        console.log(`[AddTestForm] Uploading PDF to: ${filePath}`);
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('swiftlms-pdfs') // Ensure this bucket exists and has correct policies
+            .upload(filePath, pdfFile);
 
-    // Assuming success:
-    console.log('Test added successfully (simulated)');
-    setIsLoading(false);
-    onTestAdded(); // Callback to refresh list
-    onClose(); // Close the form/modal
+        if (uploadError) {
+            console.error('[AddTestForm] PDF Upload Error:', uploadError);
+            throw new Error(`Erro no upload do PDF: ${uploadError.message}`);
+        }
 
-    // Handle potential errors during upload/insert
-    // setError('Ocorreu um erro ao adicionar o teste.');
-    // setIsLoading(false);
+        console.log('[AddTestForm] PDF Upload Success:', uploadData);
+        const pdfStoragePath = uploadData.path; // Get the path returned by storage
+
+        // 2. Insert test data into the 'tests' table
+        const testDataToInsert = {
+            discipline_id: selectedDiscipline,
+            name: testName,
+            pdf_storage_path: pdfStoragePath,
+            num_questions: numQuestions,
+            min_passing_grade: minPassingGrade,
+            max_attempts: maxAttempts,
+            correct_answers: correctAnswers, // Already in correct JSON format
+        };
+
+        console.log('[AddTestForm] Inserting test data:', testDataToInsert);
+        const { error: insertError } = await supabase
+            .from('tests')
+            .insert(testDataToInsert);
+
+        if (insertError) {
+            console.error('[AddTestForm] Test Insert Error:', insertError);
+            // Note: Uploaded PDF is not automatically deleted if DB insert fails.
+            throw new Error(`Erro ao salvar o teste no banco: ${insertError.message}`);
+        }
+
+        console.log('[AddTestForm] Test inserted successfully.');
+
+        // Assuming success:
+        setIsLoading(false);
+        onTestAdded(); // Callback to refresh list
+        onClose(); // Close the form/modal
+
+    } catch (err: any) {
+        console.error('[AddTestForm] Error in handleSubmit:', err);
+        setError(err.message || 'Ocorreu um erro inesperado.');
+        setIsLoading(false);
+    }
+
+    // --- Remove Placeholder Logic ---
+
+    // Removed placeholder simulation
   };
 
   // Generate inputs for correct answers based on numQuestions
