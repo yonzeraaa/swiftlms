@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Tables } from '@/lib/database.types';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { Plus, X, Loader2, BookOpen, Award } from 'lucide-react';
+import Card from './Card';
+import Button from './Button';
 
 type Subject = Tables<'subjects'>;
 type CourseSubject = Tables<'course_subjects'>;
@@ -115,7 +117,7 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
       </div>
     );
   }
@@ -127,21 +129,24 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-semibold">Gerenciar Matérias - {courseName}</h3>
+      <div className="flex items-center gap-2 text-gold mb-4">
+        <BookOpen className="w-5 h-5" />
+        <h3 className="text-lg font-semibold">{courseName}</h3>
+      </div>
 
       {/* Formulário para adicionar matéria */}
-      <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-        <h4 className="font-medium">Adicionar Matéria ao Curso</h4>
+      <Card className="bg-navy-800/50">
+        <h4 className="font-medium text-gold mb-4">Adicionar Matéria ao Curso</h4>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
           <div className="lg:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gold-200 mb-2">
               Matéria
             </label>
             <select
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="w-full p-2 border rounded-md"
+              className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
               disabled={saving}
             >
               <option value="">Selecione uma matéria</option>
@@ -154,7 +159,7 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gold-200 mb-2">
               Semestre
             </label>
             <input
@@ -163,13 +168,13 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
               max="10"
               value={semester}
               onChange={(e) => setSemester(parseInt(e.target.value))}
-              className="w-full p-2 border rounded-md"
+              className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
               disabled={saving}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gold-200 mb-2">
               Créditos
             </label>
             <input
@@ -178,81 +183,115 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
               max="20"
               value={credits}
               onChange={(e) => setCredits(parseInt(e.target.value))}
-              className="w-full p-2 border rounded-md"
+              className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
               disabled={saving}
             />
           </div>
 
           <div className="flex items-end">
-            <label className="flex items-center space-x-2">
+            <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={isRequired}
                 onChange={(e) => setIsRequired(e.target.checked)}
-                className="rounded"
+                className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500"
                 disabled={saving}
               />
-              <span className="text-sm font-medium text-gray-700">Obrigatória</span>
+              <span className="text-sm font-medium text-gold-200">Obrigatória</span>
             </label>
           </div>
         </div>
 
-        <button
+        <Button
           onClick={handleAddSubject}
           disabled={!selectedSubjectId || saving}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2"
+          variant="primary"
+          icon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
         >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
           Adicionar Matéria
-        </button>
-      </div>
+        </Button>
+      </Card>
 
       {/* Lista de matérias do curso */}
       <div className="space-y-4">
-        <h4 className="font-medium">Matérias do Curso</h4>
+        <h4 className="font-medium text-gold flex items-center gap-2">
+          <Award className="w-5 h-5 text-gold-500" />
+          Matérias do Curso
+        </h4>
         
         {courseSubjects.length === 0 ? (
-          <p className="text-gray-500">Nenhuma matéria adicionada a este curso ainda.</p>
+          <Card className="text-center py-8">
+            <p className="text-gold-300">Nenhuma matéria adicionada a este curso ainda.</p>
+          </Card>
         ) : (
-          <div className="grid gap-2">
+          <div className="grid gap-3">
             {courseSubjects.map((cs: any) => (
-              <div
+              <Card
                 key={cs.id}
-                className="flex items-center justify-between p-3 bg-white border rounded-lg hover:shadow-sm"
+                className="hover:shadow-2xl transition-shadow"
               >
-                <div className="flex-1">
-                  <div className="font-medium">
-                    {cs.subjects?.name}
-                    {cs.subjects?.code && (
-                      <span className="text-gray-500 ml-2">({cs.subjects.code})</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="font-medium text-gold">
+                      {cs.subjects?.name}
+                      {cs.subjects?.code && (
+                        <span className="text-gold-400 ml-2">({cs.subjects.code})</span>
+                      )}
+                    </div>
+                    <div className="text-sm text-gold-300 mt-1">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-navy-700 text-gold-200 mr-2">
+                        Semestre {cs.semester}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-navy-700 text-gold-200 mr-2">
+                        {cs.credits} créditos
+                      </span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        cs.is_required ? 'bg-gold-500/20 text-gold-400' : 'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {cs.is_required ? 'Obrigatória' : 'Optativa'}
+                      </span>
+                    </div>
+                    {cs.subjects?.description && (
+                      <div className="text-sm text-gold-300/70 mt-2">
+                        {cs.subjects.description}
+                      </div>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600">
-                    Semestre {cs.semester} • {cs.credits} créditos • 
-                    {cs.is_required ? ' Obrigatória' : ' Optativa'}
-                  </div>
-                  {cs.subjects?.description && (
-                    <div className="text-sm text-gray-500 mt-1">
-                      {cs.subjects.description}
-                    </div>
-                  )}
+                  <button
+                    onClick={() => handleRemoveSubject(cs.id)}
+                    className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-4"
+                    title="Remover matéria"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleRemoveSubject(cs.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-md"
-                  title="Remover matéria"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
+              </Card>
             ))}
           </div>
         )}
       </div>
+
+      {/* Resumo */}
+      <Card className="bg-navy-800/30 border-gold-500/20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+          <div>
+            <p className="text-gold-400 text-sm">Total de Matérias</p>
+            <p className="text-2xl font-bold text-gold mt-1">{courseSubjects.length}</p>
+          </div>
+          <div>
+            <p className="text-gold-400 text-sm">Total de Créditos</p>
+            <p className="text-2xl font-bold text-gold mt-1">
+              {courseSubjects.reduce((acc: number, cs: any) => acc + (cs.credits || 0), 0)}
+            </p>
+          </div>
+          <div>
+            <p className="text-gold-400 text-sm">Matérias Obrigatórias</p>
+            <p className="text-2xl font-bold text-gold mt-1">
+              {courseSubjects.filter((cs: any) => cs.is_required).length}
+            </p>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
