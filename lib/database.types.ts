@@ -430,7 +430,7 @@ export type Database = {
           duration_minutes: number | null
           id: string
           is_preview: boolean | null
-          module_id: string
+          module_id: string | null
           order_index: number
           title: string
           updated_at: string | null
@@ -444,7 +444,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           is_preview?: boolean | null
-          module_id: string
+          module_id?: string | null
           order_index: number
           title: string
           updated_at?: string | null
@@ -458,7 +458,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           is_preview?: boolean | null
-          module_id?: string
+          module_id?: string | null
           order_index?: number
           title?: string
           updated_at?: string | null

@@ -15,9 +15,6 @@ type Course = Database['public']['Tables']['courses']['Row']
 type SubjectLessonView = Database['public']['Views']['subject_lessons_view']['Row']
 
 interface LessonWithRelations extends Lesson {
-  course_modules: CourseModule & {
-    courses: Course
-  }
   subject_lessons?: SubjectLessonView[]
 }
 
@@ -31,7 +28,6 @@ export default function LessonsPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    module_id: '',
     content_type: 'video',
     content_url: '',
     content: '',
@@ -53,34 +49,15 @@ export default function LessonsPage() {
     try {
       setLoading(true)
       
-      // Fetch lessons with modules and courses
+      // Fetch lessons
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
-        .select(`
-          *,
-          course_modules!inner (
-            *,
-            courses!inner (*)
-          )
-        `)
-        .order('course_modules(courses(title)), course_modules(order_index), order_index')
+        .select('*')
+        .order('title')
 
       if (lessonsError) throw lessonsError
 
       setLessons(lessonsData || [])
-
-      // Fetch modules for the form dropdown
-      const { data: modulesData, error: modulesError } = await supabase
-        .from('course_modules')
-        .select(`
-          *,
-          courses!inner (*)
-        `)
-        .order('courses(title), order_index')
-
-      if (modulesError) throw modulesError
-
-      setModules(modulesData || [])
 
       // Fetch lesson progress stats
       if (lessonsData && lessonsData.length > 0) {
@@ -121,7 +98,6 @@ export default function LessonsPage() {
       const lessonData = {
         title: formData.title,
         description: formData.description || null,
-        module_id: formData.module_id,
         content_type: formData.content_type,
         content_url: formData.content_url || null,
         content: formData.content || null,
@@ -173,7 +149,6 @@ export default function LessonsPage() {
     setFormData({
       title: lesson.title,
       description: lesson.description || '',
-      module_id: lesson.module_id,
       content_type: lesson.content_type,
       content_url: lesson.content_url || '',
       content: lesson.content || '',
@@ -218,7 +193,6 @@ export default function LessonsPage() {
     setFormData({
       title: '',
       description: '',
-      module_id: '',
       content_type: 'video',
       content_url: '',
       content: '',
@@ -230,9 +204,7 @@ export default function LessonsPage() {
 
   const filteredLessons = lessons.filter(lesson =>
     lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lesson.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lesson.course_modules.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lesson.course_modules.courses.title.toLowerCase().includes(searchTerm.toLowerCase())
+    lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const getTypeIcon = (type: string) => {
@@ -377,7 +349,6 @@ export default function LessonsPage() {
             <thead>
               <tr className="border-b border-gold-500/20">
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Aula</th>
-                <th className="text-left py-4 px-4 text-gold-200 font-medium">Curso / Módulo</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Tipo</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Duração</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Ordem</th>
@@ -398,12 +369,6 @@ export default function LessonsPage() {
                           {lesson.description && (
                             <p className="text-gold-400 text-sm mt-1">{lesson.description}</p>
                           )}
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div>
-                          <p className="text-gold-200 text-sm">{lesson.course_modules.courses.title}</p>
-                          <p className="text-gold-400 text-xs mt-1">{lesson.course_modules.title}</p>
                         </div>
                       </td>
                       <td className="py-4 px-4 text-center">
@@ -462,7 +427,7 @@ export default function LessonsPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center">
+                  <td colSpan={7} className="py-12 text-center">
                     <BookOpen className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
                     <p className="text-gold-300">
                       {searchTerm ? 'Nenhuma aula encontrada com os critérios de busca' : 'Nenhuma aula cadastrada'}
@@ -517,25 +482,6 @@ export default function LessonsPage() {
                   placeholder="Breve descrição da aula..."
                   rows={3}
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
-                  Módulo *
-                </label>
-                <select
-                  required
-                  value={formData.module_id}
-                  onChange={(e) => setFormData({ ...formData, module_id: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                >
-                  <option value="">Selecione um módulo</option>
-                  {modules.map((module) => (
-                    <option key={module.id} value={module.id}>
-                      {module.courses.title} - {module.title}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
