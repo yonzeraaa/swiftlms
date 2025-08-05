@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, Activity, BarChart3, ArrowUp, ArrowDown } from 'lucide-react'
 import Card from '../../components/Card'
@@ -121,7 +123,7 @@ export default function ProgressPage() {
               completedLessons: completed,
               progress: enrollment.progress_percentage || 0,
               hoursCompleted: Math.round((enrollment.course.duration_hours || 0) * (enrollment.progress_percentage || 0) / 100),
-              lastActivity: enrollment.enrolled_at
+              lastActivity: enrollment.enrolled_at || undefined
             })
           }
         }

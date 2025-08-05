@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, Edit, Trash2, Database, FileQuestion, Tag, MoreVertical, Copy, Archive } from 'lucide-react'
 import Card from '../../components/Card'

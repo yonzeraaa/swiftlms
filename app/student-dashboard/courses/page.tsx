@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { Search, Filter, BookOpen, Clock, Users, Star, DollarSign, Tag, TrendingUp, X, Check, AlertCircle, Loader2, User } from 'lucide-react'
 import Card from '../../components/Card'
