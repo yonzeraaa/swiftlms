@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, Calendar, TrendingUp, FileText, Filter, FileSpreadsheet, Users, BookOpen, Award, GraduationCap } from 'lucide-react'
+import { Download, Calendar, TrendingUp, FileText, Filter, FileSpreadsheet, Users, BookOpen, Award, GraduationCap, Activity } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -148,6 +148,8 @@ export default function ReportsPage() {
       generateGradesHistoryReport()
     } else if (reportType === 'enrollments') {
       generateEnrollmentAndCompletionReport()
+    } else if (reportType === 'access') {
+      generateAccessReport()
     } else {
       // In a real application, you would generate actual PDF/Excel files here
       alert(t('reports.reportGenerated'))
@@ -304,6 +306,85 @@ export default function ReportsPage() {
     alert('Relatório de Matrículas e Conclusões gerado com sucesso!')
   }
 
+  const generateAccessReport = () => {
+    // Create CSV content for student access statistics
+    let csvContent = 'data:text/csv;charset=utf-8,'
+    
+    // Add headers
+    csvContent += 'Relatório de Estatísticas de Acesso dos Alunos\n'
+    csvContent += `Período: ${new Date(dateRange.start).toLocaleDateString('pt-BR')} - ${new Date(dateRange.end).toLocaleDateString('pt-BR')}\n\n`
+    
+    // Student access section
+    csvContent += 'ESTATÍSTICAS POR ALUNO\n'
+    csvContent += 'Aluno,Email,Último Acesso,Total de Acessos,Tempo Total (horas),Tempo Médio por Sessão (min),Cursos Acessados,Conclusão Média (%)\n'
+    
+    const studentAccessData = [
+      { name: 'João Silva', email: 'joao.silva@email.com', lastAccess: '2024-03-15 14:30', totalAccess: 156, totalHours: 48.5, avgSession: 18.6, coursesAccessed: 3, avgCompletion: 72 },
+      { name: 'Maria Santos', email: 'maria.santos@email.com', lastAccess: '2024-03-15 09:15', totalAccess: 234, totalHours: 67.2, avgSession: 17.2, coursesAccessed: 4, avgCompletion: 85 },
+      { name: 'Pedro Oliveira', email: 'pedro.oliveira@email.com', lastAccess: '2024-03-14 20:45', totalAccess: 98, totalHours: 32.1, avgSession: 19.6, coursesAccessed: 2, avgCompletion: 60 },
+      { name: 'Ana Costa', email: 'ana.costa@email.com', lastAccess: '2024-03-15 16:20', totalAccess: 312, totalHours: 89.7, avgSession: 17.2, coursesAccessed: 5, avgCompletion: 92 },
+      { name: 'Carlos Ferreira', email: 'carlos.ferreira@email.com', lastAccess: '2024-03-13 11:00', totalAccess: 87, totalHours: 21.3, avgSession: 14.7, coursesAccessed: 2, avgCompletion: 45 }
+    ]
+    
+    studentAccessData.forEach(student => {
+      csvContent += `${student.name},${student.email},${student.lastAccess},${student.totalAccess},${student.totalHours},${student.avgSession},${student.coursesAccessed},${student.avgCompletion}\n`
+    })
+    
+    // Daily access pattern
+    csvContent += '\n\nPADRÃO DE ACESSO DIÁRIO\n'
+    csvContent += 'Dia da Semana,Total de Acessos,Pico de Usuários,Horário de Pico\n'
+    
+    const dailyPattern = [
+      { day: 'Segunda-feira', accesses: 542, peakUsers: 123, peakTime: '19:00-20:00' },
+      { day: 'Terça-feira', accesses: 498, peakUsers: 115, peakTime: '20:00-21:00' },
+      { day: 'Quarta-feira', accesses: 523, peakUsers: 118, peakTime: '19:00-20:00' },
+      { day: 'Quinta-feira', accesses: 467, peakUsers: 102, peakTime: '21:00-22:00' },
+      { day: 'Sexta-feira', accesses: 321, peakUsers: 78, peakTime: '18:00-19:00' },
+      { day: 'Sábado', accesses: 234, peakUsers: 56, peakTime: '10:00-11:00' },
+      { day: 'Domingo', accesses: 198, peakUsers: 43, peakTime: '20:00-21:00' }
+    ]
+    
+    dailyPattern.forEach(day => {
+      csvContent += `${day.day},${day.accesses},${day.peakUsers},${day.peakTime}\n`
+    })
+    
+    // Course engagement
+    csvContent += '\n\nENGAJAMENTO POR CURSO\n'
+    csvContent += 'Curso,Alunos Ativos,Tempo Médio (horas),Taxa de Conclusão (%),Avaliação Média\n'
+    
+    const courseEngagement = [
+      { course: 'Fundamentos de Engenharia Naval', activeStudents: 145, avgTime: 24.3, completionRate: 78, avgRating: 4.5 },
+      { course: 'Propulsão Naval', activeStudents: 98, avgTime: 18.7, completionRate: 65, avgRating: 4.2 },
+      { course: 'Normas de Segurança', activeStudents: 234, avgTime: 15.2, completionRate: 89, avgRating: 4.7 },
+      { course: 'Manutenção Naval', activeStudents: 76, avgTime: 21.5, completionRate: 71, avgRating: 4.3 }
+    ]
+    
+    courseEngagement.forEach(course => {
+      csvContent += `${course.course},${course.activeStudents},${course.avgTime},${course.completionRate},${course.avgRating}\n`
+    })
+    
+    // Summary statistics
+    csvContent += '\n\nRESUMO GERAL\n'
+    csvContent += 'Métrica,Valor\n'
+    csvContent += `Total de Alunos Ativos,${reportData?.activeStudents || 0}\n`
+    csvContent += `Média de Acessos por Aluno,${Math.round(studentAccessData.reduce((acc, s) => acc + s.totalAccess, 0) / studentAccessData.length)}\n`
+    csvContent += `Tempo Médio de Estudo por Aluno,${(studentAccessData.reduce((acc, s) => acc + s.totalHours, 0) / studentAccessData.length).toFixed(1)} horas\n`
+    csvContent += `Taxa Média de Conclusão,${Math.round(studentAccessData.reduce((acc, s) => acc + s.avgCompletion, 0) / studentAccessData.length)}%\n`
+    csvContent += 'Horário de Maior Acesso,19:00-21:00\n'
+    csvContent += 'Dia com Mais Acessos,Segunda-feira\n'
+    
+    // Create download link
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `relatorio_acesso_alunos_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    alert('Relatório de Estatísticas de Acesso dos Alunos gerado com sucesso!')
+  }
+
 
   const exportToExcel = () => {
     if (!reportData) return
@@ -361,12 +442,12 @@ export default function ReportsPage() {
       bgColor: 'bg-blue-500/10'
     },
     {
-      title: t('reports.courseReport'),
-      description: t('reports.courseReportDesc'),
-      type: 'courses',
-      icon: BookOpen,
-      color: 'text-orange-400',
-      bgColor: 'bg-orange-500/10'
+      title: 'Estatísticas de Acesso dos Alunos',
+      description: 'Acompanhe o acesso dos alunos: frequência, tempo de estudo e engajamento',
+      type: 'access',
+      icon: Activity,
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/10'
     }
   ]
 
