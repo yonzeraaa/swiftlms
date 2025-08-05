@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, UserPlus } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, UserPlus, BookMarked } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
+import SubjectManager from '../../components/SubjectManager'
 
 interface Course {
   id: string
@@ -60,6 +61,7 @@ export default function CoursesPage() {
   const [students, setStudents] = useState<any[]>([])
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
   const [enrolling, setEnrolling] = useState(false)
+  const [showSubjectsModal, setShowSubjectsModal] = useState(false)
   const supabase = createClient()
   const { t } = useTranslation()
   
@@ -526,6 +528,17 @@ export default function CoursesPage() {
                       >
                         <UserPlus className="w-4 h-4" />
                         {t('courses.enrollStudents')}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSelectedCourse(course);
+                          setShowSubjectsModal(true);
+                          setOpenDropdown(null);
+                        }}
+                        className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2"
+                      >
+                        <BookMarked className="w-4 h-4" />
+                        Gerenciar Matérias
                       </button>
                       <button 
                         onClick={() => openDeleteModal(course)}
@@ -1227,6 +1240,40 @@ export default function CoursesPage() {
                   {t('courses.enrollStudents')}
                 </Button>
               </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      
+      {/* Subject Manager Modal */}
+      {showSubjectsModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
+                <BookMarked className="w-6 h-6" />
+                Gerenciar Matérias
+              </h2>
+              <button
+                onClick={() => setShowSubjectsModal(false)}
+                className="text-gold-400 hover:text-gold-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <SubjectManager 
+              courseId={selectedCourse.id} 
+              courseName={selectedCourse.title}
+            />
+            
+            <div className="flex justify-end mt-6 pt-4 border-t border-gold-500/20">
+              <Button
+                variant="secondary"
+                onClick={() => setShowSubjectsModal(false)}
+              >
+                Fechar
+              </Button>
             </div>
           </Card>
         </div>

@@ -432,6 +432,78 @@ export type Database = {
         }
         Relationships: []
       }
+      subjects: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          code: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          code?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      course_subjects: {
+        Row: {
+          id: string
+          course_id: string
+          subject_id: string
+          semester: number | null
+          credits: number | null
+          is_required: boolean | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          course_id: string
+          subject_id: string
+          semester?: number | null
+          credits?: number | null
+          is_required?: boolean | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          course_id?: string
+          subject_id?: string
+          semester?: number | null
+          credits?: number | null
+          is_required?: boolean | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_subjects_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       course_statistics: {
@@ -441,6 +513,22 @@ export type Database = {
           course_id: string | null
           total_reviews: number | null
           total_students: number | null
+        }
+        Relationships: []
+      }
+      course_subjects_view: {
+        Row: {
+          id: string | null
+          course_id: string | null
+          course_title: string | null
+          subject_id: string | null
+          subject_name: string | null
+          subject_code: string | null
+          subject_description: string | null
+          semester: number | null
+          credits: number | null
+          is_required: boolean | null
+          created_at: string | null
         }
         Relationships: []
       }
