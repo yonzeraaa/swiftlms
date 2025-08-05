@@ -32,7 +32,7 @@ export default function SubjectsPage() {
   const [courseCount, setCourseCount] = useState<{ [key: string]: number }>({})
   const [showLessonsModal, setShowLessonsModal] = useState(false)
   const [selectedSubjectForLessons, setSelectedSubjectForLessons] = useState<Subject | null>(null)
-  const [availableLessons, setAvailableLessons] = useState<{lesson: Lesson, module: CourseModule, course: Course}[]>([])
+  const [availableLessons, setAvailableLessons] = useState<Lesson[]>([])
   const [associatedLessons, setAssociatedLessons] = useState<string[]>([])
   const [selectedLessons, setSelectedLessons] = useState<string[]>([])
   const [lessonsLoading, setLessonsLoading] = useState(false)
@@ -203,41 +203,15 @@ export default function SubjectsPage() {
     setSelectedLessons([])
 
     try {
-      // Fetch all lessons with their modules and courses
+      // Fetch all lessons
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
-        .select(`
-          *,
-          course_modules!inner (
-            *,
-            courses!inner (*)
-          )
-        `)
-        .order('course_modules(courses(title)), course_modules(title), title')
+        .select('*')
+        .order('title')
 
       if (lessonsError) throw lessonsError
 
-      // Format the data
-      const formattedLessons = lessonsData?.map(lesson => ({
-        lesson: {
-          id: lesson.id,
-          module_id: lesson.module_id,
-          title: lesson.title,
-          description: lesson.description,
-          content_type: lesson.content_type,
-          content_url: lesson.content_url,
-          content: lesson.content,
-          duration_minutes: lesson.duration_minutes,
-          order_index: lesson.order_index,
-          is_preview: lesson.is_preview,
-          created_at: lesson.created_at,
-          updated_at: lesson.updated_at
-        },
-        module: lesson.course_modules,
-        course: lesson.course_modules.courses
-      })) || []
-
-      setAvailableLessons(formattedLessons)
+      setAvailableLessons(lessonsData || [])
 
       // Fetch already associated lessons
       const { data: associatedData, error: associatedError } = await supabase
@@ -641,92 +615,53 @@ export default function SubjectsPage() {
                     </span>
                   </div>
 
-                  {/* Group lessons by course and module */}
-                  {(() => {
-                    const groupedLessons: { [courseId: string]: { course: Course, modules: { [moduleId: string]: { module: CourseModule, lessons: typeof availableLessons } } } } = {}
-                    
-                    availableLessons.forEach(item => {
-                      const courseId = item.course.id
-                      const moduleId = item.module.id
-                      
-                      if (!groupedLessons[courseId]) {
-                        groupedLessons[courseId] = {
-                          course: item.course,
-                          modules: {}
-                        }
-                      }
-                      
-                      if (!groupedLessons[courseId].modules[moduleId]) {
-                        groupedLessons[courseId].modules[moduleId] = {
-                          module: item.module,
-                          lessons: []
-                        }
-                      }
-                      
-                      groupedLessons[courseId].modules[moduleId].lessons.push(item)
-                    })
-
-                    return Object.entries(groupedLessons).map(([courseId, courseData]) => (
-                      <div key={courseId} className="space-y-3">
-                        <h3 className="text-lg font-semibold text-gold-100">
-                          {courseData.course.title}
-                        </h3>
-                        {Object.entries(courseData.modules).map(([moduleId, moduleData]) => (
-                          <div key={moduleId} className="ml-4 space-y-2">
-                            <h4 className="text-md font-medium text-gold-200">
-                              {moduleData.module.title}
-                            </h4>
-                            <div className="ml-4 space-y-1">
-                              {moduleData.lessons.map(({ lesson }) => (
-                                <label
-                                  key={lesson.id}
-                                  className="flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg hover:bg-navy-700/50 cursor-pointer transition-colors"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedLessons.includes(lesson.id)}
-                                    onChange={(e) => {
-                                      if (e.target.checked) {
-                                        setSelectedLessons([...selectedLessons, lesson.id])
-                                      } else {
-                                        setSelectedLessons(selectedLessons.filter(id => id !== lesson.id))
-                                      }
-                                    }}
-                                    className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/50 rounded focus:ring-gold-500 focus:ring-2"
-                                  />
-                                  <div className="flex-1">
-                                    <p className="text-gold-100">
-                                      {lesson.title}
-                                    </p>
-                                    {lesson.description && (
-                                      <p className="text-gold-300 text-sm mt-1">
-                                        {lesson.description}
-                                      </p>
-                                    )}
-                                    <div className="flex items-center gap-4 mt-1">
-                                      <span className="text-gold-400 text-sm">
-                                        {lesson.content_type}
-                                      </span>
-                                      {lesson.duration_minutes && (
-                                        <span className="text-gold-400 text-sm">
-                                          {lesson.duration_minutes} min
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {associatedLessons.includes(lesson.id) && (
-                                    <div title="Já associada">
-                                      <CheckCircle2 className="w-5 h-5 text-green-400" />
-                                    </div>
-                                  )}
-                                </label>
-                              ))}
-                            </div>
+                  {/* Display all lessons */}
+                  <div className="space-y-1">
+                    {availableLessons.map((lesson) => (
+                      <label
+                        key={lesson.id}
+                        className="flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg hover:bg-navy-700/50 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedLessons.includes(lesson.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedLessons([...selectedLessons, lesson.id])
+                            } else {
+                              setSelectedLessons(selectedLessons.filter(id => id !== lesson.id))
+                            }
+                          }}
+                          className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/50 rounded focus:ring-gold-500 focus:ring-2"
+                        />
+                        <div className="flex-1">
+                          <p className="text-gold-100">
+                            {lesson.title}
+                          </p>
+                          {lesson.description && (
+                            <p className="text-gold-300 text-sm mt-1">
+                              {lesson.description}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className="text-gold-400 text-sm">
+                              {lesson.content_type === 'video' ? 'Vídeo' : lesson.content_type === 'text' ? 'Texto' : 'Quiz'}
+                            </span>
+                            {lesson.duration_minutes && (
+                              <span className="text-gold-400 text-sm">
+                                {lesson.duration_minutes} min
+                              </span>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    ))
-                  })()}
+                        </div>
+                        {associatedLessons.includes(lesson.id) && (
+                          <div title="Já associada">
+                            <CheckCircle2 className="w-5 h-5 text-green-400" />
+                          </div>
+                        )}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
