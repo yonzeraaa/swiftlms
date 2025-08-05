@@ -3,13 +3,17 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, Loader2, AlertCircle } from 'lucide-react'
+import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, Loader2, AlertCircle, Link2, CheckCircle2 } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 
 type Subject = Database['public']['Tables']['subjects']['Row']
+type SubjectLessonView = Database['public']['Views']['subject_lessons_view']['Row']
+type Lesson = Database['public']['Tables']['lessons']['Row']
+type CourseModule = Database['public']['Tables']['course_modules']['Row']
+type Course = Database['public']['Tables']['courses']['Row']
 
 export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -26,6 +30,13 @@ export default function SubjectsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [courseCount, setCourseCount] = useState<{ [key: string]: number }>({})
+  const [showLessonsModal, setShowLessonsModal] = useState(false)
+  const [selectedSubjectForLessons, setSelectedSubjectForLessons] = useState<Subject | null>(null)
+  const [availableLessons, setAvailableLessons] = useState<{lesson: Lesson, module: CourseModule, course: Course}[]>([])
+  const [associatedLessons, setAssociatedLessons] = useState<string[]>([])
+  const [selectedLessons, setSelectedLessons] = useState<string[]>([])
+  const [lessonsLoading, setLessonsLoading] = useState(false)
+  const [lessonCount, setLessonCount] = useState<{ [key: string]: number }>({})
   
   const supabase = createClient()
 
@@ -59,6 +70,19 @@ export default function SubjectsPage() {
             counts[cs.subject_id] = (counts[cs.subject_id] || 0) + 1
           })
           setCourseCount(counts)
+        }
+
+        // Fetch lesson count for each subject
+        const { data: subjectLessons } = await supabase
+          .from('subject_lessons')
+          .select('subject_id')
+
+        if (subjectLessons) {
+          const lessonCounts: { [key: string]: number } = {}
+          subjectLessons.forEach(sl => {
+            lessonCounts[sl.subject_id] = (lessonCounts[sl.subject_id] || 0) + 1
+          })
+          setLessonCount(lessonCounts)
         }
       }
     } catch (error) {
@@ -170,6 +194,113 @@ export default function SubjectsPage() {
     setEditingSubject(null)
     setFormData({ name: '', code: '', description: '', hours: '' })
     setShowModal(true)
+  }
+
+  const openLessonsModal = async (subject: Subject) => {
+    setSelectedSubjectForLessons(subject)
+    setShowLessonsModal(true)
+    setLessonsLoading(true)
+    setSelectedLessons([])
+
+    try {
+      // Fetch all lessons with their modules and courses
+      const { data: lessonsData, error: lessonsError } = await supabase
+        .from('lessons')
+        .select(`
+          *,
+          course_modules!inner (
+            *,
+            courses!inner (*)
+          )
+        `)
+        .order('course_modules(courses(title)), course_modules(title), title')
+
+      if (lessonsError) throw lessonsError
+
+      // Format the data
+      const formattedLessons = lessonsData?.map(lesson => ({
+        lesson: {
+          id: lesson.id,
+          module_id: lesson.module_id,
+          title: lesson.title,
+          description: lesson.description,
+          content_type: lesson.content_type,
+          content_url: lesson.content_url,
+          content: lesson.content,
+          duration_minutes: lesson.duration_minutes,
+          order_index: lesson.order_index,
+          is_preview: lesson.is_preview,
+          created_at: lesson.created_at,
+          updated_at: lesson.updated_at
+        },
+        module: lesson.course_modules,
+        course: lesson.course_modules.courses
+      })) || []
+
+      setAvailableLessons(formattedLessons)
+
+      // Fetch already associated lessons
+      const { data: associatedData, error: associatedError } = await supabase
+        .from('subject_lessons')
+        .select('lesson_id')
+        .eq('subject_id', subject.id)
+
+      if (associatedError) throw associatedError
+
+      const associatedIds = associatedData?.map(sl => sl.lesson_id) || []
+      setAssociatedLessons(associatedIds)
+      setSelectedLessons(associatedIds)
+    } catch (error) {
+      console.error('Error fetching lessons:', error)
+      setMessage({ type: 'error', text: 'Erro ao carregar aulas' })
+    } finally {
+      setLessonsLoading(false)
+    }
+  }
+
+  const saveLessonAssociations = async () => {
+    if (!selectedSubjectForLessons) return
+    setSubmitting(true)
+
+    try {
+      // Get lessons to add and remove
+      const toAdd = selectedLessons.filter(id => !associatedLessons.includes(id))
+      const toRemove = associatedLessons.filter(id => !selectedLessons.includes(id))
+
+      // Remove associations
+      if (toRemove.length > 0) {
+        const { error } = await supabase
+          .from('subject_lessons')
+          .delete()
+          .eq('subject_id', selectedSubjectForLessons.id)
+          .in('lesson_id', toRemove)
+
+        if (error) throw error
+      }
+
+      // Add new associations
+      if (toAdd.length > 0) {
+        const { error } = await supabase
+          .from('subject_lessons')
+          .insert(
+            toAdd.map(lessonId => ({
+              subject_id: selectedSubjectForLessons.id,
+              lesson_id: lessonId
+            }))
+          )
+
+        if (error) throw error
+      }
+
+      setMessage({ type: 'success', text: 'Aulas associadas com sucesso!' })
+      setShowLessonsModal(false)
+      await fetchSubjects()
+    } catch (error: any) {
+      console.error('Error saving associations:', error)
+      setMessage({ type: 'error', text: error.message || 'Erro ao associar aulas' })
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const filteredSubjects = subjects.filter(subject =>
@@ -293,7 +424,8 @@ export default function SubjectsPage() {
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Nome</th>
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Descrição</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Horas</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Cursos Vinculados</th>
+                <th className="text-center py-4 px-4 text-gold-200 font-medium">Aulas</th>
+                <th className="text-center py-4 px-4 text-gold-200 font-medium">Cursos</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Criado em</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
               </tr>
@@ -315,6 +447,9 @@ export default function SubjectsPage() {
                       <span className="text-gold-200">{subject.hours ? `${subject.hours}h` : '-'}</span>
                     </td>
                     <td className="py-4 px-4 text-center">
+                      <span className="text-gold-200">{lessonCount[subject.id] || 0}</span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
                       <span className="text-gold-200">{courseCount[subject.id] || 0}</span>
                     </td>
                     <td className="py-4 px-4 text-center">
@@ -324,6 +459,14 @@ export default function SubjectsPage() {
                     </td>
                     <td className="py-4 px-4">
                       <div className="flex items-center justify-center gap-2">
+                        <Button 
+                          variant="secondary" 
+                          size="sm"
+                          onClick={() => openLessonsModal(subject)}
+                          title="Associar Aulas"
+                        >
+                          <Link2 className="w-4 h-4" />
+                        </Button>
                         <Button 
                           variant="secondary" 
                           size="sm"
@@ -344,7 +487,7 @@ export default function SubjectsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center">
+                  <td colSpan={8} className="py-12 text-center">
                     <BookOpen className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
                     <p className="text-gold-300">
                       {searchTerm ? 'Nenhuma disciplina encontrada com os critérios de busca' : 'Nenhuma disciplina cadastrada'}
@@ -456,6 +599,162 @@ export default function SubjectsPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Lessons Association Modal */}
+      {showLessonsModal && selectedSubjectForLessons && (
+        <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-navy-800 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col border border-gold-500/20">
+            <div className="flex items-center justify-between p-6 border-b border-gold-500/20">
+              <div>
+                <h2 className="text-xl font-bold text-gold flex items-center gap-2">
+                  <Link2 className="w-6 h-6" />
+                  Associar Aulas
+                </h2>
+                <p className="text-gold-300 mt-1">
+                  Disciplina: {selectedSubjectForLessons.name}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowLessonsModal(false)}
+                className="text-gold-400 hover:text-gold-200 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {lessonsLoading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-gold-200">
+                      Selecione as aulas para associar com esta disciplina
+                    </p>
+                    <span className="text-gold-300 text-sm">
+                      {selectedLessons.length} aula(s) selecionada(s)
+                    </span>
+                  </div>
+
+                  {/* Group lessons by course and module */}
+                  {(() => {
+                    const groupedLessons: { [courseId: string]: { course: Course, modules: { [moduleId: string]: { module: CourseModule, lessons: typeof availableLessons } } } } = {}
+                    
+                    availableLessons.forEach(item => {
+                      const courseId = item.course.id
+                      const moduleId = item.module.id
+                      
+                      if (!groupedLessons[courseId]) {
+                        groupedLessons[courseId] = {
+                          course: item.course,
+                          modules: {}
+                        }
+                      }
+                      
+                      if (!groupedLessons[courseId].modules[moduleId]) {
+                        groupedLessons[courseId].modules[moduleId] = {
+                          module: item.module,
+                          lessons: []
+                        }
+                      }
+                      
+                      groupedLessons[courseId].modules[moduleId].lessons.push(item)
+                    })
+
+                    return Object.entries(groupedLessons).map(([courseId, courseData]) => (
+                      <div key={courseId} className="space-y-3">
+                        <h3 className="text-lg font-semibold text-gold-100">
+                          {courseData.course.title}
+                        </h3>
+                        {Object.entries(courseData.modules).map(([moduleId, moduleData]) => (
+                          <div key={moduleId} className="ml-4 space-y-2">
+                            <h4 className="text-md font-medium text-gold-200">
+                              {moduleData.module.title}
+                            </h4>
+                            <div className="ml-4 space-y-1">
+                              {moduleData.lessons.map(({ lesson }) => (
+                                <label
+                                  key={lesson.id}
+                                  className="flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg hover:bg-navy-700/50 cursor-pointer transition-colors"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedLessons.includes(lesson.id)}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setSelectedLessons([...selectedLessons, lesson.id])
+                                      } else {
+                                        setSelectedLessons(selectedLessons.filter(id => id !== lesson.id))
+                                      }
+                                    }}
+                                    className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/50 rounded focus:ring-gold-500 focus:ring-2"
+                                  />
+                                  <div className="flex-1">
+                                    <p className="text-gold-100">
+                                      {lesson.title}
+                                    </p>
+                                    {lesson.description && (
+                                      <p className="text-gold-300 text-sm mt-1">
+                                        {lesson.description}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-4 mt-1">
+                                      <span className="text-gold-400 text-sm">
+                                        {lesson.content_type}
+                                      </span>
+                                      {lesson.duration_minutes && (
+                                        <span className="text-gold-400 text-sm">
+                                          {lesson.duration_minutes} min
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {associatedLessons.includes(lesson.id) && (
+                                    <CheckCircle2 className="w-5 h-5 text-green-400" title="Já associada" />
+                                  )}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))
+                  })()}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 p-6 border-t border-gold-500/20">
+              <Button
+                type="button"
+                variant="secondary"
+                className="flex-1"
+                onClick={() => setShowLessonsModal(false)}
+                disabled={submitting}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                className="flex-1"
+                onClick={saveLessonAssociations}
+                disabled={submitting || lessonsLoading}
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar Associações'
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       )}

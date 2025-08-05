@@ -90,6 +90,13 @@ export type Database = {
             referencedRelation: "courses"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "course_modules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "subject_lessons_view"
+            referencedColumns: ["course_id"]
+          },
         ]
       }
       course_reviews: {
@@ -145,6 +152,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "course_reviews_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "subject_lessons_view"
+            referencedColumns: ["course_id"]
+          },
+          {
             foreignKeyName: "course_reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -195,6 +209,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "courses"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_subjects_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "subject_lessons_view"
+            referencedColumns: ["course_id"]
           },
           {
             foreignKeyName: "course_subjects_subject_id_fkey"
@@ -324,6 +345,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "courses"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollments_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "subject_lessons_view"
+            referencedColumns: ["course_id"]
           },
           {
             foreignKeyName: "enrollments_user_id_fkey"
@@ -484,6 +512,42 @@ export type Database = {
         }
         Relationships: []
       }
+      subject_lessons: {
+        Row: {
+          created_at: string | null
+          id: string
+          lesson_id: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          lesson_id: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          lesson_id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_lessons_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subject_lessons_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subjects: {
         Row: {
           code: string | null
@@ -556,7 +620,47 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "course_subjects_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "subject_lessons_view"
+            referencedColumns: ["course_id"]
+          },
+          {
             foreignKeyName: "course_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subject_lessons_view: {
+        Row: {
+          content_type: string | null
+          course_id: string | null
+          course_title: string | null
+          created_at: string | null
+          duration_minutes: number | null
+          id: string | null
+          lesson_description: string | null
+          lesson_id: string | null
+          lesson_title: string | null
+          module_title: string | null
+          subject_code: string | null
+          subject_id: string | null
+          subject_name: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subject_lessons_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subject_lessons_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
             referencedRelation: "subjects"
