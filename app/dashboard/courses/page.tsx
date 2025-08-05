@@ -1265,6 +1265,7 @@ export default function CoursesPage() {
             <SubjectManager 
               courseId={selectedCourse.id} 
               courseName={selectedCourse.title}
+              instructorId={selectedCourse.instructor_id || undefined}
             />
             
             <div className="flex justify-end mt-6 pt-4 border-t border-gold-500/20">

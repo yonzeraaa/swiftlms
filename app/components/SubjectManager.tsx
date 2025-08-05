@@ -13,9 +13,10 @@ type CourseSubject = Tables<'course_subjects'>;
 interface SubjectManagerProps {
   courseId: string;
   courseName: string;
+  instructorId?: string;
 }
 
-export default function SubjectManager({ courseId, courseName }: SubjectManagerProps) {
+export default function SubjectManager({ courseId, courseName, instructorId }: SubjectManagerProps) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [courseSubjects, setCourseSubjects] = useState<CourseSubject[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
@@ -24,18 +25,40 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
   const [isRequired, setIsRequired] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [canManage, setCanManage] = useState(false);
 
   const supabase = createClient();
 
   useEffect(() => {
     loadData();
-  }, [courseId]);
+    checkUserRole();
+  }, [courseId, instructorId]);
+
+  async function checkUserRole() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        // Usuário pode gerenciar se for admin ou instrutor do curso
+        const isAdmin = profile?.role === 'admin';
+        const isInstructor = instructorId === user.id;
+        setCanManage(isAdmin || isInstructor);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar papel do usuário:', error);
+    }
+  }
 
   async function loadData() {
     try {
       setLoading(true);
 
-      // Carregar todas as matérias
+      // Carregar todas as disciplinas
       const { data: subjectsData, error: subjectsError } = await supabase
         .from('subjects')
         .select('*')
@@ -43,7 +66,7 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
 
       if (subjectsError) throw subjectsError;
 
-      // Carregar matérias do curso
+      // Carregar disciplinas do curso
       const { data: courseSubjectsData, error: courseSubjectsError } = await supabase
         .from('course_subjects')
         .select('*, subjects(*)')
@@ -87,16 +110,22 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
       setSemester(1);
       setCredits(4);
       setIsRequired(true);
-    } catch (error) {
-      console.error('Erro ao adicionar matéria:', error);
-      alert('Erro ao adicionar matéria ao curso');
+    } catch (error: any) {
+      console.error('Erro ao adicionar disciplina:', error);
+      if (error.code === '42501') {
+        alert('Você não tem permissão para adicionar disciplinas. Apenas administradores podem realizar esta ação.');
+      } else if (error.code === '23505') {
+        alert('Esta disciplina já está adicionada a este curso.');
+      } else {
+        alert(`Erro ao adicionar disciplina ao curso: ${error.message || 'Erro desconhecido'}`);
+      }
     } finally {
       setSaving(false);
     }
   }
 
   async function handleRemoveSubject(courseSubjectId: string) {
-    if (!confirm('Tem certeza que deseja remover esta matéria do curso?')) return;
+    if (!confirm('Tem certeza que deseja remover esta disciplina do curso?')) return;
 
     try {
       const { error } = await supabase
@@ -108,9 +137,13 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
 
       // Recarregar dados
       await loadData();
-    } catch (error) {
-      console.error('Erro ao remover matéria:', error);
-      alert('Erro ao remover matéria do curso');
+    } catch (error: any) {
+      console.error('Erro ao remover disciplina:', error);
+      if (error.code === '42501') {
+        alert('Você não tem permissão para remover disciplinas. Apenas administradores podem realizar esta ação.');
+      } else {
+        alert(`Erro ao remover disciplina do curso: ${error.message || 'Erro desconhecido'}`);
+      }
     }
   }
 
@@ -122,7 +155,7 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
     );
   }
 
-  // Filtrar matérias que ainda não foram adicionadas ao curso
+  // Filtrar disciplinas que ainda não foram adicionadas ao curso
   const availableSubjects = subjects.filter(
     subject => !courseSubjects.some(cs => cs.subject_id === subject.id)
   );
@@ -134,14 +167,15 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
         <h3 className="text-lg font-semibold">{courseName}</h3>
       </div>
 
-      {/* Formulário para adicionar matéria */}
-      <Card className="bg-navy-800/50">
-        <h4 className="font-medium text-gold mb-4">Adicionar Matéria ao Curso</h4>
+      {/* Formulário para adicionar disciplina */}
+      {canManage ? (
+        <Card className="bg-navy-800/50">
+          <h4 className="font-medium text-gold mb-4">Adicionar Disciplina ao Curso</h4>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
           <div className="lg:col-span-2">
             <label className="block text-sm font-medium text-gold-200 mb-2">
-              Matéria
+              Disciplina
             </label>
             <select
               value={selectedSubjectId}
@@ -149,7 +183,7 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
               className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
               disabled={saving}
             >
-              <option value="">Selecione uma matéria</option>
+              <option value="">Selecione uma disciplina</option>
               {availableSubjects.map((subject) => (
                 <option key={subject.id} value={subject.id}>
                   {subject.name} {subject.code ? `(${subject.code})` : ''}
@@ -208,20 +242,28 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
           variant="primary"
           icon={saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
         >
-          Adicionar Matéria
+          Adicionar Disciplina
         </Button>
       </Card>
+      ) : (
+        <Card className="bg-navy-800/30 border-yellow-500/20">
+          <div className="flex items-center gap-2 text-yellow-400">
+            <Award className="w-5 h-5" />
+            <p className="text-sm">Apenas administradores e instrutores do curso podem adicionar ou remover disciplinas.</p>
+          </div>
+        </Card>
+      )}
 
-      {/* Lista de matérias do curso */}
+      {/* Lista de disciplinas do curso */}
       <div className="space-y-4">
         <h4 className="font-medium text-gold flex items-center gap-2">
           <Award className="w-5 h-5 text-gold-500" />
-          Matérias do Curso
+          Disciplinas do Curso
         </h4>
         
         {courseSubjects.length === 0 ? (
           <Card className="text-center py-8">
-            <p className="text-gold-300">Nenhuma matéria adicionada a este curso ainda.</p>
+            <p className="text-gold-300">Nenhuma disciplina adicionada a este curso ainda.</p>
           </Card>
         ) : (
           <div className="grid gap-3">
@@ -257,13 +299,15 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleRemoveSubject(cs.id)}
-                    className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-4"
-                    title="Remover matéria"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
+                  {canManage && (
+                    <button
+                      onClick={() => handleRemoveSubject(cs.id)}
+                      className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors ml-4"
+                      title="Remover disciplina"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  )}
                 </div>
               </Card>
             ))}
@@ -275,7 +319,7 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
       <Card className="bg-navy-800/30 border-gold-500/20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-gold-400 text-sm">Total de Matérias</p>
+            <p className="text-gold-400 text-sm">Total de Disciplinas</p>
             <p className="text-2xl font-bold text-gold mt-1">{courseSubjects.length}</p>
           </div>
           <div>
@@ -285,7 +329,7 @@ export default function SubjectManager({ courseId, courseName }: SubjectManagerP
             </p>
           </div>
           <div>
-            <p className="text-gold-400 text-sm">Matérias Obrigatórias</p>
+            <p className="text-gold-400 text-sm">Disciplinas Obrigatórias</p>
             <p className="text-2xl font-bold text-gold mt-1">
               {courseSubjects.filter((cs: any) => cs.is_required).length}
             </p>
