@@ -33,6 +33,7 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from './contexts/ThemeContext'
 import { LanguageProvider } from './contexts/LanguageContext'
+import { ToastProvider } from './components/Toast'
 
 export default function RootLayout({
   children,
@@ -44,7 +45,9 @@ export default function RootLayout({
       <body className={`${merriweather.variable} ${roboto.variable} ${workSans.variable}`}>
         <ThemeProvider>
           <LanguageProvider>
-            {children}
+            <ToastProvider>
+              {children}
+            </ToastProvider>
           </LanguageProvider>
         </ThemeProvider>
       </body>

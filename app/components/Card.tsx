@@ -7,6 +7,8 @@ interface CardProps {
   className?: string
   padding?: 'sm' | 'md' | 'lg'
   action?: ReactNode
+  hoverable?: boolean
+  onClick?: () => void
 }
 
 export default function Card({
@@ -15,7 +17,9 @@ export default function Card({
   subtitle,
   className = '',
   padding = 'md',
-  action
+  action,
+  hoverable = false,
+  onClick
 }: CardProps) {
   const paddingSizes = {
     sm: 'p-4',
@@ -23,9 +27,27 @@ export default function Card({
     lg: 'p-8'
   }
 
+  const handleClick = onClick && !hoverable ? undefined : onClick
+
   return (
-    <div className={`glass-morphism border-gradient rounded-2xl shadow-xl ${className}`}>
-      <div className={`bg-navy-800/90 rounded-2xl ${paddingSizes[padding]}`}>
+    <div 
+      className={`
+        glass-morphism rounded-2xl
+        transform transition-all duration-300
+        shadow-[0_4px_20px_rgba(255,215,0,0.1)]
+        hover:shadow-[0_8px_30px_rgba(255,215,0,0.15)]
+        ${hoverable ? 'hover:-translate-y-1 cursor-pointer' : ''}
+        ${className}
+      `}
+      onClick={handleClick}
+    >
+      <div className={`
+        bg-navy-800/90 rounded-2xl 
+        border border-gold-500/20 
+        hover:border-gold-500/30 
+        transition-colors duration-300
+        ${paddingSizes[padding]}
+      `}>
         {(title || subtitle || action) && (
           <div className="mb-4">
             <div className="flex justify-between items-start">
