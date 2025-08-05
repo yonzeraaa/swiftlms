@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, Calendar, TrendingUp, FileText, Filter, FileSpreadsheet, Users, BookOpen, Award, GraduationCap, Activity } from 'lucide-react'
+import { Download, Calendar, TrendingUp, FileText, Filter, FileSpreadsheet, Users, BookOpen, Award, GraduationCap } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -146,8 +146,8 @@ export default function ReportsPage() {
     // Handle different report types
     if (reportType === 'grades') {
       generateGradesHistoryReport()
-    } else if (reportType === 'access') {
-      generateAccessReport()
+    } else if (reportType === 'enrollments') {
+      generateEnrollmentAndCompletionReport()
     } else {
       // In a real application, you would generate actual PDF/Excel files here
       alert(t('reports.reportGenerated'))
@@ -245,76 +245,65 @@ export default function ReportsPage() {
     alert(t('reports.gradesReportGenerated'))
   }
 
-  const generateAccessReport = () => {
-    // Create CSV content for access statistics
+  const generateEnrollmentAndCompletionReport = () => {
+    // Create CSV content for enrollments and completions
     let csvContent = 'data:text/csv;charset=utf-8,'
     
     // Add headers
-    csvContent += 'Relatório de Estatísticas de Acesso\n'
+    csvContent += 'Relatório de Matrículas e Conclusões\n'
     csvContent += `Período: ${new Date(dateRange.start).toLocaleDateString('pt-BR')} - ${new Date(dateRange.end).toLocaleDateString('pt-BR')}\n\n`
     
-    // Page views section
-    csvContent += 'Páginas Mais Acessadas\n'
-    csvContent += 'Página,Visualizações,Usuários Únicos,Tempo Médio (min)\n'
+    // Enrollments section
+    csvContent += 'MATRÍCULAS\n'
+    csvContent += 'Aluno,Email,Curso,Data de Matrícula,Status\n'
     
-    const pageStats = [
-      { page: 'Dashboard', views: 3456, uniqueUsers: 892, avgTime: 5.2 },
-      { page: 'Cursos', views: 2847, uniqueUsers: 743, avgTime: 8.7 },
-      { page: 'Meus Cursos', views: 2134, uniqueUsers: 687, avgTime: 12.3 },
-      { page: 'Aulas', views: 1876, uniqueUsers: 521, avgTime: 25.4 },
-      { page: 'Testes', views: 1234, uniqueUsers: 432, avgTime: 18.9 },
-      { page: 'Relatórios', views: 876, uniqueUsers: 234, avgTime: 7.1 },
-      { page: 'Configurações', views: 543, uniqueUsers: 198, avgTime: 3.4 }
+    // Simulated enrollment data
+    const enrollmentData = [
+      { student: 'João Silva', email: 'joao.silva@email.com', course: 'Fundamentos de Engenharia Naval', date: '2024-02-01', status: 'Ativo' },
+      { student: 'Maria Santos', email: 'maria.santos@email.com', course: 'Propulsão Naval', date: '2024-02-05', status: 'Ativo' },
+      { student: 'Pedro Oliveira', email: 'pedro.oliveira@email.com', course: 'Normas de Segurança', date: '2024-02-10', status: 'Ativo' },
+      { student: 'Ana Costa', email: 'ana.costa@email.com', course: 'Fundamentos de Engenharia Naval', date: '2024-02-15', status: 'Ativo' },
+      { student: 'Carlos Ferreira', email: 'carlos.ferreira@email.com', course: 'Propulsão Naval', date: '2024-02-20', status: 'Ativo' }
     ]
     
-    pageStats.forEach(stat => {
-      csvContent += `${stat.page},${stat.views},${stat.uniqueUsers},${stat.avgTime}\n`
+    enrollmentData.forEach(enrollment => {
+      csvContent += `${enrollment.student},${enrollment.email},${enrollment.course},${enrollment.date},${enrollment.status}\n`
     })
     
-    // Access by time section
-    csvContent += '\nAcessos por Horário\n'
-    csvContent += 'Horário,Acessos,Pico de Usuários\n'
+    // Completions section
+    csvContent += '\n\nCONCLUSÕES\n'
+    csvContent += 'Aluno,Email,Curso,Data de Conclusão,Nota Final,Certificado\n'
     
-    const timeStats = [
-      { time: '08:00-10:00', accesses: 1234, peakUsers: 287 },
-      { time: '10:00-12:00', accesses: 2145, peakUsers: 456 },
-      { time: '14:00-16:00', accesses: 1876, peakUsers: 398 },
-      { time: '16:00-18:00', accesses: 1432, peakUsers: 312 },
-      { time: '19:00-21:00', accesses: 2567, peakUsers: 523 },
-      { time: '21:00-23:00', accesses: 1123, peakUsers: 234 }
+    // Simulated completion data
+    const completionData = [
+      { student: 'Lucas Mendes', email: 'lucas.mendes@email.com', course: 'Fundamentos de Engenharia Naval', completionDate: '2024-02-28', finalGrade: 87, certificate: 'SIM' },
+      { student: 'Juliana Rocha', email: 'juliana.rocha@email.com', course: 'Normas de Segurança', completionDate: '2024-03-01', finalGrade: 92, certificate: 'SIM' },
+      { student: 'Roberto Lima', email: 'roberto.lima@email.com', course: 'Propulsão Naval', completionDate: '2024-03-05', finalGrade: 78, certificate: 'SIM' }
     ]
     
-    timeStats.forEach(stat => {
-      csvContent += `${stat.time},${stat.accesses},${stat.peakUsers}\n`
+    completionData.forEach(completion => {
+      csvContent += `${completion.student},${completion.email},${completion.course},${completion.completionDate},${completion.finalGrade},${completion.certificate}\n`
     })
     
-    // Device statistics
-    csvContent += '\nDispositivos de Acesso\n'
-    csvContent += 'Dispositivo,Quantidade,Porcentagem\n'
-    csvContent += 'Desktop,3456,58%\n'
-    csvContent += 'Mobile,2134,36%\n'
-    csvContent += 'Tablet,356,6%\n'
-    
-    // Summary statistics
-    csvContent += '\nResumo Geral\n'
-    csvContent += 'Métrica,Valor\n'
-    csvContent += `Total de Acessos,${pageStats.reduce((acc, s) => acc + s.views, 0)}\n`
-    csvContent += `Usuários Únicos,${reportData?.activeStudents || 0}\n`
-    csvContent += 'Tempo Médio de Sessão,15.7 minutos\n'
-    csvContent += 'Taxa de Retenção,78%\n'
-    csvContent += 'Páginas por Sessão,4.3\n'
+    // Summary
+    csvContent += '\n\nRESUMO\n'
+    csvContent += `Total de Matrículas no Período,${enrollmentData.length}\n`
+    csvContent += `Total de Conclusões no Período,${completionData.length}\n`
+    csvContent += `Taxa de Conclusão,${Math.round((completionData.length / reportData?.totalEnrollments || 1) * 100)}%\n`
+    csvContent += `Nota Média dos Concluintes,${(completionData.reduce((acc, c) => acc + c.finalGrade, 0) / completionData.length).toFixed(1)}\n`
     
     // Create download link
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement('a')
     link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `relatorio_acessos_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('download', `relatorio_matriculas_conclusoes_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
     
-    alert('Relatório de Estatísticas de Acesso gerado com sucesso!')
+    alert('Relatório de Matrículas e Conclusões gerado com sucesso!')
   }
+
 
   const exportToExcel = () => {
     if (!reportData) return
@@ -365,27 +354,19 @@ export default function ReportsPage() {
     },
     {
       title: t('reports.enrollmentReport'),
-      description: t('reports.enrollmentReportDesc'),
+      description: 'Relatório completo de matrículas e conclusões de cursos',
       type: 'enrollments',
       icon: Users,
       color: 'text-blue-400',
       bgColor: 'bg-blue-500/10'
     },
     {
-      title: t('reports.completionReport'),
-      description: t('reports.completionReportDesc'),
-      type: 'completions',
-      icon: Award,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10'
-    },
-    {
-      title: 'Relatório de Estatísticas de Acesso',
-      description: 'Visualize dados de acesso, páginas mais visitadas e tempo de permanência',
-      type: 'access',
-      icon: Activity,
-      color: 'text-green-400',
-      bgColor: 'bg-green-500/10'
+      title: t('reports.courseReport'),
+      description: t('reports.courseReportDesc'),
+      type: 'courses',
+      icon: BookOpen,
+      color: 'text-orange-400',
+      bgColor: 'bg-orange-500/10'
     }
   ]
 
