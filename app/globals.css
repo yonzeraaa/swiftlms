@@ -1,0 +1,811 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 215, 0;
+  --background-start-rgb: 0, 51, 102;
+  --background-end-rgb: 0, 26, 51;
+}
+
+.light {
+  /* Light theme overrides */
+  --foreground-rgb: 0, 51, 102;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 245, 245, 245;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  min-height: 100vh;
+  font-family: var(--font-crimson), 'Crimson Text', serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Light theme specific styles */
+.light body {
+  background: #f5f7fa;
+}
+
+.light .bg-pattern {
+  background-color: #f5f7fa;
+  background-image: 
+    linear-gradient(30deg, #e8ecf1 12%, transparent 12.5%, transparent 87%, #e8ecf1 87.5%, #e8ecf1),
+    linear-gradient(150deg, #e8ecf1 12%, transparent 12.5%, transparent 87%, #e8ecf1 87.5%, #e8ecf1),
+    linear-gradient(30deg, #e8ecf1 12%, transparent 12.5%, transparent 87%, #e8ecf1 87.5%, #e8ecf1),
+    linear-gradient(150deg, #e8ecf1 12%, transparent 12.5%, transparent 87%, #e8ecf1 87.5%, #e8ecf1),
+    linear-gradient(60deg, #dde3eb77 25%, transparent 25.5%, transparent 75%, #dde3eb77 75%, #dde3eb77),
+    linear-gradient(60deg, #dde3eb77 25%, transparent 25.5%, transparent 75%, #dde3eb77 75%, #dde3eb77);
+}
+
+/* Light theme glass morphism */
+.light .glass-morphism {
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 51, 102, 0.125);
+}
+
+/* Adjust text colors for light theme - all gold text becomes dark blue */
+.light .text-gold {
+  color: #001a33;
+}
+
+.light .text-gold-100 {
+  color: #001f3f;
+}
+
+.light .text-gold-200 {
+  color: #002952;
+}
+
+.light .text-gold-300 {
+  color: #003366;
+}
+
+.light .text-gold-400 {
+  color: #003d7a;
+}
+
+.light .text-gold-500 {
+  color: #004080;
+}
+
+/* Increase font sizes in light theme for better readability */
+.light body {
+  font-size: 1.05rem;
+}
+
+.light .text-xs {
+  font-size: 0.8rem;
+}
+
+.light .text-sm {
+  font-size: 0.925rem;
+}
+
+.light .text-base {
+  font-size: 1.05rem;
+}
+
+.light .text-lg {
+  font-size: 1.2rem;
+}
+
+.light .text-xl {
+  font-size: 1.35rem;
+}
+
+.light .text-2xl {
+  font-size: 1.65rem;
+}
+
+.light .text-3xl {
+  font-size: 2rem;
+}
+
+.light .text-4xl {
+  font-size: 2.5rem;
+}
+
+/* Adjust backgrounds for light theme - all white/cream */
+.light .bg-navy-900 {
+  background-color: #ffffff;
+}
+
+.light .bg-navy-800 {
+  background-color: #fefefe;
+}
+
+.light .bg-navy-700 {
+  background-color: #fcfcfc;
+}
+
+.light .bg-navy-600 {
+  background-color: #fafafa;
+}
+
+/* Light theme card backgrounds - ensure proper contrast */
+.light .bg-navy-900\/95 {
+  background-color: rgba(255, 255, 255, 0.98);
+  box-shadow: none;
+}
+
+/* Adjust borders for light theme - golden borders */
+.light .border-navy-600 {
+  border-color: #FFD700;
+}
+
+.light .border-gold-500 {
+  border-color: #FFD700;
+}
+
+.light .border-gold-500\/20 {
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.light .border-gold-500\/10 {
+  border-color: rgba(255, 215, 0, 0.2);
+}
+
+.light .border-gold-500\/30 {
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+/* Aplicar Cinzel para todos os headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-cinzel), 'Cinzel', serif;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+/* Ajustes específicos para elementos UI */
+button, .btn {
+  font-family: var(--font-cinzel), 'Cinzel', serif;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+/* Labels e elementos de formulário */
+label {
+  font-family: var(--font-cinzel), 'Cinzel', serif;
+  font-weight: 500;
+  font-size: 0.875rem;
+  letter-spacing: 0.025em;
+}
+
+/* Inputs mantêm a fonte do corpo para melhor legibilidade */
+input, textarea, select {
+  font-family: var(--font-crimson), 'Crimson Text', serif;
+}
+
+/* Increase base font size for better readability */
+body {
+  font-size: 16px;
+}
+
+/* Increase font sizes for dark mode to match light mode */
+:root body {
+  font-size: 1.05rem;
+}
+
+:root .text-xs {
+  font-size: 0.8rem;
+}
+
+:root .text-sm {
+  font-size: 0.925rem;
+}
+
+:root .text-base {
+  font-size: 1.05rem;
+}
+
+:root .text-lg {
+  font-size: 1.2rem;
+}
+
+:root .text-xl {
+  font-size: 1.35rem;
+}
+
+:root .text-2xl {
+  font-size: 1.65rem;
+}
+
+:root .text-3xl {
+  font-size: 2rem;
+}
+
+:root .text-4xl {
+  font-size: 2.5rem;
+}
+
+:root .text-5xl {
+  font-size: 3rem;
+}
+
+/* Increase heading sizes globally */
+h1 {
+  font-size: 2.25rem;
+}
+
+h2 {
+  font-size: 1.875rem;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+h4 {
+  font-size: 1.25rem;
+}
+
+/* Texto em tabelas */
+th {
+  font-family: var(--font-cinzel), 'Cinzel', serif;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+/* Cards titles e subtitles */
+.card-title {
+  font-family: var(--font-cinzel), 'Cinzel', serif;
+  font-weight: 600;
+}
+
+/* Menu items no sidebar */
+nav a, nav button {
+  font-family: var(--font-cinzel), 'Cinzel', serif;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+@layer utilities {
+  .bg-pattern {
+    background-color: #001f3f;
+    background-image: 
+      linear-gradient(30deg, #002952 12%, transparent 12.5%, transparent 87%, #002952 87.5%, #002952),
+      linear-gradient(150deg, #002952 12%, transparent 12.5%, transparent 87%, #002952 87.5%, #002952),
+      linear-gradient(30deg, #002952 12%, transparent 12.5%, transparent 87%, #002952 87.5%, #002952),
+      linear-gradient(150deg, #002952 12%, transparent 12.5%, transparent 87%, #002952 87.5%, #002952),
+      linear-gradient(60deg, #00335277 25%, transparent 25.5%, transparent 75%, #00335277 75%, #00335277),
+      linear-gradient(60deg, #00335277 25%, transparent 25.5%, transparent 75%, #00335277 75%, #00335277);
+    background-size: 80px 140px;
+    background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
+  }
+
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes sway {
+    0%, 100% {
+      transform: rotate(-5deg);
+    }
+    50% {
+      transform: rotate(5deg);
+    }
+  }
+
+  .animate-gradient {
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+
+  .glass-morphism {
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background-color: rgba(0, 51, 102, 0.25);
+    border: 1px solid rgba(255, 215, 0, 0.125);
+  }
+
+  .border-gradient {
+    position: relative;
+    background: linear-gradient(#001f3f, #001f3f) padding-box,
+                linear-gradient(135deg, #FFD700, #FFA500) border-box;
+    border: 2px solid transparent;
+  }
+  
+  /* Light theme border-gradient override */
+  .light .border-gradient {
+    background: linear-gradient(#ffffff, #ffffff) padding-box,
+                linear-gradient(135deg, #FFD700, #FFA500) border-box;
+    border: 2px solid transparent;
+  }
+
+  /* Classe utilitária para forçar Cinzel em elementos específicos */
+  .font-naval {
+    font-family: var(--font-cinzel), 'Cinzel', serif !important;
+  }
+
+  /* Classe utilitária para forçar Crimson em elementos específicos */
+  .font-body {
+    font-family: var(--font-crimson), 'Crimson Text', serif !important;
+  }
+
+  /* Light theme button styles - remove default gold backgrounds */
+  .light .bg-gold-500,
+  .light [class*="bg-gold"] {
+    background-color: #ffffff !important;
+    color: #003366 !important;
+    border: 2px solid #FFD700 !important;
+  }
+
+  .light .hover\:bg-gold-600:hover,
+  .light [class*="bg-gold"]:hover {
+    background-color: #fff8e8 !important;
+    border-color: #E6C200 !important;
+  }
+
+  .light .bg-gold-500\/20 {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid #FFD700 !important;
+    color: #003366 !important;
+  }
+
+  .light .bg-gold-500\/10 {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+    border: 1px solid rgba(255, 215, 0, 0.5) !important;
+    color: #003366 !important;
+  }
+  
+  /* Override Tailwind's gold background utilities in light theme */
+  .light [class*="bg-gold-"]:not(aside [class*="bg-gold-"]) {
+    background-color: #ffffff !important;
+    border: 2px solid #FFD700 !important;
+    color: #003366 !important;
+  }
+  
+
+  /* Light theme input styles */
+  .light input,
+  .light textarea,
+  .light select {
+    background-color: rgb(255, 255, 255);
+    border-color: rgba(255, 215, 0, 0.5);
+    color: #001a33;
+    font-size: 1rem;
+  }
+
+  .light input:focus,
+  .light textarea:focus,
+  .light select:focus {
+    border-color: #FFD700;
+    ring-color: #FFD700;
+    outline-color: #FFD700;
+  }
+  
+  /* Light theme focus ring */
+  .light .focus\:ring-2:focus {
+    --tw-ring-color: #FFD700;
+  }
+
+  /* Light theme card backgrounds */
+  .light .bg-navy-900\/50 {
+    background-color: #ffffff;
+    box-shadow: none;
+  }
+
+  .light .bg-navy-900\/30 {
+    background-color: #fffbf0; /* Creme suave */
+  }
+  
+  /* Ensure all navy backgrounds are white/cream in light theme */
+  .light [class*="bg-navy"] {
+    background-color: #ffffff !important;
+  }
+  
+  /* Cream backgrounds for variation */
+  .light .bg-navy-700\/20 {
+    background-color: #fffbf0;
+  }
+  
+  .light .bg-navy-700\/30 {
+    background-color: #fff8e8;
+  }
+
+  /* Light theme hover states */
+  .light .hover\:bg-navy-700\/30:hover {
+    background-color: #f5f5f5;
+  }
+
+  .light .hover\:bg-navy-800\/50:hover {
+    background-color: #f0f0f0;
+  }
+  
+  /* Fix hover states for all navy backgrounds */
+  .light [class*="hover:bg-navy"]:hover {
+    background-color: #f5f5f5 !important;
+  }
+
+  /* Light theme gradient */
+  .light .bg-gradient-to-r {
+    --tw-gradient-from: #003366;
+    --tw-gradient-to: #0052a3;
+  }
+
+  .light .bg-gradient-to-br {
+    background: transparent;
+  }
+  
+  /* Light theme - remove dark overlays */
+  .light .bg-gradient-to-br.from-navy-600\/50 {
+    background: transparent;
+  }
+
+  /* Light theme focus states */
+  .light .focus\:ring-gold-500:focus {
+    --tw-ring-color: #003366;
+  }
+
+  /* Light theme additional colors */
+  .light .bg-green-500\/10 {
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+
+  .light .bg-red-500\/10 {
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+
+  .light .bg-red-500\/20 {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+
+  .light .text-green-400 {
+    color: rgb(34, 197, 94);
+  }
+
+  .light .text-red-400 {
+    color: rgb(239, 68, 68);
+  }
+
+  /* Light theme hover for red button */
+  .light .hover\:bg-red-500\/20:hover {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: rgb(239, 68, 68);
+  }
+
+  .light .hover\:text-red-400:hover {
+    color: rgb(239, 68, 68);
+  }
+  
+  /* Light theme - buttons in main content area only (not sidebar) */
+  .light main button,
+  .light main [role="button"],
+  .light main a[class*="bg-gold"],
+  .light main a[class*="bg-navy"],
+  .light main [class*="btn"],
+  .light main [class*="Button"],
+  .light div[class*="p-8"] button,
+  .light div[class*="space-y"] button {
+    background-color: #ffffff !important;
+    color: #003366 !important;
+    border: 2px solid #FFD700 !important;
+    transition: all 0.2s ease;
+  }
+  
+  .light main button:hover,
+  .light main [role="button"]:hover,
+  .light main a[class*="bg-gold"]:hover,
+  .light main a[class*="bg-navy"]:hover,
+  .light main [class*="btn"]:hover,
+  .light main [class*="Button"]:hover,
+  .light div[class*="p-8"] button:hover,
+  .light div[class*="space-y"] button:hover {
+    background-color: #fff8e8 !important;
+    border-color: #E6C200 !important;
+    color: #002952 !important;
+  }
+  
+  /* Force override for primary variant buttons */
+  .light main [class*="primary"],
+  .light div[class*="primary"] {
+    background-color: #ffffff !important;
+    color: #003366 !important;
+    border: 2px solid #FFD700 !important;
+  }
+  
+  .light main [class*="primary"]:hover,
+  .light div[class*="primary"]:hover {
+    background-color: #fff8e8 !important;
+    border-color: #E6C200 !important;
+  }
+  
+  /* Special case for icon buttons in main area */
+  .light main button svg,
+  .light main [role="button"] svg {
+    color: #003366 !important;
+  }
+  
+  /* Disabled buttons in light theme */
+  .light main button:disabled,
+  .light main [role="button"]:disabled {
+    background-color: #f5f5f5 !important;
+    border-color: rgba(255, 215, 0, 0.3) !important;
+    color: rgba(0, 51, 102, 0.5) !important;
+  }
+  
+  /* Small buttons should have thinner borders */
+  .light main button[class*="size-sm"],
+  .light main button[class*="text-xs"] {
+    border-width: 1px !important;
+  }
+  
+  /* Exclude sidebar buttons from these changes */
+  .light aside button,
+  .light aside a,
+  .light aside [class*="bg-gold"] {
+    background-color: transparent !important;
+    border: none !important;
+  }
+  
+  .light aside button:hover,
+  .light aside a:hover,
+  .light aside [class*="bg-gold"]:hover {
+    background-color: rgba(245, 245, 245, 0.3) !important;
+    border: none !important;
+  }
+  
+  /* Final override to ensure ALL buttons outside sidebar have correct style */
+  .light body > div button:not(aside button),
+  .light body > div [class*="Button"]:not(aside [class*="Button"]) {
+    background-color: #ffffff !important;
+    color: #003366 !important;
+    border: 2px solid #FFD700 !important;
+  }
+  
+  .light body > div button:not(aside button):hover,
+  .light body > div [class*="Button"]:not(aside [class*="Button"]):hover {
+    background-color: #fff8e8 !important;
+    border-color: #E6C200 !important;
+    color: #002952 !important;
+  }
+  
+  /* Ultra-specific override for any element with bg-gold classes */
+  .light *[class*="bg-gold"]:not(aside *[class*="bg-gold"]) {
+    background-color: #ffffff !important;
+    color: #003366 !important;
+    border: 2px solid #FFD700 !important;
+  }
+  
+  /* Override inline styles and Tailwind's important utilities */
+  .light button[class*="bg-"]:not(aside button[class*="bg-"]),
+  .light a[class*="bg-"]:not(aside a[class*="bg-"]),
+  .light [role="button"][class*="bg-"]:not(aside [role="button"][class*="bg-"]) {
+    background-color: #ffffff !important;
+    color: #003366 !important;
+    border: 2px solid #FFD700 !important;
+  }
+  
+  /* Specific overrides for common button patterns */
+  .light .bg-gold-500:not(aside .bg-gold-500),
+  .light .bg-gold-600:not(aside .bg-gold-600),
+  .light .bg-navy-600:not(aside .bg-navy-600),
+  .light .bg-navy-700:not(aside .bg-navy-700),
+  .light .bg-navy-800:not(aside .bg-navy-800),
+  .light .bg-navy-900:not(aside .bg-navy-900) {
+    background-color: #ffffff !important;
+    color: #003366 !important;
+    border: 2px solid #FFD700 !important;
+  }
+  
+  /* Override hover states */
+  .light button[class*="bg-"]:not(aside button[class*="bg-"]):hover,
+  .light a[class*="bg-"]:not(aside a[class*="bg-"]):hover,
+  .light [role="button"][class*="bg-"]:not(aside [role="button"][class*="bg-"]):hover {
+    background-color: #fff8e8 !important;
+    border-color: #E6C200 !important;
+    color: #002952 !important;
+  }
+  
+  /* Override gradient buttons */
+  .light button[class*="from-gold"]:not(aside button[class*="from-gold"]),
+  .light button[class*="to-gold"]:not(aside button[class*="to-gold"]),
+  .light button[class*="bg-gradient"]:not(aside button[class*="bg-gradient"]) {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #003366 !important;
+    border: 2px solid #FFD700 !important;
+  }
+  
+  .light button[class*="from-gold"]:not(aside button[class*="from-gold"]):hover,
+  .light button[class*="to-gold"]:not(aside button[class*="to-gold"]):hover,
+  .light button[class*="bg-gradient"]:not(aside button[class*="bg-gradient"]):hover {
+    background: #fff8e8 !important;
+    background-image: none !important;
+    border-color: #E6C200 !important;
+    color: #002952 !important;
+  }
+  
+  /* Force override for all buttons with any background class */
+  .light main button:not([class*="transparent"]):not(aside button),
+  .light div[class*="space-y"] button:not([class*="transparent"]):not(aside button),
+  .light div[class*="flex"] button:not([class*="transparent"]):not(aside button) {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #003366 !important;
+    border: 2px solid #FFD700 !important;
+  }
+  
+  .light main button:not([class*="transparent"]):not(aside button):hover,
+  .light div[class*="space-y"] button:not([class*="transparent"]):not(aside button):hover,
+  .light div[class*="flex"] button:not([class*="transparent"]):not(aside button):hover {
+    background: #fff8e8 !important;
+    background-image: none !important;
+    border-color: #E6C200 !important;
+    color: #002952 !important;
+  }
+
+  /* Ensure cards have proper backgrounds in light theme */
+  .light .space-y-6 > div[class*="border"] {
+    background-color: #ffffff;
+    border-color: #FFD700;
+  }
+  
+  /* Override any remaining blue backgrounds */
+  .light .bg-pattern {
+    background-color: #f8f9fa !important;
+  }
+  
+  /* Remove all box shadows from cards in light theme */
+  .light [class*="shadow"],
+  .light .shadow,
+  .light .shadow-sm,
+  .light .shadow-md,
+  .light .shadow-lg,
+  .light .shadow-xl,
+  .light .shadow-2xl,
+  .light .shadow-inner,
+  .light .shadow-none {
+    box-shadow: none !important;
+  }
+  
+  /* Light theme cards should be white with golden borders */
+  .light [class*="rounded"][class*="border"] {
+    background-color: #ffffff;
+    border-color: #FFD700;
+  }
+  
+  /* All borders in light theme should be golden */
+  .light [class*="border"] {
+    border-color: rgba(255, 215, 0, 0.4) !important;
+  }
+  
+  /* Stronger golden borders for main cards */
+  .light .border {
+    border-color: #FFD700 !important;
+  }
+  
+  .light .border-t,
+  .light .border-b,
+  .light .border-l,
+  .light .border-r {
+    border-color: rgba(255, 215, 0, 0.3) !important;
+  }
+  
+  /* Remove any black borders - force golden */
+  .light .border-black,
+  .light .border-gray-900,
+  .light .border-gray-800,
+  .light .border-gray-700,
+  .light .border-gray-600,
+  .light .border-gray-500,
+  .light .border-gray-400,
+  .light .border-gray-300,
+  .light .border-gray-200,
+  .light .border-gray-100,
+  .light [class*="border-black"],
+  .light [class*="border-gray"] {
+    border-color: #FFD700 !important;
+  }
+
+  /* Light theme stats cards */
+  .light .text-4xl {
+    color: #001a33;
+    font-size: 2.75rem;
+    font-weight: 700;
+  }
+
+  /* Light theme for specific gradient overlays */
+  .light .absolute.inset-0[class*="bg-gradient"] {
+    display: none;
+  }
+
+  /* Light theme link colors in sidebar */
+  .light a[class*="text-gold-300"] {
+    color: #002952;
+    font-weight: 500;
+  }
+
+  .light a[class*="text-gold-300"]:hover {
+    color: #001a33;
+    font-weight: 600;
+  }
+
+  /* Active link in light theme */
+  .light a[class*="bg-gold-500\/20"] {
+    background-color: rgba(0, 51, 102, 0.1);
+    color: #001a33;
+    border-left-color: #001a33;
+    font-weight: 600;
+  }
+
+  /* Light theme sidebar */
+  .light aside[class*="bg-navy-900\/95"] {
+    background-color: #ffffff;
+    border-right-color: #FFD700 !important;
+    box-shadow: none;
+  }
+  
+  /* Light theme - ensure golden borders for sidebar items */
+  .light aside .border-gold-500\/20 {
+    border-color: rgba(255, 215, 0, 0.3) !important;
+  }
+
+  /* Light theme - ensure darker text for small sizes */
+  .light .text-gold-300 {
+    color: #002952 !important;
+  }
+
+  .light .text-gold-400 {
+    color: #003366 !important;
+  }
+
+  .light .text-gold-500 {
+    color: #003d7a !important;
+  }
+
+  /* Light theme - improve readability for smaller text */
+  .light [class*="text-gold"][class*="text-xs"],
+  .light [class*="text-gold"][class*="text-sm"] {
+    font-weight: 600;
+  }
+
+  /* Light theme - fix card titles */
+  .light h1 {
+    color: #001a33;
+    font-size: 2.25rem;
+  }
+
+  .light h2 {
+    color: #001a33;
+    font-size: 1.875rem;
+  }
+
+  .light h3 {
+    color: #001f3f;
+    font-size: 1.5rem;
+  }
+
+  .light h4 {
+    color: #002952;
+    font-size: 1.25rem;
+  }
+
+  /* Light theme - ensure all gold text has good contrast */
+  .light [class*="text-gold"] {
+    font-weight: 500;
+  }
+}
