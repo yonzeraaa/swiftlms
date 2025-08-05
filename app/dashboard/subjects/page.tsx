@@ -715,7 +715,9 @@ export default function SubjectsPage() {
                                     </div>
                                   </div>
                                   {associatedLessons.includes(lesson.id) && (
-                                    <CheckCircle2 className="w-5 h-5 text-green-400" title="Já associada" />
+                                    <div title="Já associada">
+                                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                    </div>
                                   )}
                                 </label>
                               ))}
