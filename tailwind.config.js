@@ -8,9 +8,9 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'playfair': ['var(--font-playfair)', 'serif'],
-        'inter': ['var(--font-inter)', 'sans-serif'],
-        'poppins': ['var(--font-poppins)', 'sans-serif'],
+        'montserrat': ['var(--font-montserrat)', 'sans-serif'],
+        'lato': ['var(--font-lato)', 'sans-serif'],
+        'raleway': ['var(--font-raleway)', 'sans-serif'],
       },
       colors: {
         'navy': {

@@ -1,26 +1,26 @@
 import type { Metadata } from 'next'
-import { Playfair_Display, Inter, Poppins } from 'next/font/google'
+import { Montserrat, Lato, Raleway } from 'next/font/google'
 import './globals.css'
 
-// Playfair Display para títulos - fonte elegante e sofisticada
-const playfair = Playfair_Display({ 
+// Montserrat para títulos - fonte moderna e geométrica com personalidade
+const montserrat = Montserrat({ 
   subsets: ['latin'],
-  variable: '--font-playfair',
-  weight: ['400', '500', '600', '700', '800', '900']
+  variable: '--font-montserrat',
+  weight: ['300', '400', '500', '600', '700', '800', '900']
 })
 
-// Inter para corpo do texto - fonte moderna e altamente legível
-const inter = Inter({ 
+// Lato para corpo do texto - fonte humanista e amigável
+const lato = Lato({ 
   subsets: ['latin'],
-  variable: '--font-inter',
-  weight: ['300', '400', '500', '600', '700']
+  variable: '--font-lato',
+  weight: ['300', '400', '700', '900']
 })
 
-// Poppins para elementos UI - fonte clean e profissional
-const poppins = Poppins({ 
+// Raleway para elementos UI - fonte elegante e minimalista
+const raleway = Raleway({ 
   subsets: ['latin'],
-  variable: '--font-poppins',
-  weight: ['300', '400', '500', '600', '700']
+  variable: '--font-raleway',
+  weight: ['300', '400', '500', '600', '700', '800']
 })
 
 export const metadata: Metadata = {
@@ -41,7 +41,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className={`${playfair.variable} ${inter.variable} ${poppins.variable}`}>
+      <body className={`${montserrat.variable} ${lato.variable} ${raleway.variable}`}>
         <ThemeProvider>
           <LanguageProvider>
             {children}

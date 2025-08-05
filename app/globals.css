@@ -30,10 +30,10 @@ body {
 body {
   color: rgb(var(--foreground-rgb));
   min-height: 100vh;
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-lato), 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -168,33 +168,34 @@ body {
   border-color: rgba(255, 215, 0, 0.4);
 }
 
-/* Aplicar Playfair Display para todos os headings */
+/* Aplicar Montserrat para todos os headings */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-playfair), 'Playfair Display', serif;
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   line-height: 1.2;
+  text-transform: none;
 }
 
 /* Ajustes específicos para elementos UI */
 button, .btn {
-  font-family: var(--font-poppins), 'Poppins', sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-family: var(--font-raleway), 'Raleway', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.03em;
   text-transform: none;
 }
 
 /* Labels e elementos de formulário */
 label {
-  font-family: var(--font-poppins), 'Poppins', sans-serif;
-  font-weight: 500;
+  font-family: var(--font-raleway), 'Raleway', sans-serif;
+  font-weight: 600;
   font-size: 0.875rem;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
 }
 
 /* Inputs mantêm a fonte do corpo para melhor legibilidade */
 input, textarea, select {
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-lato), 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-weight: 400;
 }
 
@@ -205,23 +206,23 @@ body {
 
 /* Premium typography adjustments */
 p {
-  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-lato), 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.75;
   color: inherit;
 }
 
-/* Stats and numbers should use Poppins for better legibility */
+/* Stats and numbers should use Montserrat for impact */
 .stat-number, [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="text-5xl"] {
-  font-family: var(--font-poppins), 'Poppins', sans-serif !important;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif !important;
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
 
 /* Small caps for certain UI elements */
 .text-uppercase {
-  font-family: var(--font-poppins), 'Poppins', sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-family: var(--font-raleway), 'Raleway', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 0.75rem;
 }
@@ -233,9 +234,9 @@ p + p {
 
 /* Premium look for badges and pills */
 .badge, .pill, [class*="rounded-full"][class*="px-"] {
-  font-family: var(--font-poppins), 'Poppins', sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-family: var(--font-raleway), 'Raleway', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.03em;
 }
 
 /* Increase font sizes for dark mode to match light mode */
@@ -312,25 +313,25 @@ h6 {
 
 /* Texto em tabelas */
 th {
-  font-family: var(--font-poppins), 'Poppins', sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-family: var(--font-raleway), 'Raleway', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   font-size: 0.75rem;
 }
 
 /* Cards titles e subtitles */
 .card-title {
-  font-family: var(--font-playfair), 'Playfair Display', serif;
+  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 /* Menu items no sidebar */
 nav a, nav button {
-  font-family: var(--font-poppins), 'Poppins', sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-family: var(--font-raleway), 'Raleway', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 @layer utilities {
@@ -394,19 +395,19 @@ nav a, nav button {
     border: 2px solid transparent;
   }
 
-  /* Classe utilitária para forçar Playfair em elementos específicos */
+  /* Classe utilitária para forçar Montserrat em elementos específicos */
   .font-display {
-    font-family: var(--font-playfair), 'Playfair Display', serif !important;
+    font-family: var(--font-montserrat), 'Montserrat', sans-serif !important;
   }
 
-  /* Classe utilitária para forçar Inter em elementos específicos */
+  /* Classe utilitária para forçar Lato em elementos específicos */
   .font-body {
-    font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    font-family: var(--font-lato), 'Lato', sans-serif !important;
   }
   
-  /* Classe utilitária para forçar Poppins em elementos específicos */
+  /* Classe utilitária para forçar Raleway em elementos específicos */
   .font-ui {
-    font-family: var(--font-poppins), 'Poppins', sans-serif !important;
+    font-family: var(--font-raleway), 'Raleway', sans-serif !important;
   }
 
   /* Light theme button styles - remove default gold backgrounds */
