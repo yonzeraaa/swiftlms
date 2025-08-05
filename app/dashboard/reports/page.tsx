@@ -289,7 +289,7 @@ export default function ReportsPage() {
     csvContent += '\n\nRESUMO\n'
     csvContent += `Total de Matrículas no Período,${enrollmentData.length}\n`
     csvContent += `Total de Conclusões no Período,${completionData.length}\n`
-    csvContent += `Taxa de Conclusão,${Math.round((completionData.length / reportData?.totalEnrollments || 1) * 100)}%\n`
+    csvContent += `Taxa de Conclusão,${Math.round((completionData.length / (reportData?.totalEnrollments || 1)) * 100)}%\n`
     csvContent += `Nota Média dos Concluintes,${(completionData.reduce((acc, c) => acc + c.finalGrade, 0) / completionData.length).toFixed(1)}\n`
     
     // Create download link
