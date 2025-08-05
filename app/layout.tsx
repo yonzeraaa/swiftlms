@@ -1,19 +1,26 @@
 import type { Metadata } from 'next'
-import { Cinzel, Crimson_Text } from 'next/font/google'
+import { Playfair_Display, Inter, Poppins } from 'next/font/google'
 import './globals.css'
 
-// Cinzel para títulos - fonte inspirada em inscrições romanas clássicas, evoca autoridade naval
-const cinzel = Cinzel({ 
+// Playfair Display para títulos - fonte elegante e sofisticada
+const playfair = Playfair_Display({ 
   subsets: ['latin'],
-  variable: '--font-cinzel',
-  weight: ['400', '500', '600', '700']
+  variable: '--font-playfair',
+  weight: ['400', '500', '600', '700', '800', '900']
 })
 
-// Crimson Text para corpo - fonte serifada elegante e legível
-const crimsonText = Crimson_Text({ 
+// Inter para corpo do texto - fonte moderna e altamente legível
+const inter = Inter({ 
   subsets: ['latin'],
-  variable: '--font-crimson',
-  weight: ['400', '600', '700']
+  variable: '--font-inter',
+  weight: ['300', '400', '500', '600', '700']
+})
+
+// Poppins para elementos UI - fonte clean e profissional
+const poppins = Poppins({ 
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  weight: ['300', '400', '500', '600', '700']
 })
 
 export const metadata: Metadata = {
@@ -34,7 +41,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className={`${cinzel.variable} ${crimsonText.variable}`}>
+      <body className={`${playfair.variable} ${inter.variable} ${poppins.variable}`}>
         <ThemeProvider>
           <LanguageProvider>
             {children}
