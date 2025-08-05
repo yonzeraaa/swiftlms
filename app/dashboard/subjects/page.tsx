@@ -20,7 +20,8 @@ export default function SubjectsPage() {
   const [formData, setFormData] = useState({
     name: '',
     code: '',
-    description: ''
+    description: '',
+    hours: ''
   })
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -82,6 +83,7 @@ export default function SubjectsPage() {
             name: formData.name,
             code: formData.code,
             description: formData.description,
+            hours: formData.hours ? parseInt(formData.hours) : null,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingSubject.id)
@@ -95,7 +97,8 @@ export default function SubjectsPage() {
           .insert({
             name: formData.name,
             code: formData.code,
-            description: formData.description
+            description: formData.description,
+            hours: formData.hours ? parseInt(formData.hours) : null
           })
 
         if (error) throw error
@@ -103,7 +106,7 @@ export default function SubjectsPage() {
       }
 
       // Reset form and refresh data
-      setFormData({ name: '', code: '', description: '' })
+      setFormData({ name: '', code: '', description: '', hours: '' })
       setEditingSubject(null)
       setShowModal(false)
       await fetchSubjects()
@@ -123,7 +126,8 @@ export default function SubjectsPage() {
     setFormData({
       name: subject.name,
       code: subject.code || '',
-      description: subject.description || ''
+      description: subject.description || '',
+      hours: subject.hours?.toString() || ''
     })
     setShowModal(true)
   }
@@ -164,7 +168,7 @@ export default function SubjectsPage() {
 
   const openCreateModal = () => {
     setEditingSubject(null)
-    setFormData({ name: '', code: '', description: '' })
+    setFormData({ name: '', code: '', description: '', hours: '' })
     setShowModal(true)
   }
 
@@ -178,6 +182,7 @@ export default function SubjectsPage() {
   const averageCoursesPerSubject = subjects.length > 0 
     ? (totalCourses / subjects.length).toFixed(1) 
     : '0.0'
+  const totalHours = subjects.reduce((sum, subject) => sum + (subject.hours || 0), 0)
 
   if (loading) {
     return (
@@ -250,8 +255,8 @@ export default function SubjectsPage() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Média Cursos/Disciplina</p>
-              <p className="text-2xl font-bold text-gold mt-1">{averageCoursesPerSubject}</p>
+              <p className="text-gold-300 text-sm">Total de Horas</p>
+              <p className="text-2xl font-bold text-gold mt-1">{totalHours}h</p>
             </div>
             <GraduationCap className="w-8 h-8 text-purple-500/30" />
           </div>
@@ -287,6 +292,7 @@ export default function SubjectsPage() {
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Código</th>
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Nome</th>
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Descrição</th>
+                <th className="text-center py-4 px-4 text-gold-200 font-medium">Horas</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Cursos Vinculados</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Criado em</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
@@ -304,6 +310,9 @@ export default function SubjectsPage() {
                     </td>
                     <td className="py-4 px-4">
                       <span className="text-gold-300 text-sm">{subject.description || '-'}</span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className="text-gold-200">{subject.hours ? `${subject.hours}h` : '-'}</span>
                     </td>
                     <td className="py-4 px-4 text-center">
                       <span className="text-gold-200">{courseCount[subject.id] || 0}</span>
@@ -335,7 +344,7 @@ export default function SubjectsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center">
+                  <td colSpan={7} className="py-12 text-center">
                     <BookOpen className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
                     <p className="text-gold-300">
                       {searchTerm ? 'Nenhuma disciplina encontrada com os critérios de busca' : 'Nenhuma disciplina cadastrada'}
@@ -390,6 +399,22 @@ export default function SubjectsPage() {
                   className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
                   placeholder="Ex: MAT101"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gold-200 mb-2">
+                  Carga Horária
+                </label>
+                <input
+                  type="number"
+                  value={formData.hours}
+                  onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  placeholder="Ex: 60"
+                  min="0"
+                  step="1"
+                />
+                <p className="text-xs text-gold-300 mt-1">Número de horas da disciplina</p>
               </div>
 
               <div>

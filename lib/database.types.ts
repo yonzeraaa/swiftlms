@@ -489,6 +489,7 @@ export type Database = {
           code: string | null
           created_at: string | null
           description: string | null
+          hours: number | null
           id: string
           name: string
           updated_at: string | null
@@ -497,6 +498,7 @@ export type Database = {
           code?: string | null
           created_at?: string | null
           description?: string | null
+          hours?: number | null
           id?: string
           name: string
           updated_at?: string | null
@@ -505,6 +507,7 @@ export type Database = {
           code?: string | null
           created_at?: string | null
           description?: string | null
+          hours?: number | null
           id?: string
           name?: string
           updated_at?: string | null
