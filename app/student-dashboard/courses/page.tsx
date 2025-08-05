@@ -439,9 +439,9 @@ export default function ExploreCourses() {
                     <Clock className="w-4 h-4" />
                     {course.duration_hours}h
                   </span>
-                  <span className="flex items-center gap-1 text-gold-300">
+                  <span className="inline-flex items-center gap-1 text-gold-300">
                     <Users className="w-4 h-4" />
-                    {course.enrollmentCount || 0}
+                    <span>{course.enrollmentCount || 0}</span>
                   </span>
                   {course.averageRating && course.averageRating > 0 && (
                     <span className="flex items-center gap-1 text-yellow-400">
