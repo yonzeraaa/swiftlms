@@ -30,10 +30,10 @@ body {
 body {
   color: rgb(var(--foreground-rgb));
   min-height: 100vh;
-  font-family: var(--font-lato), 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-roboto), 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
   font-weight: 400;
-  line-height: 1.7;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -168,34 +168,34 @@ body {
   border-color: rgba(255, 215, 0, 0.4);
 }
 
-/* Aplicar Montserrat para todos os headings */
+/* Aplicar Merriweather para todos os headings */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
+  font-family: var(--font-merriweather), 'Merriweather', serif;
   font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
   text-transform: none;
 }
 
 /* Ajustes específicos para elementos UI */
 button, .btn {
-  font-family: var(--font-raleway), 'Raleway', sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-family: var(--font-work-sans), 'Work Sans', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   text-transform: none;
 }
 
 /* Labels e elementos de formulário */
 label {
-  font-family: var(--font-raleway), 'Raleway', sans-serif;
-  font-weight: 600;
+  font-family: var(--font-work-sans), 'Work Sans', sans-serif;
+  font-weight: 500;
   font-size: 0.875rem;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 /* Inputs mantêm a fonte do corpo para melhor legibilidade */
 input, textarea, select {
-  font-family: var(--font-lato), 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-roboto), 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-weight: 400;
 }
 
@@ -206,23 +206,23 @@ body {
 
 /* Premium typography adjustments */
 p {
-  font-family: var(--font-lato), 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-roboto), 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.75;
   color: inherit;
 }
 
-/* Stats and numbers should use Montserrat for impact */
+/* Stats and numbers should use Work Sans for clarity */
 .stat-number, [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="text-5xl"] {
-  font-family: var(--font-montserrat), 'Montserrat', sans-serif !important;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-family: var(--font-work-sans), 'Work Sans', sans-serif !important;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 /* Small caps for certain UI elements */
 .text-uppercase {
-  font-family: var(--font-raleway), 'Raleway', sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  font-family: var(--font-work-sans), 'Work Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   font-size: 0.75rem;
 }
@@ -234,9 +234,9 @@ p + p {
 
 /* Premium look for badges and pills */
 .badge, .pill, [class*="rounded-full"][class*="px-"] {
-  font-family: var(--font-raleway), 'Raleway', sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.03em;
+  font-family: var(--font-work-sans), 'Work Sans', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 /* Increase font sizes for dark mode to match light mode */
@@ -282,56 +282,62 @@ p + p {
 
 /* Increase heading sizes globally with better hierarchy */
 h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
+  font-size: 2.75rem;
+  font-weight: 900;
+  line-height: 1.2;
 }
 
 h2 {
-  font-size: 2rem;
+  font-size: 2.125rem;
   font-weight: 700;
+  line-height: 1.3;
 }
 
 h3 {
-  font-size: 1.625rem;
+  font-size: 1.75rem;
   font-weight: 700;
+  line-height: 1.3;
 }
 
 h4 {
   font-size: 1.375rem;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 h5 {
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 h6 {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 /* Texto em tabelas */
 th {
-  font-family: var(--font-raleway), 'Raleway', sans-serif;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-family: var(--font-work-sans), 'Work Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   font-size: 0.75rem;
 }
 
 /* Cards titles e subtitles */
 .card-title {
-  font-family: var(--font-montserrat), 'Montserrat', sans-serif;
+  font-family: var(--font-merriweather), 'Merriweather', serif;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 /* Menu items no sidebar */
 nav a, nav button {
-  font-family: var(--font-raleway), 'Raleway', sans-serif;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-family: var(--font-work-sans), 'Work Sans', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 @layer utilities {
@@ -395,19 +401,19 @@ nav a, nav button {
     border: 2px solid transparent;
   }
 
-  /* Classe utilitária para forçar Montserrat em elementos específicos */
+  /* Classe utilitária para forçar Merriweather em elementos específicos */
   .font-display {
-    font-family: var(--font-montserrat), 'Montserrat', sans-serif !important;
+    font-family: var(--font-merriweather), 'Merriweather', serif !important;
   }
 
-  /* Classe utilitária para forçar Lato em elementos específicos */
+  /* Classe utilitária para forçar Roboto em elementos específicos */
   .font-body {
-    font-family: var(--font-lato), 'Lato', sans-serif !important;
+    font-family: var(--font-roboto), 'Roboto', sans-serif !important;
   }
   
-  /* Classe utilitária para forçar Raleway em elementos específicos */
+  /* Classe utilitária para forçar Work Sans em elementos específicos */
   .font-ui {
-    font-family: var(--font-raleway), 'Raleway', sans-serif !important;
+    font-family: var(--font-work-sans), 'Work Sans', sans-serif !important;
   }
 
   /* Light theme button styles - remove default gold backgrounds */

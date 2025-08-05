@@ -8,9 +8,9 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'montserrat': ['var(--font-montserrat)', 'sans-serif'],
-        'lato': ['var(--font-lato)', 'sans-serif'],
-        'raleway': ['var(--font-raleway)', 'sans-serif'],
+        'merriweather': ['var(--font-merriweather)', 'serif'],
+        'roboto': ['var(--font-roboto)', 'sans-serif'],
+        'work-sans': ['var(--font-work-sans)', 'sans-serif'],
       },
       colors: {
         'navy': {
