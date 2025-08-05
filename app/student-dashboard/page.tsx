@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, AlertCircle } from 'lucide-react'
+import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, AlertCircle, Activity, BarChart3 } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import Card from '../components/Card'
 import Button from '../components/Button'
+import ProgressChart from '../components/ProgressChart'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../contexts/LanguageContext'
@@ -99,57 +100,67 @@ export default function StudentDashboard() {
         .eq('user_id', userId)
         .order('enrolled_at', { ascending: false })
 
-      // Fetch lesson progress
+      // Fetch user progress statistics using the database function
+      const { data: progressStats, error: statsError } = await supabase
+        .rpc('get_user_progress_stats', { p_user_id: userId })
+        .single()
+
+      if (statsError) {
+        console.error('Error fetching progress stats:', statsError)
+      }
+
+      // Fetch lesson progress for last accessed calculation
       const { data: lessonProgress } = await supabase
         .from('lesson_progress')
         .select('*')
         .eq('user_id', userId)
+        .order('last_accessed_at', { ascending: false })
 
-      // Calculate statistics
+      // Process enrollments for display
       const enrolledCoursesData: EnrolledCourse[] = []
-      let totalHours = 0
-      let completedCount = 0
-      let totalProgress = 0
 
       if (enrollments) {
         for (const enrollment of enrollments) {
           if (enrollment.course) {
-            // Calculate course progress based on lesson progress
-            const courseProgress = enrollment.progress_percentage || 0
+            // Find last accessed lesson for this enrollment
+            const lastAccessedLesson = lessonProgress?.find(lp => lp.enrollment_id === enrollment.id)
             
             enrolledCoursesData.push({
               ...enrollment.course,
               enrollment: enrollment,
-              progress: courseProgress,
-              lastAccessed: lessonProgress
-                ?.filter(lp => lp.enrollment_id === enrollment.id)
-                .sort((a, b) => new Date(b.last_accessed_at || 0).getTime() - new Date(a.last_accessed_at || 0).getTime())[0]
-                ?.last_accessed_at || enrollment.enrolled_at || undefined
+              progress: enrollment.progress_percentage || 0,
+              lastAccessed: lastAccessedLesson?.last_accessed_at || enrollment.enrolled_at || undefined
             })
-
-            totalHours += enrollment.course.duration_hours || 0
-            if (enrollment.status === 'completed') {
-              completedCount++
-            }
-            totalProgress += courseProgress
           }
         }
       }
 
-      // Calculate overall progress
-      const overallProgress = enrolledCoursesData.length > 0 
-        ? Math.round(totalProgress / enrolledCoursesData.length)
-        : 0
+      // Set statistics from database function or calculate fallback
+      if (progressStats) {
+        setStats({
+          enrolledCourses: progressStats.total_enrolled_courses || 0,
+          completedCourses: progressStats.completed_courses || 0,
+          hoursLearned: Math.round(progressStats.hours_completed || 0),
+          certificates: progressStats.completed_courses || 0,
+          currentStreak: progressStats.current_streak || 0,
+          overallProgress: progressStats.overall_progress || 0
+        })
+      } else {
+        // Fallback calculation if function fails
+        const totalProgress = enrolledCoursesData.reduce((sum, course) => sum + course.progress, 0)
+        const overallProgress = enrolledCoursesData.length > 0 
+          ? Math.round(totalProgress / enrolledCoursesData.length)
+          : 0
 
-      // Set statistics
-      setStats({
-        enrolledCourses: enrolledCoursesData.length,
-        completedCourses: completedCount,
-        hoursLearned: Math.round(totalHours * (overallProgress / 100)),
-        certificates: completedCount,
-        currentStreak: calculateStreak(lessonProgress || []),
-        overallProgress
-      })
+        setStats({
+          enrolledCourses: enrolledCoursesData.length,
+          completedCourses: enrolledCoursesData.filter(c => c.enrollment.status === 'completed').length,
+          hoursLearned: Math.round(enrolledCoursesData.reduce((sum, c) => sum + (c.duration_hours || 0) * (c.progress / 100), 0)),
+          certificates: enrolledCoursesData.filter(c => c.enrollment.status === 'completed').length,
+          currentStreak: calculateStreak(lessonProgress || []),
+          overallProgress
+        })
+      }
 
       setEnrolledCourses(enrolledCoursesData)
 
@@ -326,6 +337,59 @@ export default function StudentDashboard() {
         ))}
       </div>
 
+      {/* Progress Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gold mb-2">Progresso Geral</h3>
+              <p className="text-sm text-gold-300">Média de todos os cursos</p>
+            </div>
+            <ProgressChart 
+              progress={stats.overallProgress} 
+              size={100}
+              strokeWidth={6}
+              labelSize="md"
+            />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gold mb-2">Horas de Estudo</h3>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-gold">{stats.hoursLearned}</span>
+                <span className="text-sm text-gold-300">/ {Math.round(enrolledCourses.reduce((sum, c) => sum + (c.duration_hours || 0), 0))}h</span>
+              </div>
+              <div className="mt-2 w-full bg-navy-800 rounded-full h-2">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
+                  style={{ width: `${enrolledCourses.length > 0 ? (stats.hoursLearned / enrolledCourses.reduce((sum, c) => sum + (c.duration_hours || 0), 0)) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+            <Clock className="w-10 h-10 text-blue-500/30" />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-gold mb-2">Taxa de Conclusão</h3>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-gold">{stats.completedCourses}</span>
+                <span className="text-sm text-gold-300">/ {stats.enrolledCourses} cursos</span>
+              </div>
+              <p className="text-sm text-green-400 mt-2">
+                {stats.enrolledCourses > 0 ? Math.round((stats.completedCourses / stats.enrolledCourses) * 100) : 0}% concluídos
+              </p>
+            </div>
+            <Award className="w-10 h-10 text-green-500/30" />
+          </div>
+        </Card>
+      </div>
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Meus Cursos - 2 columns */}
@@ -348,41 +412,76 @@ export default function StudentDashboard() {
             <div className="space-y-4">
               {enrolledCourses.length > 0 ? (
                 enrolledCourses.slice(0, 3).map((course) => (
-                  <div key={course.id} className="bg-navy-900/50 rounded-xl p-4 hover:bg-navy-900/70 transition-all cursor-pointer">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gold text-lg">{course.title}</h3>
-                        <p className="text-gold-300 text-sm mt-1">{course.category}</p>
-                      </div>
-                      <span className={`text-sm px-2 py-1 rounded-full ${
-                        course.enrollment.status === 'completed' 
-                          ? 'bg-green-500/20 text-green-400'
-                          : 'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        {course.enrollment.status === 'completed' ? 'Concluído' : 'Em andamento'}
-                      </span>
-                    </div>
-                    
-                    {/* Progress Bar */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gold-300">Progresso</span>
-                        <span className="text-gold-400 font-medium">{course.progress}%</span>
-                      </div>
-                      <div className="w-full bg-navy-800 rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-gold-500 to-gold-600 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${course.progress}%` }}
+                  <div 
+                    key={course.id} 
+                    className="bg-navy-900/50 rounded-xl p-4 hover:bg-navy-900/70 transition-all cursor-pointer group"
+                    onClick={() => router.push('/student-dashboard/my-courses')}
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* Progress Circle */}
+                      <div className="flex-shrink-0">
+                        <ProgressChart 
+                          progress={course.progress} 
+                          size={80}
+                          strokeWidth={6}
+                          labelSize="sm"
+                          color={course.enrollment.status === 'completed' ? 'green' : 'gold'}
                         />
                       </div>
-                    </div>
 
-                    <div className="flex items-center justify-between mt-3 text-sm text-gold-400">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {course.duration_hours}h de conteúdo
-                      </span>
-                      <span>Último acesso: {formatTimeAgo(course.lastAccessed || '', t)}</span>
+                      {/* Course Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="font-semibold text-gold text-lg group-hover:text-gold-400 transition-colors">{course.title}</h3>
+                            <p className="text-gold-300 text-sm mt-1">{course.category}</p>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+                            course.enrollment.status === 'completed' 
+                              ? 'bg-green-500/20 text-green-400'
+                              : course.progress >= 50
+                              ? 'bg-blue-500/20 text-blue-400'
+                              : 'bg-yellow-500/20 text-yellow-400'
+                          }`}>
+                            {course.enrollment.status === 'completed' 
+                              ? 'Concluído' 
+                              : course.progress >= 50 
+                              ? 'Em progresso' 
+                              : 'Iniciado'}
+                          </span>
+                        </div>
+
+                        {/* Progress Details */}
+                        <div className="grid grid-cols-2 gap-4 mt-3">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Clock className="w-4 h-4 text-gold-500/50" />
+                            <div>
+                              <span className="text-gold-400 font-medium">
+                                {Math.round((course.duration_hours || 0) * (course.progress / 100))}h
+                              </span>
+                              <span className="text-gold-500/60"> / {course.duration_hours}h</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Activity className="w-4 h-4 text-gold-500/50" />
+                            <span className="text-gold-400">{formatTimeAgo(course.lastAccessed || '', t)}</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="mt-3">
+                          <div className="w-full bg-navy-800 rounded-full h-1.5">
+                            <div 
+                              className={`h-1.5 rounded-full transition-all duration-500 ${
+                                course.enrollment.status === 'completed'
+                                  ? 'bg-gradient-to-r from-green-500 to-green-600'
+                                  : 'bg-gradient-to-r from-gold-500 to-gold-600'
+                              }`}
+                              style={{ width: `${course.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))

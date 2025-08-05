@@ -563,9 +563,27 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_enrollment_progress: {
+        Args: { p_enrollment_id: string }
+        Returns: number
+      }
       get_enrollment_count: {
         Args: { course_id: string }
         Returns: number
+      }
+      get_user_progress_stats: {
+        Args: { p_user_id: string }
+        Returns: {
+          total_enrolled_courses: number
+          completed_courses: number
+          in_progress_courses: number
+          total_lessons: number
+          completed_lessons: number
+          total_hours_content: number
+          hours_completed: number
+          overall_progress: number
+          current_streak: number
+        }[]
       }
       log_activity: {
         Args: {
