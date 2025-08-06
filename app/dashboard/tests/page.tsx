@@ -380,7 +380,7 @@ export default function TestsPage() {
           <div className="bg-navy-800 border border-gold-500/20 rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-bold text-gold mb-4">Confirmar Exclusão</h3>
             <p className="text-gold-200 mb-6">
-              Tem certeza que deseja excluir o teste "{testToDelete.title}"? Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir o teste &quot;{testToDelete.title}&quot;? Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-3 justify-end">
               <Button
