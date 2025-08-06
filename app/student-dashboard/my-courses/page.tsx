@@ -3,12 +3,14 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { BookOpen, Clock, Users, Award, Play, Search, Filter, TrendingUp } from 'lucide-react'
+import { BookOpen, Clock, Users, Award, Play, Search, Filter, TrendingUp, Sparkles } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import { StaggerTransition, StaggerItem, FadeTransition } from '../../components/ui/PageTransition'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
@@ -135,8 +137,20 @@ export default function MyCoursesPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="rounded-full h-12 w-12 border-b-2 border-gold-500"
+        />
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-gold-300 text-sm"
+        >
+          Carregando seus cursos...
+        </motion.p>
       </div>
     )
   }
@@ -144,63 +158,119 @@ export default function MyCoursesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-3xl font-bold text-gold">Meus Cursos</h1>
-          <p className="text-gold-300 mt-1">Gerencie e acompanhe seu progresso nos cursos</p>
-        </div>
+      <FadeTransition>
+        <div className="flex justify-between items-start">
+          <div>
+            <motion.h1 
+              className="text-3xl font-bold text-gold flex items-center gap-2"
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              Meus Cursos
+              <Sparkles className="w-6 h-6 text-gold-400 animate-pulse" />
+            </motion.h1>
+            <motion.p 
+              className="text-gold-300 mt-1"
+              initial={{ y: -10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              Gerencie e acompanhe seu progresso nos cursos
+            </motion.p>
+          </div>
         {courses.length === 0 && (
           <Button onClick={() => router.push('/student-dashboard/courses')}>
             Explorar Cursos Disponíveis
           </Button>
         )}
-      </div>
+        </div>
+      </FadeTransition>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Total de Cursos</p>
-              <p className="text-2xl font-bold text-gold mt-1">{stats.total}</p>
-            </div>
-            <BookOpen className="w-8 h-8 text-gold-500/30" />
-          </div>
-        </Card>
+      <StaggerTransition staggerDelay={0.1}>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gold-300 text-sm">Total de Cursos</p>
+                    <p className="text-2xl font-bold text-gold mt-1">{stats.total}</p>
+                  </div>
+                  <BookOpen className="w-8 h-8 text-gold-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
         
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Em Andamento</p>
-              <p className="text-2xl font-bold text-gold mt-1">{stats.active}</p>
-            </div>
-            <Play className="w-8 h-8 text-blue-500/30" />
-          </div>
-        </Card>
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gold-300 text-sm">Em Andamento</p>
+                    <p className="text-2xl font-bold text-gold mt-1">{stats.active}</p>
+                  </div>
+                  <Play className="w-8 h-8 text-blue-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
         
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Concluídos</p>
-              <p className="text-2xl font-bold text-gold mt-1">{stats.completed}</p>
-            </div>
-            <Award className="w-8 h-8 text-green-500/30" />
-          </div>
-        </Card>
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gold-300 text-sm">Concluídos</p>
+                    <p className="text-2xl font-bold text-gold mt-1">{stats.completed}</p>
+                  </div>
+                  <Award className="w-8 h-8 text-green-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
         
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Horas Totais</p>
-              <p className="text-2xl font-bold text-gold mt-1">{stats.totalHours}</p>
-            </div>
-            <Clock className="w-8 h-8 text-gold-500/30" />
-          </div>
-        </Card>
-      </div>
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gold-300 text-sm">Horas Totais</p>
+                    <p className="text-2xl font-bold text-gold mt-1">{stats.totalHours}</p>
+                  </div>
+                  <Clock className="w-8 h-8 text-gold-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
+        </div>
+      </StaggerTransition>
 
       {/* Search and Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
+      <motion.div 
+        className="flex flex-col md:flex-row gap-4"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.2 }}
+      >
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
           <input
@@ -235,13 +305,20 @@ export default function MyCoursesPage() {
             Concluídos
           </Button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Courses Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {filteredCourses.length > 0 ? (
-          filteredCourses.map((course) => (
-            <Card key={course.id} className="hover:shadow-xl transition-shadow">
+      <StaggerTransition staggerDelay={0.15}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {filteredCourses.length > 0 ? (
+            filteredCourses.map((course, index) => (
+              <StaggerItem key={course.id}>
+                <motion.div
+                  whileHover={{ y: -8, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                >
+                  <Card className="hover:shadow-xl hover:shadow-gold-500/10 transition-all">
               <div className="space-y-4">
                 {/* Course Header */}
                 <div className="flex items-start justify-between">
@@ -357,9 +434,11 @@ export default function MyCoursesPage() {
                   )}
                 </div>
               </div>
-            </Card>
-          ))
-        ) : (
+                  </Card>
+                </motion.div>
+              </StaggerItem>
+            ))
+          ) : (
           <div className="col-span-2 flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
@@ -370,8 +449,9 @@ export default function MyCoursesPage() {
               </p>
             </div>
           </div>
-        )}
-      </div>
+          )}
+        </div>
+      </StaggerTransition>
     </div>
   )
 }

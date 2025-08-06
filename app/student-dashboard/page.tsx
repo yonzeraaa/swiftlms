@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, AlertCircle, Activity } from 'lucide-react'
+import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, AlertCircle, Activity, Sparkles } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -12,6 +12,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../contexts/LanguageContext'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ScaleTransition, StaggerTransition, StaggerItem, FadeTransition } from '../components/ui/PageTransition'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
@@ -318,8 +320,20 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="rounded-full h-12 w-12 border-b-2 border-gold-500"
+        />
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-gold-300 text-sm"
+        >
+          Carregando seu painel...
+        </motion.p>
       </div>
     )
   }
@@ -327,75 +341,134 @@ export default function StudentDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gold">Meu Painel de Aprendizagem</h1>
-        <p className="text-gold-300 mt-1">Acompanhe seu progresso e continue aprendendo</p>
-      </div>
+      <FadeTransition>
+        <div>
+          <motion.h1 
+            className="text-3xl font-bold text-gold flex items-center gap-2"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            Meu Painel de Aprendizagem
+            <Sparkles className="w-6 h-6 text-gold-400 animate-pulse" />
+          </motion.h1>
+          <motion.p 
+            className="text-gold-300 mt-1"
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            Acompanhe seu progresso e continue aprendendo
+          </motion.p>
+        </div>
+      </FadeTransition>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statsCards.map((stat, index) => (
-          <StatCard key={index} {...stat} />
-        ))}
-      </div>
+      <StaggerTransition staggerDelay={0.1}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {statsCards.map((stat, index) => (
+            <StaggerItem key={index}>
+              <motion.div
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
+                <StatCard {...stat} />
+              </motion.div>
+            </StaggerItem>
+          ))}
+        </div>
+      </StaggerTransition>
 
       {/* Progress Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gold mb-2">Progresso Geral</h3>
-              <p className="text-sm text-gold-300">Média de todos os cursos</p>
-            </div>
-            <ProgressChart 
-              progress={stats.overallProgress} 
-              size={100}
-              strokeWidth={6}
-              labelSize="md"
-            />
-          </div>
-        </Card>
+      <StaggerTransition staggerDelay={0.15}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gold mb-2">Progresso Geral</h3>
+                    <p className="text-sm text-gold-300">Média de todos os cursos</p>
+                  </div>
+                  <ProgressChart 
+                    progress={stats.overallProgress} 
+                    size={100}
+                    strokeWidth={6}
+                    labelSize="md"
+                  />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
 
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gold mb-2">Horas de Estudo</h3>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-gold">{stats.hoursLearned}</span>
-                <span className="text-sm text-gold-300">/ {Math.round(enrolledCourses.reduce((sum, c) => sum + (c.duration_hours || 0), 0))}h</span>
-              </div>
-              <div className="mt-2 w-full bg-navy-800 rounded-full h-2">
-                <div 
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${enrolledCourses.length > 0 ? (stats.hoursLearned / enrolledCourses.reduce((sum, c) => sum + (c.duration_hours || 0), 0)) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-            <Clock className="w-10 h-10 text-blue-500/30" />
-          </div>
-        </Card>
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gold mb-2">Horas de Estudo</h3>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-gold">{stats.hoursLearned}</span>
+                      <span className="text-sm text-gold-300">/ {Math.round(enrolledCourses.reduce((sum, c) => sum + (c.duration_hours || 0), 0))}h</span>
+                    </div>
+                    <div className="mt-2 w-full bg-navy-800 rounded-full h-2">
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${enrolledCourses.length > 0 ? (stats.hoursLearned / enrolledCourses.reduce((sum, c) => sum + (c.duration_hours || 0), 0)) * 100 : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                  <Clock className="w-10 h-10 text-blue-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
 
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-gold mb-2">Taxa de Conclusão</h3>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-gold">{stats.completedCourses}</span>
-                <span className="text-sm text-gold-300">/ {stats.enrolledCourses} cursos</span>
-              </div>
-              <p className="text-sm text-green-400 mt-2">
-                {stats.enrolledCourses > 0 ? Math.round((stats.completedCourses / stats.enrolledCourses) * 100) : 0}% concluídos
-              </p>
-            </div>
-            <Award className="w-10 h-10 text-green-500/30" />
-          </div>
-        </Card>
-      </div>
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.03 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gold mb-2">Taxa de Conclusão</h3>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-bold text-gold">{stats.completedCourses}</span>
+                      <span className="text-sm text-gold-300">/ {stats.enrolledCourses} cursos</span>
+                    </div>
+                    <p className="text-sm text-green-400 mt-2">
+                      {stats.enrolledCourses > 0 ? Math.round((stats.completedCourses / stats.enrolledCourses) * 100) : 0}% concluídos
+                    </p>
+                  </div>
+                  <Award className="w-10 h-10 text-green-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
+        </div>
+      </StaggerTransition>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <motion.div 
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+      >
         {/* Meus Cursos - 2 columns */}
-        <div className="lg:col-span-2">
+        <motion.div 
+          className="lg:col-span-2"
+          whileHover={{ scale: 1.01 }}
+          transition={{ type: "spring", stiffness: 400 }}
+        >
           <Card 
             title="Meus Cursos"
             subtitle="Continue de onde parou"
@@ -411,15 +484,19 @@ export default function StudentDashboard() {
               )
             }
           >
-            <div className="space-y-4">
-              {enrolledCourses.length > 0 ? (
-                enrolledCourses.slice(0, 3).map((course) => (
-                  <div 
-                    key={course.id} 
-                    className="bg-navy-900/50 rounded-xl p-4 hover:bg-navy-900/70 transition-all cursor-pointer group"
-                    onClick={() => router.push('/student-dashboard/my-courses')}
-                  >
-                    <div className="flex items-start gap-4">
+            <StaggerTransition staggerDelay={0.1}>
+              <div className="space-y-4">
+                {enrolledCourses.length > 0 ? (
+                  enrolledCourses.slice(0, 3).map((course, index) => (
+                    <StaggerItem key={course.id}>
+                      <motion.div 
+                        className="bg-navy-900/50 rounded-xl p-4 hover:bg-navy-900/70 transition-all cursor-pointer group"
+                        onClick={() => router.push('/student-dashboard/my-courses')}
+                        whileHover={{ x: 10, backgroundColor: "rgba(3, 26, 51, 0.7)" }}
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        <div className="flex items-start gap-4">
                       {/* Progress Circle */}
                       <div className="flex-shrink-0">
                         <ProgressChart 
@@ -484,11 +561,12 @@ export default function StudentDashboard() {
                           </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="flex items-center justify-center min-h-[400px]">
+                        </div>
+                      </motion.div>
+                    </StaggerItem>
+                  ))
+                ) : (
+                  <div className="flex items-center justify-center min-h-[400px]">
                   <div className="text-center">
                     <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
                     <p className="text-gold-300 text-lg mb-4">Você ainda não está matriculado em nenhum curso</p>
@@ -496,16 +574,26 @@ export default function StudentDashboard() {
                       Explorar cursos disponíveis
                     </Button>
                   </div>
-                </div>
-              )}
-            </div>
+                  </div>
+                )}
+              </div>
+            </StaggerTransition>
           </Card>
-        </div>
+        </motion.div>
 
         {/* Right Column */}
-        <div className="space-y-6">
+        <motion.div 
+          className="space-y-6"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+        >
           {/* Sequência de Estudo */}
-          <Card>
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <Card>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-gold">Sequência de Estudo</h3>
               <div className="flex items-center gap-2 text-gold-400">
@@ -532,14 +620,26 @@ export default function StudentDashboard() {
             <p className="text-sm text-gold-300 mt-3 text-center">
               Continue estudando para manter sua sequência!
             </p>
-          </Card>
+            </Card>
+          </motion.div>
 
           {/* Atividades Recentes */}
-          <Card title="Atividades Recentes">
-            <div className="space-y-3">
-              {recentActivities.length > 0 ? (
-                recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3">
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
+            <Card title="Atividades Recentes">
+              <AnimatePresence>
+                <div className="space-y-3">
+                  {recentActivities.length > 0 ? (
+                    recentActivities.map((activity, index) => (
+                      <motion.div 
+                        key={activity.id} 
+                        className="flex items-start gap-3"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                      >
                     <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center text-gold flex-shrink-0">
                       {activity.icon === 'lesson' && <CheckCircle className="w-4 h-4" />}
                       {activity.icon === 'course' && <BookOpen className="w-4 h-4" />}
@@ -550,18 +650,26 @@ export default function StudentDashboard() {
                       <p className="text-gold-200 text-sm">{activity.description}</p>
                       <p className="text-gold-500/60 text-xs mt-1">{activity.timestamp}</p>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gold-300 text-center py-4">Nenhuma atividade recente</p>
-              )}
-            </div>
-          </Card>
-        </div>
-      </div>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <p className="text-gold-300 text-center py-4">Nenhuma atividade recente</p>
+                  )}
+                </div>
+              </AnimatePresence>
+            </Card>
+          </motion.div>
+        </motion.div>
+      </motion.div>
 
       {/* Próximas Aulas */}
-      <Card 
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.5 }}
+        whileHover={{ scale: 1.01 }}
+      >
+        <Card 
         title="Próximas Aulas"
         subtitle="Aulas agendadas para esta semana"
         action={
@@ -580,6 +688,7 @@ export default function StudentDashboard() {
           <p className="text-gold-300">Nenhuma aula agendada para os próximos dias</p>
         </div>
       </Card>
+      </motion.div>
     </div>
   )
 }

@@ -3,12 +3,14 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Search, Filter, BookOpen, Clock, Users, Star, DollarSign, Tag, TrendingUp, X, Check, AlertCircle, Loader2, User } from 'lucide-react'
+import { Search, Filter, BookOpen, Clock, Users, Star, DollarSign, Tag, TrendingUp, X, Check, AlertCircle, Loader2, User, Sparkles } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { StaggerTransition, StaggerItem, FadeTransition } from '../../components/ui/PageTransition'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -271,8 +273,20 @@ export default function ExploreCourses() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="rounded-full h-12 w-12 border-b-2 border-gold-500"
+        />
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="text-gold-300 text-sm"
+        >
+          Carregando cursos disponíveis...
+        </motion.p>
       </div>
     )
   }
@@ -280,61 +294,112 @@ export default function ExploreCourses() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gold">Explorar Cursos</h1>
-        <p className="text-gold-300 mt-1">Descubra novos conhecimentos e desenvolva suas habilidades</p>
-      </div>
+      <FadeTransition>
+        <div>
+          <motion.h1 
+            className="text-3xl font-bold text-gold flex items-center gap-2"
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            Explorar Cursos
+            <Sparkles className="w-6 h-6 text-gold-400 animate-pulse" />
+          </motion.h1>
+          <motion.p 
+            className="text-gold-300 mt-1"
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            Descubra novos conhecimentos e desenvolva suas habilidades
+          </motion.p>
+        </div>
+      </FadeTransition>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Cursos Disponíveis</p>
-              <p className="text-2xl font-bold text-gold">{courses.length}</p>
-            </div>
-            <BookOpen className="w-8 h-8 text-gold-500/30" />
-          </div>
-        </Card>
+      <StaggerTransition staggerDelay={0.1}>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gold-300 text-sm">Cursos Disponíveis</p>
+                    <p className="text-2xl font-bold text-gold">{courses.length}</p>
+                  </div>
+                  <BookOpen className="w-8 h-8 text-gold-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
         
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Cursos Gratuitos</p>
-              <p className="text-2xl font-bold text-gold">
-                {courses.filter(c => !c.price || c.price === 0).length}
-              </p>
-            </div>
-            <Tag className="w-8 h-8 text-green-500/30" />
-          </div>
-        </Card>
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gold-300 text-sm">Cursos Gratuitos</p>
+                    <p className="text-2xl font-bold text-gold">
+                      {courses.filter(c => !c.price || c.price === 0).length}
+                    </p>
+                  </div>
+                  <Tag className="w-8 h-8 text-green-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
         
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Total de Alunos</p>
-              <p className="text-2xl font-bold text-gold">
-                {courses.reduce((sum, c) => sum + (c.enrollmentCount || 0), 0)}
-              </p>
-            </div>
-            <Users className="w-8 h-8 text-blue-500/30" />
-          </div>
-        </Card>
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gold-300 text-sm">Total de Alunos</p>
+                    <p className="text-2xl font-bold text-gold">
+                      {courses.reduce((sum, c) => sum + (c.enrollmentCount || 0), 0)}
+                    </p>
+                  </div>
+                  <Users className="w-8 h-8 text-blue-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
         
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Avaliação Média</p>
-              <p className="text-2xl font-bold text-gold">
-                {courses.length > 0 
-                  ? (courses.reduce((sum, c) => sum + (c.averageRating || 0), 0) / courses.length).toFixed(1)
-                  : '0.0'}
-              </p>
-            </div>
-            <Star className="w-8 h-8 text-yellow-500/30" />
-          </div>
-        </Card>
-      </div>
+          <StaggerItem>
+            <motion.div
+              whileHover={{ scale: 1.05, y: -5 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            >
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gold-300 text-sm">Avaliação Média</p>
+                    <p className="text-2xl font-bold text-gold">
+                      {courses.length > 0 
+                        ? (courses.reduce((sum, c) => sum + (c.averageRating || 0), 0) / courses.length).toFixed(1)
+                        : '0.0'}
+                    </p>
+                  </div>
+                  <Star className="w-8 h-8 text-yellow-500/30" />
+                </div>
+              </Card>
+            </motion.div>
+          </StaggerItem>
+        </div>
+      </StaggerTransition>
 
       {/* Filters */}
       <Card>
