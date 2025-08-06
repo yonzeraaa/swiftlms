@@ -21,7 +21,6 @@ import Logo from '../components/Logo'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../contexts/LanguageContext'
 import CommandPalette from '../components/ui/CommandPalette'
-import Breadcrumbs from '../components/ui/Breadcrumbs'
 import PageTransition from '../components/ui/PageTransition'
 import { motion, AnimatePresence } from 'framer-motion'
 

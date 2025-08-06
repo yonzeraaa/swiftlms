@@ -554,26 +554,14 @@ export default function TestsPage() {
 
           {/* Empty State */}
           {filteredTests.length === 0 && (
-            <Card variant="outlined" className="text-center py-12">
+            <Card className="text-center py-12">
               <FileCheck className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gold mb-2">Nenhum teste encontrado</h3>
-              <p className="text-gold-400 mb-6">
+              <p className="text-gold-400">
                 {searchTerm || filterType !== 'all' || filterStatus !== 'all' || filterCourse !== 'all'
                   ? 'Tente ajustar os filtros ou termo de busca'
-                  : 'Comece criando seu primeiro teste'}
+                  : 'Comece criando seu primeiro teste usando o botão "+ Novo Teste" acima'}
               </p>
-              {!(searchTerm || filterType !== 'all' || filterStatus !== 'all' || filterCourse !== 'all') && (
-                <Button
-                  variant="primary"
-                  icon={<Plus className="w-5 h-5" />}
-                  onClick={() => {
-                    setEditingTestId(undefined)
-                    setShowTestForm(true)
-                  }}
-                >
-                  Criar Primeiro Teste
-                </Button>
-              )}
             </Card>
           )}
         </>

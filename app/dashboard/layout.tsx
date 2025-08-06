@@ -23,7 +23,6 @@ import Logo from '../components/Logo'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../contexts/LanguageContext'
 import CommandPalette from '../components/ui/CommandPalette'
-import Breadcrumbs from '../components/ui/Breadcrumbs'
 import PageTransition from '../components/ui/PageTransition'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -157,11 +156,6 @@ export default function DashboardLayout({
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
-          {/* Top Bar with Breadcrumbs */}
-          <div className="sticky top-0 z-30 bg-white/80 dark:bg-navy-900/80 backdrop-blur-md border-b border-gold-500/10 px-8 py-4">
-            <Breadcrumbs />
-          </div>
-          
           {/* Page Content with Animation */}
           <PageTransition>
             <div className="p-8">
