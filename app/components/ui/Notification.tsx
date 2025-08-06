@@ -445,6 +445,14 @@ export function NotificationBell({ className = '' }: NotificationBellProps) {
 
   const unreadCount = notifications.length
 
+  const icons = {
+    success: <CheckCircle className="w-5 h-5 text-success-500" />,
+    error: <XCircle className="w-5 h-5 text-error-500" />,
+    warning: <AlertCircle className="w-5 h-5 text-warning-500" />,
+    info: <Info className="w-5 h-5 text-info-500" />,
+    loading: <Loader2 className="w-5 h-5 text-info-500 animate-spin" />,
+  }
+
   return (
     <div className="relative">
       <button

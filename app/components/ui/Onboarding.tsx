@@ -184,7 +184,7 @@ interface OnboardingOverlayProps {
 }
 
 function OnboardingOverlay({ steps }: OnboardingOverlayProps) {
-  const { currentStep, nextStep, prevStep, skipTour } = useOnboarding()
+  const { currentStep, nextStep, prevStep, skipTour, goToStep } = useOnboarding()
   const [targetElement, setTargetElement] = useState<HTMLElement | null>(null)
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
 

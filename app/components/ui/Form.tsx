@@ -1,9 +1,9 @@
 'use client'
 
 import { forwardRef, useImperativeHandle } from 'react'
-import { useForm, UseFormReturn, FieldValues, Path, PathValue } from 'react-hook-form'
+import { useForm, UseFormReturn, FieldValues, Path, PathValue, DefaultValues } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { ZodSchema } from 'zod'
+import { z } from 'zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertCircle, CheckCircle, Info } from 'lucide-react'
 import Input from './Input'
@@ -16,10 +16,10 @@ interface FormContextValue<TFieldValues extends FieldValues = FieldValues> {
 
 // Form component props
 interface FormProps<TFieldValues extends FieldValues = FieldValues> {
-  schema?: ZodSchema<TFieldValues>
-  defaultValues?: Partial<TFieldValues>
+  schema?: z.ZodType<TFieldValues, any, any>
+  defaultValues?: DefaultValues<TFieldValues>
   onSubmit: (data: TFieldValues) => void | Promise<void>
-  children: React.ReactNode
+  children: React.ReactNode | ((form: UseFormReturn<TFieldValues>) => React.ReactNode)
   className?: string
   mode?: 'onChange' | 'onBlur' | 'onSubmit' | 'onTouched' | 'all'
 }
@@ -34,8 +34,8 @@ export function Form<TFieldValues extends FieldValues = FieldValues>({
   mode = 'onBlur',
 }: FormProps<TFieldValues>) {
   const form = useForm<TFieldValues>({
-    resolver: schema ? zodResolver(schema) : undefined,
-    defaultValues: defaultValues as any,
+    resolver: schema ? (zodResolver as any)(schema) : undefined,
+    defaultValues,
     mode,
   })
 
@@ -99,7 +99,8 @@ interface FormInputProps {
   hint?: string
   variant?: 'outlined' | 'filled' | 'underlined'
   size?: 'sm' | 'md' | 'lg'
-  icon?: React.ReactNode
+  leftIcon?: React.ReactNode
+  rightIcon?: React.ReactNode
   disabled?: boolean
   autoComplete?: string
 }
@@ -114,7 +115,8 @@ export function FormInput({
   hint,
   variant = 'outlined',
   size = 'md',
-  icon,
+  leftIcon,
+  rightIcon,
   disabled,
   autoComplete,
 }: FormInputProps) {
@@ -131,8 +133,9 @@ export function FormInput({
           placeholder={placeholder}
           variant={variant}
           size={size}
-          error={error?.message}
-          icon={icon}
+          error={typeof error?.message === 'string' ? error.message : undefined}
+          leftIcon={leftIcon}
+          rightIcon={rightIcon}
           disabled={disabled}
           autoComplete={autoComplete}
         />
@@ -180,7 +183,7 @@ export function FormSelect({
         value={value}
         onChange={(val) => setValue(name, val as PathValue<any, Path<any>>)}
         placeholder={placeholder}
-        error={error?.message}
+        error={typeof error?.message === 'string' ? error.message : undefined}
         multiple={multiple}
         searchable={searchable}
         clearable={clearable}
@@ -249,7 +252,7 @@ export function FormTextarea({
             {value.length}/{maxLength}
           </div>
         )}
-        {error && (
+        {error && typeof error.message === 'string' && (
           <p className="mt-1 text-sm text-error-500">{error.message}</p>
         )}
       </div>
@@ -301,7 +304,7 @@ export function FormCheckbox({
           )}
         </div>
       </label>
-      {error && (
+      {error && typeof error.message === 'string' && (
         <p className="text-sm text-error-500">{error.message}</p>
       )}
     </div>
@@ -362,7 +365,7 @@ export function FormRadioGroup({
             </div>
           </label>
         ))}
-        {error && (
+        {error && typeof error.message === 'string' && (
           <p className="text-sm text-error-500">{error.message}</p>
         )}
       </div>
@@ -474,7 +477,7 @@ export function FormErrorSummary({ form }: FormErrorSummaryProps) {
           <ul className="mt-2 space-y-1">
             {errorKeys.map((key) => (
               <li key={key} className="text-sm text-error-700 dark:text-error-300">
-                • {errors[key]?.message || `Erro no campo ${key}`}
+                • {typeof errors[key]?.message === 'string' ? errors[key]?.message : `Erro no campo ${key}`}
               </li>
             ))}
           </ul>
