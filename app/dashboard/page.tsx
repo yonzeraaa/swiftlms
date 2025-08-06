@@ -3,13 +3,14 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Users, BookOpen, GraduationCap, TrendingUp, Clock, Award, Activity, FileText, UserPlus, BookPlus } from 'lucide-react'
+import { Users, BookOpen, GraduationCap, TrendingUp, Clock, Award, Activity, FileText, UserPlus, BookPlus, ArrowUpRight, Sparkles } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../contexts/LanguageContext'
+import { SkeletonStatCard } from '../components/Skeleton'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -278,30 +279,81 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="h-8 w-48 bg-navy-700/50 rounded-lg animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-navy-700/30 rounded animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+
+        {/* Content Grid Skeleton */}
+        <div className="bg-navy-800/50 rounded-xl p-6 animate-pulse">
+          <div className="h-6 w-32 bg-navy-700/50 rounded mb-4"></div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 bg-navy-700/30 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gold">{t('dashboard.title')}</h1>
-        <p className="text-gold-300 mt-1">{t('dashboard.subtitle')}</p>
-      </div>
+      {/* Welcome Banner */}
+      <Card variant="gradient" className="mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+              <Sparkles className="w-8 h-8 text-gold-400 animate-pulse" />
+              {t('dashboard.title')}
+            </h1>
+            <p className="text-gold-300 mt-1">{t('dashboard.subtitle')}</p>
+          </div>
+          <div className="text-gold-400/60 text-sm">
+            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
+        </div>
+      </Card>
 
-      {/* Stats Grid */}
+      {/* Stats Grid with Enhanced Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statsCards.map((stat, index) => (
-          <StatCard key={index} {...stat} />
-        ))}
+        <StatCard 
+          {...statsCards[0]} 
+          variant="gradient" 
+          color="blue" 
+        />
+        <StatCard 
+          {...statsCards[1]} 
+          variant="gradient" 
+          color="green" 
+        />
+        <StatCard 
+          {...statsCards[2]} 
+          variant="gradient" 
+          color="purple" 
+        />
+        <StatCard 
+          {...statsCards[3]} 
+          variant="gradient" 
+          color="gold" 
+        />
       </div>
 
-      {/* Atividades Recentes */}
+      {/* Atividades Recentes com Visual Melhorado */}
       <Card 
         title={t('dashboard.recentActivities')}
+        variant="elevated"
         action={
           recentActivities.length > 0 && (
             <Button
@@ -318,7 +370,7 @@ export default function DashboardPage() {
           {recentActivities.length > 0 ? (
             recentActivities.map((activity, index) => (
               <div key={index} className="flex items-start gap-3 pb-4 border-b border-gold-500/20 last:border-0">
-                <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center text-gold">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-500/30 to-gold-600/20 flex items-center justify-center text-gold shadow-lg transition-transform hover:scale-110">
                   {activity.icon === 'user' && <UserPlus className="w-5 h-5" />}
                   {activity.icon === 'course' && <BookPlus className="w-5 h-5" />}
                   {activity.icon === 'enrollment' && <Activity className="w-5 h-5" />}

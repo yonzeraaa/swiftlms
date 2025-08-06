@@ -1,145 +1,131 @@
-'use client'
-
-import { HTMLAttributes } from 'react'
-
-interface SkeletonProps extends HTMLAttributes<HTMLDivElement> {
-  variant?: 'text' | 'circular' | 'rectangular' | 'rounded'
+interface SkeletonProps {
+  variant?: 'text' | 'circular' | 'rectangular' | 'card'
   width?: string | number
   height?: string | number
-  animation?: 'pulse' | 'wave' | 'none'
-  count?: number
   className?: string
+  count?: number
+  animation?: 'pulse' | 'wave' | 'shimmer'
 }
 
 export default function Skeleton({
   variant = 'text',
   width,
   height,
-  animation = 'pulse',
-  count = 1,
   className = '',
-  ...props
+  count = 1,
+  animation = 'pulse'
 }: SkeletonProps) {
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'text':
-        return 'h-4 rounded'
-      case 'circular':
-        return 'rounded-full'
-      case 'rectangular':
-        return 'rounded-none'
-      case 'rounded':
-        return 'rounded-lg'
-      default:
-        return ''
+  const animations = {
+    pulse: 'animate-pulse',
+    wave: 'animate-wave',
+    shimmer: 'animate-shimmer'
+  }
+
+  const variants = {
+    text: 'h-4 rounded',
+    circular: 'rounded-full',
+    rectangular: 'rounded-lg',
+    card: 'rounded-xl'
+  }
+
+  const defaultSizes = {
+    text: { width: '100%', height: '1rem' },
+    circular: { width: '3rem', height: '3rem' },
+    rectangular: { width: '100%', height: '10rem' },
+    card: { width: '100%', height: '20rem' }
+  }
+
+  const getSize = () => {
+    const defaults = defaultSizes[variant]
+    return {
+      width: width || defaults.width,
+      height: height || defaults.height
     }
   }
 
-  const getAnimationStyles = () => {
-    switch (animation) {
-      case 'pulse':
-        return 'animate-pulse'
-      case 'wave':
-        return 'animate-shimmer'
-      case 'none':
-        return ''
-      default:
-        return ''
-    }
-  }
+  const size = getSize()
 
-  const baseStyles = `
-    bg-gold-500/10
-    ${getVariantStyles()}
-    ${getAnimationStyles()}
-    ${className}
-  `
+  const skeletonElement = (
+    <div
+      className={`
+        bg-gradient-to-r from-navy-700/50 via-navy-600/50 to-navy-700/50
+        background-size-200 ${animations[animation]} ${variants[variant]} ${className}
+      `}
+      style={{
+        width: typeof size.width === 'number' ? `${size.width}px` : size.width,
+        height: typeof size.height === 'number' ? `${size.height}px` : size.height
+      }}
+    />
+  )
 
-  const style = {
-    width: width || (variant === 'circular' ? '40px' : '100%'),
-    height: height || (variant === 'circular' ? '40px' : variant === 'text' ? '1rem' : '20px'),
-    ...props.style
-  }
-
-  if (count > 1) {
-    return (
-      <div className="space-y-2">
-        {Array.from({ length: count }).map((_, index) => (
-          <div
-            key={index}
-            className={baseStyles}
-            style={{
-              ...style,
-              width: index === count - 1 && variant === 'text' ? '80%' : style.width
-            }}
-            {...props}
-          />
-        ))}
-      </div>
-    )
+  if (count === 1) {
+    return skeletonElement
   }
 
   return (
-    <div
-      className={baseStyles}
-      style={style}
-      {...props}
-    />
+    <div className="space-y-2">
+      {Array.from({ length: count }).map((_, index) => (
+        <div
+          key={index}
+          className={`
+            bg-gradient-to-r from-navy-700/50 via-navy-600/50 to-navy-700/50
+            background-size-200 ${animations[animation]} ${variants[variant]} ${className}
+          `}
+          style={{
+            width: typeof size.width === 'number' ? `${size.width}px` : size.width,
+            height: typeof size.height === 'number' ? `${size.height}px` : size.height,
+            // Vary width for text variant to look more natural
+            ...(variant === 'text' && index === count - 1 ? { width: '60%' } : {})
+          }}
+        />
+      ))}
+    </div>
   )
 }
 
-// Specialized skeleton components
-export function SkeletonText({ lines = 3, ...props }: { lines?: number } & Omit<SkeletonProps, 'count'>) {
-  return <Skeleton variant="text" count={lines} {...props} />
-}
-
-export function SkeletonAvatar(props: Omit<SkeletonProps, 'variant'>) {
-  return <Skeleton variant="circular" {...props} />
-}
-
-export function SkeletonCard({ showAvatar = true, lines = 3 }: { showAvatar?: boolean; lines?: number }) {
+// Card Skeleton preset
+export function SkeletonCard({ className = '' }: { className?: string }) {
   return (
-    <div className="bg-navy-800/50 rounded-xl p-6 space-y-4">
-      {showAvatar && (
-        <div className="flex items-center gap-4">
-          <SkeletonAvatar width={48} height={48} />
-          <div className="flex-1 space-y-2">
-            <Skeleton variant="text" width="50%" height={20} />
-            <Skeleton variant="text" width="30%" height={16} />
-          </div>
+    <div className={`bg-navy-800/50 rounded-xl p-6 ${className}`}>
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1">
+          <Skeleton variant="text" width="60%" height={24} className="mb-2" />
+          <Skeleton variant="text" width="40%" height={16} />
         </div>
-      )}
-      <SkeletonText lines={lines} />
-      <div className="flex gap-2">
-        <Skeleton variant="rounded" width={80} height={32} />
-        <Skeleton variant="rounded" width={80} height={32} />
+        <Skeleton variant="circular" width={40} height={40} />
+      </div>
+      <div className="space-y-2">
+        <Skeleton variant="text" count={3} />
       </div>
     </div>
   )
 }
 
-export function SkeletonTable({ rows = 5, columns = 4 }: { rows?: number; columns?: number }) {
+// Table Row Skeleton preset
+export function SkeletonTableRow({ columns = 5 }: { columns?: number }) {
   return (
-    <div className="space-y-2">
-      {/* Header */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
-        {Array.from({ length: columns }).map((_, index) => (
-          <Skeleton key={index} variant="text" height={20} />
-        ))}
-      </div>
-      
-      {/* Rows */}
-      {Array.from({ length: rows }).map((_, rowIndex) => (
-        <div 
-          key={rowIndex} 
-          className="grid gap-4 py-2" 
-          style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
-        >
-          {Array.from({ length: columns }).map((_, colIndex) => (
-            <Skeleton key={colIndex} variant="text" height={16} />
-          ))}
-        </div>
+    <tr className="border-b border-gold-500/10">
+      {Array.from({ length: columns }).map((_, index) => (
+        <td key={index} className="py-4 px-4">
+          <Skeleton variant="text" width={index === 0 ? '80%' : '60%'} />
+        </td>
       ))}
+    </tr>
+  )
+}
+
+// Stat Card Skeleton preset
+export function SkeletonStatCard() {
+  return (
+    <div className="bg-navy-800/50 rounded-xl p-6">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <Skeleton variant="text" width="50%" height={14} className="mb-2" />
+          <Skeleton variant="text" width="30%" height={32} className="mb-2" />
+          <Skeleton variant="text" width="40%" height={12} />
+        </div>
+        <Skeleton variant="circular" width={48} height={48} />
+      </div>
     </div>
   )
 }
