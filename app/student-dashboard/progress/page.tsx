@@ -211,7 +211,9 @@ export default function ProgressPage() {
               <p className="text-gold-300 text-sm">Progresso Geral</p>
               <p className="text-3xl font-bold text-gold">{totalStats.averageProgress}%</p>
             </div>
-            <ProgressChart progress={totalStats.averageProgress} size={80} strokeWidth={6} />
+            <div className="relative">
+              <ProgressChart progress={totalStats.averageProgress} size={80} strokeWidth={6} showLabel={false} />
+            </div>
           </div>
         </Card>
 
