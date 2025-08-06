@@ -3,14 +3,28 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Edit, Key, X, Check, Trash2, AlertCircle, Phone } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Edit, Key, X, Check, Trash2, AlertCircle, Phone, Users, Shield, GraduationCap, BookOpen, LayoutGrid, List, Lock, Unlock } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
+import UserCard from '../../components/UserCard'
+import ViewToggle from '../../components/ViewToggle'
+import { Chip } from '../../components/Badge'
+import { SkeletonCard } from '../../components/Skeleton'
+import { useToast } from '../../components/Toast'
 
-type Profile = Tables<'profiles'>
+type Profile = Tables<'profiles'> & {
+  courses?: Array<{ id: string; title: string }>
+  enrollments?: Array<{ id: string }>
+  tests_created?: Array<{ id: string }>
+  test_attempts?: Array<{ 
+    id: string
+    score?: number
+    status: string
+  }>
+}
 
 interface NewUserForm {
   email: string
@@ -51,7 +65,12 @@ export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewUserModal, setShowNewUserModal] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterRole, setFilterRole] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const [newUserForm, setNewUserForm] = useState<NewUserForm>({
     email: '',
     password: '',
@@ -93,15 +112,65 @@ export default function UsersPage() {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
+      // For students, fetch enrollments and test attempts
+      // For teachers, fetch courses and tests created
+      const { data: profiles, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setUsers(data || [])
+
+      // Enrich data based on role
+      const enrichedUsers = await Promise.all((profiles || []).map(async (user) => {
+        if (user.role === 'student') {
+          // Fetch enrollments and test attempts for students
+          const { data: enrollments } = await supabase
+            .from('enrollments')
+            .select('id')
+            .eq('user_id', user.id)
+
+          const { data: attempts } = await supabase
+            .from('test_attempts')
+            .select('id, score, status')
+            .eq('user_id', user.id)
+
+          const formattedAttempts = (attempts || []).map(a => ({
+            id: a.id,
+            score: a.score ?? undefined,
+            status: a.status as string
+          }))
+
+          return {
+            ...user,
+            enrollments: enrollments || [],
+            test_attempts: formattedAttempts
+          }
+        } else if (user.role === 'instructor' || user.role === 'teacher') {
+          // Fetch courses and tests created for teachers
+          const { data: courses } = await supabase
+            .from('courses')
+            .select('id, title')
+            .eq('instructor_id', user.id)
+
+          const { data: tests } = await supabase
+            .from('tests')
+            .select('id')
+            .eq('created_by', user.id)
+
+          return {
+            ...user,
+            courses: courses || [],
+            tests_created: tests || []
+          }
+        }
+        return user
+      }))
+
+      setUsers(enrichedUsers)
     } catch (error) {
       console.error('Error fetching users:', error)
+      showToast({ type: 'error', title: 'Erro ao carregar usuários' })
     } finally {
       setLoading(false)
     }
@@ -173,9 +242,14 @@ export default function UsersPage() {
         user.id === userId ? { ...user, status } : user
       ))
       
+      showToast({ 
+        type: 'success', 
+        title: status === 'active' ? 'Usuário ativado' : 'Usuário desativado' 
+      })
       setOpenDropdown(null)
     } catch (error) {
       console.error('Error updating user status:', error)
+      showToast({ type: 'error', title: 'Erro ao atualizar status' })
     }
   }
 
@@ -298,10 +372,16 @@ export default function UsersPage() {
     }
   }
 
-  const filteredUsers = users.filter(user =>
-    (user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = (user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesRole = filterRole === 'all' || user.role === filterRole
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'active' ? user.status !== 'frozen' : user.status === 'frozen')
+    
+    return matchesSearch && matchesRole && matchesStatus
+  })
 
   const getRoleBadge = (role: string | null) => {
     switch(role) {
@@ -351,32 +431,230 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      {/* Filters and Search */}
-      <Card>
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
-            <input
-              type="text"
-              placeholder={t('users.searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-            />
-          </div>
-          <Button variant="secondary" icon={<Filter className="w-5 h-5" />}>
-            {t('users.filters')}
-          </Button>
+      {/* Search, Filters and View Toggle */}
+      <div className="flex gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+          <input
+            type="text"
+            placeholder={t('users.searchPlaceholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+          />
         </div>
-      </Card>
+        <ViewToggle view={viewMode} onViewChange={setViewMode} />
+        <Button 
+          variant="secondary" 
+          icon={<Filter className="w-5 h-5" />}
+          onClick={() => setShowFilters(!showFilters)}
+        >
+          {t('users.filters')}
+        </Button>
+      </div>
 
-      {/* Users Table */}
-      <Card>
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      {/* Filters Panel with Chips */}
+      {showFilters && (
+        <Card variant="outlined">
+          <div className="space-y-4">
+            {/* Role Filters */}
+            <div>
+              <p className="text-sm font-medium text-gold-300 mb-3">Função</p>
+              <div className="flex flex-wrap gap-2">
+                <Chip
+                  label="Todos"
+                  selected={filterRole === 'all'}
+                  onClick={() => setFilterRole('all')}
+                  count={users.length}
+                />
+                <Chip
+                  label="Administrador"
+                  selected={filterRole === 'admin'}
+                  onClick={() => setFilterRole('admin')}
+                  icon={<Shield className="w-4 h-4" />}
+                  count={users.filter(u => u.role === 'admin').length}
+                  color="purple"
+                />
+                <Chip
+                  label="Professor"
+                  selected={filterRole === 'instructor' || filterRole === 'teacher'}
+                  onClick={() => setFilterRole('instructor')}
+                  icon={<GraduationCap className="w-4 h-4" />}
+                  count={users.filter(u => u.role === 'instructor' || u.role === 'teacher').length}
+                  color="blue"
+                />
+                <Chip
+                  label="Aluno"
+                  selected={filterRole === 'student'}
+                  onClick={() => setFilterRole('student')}
+                  icon={<BookOpen className="w-4 h-4" />}
+                  count={users.filter(u => u.role === 'student').length}
+                  color="green"
+                />
+              </div>
+            </div>
+
+            {/* Status Filters */}
+            <div>
+              <p className="text-sm font-medium text-gold-300 mb-3">Status</p>
+              <div className="flex flex-wrap gap-2">
+                <Chip
+                  label="Todos"
+                  selected={filterStatus === 'all'}
+                  onClick={() => setFilterStatus('all')}
+                />
+                <Chip
+                  label="Ativo"
+                  selected={filterStatus === 'active'}
+                  onClick={() => setFilterStatus('active')}
+                  icon={<Check className="w-4 h-4" />}
+                  count={users.filter(u => u.status !== 'frozen').length}
+                  color="green"
+                />
+                <Chip
+                  label="Inativo"
+                  selected={filterStatus === 'frozen'}
+                  onClick={() => setFilterStatus('frozen')}
+                  icon={<Snowflake className="w-4 h-4" />}
+                  count={users.filter(u => u.status === 'frozen').length}
+                  color="blue"
+                />
+              </div>
+            </div>
+
+            {/* Clear Filters */}
+            {(filterRole !== 'all' || filterStatus !== 'all') && (
+              <div className="flex justify-end pt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterRole('all')
+                    setFilterStatus('all')
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+              </div>
+            )}
           </div>
-        ) : (
+        </Card>
+      )}
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Total de Usuários</p>
+              <p className="text-2xl font-bold text-gold mt-1">{users.length}</p>
+            </div>
+            <Users className="w-8 h-8 text-gold-500/30" />
+          </div>
+        </Card>
+        
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Administradores</p>
+              <p className="text-2xl font-bold text-gold mt-1">
+                {users.filter(u => u.role === 'admin').length}
+              </p>
+            </div>
+            <Shield className="w-8 h-8 text-purple-500/30" />
+          </div>
+        </Card>
+        
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Professores</p>
+              <p className="text-2xl font-bold text-gold mt-1">
+                {users.filter(u => u.role === 'instructor' || u.role === 'teacher').length}
+              </p>
+            </div>
+            <GraduationCap className="w-8 h-8 text-blue-500/30" />
+          </div>
+        </Card>
+        
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Alunos</p>
+              <p className="text-2xl font-bold text-gold mt-1">
+                {users.filter(u => u.role === 'student').length}
+              </p>
+            </div>
+            <BookOpen className="w-8 h-8 text-green-500/30" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Users List or Grid */}
+      {loading ? (
+        <div className="space-y-6">
+          {/* Cards Grid Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        </div>
+      ) : viewMode === 'grid' ? (
+        <>
+          {/* Results Count */}
+          {filteredUsers.length > 0 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gold-400">
+                {filteredUsers.length} {filteredUsers.length === 1 ? 'usuário encontrado' : 'usuários encontrados'}
+              </p>
+            </div>
+          )}
+
+          {/* Grid View */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredUsers.map((user) => (
+              <UserCard
+                key={user.id}
+                user={{
+                  ...user,
+                  full_name: user.full_name ?? undefined,
+                  created_at: user.created_at || new Date().toISOString(),
+                  role: (user.role || 'student') as 'admin' | 'teacher' | 'instructor' | 'student',
+                  is_active: user.status !== 'frozen'
+                }}
+                onEdit={() => openEditModal(user)}
+                onToggleActive={() => updateUserStatus(user.id, user.status === 'frozen' ? 'active' : 'frozen')}
+                onDelete={() => openDeleteModal(user)}
+              />
+            ))}
+          </div>
+
+          {/* Empty State */}
+          {filteredUsers.length === 0 && (
+            <Card variant="outlined" className="text-center py-12">
+              <Users className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gold mb-2">Nenhum usuário encontrado</h3>
+              <p className="text-gold-400 mb-6">
+                {searchTerm || filterRole !== 'all' || filterStatus !== 'all'
+                  ? 'Tente ajustar os filtros ou termo de busca'
+                  : 'Comece adicionando seu primeiro usuário'}
+              </p>
+              {!(searchTerm || filterRole !== 'all' || filterStatus !== 'all') && (
+                <Button
+                  variant="primary"
+                  icon={<Plus className="w-5 h-5" />}
+                  onClick={() => setShowNewUserModal(true)}
+                >
+                  Adicionar Primeiro Usuário
+                </Button>
+              )}
+            </Card>
+          )}
+        </>
+      ) : (
+        /* List View - Keeping the table */
+        <Card>
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -493,8 +771,8 @@ export default function UsersPage() {
               </div>
             </div>
           </>
-        )}
-      </Card>
+        </Card>
+      )}
 
       {/* Edit User Modal */}
       {showEditModal && selectedUser && (

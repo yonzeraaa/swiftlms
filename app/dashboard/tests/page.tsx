@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Edit, Trash2, FileCheck, Clock, Users, MoreVertical, AlertCircle, CheckCircle2, Eye, Copy, Download, BookOpen, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, FileCheck, Clock, Users, MoreVertical, AlertCircle, CheckCircle2, Eye, Copy, Download, BookOpen, ToggleLeft, ToggleRight, LayoutGrid, List } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -12,6 +12,10 @@ import { useRouter } from 'next/navigation'
 import TestForm from '../../components/TestForm'
 import TestPreview from '../../components/TestPreview'
 import { useToast } from '../../components/Toast'
+import TestCard from '../../components/TestCard'
+import ViewToggle from '../../components/ViewToggle'
+import { Chip } from '../../components/Badge'
+import { SkeletonCard } from '../../components/Skeleton'
 
 interface Test {
   id: string
@@ -48,6 +52,7 @@ export default function TestsPage() {
   const [showTestForm, setShowTestForm] = useState(false)
   const [editingTestId, setEditingTestId] = useState<string | undefined>()
   const [previewTestId, setPreviewTestId] = useState<string | undefined>()
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const { t } = useTranslation()
   const { showToast } = useToast()
   const supabase = createClient()
@@ -289,8 +294,28 @@ export default function TestsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="h-8 w-32 bg-navy-700/50 rounded-lg animate-pulse mb-2"></div>
+            <div className="h-4 w-48 bg-navy-700/30 rounded animate-pulse"></div>
+          </div>
+          <div className="h-10 w-32 bg-navy-700/50 rounded-lg animate-pulse"></div>
+        </div>
+
+        {/* Filters Skeleton */}
+        <div className="flex gap-4">
+          <div className="flex-1 h-10 bg-navy-700/50 rounded-lg animate-pulse"></div>
+          <div className="h-10 w-24 bg-navy-700/50 rounded-lg animate-pulse"></div>
+        </div>
+
+        {/* Cards Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     )
   }
@@ -314,7 +339,7 @@ export default function TestsPage() {
         </Button>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search, Filters and View Toggle */}
       <div className="flex gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
@@ -326,6 +351,7 @@ export default function TestsPage() {
             className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
           />
         </div>
+        <ViewToggle view={viewMode} onViewChange={setViewMode} />
         <Button 
           variant="secondary" 
           icon={<Filter className="w-5 h-5" />}
@@ -335,60 +361,111 @@ export default function TestsPage() {
         </Button>
       </div>
 
-      {/* Filters Panel */}
+      {/* Filters Panel with Chips */}
       {showFilters && (
-        <Card>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card variant="outlined">
+          <div className="space-y-4">
+            {/* Type Filters */}
             <div>
-              <label className="block text-sm font-medium text-gold-300 mb-2">Tipo</label>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-              >
-                <option value="all">Todos</option>
-                <option value="quiz">Quiz</option>
-                <option value="exam">Prova</option>
-                <option value="practice">Prática</option>
-              </select>
+              <p className="text-sm font-medium text-gold-300 mb-3">Tipo de Teste</p>
+              <div className="flex flex-wrap gap-2">
+                <Chip
+                  label="Todos"
+                  selected={filterType === 'all'}
+                  onClick={() => setFilterType('all')}
+                  count={tests.length}
+                />
+                <Chip
+                  label="Quiz"
+                  selected={filterType === 'quiz'}
+                  onClick={() => setFilterType('quiz')}
+                  count={tests.filter(t => t.test_type === 'quiz').length}
+                  color="blue"
+                />
+                <Chip
+                  label="Prova"
+                  selected={filterType === 'exam'}
+                  onClick={() => setFilterType('exam')}
+                  count={tests.filter(t => t.test_type === 'exam').length}
+                  color="purple"
+                />
+                <Chip
+                  label="Prática"
+                  selected={filterType === 'practice'}
+                  onClick={() => setFilterType('practice')}
+                  count={tests.filter(t => t.test_type === 'practice').length}
+                  color="green"
+                />
+              </div>
             </div>
+
+            {/* Status Filters */}
             <div>
-              <label className="block text-sm font-medium text-gold-300 mb-2">Status</label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-              >
-                <option value="all">Todos</option>
-                <option value="published">Publicado</option>
-                <option value="draft">Rascunho</option>
-              </select>
+              <p className="text-sm font-medium text-gold-300 mb-3">Status</p>
+              <div className="flex flex-wrap gap-2">
+                <Chip
+                  label="Todos"
+                  selected={filterStatus === 'all'}
+                  onClick={() => setFilterStatus('all')}
+                />
+                <Chip
+                  label="Publicado"
+                  selected={filterStatus === 'published'}
+                  onClick={() => setFilterStatus('published')}
+                  icon={<CheckCircle2 className="w-4 h-4" />}
+                  count={tests.filter(t => t.is_published).length}
+                  color="green"
+                />
+                <Chip
+                  label="Rascunho"
+                  selected={filterStatus === 'draft'}
+                  onClick={() => setFilterStatus('draft')}
+                  icon={<AlertCircle className="w-4 h-4" />}
+                  count={tests.filter(t => !t.is_published).length}
+                  color="gold"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gold-300 mb-2">Curso</label>
-              <select
-                value={filterCourse}
-                onChange={(e) => setFilterCourse(e.target.value)}
-                className="w-full px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-              >
-                <option value="all">Todos os Cursos</option>
-                {courses.map(course => (
-                  <option key={course.id} value={course.title}>{course.title}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <div className="flex justify-end mt-4">
-            <Button
-              variant="secondary"
-              onClick={() => {
-                setFilterType('all')
-                setFilterStatus('all')
-                setFilterCourse('all')
-              }}
-            >
-              Limpar Filtros
-            </Button>
+
+            {/* Course Filters */}
+            {courses.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-gold-300 mb-3">Curso</p>
+                <div className="flex flex-wrap gap-2">
+                  <Chip
+                    label="Todos os Cursos"
+                    selected={filterCourse === 'all'}
+                    onClick={() => setFilterCourse('all')}
+                  />
+                  {courses.map(course => (
+                    <Chip
+                      key={course.id}
+                      label={course.title}
+                      selected={filterCourse === course.title}
+                      onClick={() => setFilterCourse(course.title)}
+                      count={tests.filter(t => t.course?.title === course.title).length}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Clear Filters */}
+            {(filterType !== 'all' || filterStatus !== 'all' || filterCourse !== 'all') && (
+              <div className="flex justify-end pt-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterType('all')
+                    setFilterStatus('all')
+                    setFilterCourse('all')
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+              </div>
+            )}
           </div>
         </Card>
       )}
@@ -442,124 +519,184 @@ export default function TestsPage() {
         </Card>
       </div>
 
-      {/* Tests List */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gold-500/20">
-                <th className="text-left py-3 px-4 text-gold-300 font-medium">Teste</th>
-                <th className="text-left py-3 px-4 text-gold-300 font-medium">Curso / Disciplina</th>
-                <th className="text-center py-3 px-4 text-gold-300 font-medium">Tipo</th>
-                <th className="text-center py-3 px-4 text-gold-300 font-medium">Questões</th>
-                <th className="text-center py-3 px-4 text-gold-300 font-medium">Duração</th>
-                <th className="text-center py-3 px-4 text-gold-300 font-medium">Tentativas</th>
-                <th className="text-center py-3 px-4 text-gold-300 font-medium">Média</th>
-                <th className="text-center py-3 px-4 text-gold-300 font-medium">Status</th>
-                <th className="text-right py-3 px-4 text-gold-300 font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTests.map((test) => (
-                <tr key={test.id} className="border-b border-gold-500/10 hover:bg-navy-800/30 transition-colors">
-                  <td className="py-4 px-4">
-                    <p className="text-gold-100 font-medium">{test.title}</p>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div>
-                      <p className="text-gold-200 text-sm">{test.course?.title || '-'}</p>
-                      <p className="text-gold-400 text-xs mt-1">{test.subject?.name || '-'}</p>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(test.test_type)}`}>
-                      {getTypeLabel(test.test_type)}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className="text-gold-200">{test.questions?.length || 0}</span>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className="text-gold-200">
-                      {test.duration_minutes ? `${test.duration_minutes} min` : '-'}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className="text-gold-200">{test.attempts?.length || 0}</span>
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    {test.attempts && test.attempts.length > 0 ? (
-                      <span className={`font-medium ${getScoreColor(calculateAverageScore(test.attempts))}`}>
-                        {calculateAverageScore(test.attempts)}%
-                      </span>
-                    ) : (
-                      <span className="text-gold-500">-</span>
-                    )}
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      test.is_published 
-                        ? 'bg-green-500/20 text-green-400' 
-                        : 'bg-yellow-500/20 text-yellow-400'
-                    }`}>
-                      {test.is_published ? 'Publicado' : 'Rascunho'}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center justify-end gap-2">
-                      <button 
-                        className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                        onClick={() => setPreviewTestId(test.id)}
-                        title="Visualizar"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                        onClick={() => {
-                          setEditingTestId(test.id)
-                          setShowTestForm(true)
-                        }}
-                        title="Editar"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                        onClick={() => handleTogglePublish(test)}
-                        title={test.is_published ? 'Despublicar' : 'Publicar'}
-                      >
-                        {test.is_published ? (
-                          <ToggleRight className="w-4 h-4" />
-                        ) : (
-                          <ToggleLeft className="w-4 h-4" />
-                        )}
-                      </button>
-                      <button 
-                        className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                        onClick={() => handleDuplicateTest(test)}
-                        title="Duplicar"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      <button 
-                        className="p-2 text-red-400 hover:text-red-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                        onClick={() => {
-                          setTestToDelete(test)
-                          setShowDeleteModal(true)
-                        }}
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
+      {/* Tests List or Grid */}
+      {viewMode === 'grid' ? (
+        <>
+          {/* Results Count */}
+          {filteredTests.length > 0 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gold-400">
+                {filteredTests.length} {filteredTests.length === 1 ? 'teste encontrado' : 'testes encontrados'}
+              </p>
+            </div>
+          )}
+
+          {/* Grid View */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTests.map((test) => (
+              <TestCard
+                key={test.id}
+                test={test}
+                onView={() => setPreviewTestId(test.id)}
+                onEdit={() => {
+                  setEditingTestId(test.id)
+                  setShowTestForm(true)
+                }}
+                onTogglePublish={() => handleTogglePublish(test)}
+                onDuplicate={() => handleDuplicateTest(test)}
+                onDelete={() => {
+                  setTestToDelete(test)
+                  setShowDeleteModal(true)
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Empty State */}
+          {filteredTests.length === 0 && (
+            <Card variant="outlined" className="text-center py-12">
+              <FileCheck className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gold mb-2">Nenhum teste encontrado</h3>
+              <p className="text-gold-400 mb-6">
+                {searchTerm || filterType !== 'all' || filterStatus !== 'all' || filterCourse !== 'all'
+                  ? 'Tente ajustar os filtros ou termo de busca'
+                  : 'Comece criando seu primeiro teste'}
+              </p>
+              {!(searchTerm || filterType !== 'all' || filterStatus !== 'all' || filterCourse !== 'all') && (
+                <Button
+                  variant="primary"
+                  icon={<Plus className="w-5 h-5" />}
+                  onClick={() => {
+                    setEditingTestId(undefined)
+                    setShowTestForm(true)
+                  }}
+                >
+                  Criar Primeiro Teste
+                </Button>
+              )}
+            </Card>
+          )}
+        </>
+      ) : (
+        /* List View - Keeping the table */
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gold-500/20">
+                  <th className="text-left py-3 px-4 text-gold-300 font-medium">Teste</th>
+                  <th className="text-left py-3 px-4 text-gold-300 font-medium">Curso / Disciplina</th>
+                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Tipo</th>
+                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Questões</th>
+                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Duração</th>
+                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Tentativas</th>
+                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Média</th>
+                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Status</th>
+                  <th className="text-right py-3 px-4 text-gold-300 font-medium">Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              </thead>
+              <tbody>
+                {filteredTests.map((test) => (
+                  <tr key={test.id} className="border-b border-gold-500/10 hover:bg-navy-800/30 transition-colors">
+                    <td className="py-4 px-4">
+                      <p className="text-gold-100 font-medium">{test.title}</p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div>
+                        <p className="text-gold-200 text-sm">{test.course?.title || '-'}</p>
+                        <p className="text-gold-400 text-xs mt-1">{test.subject?.name || '-'}</p>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(test.test_type)}`}>
+                        {getTypeLabel(test.test_type)}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className="text-gold-200">{test.questions?.length || 0}</span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className="text-gold-200">
+                        {test.duration_minutes ? `${test.duration_minutes} min` : '-'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className="text-gold-200">{test.attempts?.length || 0}</span>
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      {test.attempts && test.attempts.length > 0 ? (
+                        <span className={`font-medium ${getScoreColor(calculateAverageScore(test.attempts))}`}>
+                          {calculateAverageScore(test.attempts)}%
+                        </span>
+                      ) : (
+                        <span className="text-gold-500">-</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        test.is_published 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                        {test.is_published ? 'Publicado' : 'Rascunho'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                          onClick={() => setPreviewTestId(test.id)}
+                          title="Visualizar"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button 
+                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                          onClick={() => {
+                            setEditingTestId(test.id)
+                            setShowTestForm(true)
+                          }}
+                          title="Editar"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                          onClick={() => handleTogglePublish(test)}
+                          title={test.is_published ? 'Despublicar' : 'Publicar'}
+                        >
+                          {test.is_published ? (
+                            <ToggleRight className="w-4 h-4" />
+                          ) : (
+                            <ToggleLeft className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button 
+                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                          onClick={() => handleDuplicateTest(test)}
+                          title="Duplicar"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button 
+                          className="p-2 text-red-400 hover:text-red-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                          onClick={() => {
+                            setTestToDelete(test)
+                            setShowDeleteModal(true)
+                          }}
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && testToDelete && (

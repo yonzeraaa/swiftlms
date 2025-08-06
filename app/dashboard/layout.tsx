@@ -22,6 +22,10 @@ import {
 import Logo from '../components/Logo'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../contexts/LanguageContext'
+import CommandPalette from '../components/ui/CommandPalette'
+import Breadcrumbs from '../components/ui/Breadcrumbs'
+import PageTransition from '../components/ui/PageTransition'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function DashboardLayout({
   children,
@@ -72,6 +76,9 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-pattern">
       <div className="absolute inset-0 bg-gradient-to-br from-navy-600/50 via-navy-700/50 to-navy-900/50" />
       
+      {/* Command Palette */}
+      <CommandPalette />
+      
       <div className="relative flex h-screen">
         {/* Sidebar */}
         <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 bg-navy-900/95 backdrop-blur-md border-r border-gold-500/20`}>
@@ -97,28 +104,36 @@ export default function DashboardLayout({
 
             {/* Menu de Navegação */}
             <nav className="flex-1 space-y-2">
-              {menuItems.map((item) => {
+              <AnimatePresence>
+                {menuItems.map((item, index) => {
                 const Icon = item.icon
                 const active = isActive(item.href)
                 
                 return (
-                  <Link
+                  <motion.div
                     key={item.href}
-                    href={item.href}
-                    className={`
-                      flex items-center gap-3 px-3 py-2 rounded-lg transition-all
-                      ${active 
-                        ? 'bg-gold-500/20 text-gold border-l-4 border-gold-500' 
-                        : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
-                      }
-                      ${!sidebarOpen && 'justify-center'}
-                    `}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
                   >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
-                    {sidebarOpen && <span className="font-medium">{item.name}</span>}
-                  </Link>
+                    <Link
+                      href={item.href}
+                      className={`
+                        flex items-center gap-3 px-3 py-2 rounded-lg transition-all
+                        ${active 
+                          ? 'bg-gold-500/20 text-gold border-l-4 border-gold-500' 
+                          : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
+                        }
+                        ${!sidebarOpen && 'justify-center'}
+                      `}
+                    >
+                      <Icon className="w-5 h-5 flex-shrink-0" />
+                      {sidebarOpen && <span className="font-medium">{item.name}</span>}
+                    </Link>
+                  </motion.div>
                 )
-              })}
+                })}
+              </AnimatePresence>
             </nav>
 
             {/* Footer do Sidebar */}
@@ -142,9 +157,17 @@ export default function DashboardLayout({
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="p-8">
-            {children}
+          {/* Top Bar with Breadcrumbs */}
+          <div className="sticky top-0 z-30 bg-white/80 dark:bg-navy-900/80 backdrop-blur-md border-b border-gold-500/10 px-8 py-4">
+            <Breadcrumbs />
           </div>
+          
+          {/* Page Content with Animation */}
+          <PageTransition>
+            <div className="p-8">
+              {children}
+            </div>
+          </PageTransition>
         </main>
       </div>
     </div>
