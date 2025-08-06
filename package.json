@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "lint:full": "npm run lint && npm run type-check",
+    "lint:strict": "npm run type-check && npm run lint"
   },
   "keywords": [],
   "author": "",
@@ -46,6 +49,8 @@
     "zod": "^4.0.15"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
     "eslint": "^9.32.0",
     "eslint-config-next": "^15.4.5"
   }
