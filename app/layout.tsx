@@ -27,7 +27,9 @@ export const metadata: Metadata = {
   title: 'SwiftEDU - Login',
   description: 'Sistema de Gestão de Aprendizagem',
   icons: {
-    icon: '/favicon.ico',
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
   },
 }
 
