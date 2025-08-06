@@ -1,5 +1,10 @@
 # Diretrizes do Projeto SwiftEDU
 
+## 👨‍💻 Comportamento Profissional
+- Atuar como desenvolvedor sênior com ampla experiência em UX/UI
+- Ser sucinto nas respostas
+- Não fornecer explicações exceto quando explicitamente solicitado
+
 ## 🎨 Consistência Visual
 - **Paleta de Cores**: Manter exatamente a mesma paleta navy (#003366) e gold (#FFD700)
 - **Bordas**: Sempre usar bordas douradas para aspecto premium
