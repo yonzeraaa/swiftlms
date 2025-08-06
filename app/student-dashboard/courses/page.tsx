@@ -34,7 +34,13 @@ export default function ExploreCourses() {
   const [sortBy, setSortBy] = useState<'popular' | 'newest' | 'rating'>('popular')
   const [selectedCourse, setSelectedCourse] = useState<CourseWithDetails | null>(null)
   const [showDetailsModal, setShowDetailsModal] = useState(false)
+  const [showFiltersModal, setShowFiltersModal] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  
+  // Advanced filters
+  const [minRating, setMinRating] = useState<number>(0)
+  const [maxDuration, setMaxDuration] = useState<number>(100)
+  const [instructor, setInstructor] = useState<string>('all')
   
   const router = useRouter()
   const supabase = createClient()
@@ -387,10 +393,12 @@ export default function ExploreCourses() {
               <option value="rating">Melhor Avaliados</option>
             </select>
 
-            <Button variant="secondary" size="sm">
-              <Filter className="w-4 h-4 mr-2" />
-              Mais Filtros
-            </Button>
+            <button 
+              onClick={() => setShowFiltersModal(true)}
+              className="px-4 py-2 bg-navy-700/50 hover:bg-navy-600/50 border border-gold-500/30 hover:border-gold-500/50 rounded-lg text-gold-200 hover:text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:ring-offset-2 focus:ring-offset-navy-800 flex items-center gap-2 transition-all duration-300 ease-out transform hover:transform hover:-translate-y-0.5 hover:shadow-md hover:shadow-gold-500/10 active:scale-[0.98] font-semibold relative overflow-hidden before:absolute before:inset-0 before:opacity-0 before:transition-opacity before:duration-300 hover:before:opacity-100 before:bg-gradient-to-r before:from-gold-500/10 before:to-transparent backdrop-blur-sm">
+              <Filter className="w-4 h-4 relative z-10" />
+              <span className="relative z-10">Mais Filtros</span>
+            </button>
           </div>
         </div>
       </Card>
@@ -662,6 +670,125 @@ export default function ExploreCourses() {
                     )}
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Filters Modal */}
+      {showFiltersModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-navy-800 border border-gold-500/30 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gold-500/20">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gold">Filtros Avançados</h2>
+                <button
+                  onClick={() => setShowFiltersModal(false)}
+                  className="p-2 hover:bg-navy-700 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-gold-400" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Rating Filter */}
+              <div>
+                <label className="block text-gold-300 mb-2">Avaliação Mínima</label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="0"
+                    max="5"
+                    step="0.5"
+                    value={minRating}
+                    onChange={(e) => setMinRating(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <div className="flex items-center gap-1">
+                    <Star className="w-4 h-4 text-gold-500" />
+                    <span className="text-gold font-medium w-12">{minRating}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Duration Filter */}
+              <div>
+                <label className="block text-gold-300 mb-2">Duração Máxima (horas)</label>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={maxDuration}
+                    onChange={(e) => setMaxDuration(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4 text-gold-500" />
+                    <span className="text-gold font-medium w-16">{maxDuration}h</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instructor Filter */}
+              <div>
+                <label className="block text-gold-300 mb-2">Instrutor</label>
+                <select
+                  value={instructor}
+                  onChange={(e) => setInstructor(e.target.value)}
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                >
+                  <option value="all">Todos os Instrutores</option>
+                  {/* Add instructor options dynamically */}
+                </select>
+              </div>
+
+              {/* Features Filter */}
+              <div>
+                <label className="block text-gold-300 mb-2">Recursos</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="rounded border-gold-500/30 text-gold-500 focus:ring-gold-500" />
+                    <span className="text-gold-200">Com Certificado</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="rounded border-gold-500/30 text-gold-500 focus:ring-gold-500" />
+                    <span className="text-gold-200">Cursos em Destaque</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="rounded border-gold-500/30 text-gold-500 focus:ring-gold-500" />
+                    <span className="text-gold-200">Com Suporte ao Vivo</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  onClick={() => {
+                    // Reset filters
+                    setMinRating(0)
+                    setMaxDuration(100)
+                    setInstructor('all')
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex-1"
+                  onClick={() => {
+                    // Apply filters
+                    setShowFiltersModal(false)
+                    // Add filter logic here
+                  }}
+                >
+                  Aplicar Filtros
+                </Button>
               </div>
             </div>
           </div>

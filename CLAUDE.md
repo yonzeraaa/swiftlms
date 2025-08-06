@@ -32,6 +32,7 @@ Ao final de modificações no código:
 Após verificações bem-sucedidas:
 - Fazer commit das mudanças
 - Push para o GitHub
+- Não fazer commit e push das modificações automaticamente. Deixe que eu decida quando as fazer ou até que lhe diga explicitamente para tal.
 
 ## 🗄️ Supabase
 - MCP do Supabase configurado e pronto para uso

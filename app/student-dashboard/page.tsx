@@ -488,12 +488,14 @@ export default function StudentDashboard() {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-12">
-                  <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                  <p className="text-gold-300 text-lg mb-4">Você ainda não está matriculado em nenhum curso</p>
-                  <Button onClick={() => router.push('/student-dashboard/courses')}>
-                    Explorar Cursos
-                  </Button>
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <div className="text-center">
+                    <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                    <p className="text-gold-300 text-lg mb-4">Você ainda não está matriculado em nenhum curso</p>
+                    <Button onClick={() => router.push('/student-dashboard/courses')}>
+                      Explorar cursos disponíveis
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -563,8 +565,12 @@ export default function StudentDashboard() {
         title="Próximas Aulas"
         subtitle="Aulas agendadas para esta semana"
         action={
-          <Button variant="secondary" size="sm">
-            <Calendar className="w-4 h-4 mr-2" />
+          <Button 
+            variant="secondary" 
+            size="sm"
+            onClick={() => router.push('/student-dashboard/calendar')}
+            icon={<Calendar className="w-4 h-4" />}
+          >
             Ver calendário
           </Button>
         }

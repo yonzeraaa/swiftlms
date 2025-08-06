@@ -538,7 +538,7 @@ export default function CoursesPage() {
                         className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2"
                       >
                         <BookMarked className="w-4 h-4" />
-                        Gerenciar Matérias
+                        Gerenciar Disciplinas
                       </button>
                       <button 
                         onClick={() => openDeleteModal(course)}
@@ -1252,7 +1252,7 @@ export default function CoursesPage() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
                 <BookMarked className="w-6 h-6" />
-                Gerenciar Matérias
+                Gerenciar Disciplinas
               </h2>
               <button
                 onClick={() => setShowSubjectsModal(false)}

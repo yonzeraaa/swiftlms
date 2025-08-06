@@ -144,9 +144,16 @@ export default function MyCoursesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gold">Meus Cursos</h1>
-        <p className="text-gold-300 mt-1">Gerencie e acompanhe seu progresso nos cursos</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gold">Meus Cursos</h1>
+          <p className="text-gold-300 mt-1">Gerencie e acompanhe seu progresso nos cursos</p>
+        </div>
+        {courses.length === 0 && (
+          <Button onClick={() => router.push('/student-dashboard/courses')}>
+            Explorar Cursos Disponíveis
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -311,15 +318,16 @@ export default function MyCoursesPage() {
                       <Button 
                         className="flex-1"
                         onClick={() => router.push(`/student-dashboard/course/${course.id}`)}
+                        icon={<Play className="w-4 h-4" />}
                       >
-                        <Play className="w-4 h-4 mr-2" />
                         Continuar
                       </Button>
                       <Button 
                         variant="secondary"
                         onClick={() => router.push(`/student-dashboard/course/${course.id}/progress`)}
+                        icon={<TrendingUp className="w-4 h-4" />}
                       >
-                        <TrendingUp className="w-4 h-4" />
+                        {''}
                       </Button>
                     </>
                   ) : course.enrollment.status === 'completed' ? (
@@ -334,8 +342,9 @@ export default function MyCoursesPage() {
                       <Button 
                         variant="primary"
                         onClick={() => router.push(`/student-dashboard/certificates/${course.id}`)}
+                        icon={<Award className="w-4 h-4" />}
                       >
-                        <Award className="w-4 h-4" />
+                        {''}
                       </Button>
                     </>
                   ) : (
@@ -351,18 +360,15 @@ export default function MyCoursesPage() {
             </Card>
           ))
         ) : (
-          <div className="col-span-2 text-center py-12">
-            <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-            <p className="text-gold-300 text-lg mb-4">
-              {searchTerm || filterStatus !== 'all' 
-                ? 'Nenhum curso encontrado com os filtros aplicados'
-                : 'Você ainda não está matriculado em nenhum curso'}
-            </p>
-            {!searchTerm && filterStatus === 'all' && (
-              <Button onClick={() => router.push('/student-dashboard/courses')}>
-                Explorar Cursos Disponíveis
-              </Button>
-            )}
+          <div className="col-span-2 flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+              <p className="text-gold-300 text-lg mb-4">
+                {searchTerm || filterStatus !== 'all' 
+                  ? 'Nenhum curso encontrado com os filtros aplicados'
+                  : 'Você ainda não está matriculado em nenhum curso'}
+              </p>
+            </div>
           </div>
         )}
       </div>

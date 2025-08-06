@@ -47,6 +47,90 @@ export type Database = {
         }
         Relationships: []
       }
+      certificates: {
+        Row: {
+          certificate_number: string
+          course_hours: number | null
+          course_id: string
+          created_at: string | null
+          enrollment_id: string
+          grade: number | null
+          id: string
+          instructor_name: string | null
+          issued_at: string | null
+          metadata: Json | null
+          updated_at: string | null
+          user_id: string
+          verification_code: string
+        }
+        Insert: {
+          certificate_number: string
+          course_hours?: number | null
+          course_id: string
+          created_at?: string | null
+          enrollment_id: string
+          grade?: number | null
+          id?: string
+          instructor_name?: string | null
+          issued_at?: string | null
+          metadata?: Json | null
+          updated_at?: string | null
+          user_id: string
+          verification_code: string
+        }
+        Update: {
+          certificate_number?: string
+          course_hours?: number | null
+          course_id?: string
+          created_at?: string | null
+          enrollment_id?: string
+          grade?: number | null
+          id?: string
+          instructor_name?: string | null
+          issued_at?: string | null
+          metadata?: Json | null
+          updated_at?: string | null
+          user_id?: string
+          verification_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "course_statistics"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificates_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "subject_lessons_view"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "certificates_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       course_modules: {
         Row: {
           course_id: string

@@ -347,9 +347,9 @@ export default function SettingsPage() {
             <div className="flex justify-end">
               <Button
                 variant="primary"
-                icon={<Save className="w-5 h-5" />}
                 onClick={handleProfileSave}
                 disabled={saving}
+                icon={<Save className="w-5 h-5" />}
               >
                 {saving ? t('settings.saving') : t('settings.saveChanges')}
               </Button>
@@ -402,9 +402,9 @@ export default function SettingsPage() {
             <div className="flex justify-end">
               <Button
                 variant="primary"
-                icon={<Key className="w-5 h-5" />}
                 onClick={handlePasswordChange}
                 disabled={saving}
+                icon={<Key className="w-5 h-5" />}
               >
                 {saving ? 'Alterando...' : 'Alterar Senha'}
               </Button>
@@ -446,9 +446,9 @@ export default function SettingsPage() {
             <div className="flex justify-end pt-4">
               <Button
                 variant="primary"
-                icon={<Save className="w-5 h-5" />}
                 onClick={handleSettingsSave}
                 disabled={saving}
+                icon={<Save className="w-5 h-5" />}
               >
                 {saving ? 'Salvando...' : 'Salvar Preferências'}
               </Button>
@@ -538,9 +538,9 @@ export default function SettingsPage() {
             <div className="flex justify-end">
               <Button
                 variant="primary"
-                icon={<Save className="w-5 h-5" />}
                 onClick={handleSettingsSave}
                 disabled={saving}
+                icon={<Save className="w-5 h-5" />}
               >
                 {saving ? 'Salvando...' : 'Salvar Aparência'}
               </Button>
@@ -608,9 +608,9 @@ export default function SettingsPage() {
             <div className="flex justify-end">
               <Button
                 variant="primary"
-                icon={<Save className="w-5 h-5" />}
                 onClick={handleSettingsSave}
                 disabled={saving}
+                icon={<Save className="w-5 h-5" />}
               >
                 {saving ? 'Salvando...' : 'Salvar Privacidade'}
               </Button>

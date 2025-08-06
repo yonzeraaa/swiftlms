@@ -34,6 +34,7 @@ export const metadata: Metadata = {
 import { ThemeProvider } from './contexts/ThemeContext'
 import { LanguageProvider } from './contexts/LanguageContext'
 import { ToastProvider } from './components/Toast'
+import PremiumToastProvider from './components/ui/ToastProvider'
 
 export default function RootLayout({
   children,
@@ -46,6 +47,7 @@ export default function RootLayout({
         <ThemeProvider>
           <LanguageProvider>
             <ToastProvider>
+              <PremiumToastProvider />
               {children}
             </ToastProvider>
           </LanguageProvider>

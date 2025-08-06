@@ -259,8 +259,10 @@ export default function LessonsPage() {
           <h1 className="text-3xl font-bold text-gold">Aulas</h1>
           <p className="text-gold-300 mt-1">Gerencie as aulas dos cursos</p>
         </div>
-        <Button onClick={openCreateModal}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button 
+          onClick={openCreateModal}
+          icon={<Plus className="w-4 h-4" />}
+        >
           Nova Aula
         </Button>
       </div>
@@ -335,8 +337,10 @@ export default function LessonsPage() {
               className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
             />
           </div>
-          <Button variant="secondary">
-            <Filter className="w-4 h-4 mr-2" />
+          <Button 
+            variant="secondary"
+            icon={<Filter className="w-4 h-4" />}
+          >
             Filtros
           </Button>
         </div>

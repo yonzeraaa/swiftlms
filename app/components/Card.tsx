@@ -1,4 +1,8 @@
-import { ReactNode } from 'react'
+'use client'
+
+import { ReactNode, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { morphingCard, hoverLift, tapScale } from '../lib/animations'
 
 interface CardProps {
   children: ReactNode
@@ -9,11 +13,16 @@ interface CardProps {
   action?: ReactNode
   hoverable?: boolean
   onClick?: () => void
-  variant?: 'default' | 'gradient' | 'outlined' | 'elevated' | 'glass' | 'interactive'
+  variant?: 'default' | 'gradient' | 'outlined' | 'elevated' | 'glass' | 'interactive' | 'premium' | 'holographic'
   glowColor?: 'gold' | 'blue' | 'green' | 'purple' | 'red'
   animate?: boolean
   delay?: number
   pulse?: boolean
+  depth?: 1 | 2 | 3 | 4 | 5
+  backgroundPattern?: boolean
+  iridescent?: boolean
+  flipCard?: boolean
+  backContent?: ReactNode
 }
 
 export default function Card({
@@ -29,8 +38,16 @@ export default function Card({
   glowColor = 'gold',
   animate = false,
   delay = 0,
-  pulse = false
+  pulse = false,
+  depth = 2,
+  backgroundPattern = false,
+  iridescent = false,
+  flipCard = false,
+  backContent
 }: CardProps) {
+  const [isFlipped, setIsFlipped] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
+
   const paddingSizes = {
     none: '',
     sm: 'p-4',
@@ -47,152 +64,243 @@ export default function Card({
     red: 'rgba(239,68,68,0.15)'
   }
 
+  const depthStyles = {
+    1: 'card-depth-1',
+    2: 'card-depth-2',
+    3: 'card-depth-3',
+    4: 'card-depth-4',
+    5: 'card-depth-5'
+  }
+
   const variants = {
     default: `
-      bg-navy-800/90 
-      border border-gold-500/20 
-      hover:border-gold-500/30
-      shadow-[0_4px_20px_${glowColors[glowColor]}]
-      hover:shadow-[0_8px_30px_${glowColors[glowColor]}]
-      before:absolute before:inset-0 before:rounded-2xl before:opacity-0
-      before:bg-gradient-to-br before:from-gold-500/5 before:to-transparent
-      before:transition-opacity before:duration-300
-      hover:before:opacity-100
+      bg-gradient-to-br from-navy-800/90 to-navy-900/90 
+      border border-gold-500/20 backdrop-blur-md
+      ${hoverable ? 'hover:border-gold-500/40 hover-lift' : ''}
     `,
     gradient: `
-      bg-gradient-to-br from-navy-800/95 via-navy-800/90 to-navy-900/95
-      border border-transparent
-      bg-clip-padding
-      before:absolute before:inset-0 before:rounded-2xl
-      before:bg-gradient-to-br before:from-gold-500/20 before:to-gold-600/10
-      before:-z-10 before:blur-xl
-      shadow-[0_4px_24px_${glowColors[glowColor]}]
-      hover:shadow-[0_8px_32px_${glowColors[glowColor]}]
-      after:absolute after:inset-0 after:rounded-2xl after:opacity-0
-      after:bg-gradient-to-tr after:from-transparent after:via-gold-500/10 after:to-transparent
-      after:transition-opacity after:duration-500
-      hover:after:opacity-100
+      bg-gradient-to-br from-gold-500/10 via-navy-800/90 to-navy-900/90 
+      border border-gold-500/30 backdrop-blur-md
+      ${hoverable ? 'hover:border-gold-500/50 hover:from-gold-500/20 hover-lift' : ''}
     `,
     outlined: `
-      bg-transparent
-      border-2 border-gold-500/30
-      hover:border-gold-500/50
-      hover:bg-navy-800/20
-      backdrop-blur-sm
-      before:absolute before:inset-0 before:rounded-2xl before:opacity-0
-      before:bg-gradient-to-br before:from-gold-500/5 before:to-transparent
-      before:transition-opacity before:duration-300
-      hover:before:opacity-100
+      bg-navy-900/50 border-2 border-gold-500/30 backdrop-blur-sm
+      ${hoverable ? 'hover:bg-navy-800/50 hover:border-gold-500/50 hover-lift' : ''}
     `,
     elevated: `
-      bg-navy-800/95
+      bg-gradient-to-br from-navy-700 to-navy-800 
       border border-gold-500/10
-      shadow-[0_10px_40px_rgba(0,0,0,0.3)]
-      hover:shadow-[0_20px_60px_rgba(0,0,0,0.4)]
-      hover:border-gold-500/20
-      before:absolute before:inset-0 before:rounded-2xl before:opacity-0
-      before:bg-gradient-to-br before:from-gold-500/5 before:to-transparent
-      before:transition-opacity before:duration-300
-      hover:before:opacity-100
+      ${hoverable ? 'hover:shadow-2xl hover-lift' : ''}
     `,
     glass: `
-      bg-white/5 backdrop-blur-xl
-      border border-gold-500/20
-      hover:bg-white/10 hover:border-gold-500/30
-      shadow-lg shadow-navy-900/20
-      hover:shadow-xl hover:shadow-navy-900/30
-      before:absolute before:inset-0 before:rounded-2xl before:opacity-0
-      before:bg-gradient-to-br before:from-gold-500/10 before:to-transparent
-      before:transition-opacity before:duration-300
-      hover:before:opacity-100
+      glass border border-gold-500/20
+      ${hoverable ? 'hover:bg-white/10 hover:border-gold-500/40 hover-lift' : ''}
     `,
     interactive: `
-      bg-navy-800/80 backdrop-blur-sm
-      border-2 border-gold-500/40
-      hover:border-gold-500/60
-      shadow-md shadow-navy-900/30
-      hover:shadow-2xl hover:shadow-gold-500/20
-      before:absolute before:inset-0 before:rounded-2xl before:opacity-0
-      before:bg-gradient-to-br before:from-gold-500/20 before:to-transparent
-      before:transition-all before:duration-500
-      hover:before:opacity-100
-      after:absolute after:inset-0 after:rounded-2xl
-      after:bg-gradient-to-r after:from-transparent after:via-white/5 after:to-transparent
-      after:-translate-x-full after:animate-shimmer
+      bg-gradient-to-br from-navy-800/80 to-navy-900/80 
+      border border-gold-500/30 backdrop-blur-lg
+      transform transition-all duration-300
+      ${hoverable ? 'hover:scale-105 hover:border-gold-500/60 hover:shadow-2xl' : ''}
+    `,
+    premium: `
+      bg-gradient-to-br from-navy-800/95 via-navy-850/95 to-navy-900/95
+      border border-gold-500/30 backdrop-blur-xl
+      relative overflow-hidden
+      ${hoverable ? 'hover:border-gold-500/60 hover-scale' : ''}
+    `,
+    holographic: `
+      bg-gradient-to-br from-navy-800/90 to-navy-900/90
+      border border-transparent backdrop-blur-xl
+      relative overflow-hidden
+      ${hoverable ? 'hover-scale' : ''}
     `
   }
 
-  const handleClick = onClick && !hoverable ? undefined : onClick
+  const cardContent = (
+    <>
+      {/* Background Pattern */}
+      {backgroundPattern && (
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0 bg-repeat" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFD700' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundSize: '30px 30px'
+          }} />
+        </div>
+      )}
+
+      {/* Holographic/Iridescent Effect */}
+      {(variant === 'holographic' || iridescent) && (
+        <div className="absolute inset-0 opacity-30 pointer-events-none">
+          <div 
+            className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 20%, #f093fb 40%, #f5576c 60%, #ffd700 80%, #667eea 100%)',
+              filter: 'blur(40px)',
+              transform: isHovered ? 'scale(1.1)' : 'scale(1)',
+              transition: 'transform 0.5s ease'
+            }}
+          />
+        </div>
+      )}
+
+      {/* Noise Texture */}
+      {variant === 'premium' && <div className="noise-texture" />}
+
+      {/* Card Header */}
+      {(title || action) && (
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            {title && (
+              <h3 className="text-xl font-bold text-gold gradient-text">
+                {title}
+              </h3>
+            )}
+            {subtitle && (
+              <p className="text-sm text-gold-300 mt-1">
+                {subtitle}
+              </p>
+            )}
+          </div>
+          {action && <div>{action}</div>}
+        </div>
+      )}
+
+      {/* Card Content */}
+      <div className="relative z-10">
+        {children}
+      </div>
+
+      {/* Glow Effect */}
+      {pulse && (
+        <div 
+          className="absolute inset-0 rounded-xl pointer-events-none glow-pulse"
+          style={{ boxShadow: `0 0 40px ${glowColors[glowColor]}` }}
+        />
+      )}
+    </>
+  )
+
+  // Flip Card Implementation
+  if (flipCard && backContent) {
+    return (
+      <motion.div
+        className={`relative ${paddingSizes[padding]} ${className}`}
+        style={{ perspective: 1000 }}
+        initial={false}
+        animate={{ rotateY: isFlipped ? 180 : 0 }}
+        transition={{ duration: 0.6, ease: 'easeInOut' }}
+        onClick={() => setIsFlipped(!isFlipped)}
+      >
+        <motion.div
+          className={`
+            ${variants[variant]} 
+            ${depthStyles[depth]}
+            rounded-xl relative
+            ${onClick ? 'cursor-pointer' : ''}
+            transition-all-premium
+            w-full h-full
+          `}
+          style={{ 
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(0deg)'
+          }}
+        >
+          {cardContent}
+        </motion.div>
+        
+        <motion.div
+          className={`
+            ${variants[variant]} 
+            ${depthStyles[depth]}
+            rounded-xl absolute inset-0
+            ${paddingSizes[padding]}
+          `}
+          style={{ 
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)'
+          }}
+        >
+          {backContent}
+        </motion.div>
+      </motion.div>
+    )
+  }
 
   return (
-    <div 
+    <motion.div
       className={`
-        relative rounded-2xl group
-        transform transition-all duration-300 ease-out
-        ${hoverable ? 'hover:-translate-y-1 hover:scale-[1.02] cursor-pointer' : ''}
-        ${variants[variant]}
-        ${animate ? 'animate-fade-in' : ''}
-        ${pulse ? 'animate-pulse' : ''}
+        ${variants[variant]} 
+        ${paddingSizes[padding]} 
+        ${depthStyles[depth]}
+        rounded-xl relative
+        ${onClick ? 'cursor-pointer' : ''}
+        transition-all-premium
         ${className}
       `}
-      onClick={handleClick}
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      initial={animate ? { opacity: 0, y: 20 } : false}
+      animate={animate ? { opacity: 1, y: 0 } : false}
+      transition={{ delay, duration: 0.5, ease: 'easeOut' }}
+      whileHover={hoverable ? hoverLift : undefined}
+      whileTap={onClick ? tapScale : undefined}
       style={{
-        animationDelay: animate && delay ? `${delay}ms` : undefined
+        boxShadow: pulse ? `0 0 40px ${glowColors[glowColor]}` : undefined
       }}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
-      onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick() : undefined}
-      aria-label={title || undefined}
     >
-      {/* Animated glow effect for interactive variant */}
-      {variant === 'interactive' && hoverable && (
-        <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-gold-500/20 via-gold-400/20 to-gold-500/20 opacity-0 blur-sm group-hover:opacity-100 transition-opacity duration-500 animate-pulse pointer-events-none" />
-      )}
-      
-      {/* Glass morphism overlay */}
-      {variant === 'glass' && (
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-      )}
-      
-      <div className={`
-        relative rounded-2xl z-10
-        transition-all duration-300
-        ${paddingSizes[padding]}
-      `}>
-        {(title || subtitle || action) && (
-          <div className="mb-4">
-            <div className="flex justify-between items-start">
-              <div>
-                {title && (
-                  <h3 className="text-xl font-bold bg-gradient-to-r from-gold to-gold-300 bg-clip-text text-transparent transition-all duration-300 group-hover:from-gold-400 group-hover:to-gold-200">
-                    {title}
-                  </h3>
-                )}
-                {subtitle && (
-                  <p className="text-sm text-gold-300/80 mt-1 transition-colors duration-300 group-hover:text-gold-200/80">
-                    {subtitle}
-                  </p>
-                )}
-              </div>
-              {action && (
-                <div className="transition-all duration-300 group-hover:scale-105 group-hover:translate-x-1">
-                  {action}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-        <div className="relative">
-          {children}
-        </div>
-      </div>
-      
-      {/* Hover shine effect */}
-      {hoverable && (
-        <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold-500/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
-        </div>
-      )}
-    </div>
+      {cardContent}
+    </motion.div>
+  )
+}
+
+// Premium Card Variants for specific use cases
+export function GlassCard({ children, className = '', ...props }: CardProps) {
+  return (
+    <Card variant="glass" className={`glass-heavy ${className}`} {...props}>
+      {children}
+    </Card>
+  )
+}
+
+export function PremiumCard({ children, className = '', ...props }: CardProps) {
+  return (
+    <Card 
+      variant="premium" 
+      backgroundPattern 
+      depth={4}
+      className={className} 
+      {...props}
+    >
+      {children}
+    </Card>
+  )
+}
+
+export function HolographicCard({ children, className = '', ...props }: CardProps) {
+  return (
+    <Card 
+      variant="holographic" 
+      iridescent
+      depth={5}
+      className={`border-iridescent ${className}`} 
+      {...props}
+    >
+      {children}
+    </Card>
+  )
+}
+
+export function InteractiveCard({ children, className = '', ...props }: CardProps) {
+  return (
+    <Card 
+      variant="interactive" 
+      hoverable
+      depth={3}
+      className={className} 
+      {...props}
+    >
+      {children}
+    </Card>
   )
 }

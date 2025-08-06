@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { 
@@ -17,7 +17,9 @@ import {
   GraduationCap,
   PlayCircle,
   FileCheck,
-  Database
+  Database,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import { createClient } from '@/lib/supabase/client'
@@ -32,11 +34,24 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
   const { t } = useTranslation()
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    const savedState = localStorage.getItem('sidebarOpen')
+    if (savedState !== null) {
+      setSidebarOpen(JSON.parse(savedState))
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(sidebarOpen))
+  }, [sidebarOpen])
 
   const menuItems = [
     { name: t('nav.dashboard'), href: '/dashboard', icon: LayoutDashboard },
@@ -80,31 +95,50 @@ export default function DashboardLayout({
       
       <div className="relative flex h-screen">
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 bg-navy-900/95 backdrop-blur-md border-r border-gold-500/20`}>
+        <motion.aside 
+          initial={{ width: sidebarOpen ? 256 : 80 }}
+          animate={{ width: sidebarOpen ? 256 : 80 }}
+          transition={{ duration: 0.3, ease: 'easeInOut' }}
+          className="relative bg-navy-900/95 backdrop-blur-md border-r border-gold-500/20 flex-shrink-0"
+        >
           <div className="flex flex-col h-full p-4">
             {/* Logo e Toggle */}
             <div className="flex items-center justify-between mb-8">
-              <div className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center'}`}>
-                <Logo className="w-12 h-12" />
-                {sidebarOpen && (
-                  <div>
-                    <h1 className="text-xl font-bold text-gold">SwiftEDU</h1>
-                    <p className="text-xs text-gold-300">Admin Dashboard</p>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="text-gold-400 hover:text-gold-200 transition-colors"
+              <motion.div 
+                className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center'}`}
+                animate={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
               >
-                {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
+                <Logo className="w-12 h-12 flex-shrink-0" />
+                <AnimatePresence>
+                  {sidebarOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <h1 className="text-xl font-bold text-gold whitespace-nowrap">SwiftEDU</h1>
+                      <p className="text-xs text-gold-300 whitespace-nowrap">Admin Dashboard</p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
             </div>
+
+            {/* Sidebar Toggle Button */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="absolute -right-3 top-12 w-6 h-6 bg-navy-800 border border-gold-500/30 rounded-full flex items-center justify-center text-gold-400 hover:text-gold-200 hover:bg-navy-700 transition-all z-10 group"
+            >
+              {sidebarOpen ? 
+                <ChevronLeft className="w-3 h-3 group-hover:scale-110 transition-transform" /> : 
+                <ChevronRight className="w-3 h-3 group-hover:scale-110 transition-transform" />
+              }
+            </button>
 
             {/* Menu de Navegação */}
             <nav className="flex-1 space-y-2">
-              <AnimatePresence>
-                {menuItems.map((item, index) => {
+              {menuItems.map((item, index) => {
                 const Icon = item.icon
                 const active = isActive(item.href)
                 
@@ -114,45 +148,111 @@ export default function DashboardLayout({
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
+                    className="relative"
+                    onMouseEnter={() => setHoveredItem(item.href)}
+                    onMouseLeave={() => setHoveredItem(null)}
                   >
                     <Link
                       href={item.href}
                       className={`
-                        flex items-center gap-3 px-3 py-2 rounded-lg transition-all
+                        flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group
                         ${active 
-                          ? 'bg-gold-500/20 text-gold border-l-4 border-gold-500' 
+                          ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
                           : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
                         }
                         ${!sidebarOpen && 'justify-center'}
                       `}
                     >
-                      <Icon className="w-5 h-5 flex-shrink-0" />
-                      {sidebarOpen && <span className="font-medium">{item.name}</span>}
+                      <Icon className={`w-5 h-5 flex-shrink-0 ${active && 'animate-pulse'}`} />
+                      <AnimatePresence>
+                        {sidebarOpen && (
+                          <motion.span 
+                            className="font-medium whitespace-nowrap"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            {item.name}
+                          </motion.span>
+                        )}
+                      </AnimatePresence>
                     </Link>
+
+                    {/* Tooltip for collapsed sidebar */}
+                    <AnimatePresence>
+                      {!sidebarOpen && hoveredItem === item.href && (
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50"
+                        >
+                          <div className="px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg shadow-xl whitespace-nowrap">
+                            <span className="text-sm text-gold-200">{item.name}</span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )
-                })}
-              </AnimatePresence>
+              })}
             </nav>
 
             {/* Footer do Sidebar */}
             <div className="border-t border-gold-500/20 pt-4">
-              <button 
-                onClick={handleLogout}
-                disabled={loggingOut}
-                className={`
-                  flex items-center gap-3 px-3 py-2 w-full rounded-lg
-                  text-gold-300 hover:bg-red-500/20 hover:text-red-400 transition-all
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  ${!sidebarOpen && 'justify-center'}
-                `}
+              <div 
+                className="relative"
+                onMouseEnter={() => setHoveredItem('logout')}
+                onMouseLeave={() => setHoveredItem(null)}
               >
-                <LogOut className="w-5 h-5" />
-                {sidebarOpen && <span className="font-medium">{loggingOut ? t('nav.loggingOut') : t('nav.logout')}</span>}
-              </button>
+                <button 
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className={`
+                    flex items-center gap-3 px-3 py-2.5 w-full rounded-lg
+                    text-gold-300 hover:bg-red-500/20 hover:text-red-400 transition-all
+                    disabled:opacity-50 disabled:cursor-not-allowed
+                    ${!sidebarOpen && 'justify-center'}
+                  `}
+                >
+                  <LogOut className="w-5 h-5 flex-shrink-0" />
+                  <AnimatePresence>
+                    {sidebarOpen && (
+                      <motion.span 
+                        className="font-medium whitespace-nowrap"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {loggingOut ? t('nav.loggingOut') : t('nav.logout')}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </button>
+
+                {/* Tooltip for collapsed sidebar */}
+                <AnimatePresence>
+                  {!sidebarOpen && hoveredItem === 'logout' && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50"
+                    >
+                      <div className="px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg shadow-xl whitespace-nowrap">
+                        <span className="text-sm text-gold-200">
+                          {loggingOut ? t('nav.loggingOut') : t('nav.logout')}
+                        </span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
-        </aside>
+        </motion.aside>
 
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">

@@ -432,8 +432,8 @@ export default function StudentSettingsPage() {
                       setProfileForm(prev => ({ ...prev, avatar_url: '' }))
                       setMessage({ type: 'success', text: 'Foto removida. Salve para confirmar.' })
                     }}
+                    icon={<Trash2 className="w-4 h-4" />}
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
                     Remover Foto
                   </Button>
                 )}
@@ -497,8 +497,11 @@ export default function StudentSettingsPage() {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={saving}>
-                <Save className="w-4 h-4 mr-2" />
+              <Button 
+                type="submit" 
+                disabled={saving}
+                icon={<Save className="w-4 h-4" />}
+              >
                 {saving ? t('settings.saving') : t('settings.saveChanges')}
               </Button>
             </div>
@@ -561,8 +564,11 @@ export default function StudentSettingsPage() {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={saving}>
-                <Lock className="w-4 h-4 mr-2" />
+              <Button 
+                type="submit" 
+                disabled={saving}
+                icon={<Lock className="w-4 h-4" />}
+              >
                 {saving ? t('settings.updating') : t('settings.updatePassword')}
               </Button>
             </div>
@@ -667,8 +673,11 @@ export default function StudentSettingsPage() {
             </div>
 
             <div className="flex justify-end">
-              <Button type="submit" disabled={saving}>
-                <Save className="w-4 h-4 mr-2" />
+              <Button 
+                type="submit" 
+                disabled={saving}
+                icon={<Save className="w-4 h-4" />}
+              >
                 {saving ? t('settings.saving') : t('settings.saveChanges')}
               </Button>
             </div>
@@ -698,8 +707,8 @@ export default function StudentSettingsPage() {
                     variant="secondary"
                     onClick={handleExportData}
                     className="w-full sm:w-auto"
+                    icon={<Download className="w-4 h-4" />}
                   >
-                    <Download className="w-4 h-4 mr-2" />
                     Exportar Meus Dados
                   </Button>
                   
@@ -726,8 +735,8 @@ export default function StudentSettingsPage() {
                       alert('Funcionalidade em desenvolvimento')
                     }
                   }}
+                  icon={<Trash2 className="w-4 h-4" />}
                 >
-                  <Trash2 className="w-4 h-4 mr-2" />
                   Excluir Minha Conta
                 </Button>
               </div>

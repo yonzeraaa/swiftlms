@@ -305,8 +305,10 @@ export default function SubjectsPage() {
           <h1 className="text-3xl font-bold text-gold">Disciplinas</h1>
           <p className="text-gold-300 mt-1">Gerencie as disciplinas disponíveis na plataforma</p>
         </div>
-        <Button onClick={openCreateModal}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button 
+          onClick={openCreateModal}
+          icon={<Plus className="w-4 h-4" />}
+        >
           Nova Disciplina
         </Button>
       </div>
@@ -381,8 +383,10 @@ export default function SubjectsPage() {
               className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
             />
           </div>
-          <Button variant="secondary">
-            <Filter className="w-4 h-4 mr-2" />
+          <Button 
+            variant="secondary"
+            icon={<Filter className="w-4 h-4" />}
+          >
             Filtros
           </Button>
         </div>
@@ -438,22 +442,27 @@ export default function SubjectsPage() {
                           size="sm"
                           onClick={() => openLessonsModal(subject)}
                           title="Associar Aulas"
+                          icon={<Link2 className="w-4 h-4" />}
                         >
-                          <Link2 className="w-4 h-4" />
+                          {''}
                         </Button>
                         <Button 
                           variant="secondary" 
                           size="sm"
                           onClick={() => handleEdit(subject)}
+                          title="Editar"
+                          icon={<Edit className="w-4 h-4" />}
                         >
-                          <Edit className="w-4 h-4" />
+                          {''}
                         </Button>
                         <Button 
                           variant="secondary" 
                           size="sm"
                           onClick={() => handleDelete(subject)}
+                          title="Excluir"
+                          icon={<Trash2 className="w-4 h-4" />}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          {''}
                         </Button>
                       </div>
                     </td>
