@@ -93,10 +93,11 @@ export default function ExploreCourses() {
         .select('*')
         .in('id', instructorIds)
 
-      // Fetch enrollments count
-      const { data: enrollments } = await supabase
+      // Fetch all enrollments for counting
+      const { data: allEnrollments } = await supabase
         .from('enrollments')
-        .select('course_id')
+        .select('course_id, status')
+        .in('status', ['active', 'completed'])
 
       // Fetch user's enrollments
       const { data: userEnrollments } = await supabase
@@ -112,7 +113,7 @@ export default function ExploreCourses() {
       // Process courses with additional data
       const coursesWithDetails: CourseWithDetails[] = (coursesData || []).map(course => {
         const instructor = instructors?.find(i => i.id === course.instructor_id)
-        const courseEnrollments = enrollments?.filter(e => e.course_id === course.id) || []
+        const courseEnrollments = allEnrollments?.filter(e => e.course_id === course.id) || []
         const courseReviews = reviews?.filter(r => r.course_id === course.id) || []
         const userEnrollment = userEnrollments?.find(e => e.course_id === course.id)
         
