@@ -3,103 +3,257 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Edit, Trash2, FileCheck, Clock, Users, MoreVertical, AlertCircle, CheckCircle2, Eye, Copy, Download } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, FileCheck, Clock, Users, MoreVertical, AlertCircle, CheckCircle2, Eye, Copy, Download, BookOpen, ToggleLeft, ToggleRight } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { useRouter } from 'next/navigation'
+import TestForm from '../../components/TestForm'
+import TestPreview from '../../components/TestPreview'
+import { useToast } from '../../components/Toast'
+
+interface Test {
+  id: string
+  title: string
+  description?: string
+  test_type: 'quiz' | 'exam' | 'practice'
+  duration_minutes?: number
+  total_points: number
+  passing_score: number
+  is_published: boolean
+  max_attempts?: number
+  created_at: string
+  course?: { title: string }
+  subject?: { name: string }
+  questions?: Array<{ id: string }>
+  attempts?: Array<{ 
+    id: string
+    score?: number
+    status: string
+  }>
+}
 
 export default function TestsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [tests, setTests] = useState<Test[]>([])
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [testToDelete, setTestToDelete] = useState<any>(null)
+  const [testToDelete, setTestToDelete] = useState<Test | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [filterType, setFilterType] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [filterCourse, setFilterCourse] = useState('all')
+  const [courses, setCourses] = useState<Array<{ id: string; title: string }>>([])  
+  const [showTestForm, setShowTestForm] = useState(false)
+  const [editingTestId, setEditingTestId] = useState<string | undefined>()
+  const [previewTestId, setPreviewTestId] = useState<string | undefined>()
   const { t } = useTranslation()
+  const { showToast } = useToast()
   const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
     fetchTests()
+    fetchCourses()
   }, [])
 
   const fetchTests = async () => {
     try {
-      // Por enquanto, vamos simular dados
-      setTimeout(() => {
-        setLoading(false)
-      }, 1000)
+      const { data, error } = await supabase
+        .from('tests')
+        .select(`
+          *,
+          course:courses(title),
+          subject:subjects(name),
+          questions:test_questions(id),
+          attempts:test_attempts(id, score, status)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      setTests((data || []) as Test[])
+      setLoading(false)
     } catch (error) {
       console.error('Error fetching tests:', error)
+      showToast({ type: 'error', title: 'Erro ao carregar testes' })
       setLoading(false)
     }
   }
 
-  // Dados simulados de testes
-  const tests = [
-    {
-      id: 1,
-      title: 'Avaliação de Hidrostática',
-      subject: 'Engenharia Naval Básica',
-      course: 'Fundamentos de Engenharia Naval',
-      questions: 20,
-      duration: 60,
-      attempts: 45,
-      avgScore: 78,
-      status: 'active',
-      type: 'quiz'
-    },
-    {
-      id: 2,
-      title: 'Prova Final - Propulsão Naval',
-      subject: 'Sistemas de Propulsão Marítima',
-      course: 'Propulsão Naval',
-      questions: 30,
-      duration: 120,
-      attempts: 25,
-      avgScore: 82,
-      status: 'active',
-      type: 'exam'
-    },
-    {
-      id: 3,
-      title: 'Teste de SOLAS - Módulo 1',
-      subject: 'Segurança Marítima e SOLAS',
-      course: 'Normas de Segurança',
-      questions: 15,
-      duration: 45,
-      attempts: 38,
-      avgScore: 91,
-      status: 'active',
-      type: 'quiz'
-    },
-    {
-      id: 4,
-      title: 'Simulado de Estabilidade',
-      subject: 'Engenharia Naval Básica',
-      course: 'Fundamentos de Engenharia Naval',
-      questions: 25,
-      duration: 90,
-      attempts: 0,
-      avgScore: 0,
-      status: 'draft',
-      type: 'simulation'
+  const fetchCourses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('id, title')
+        .order('title')
+
+      if (error) throw error
+      setCourses(data || [])
+    } catch (error) {
+      console.error('Error fetching courses:', error)
     }
-  ]
+  }
+
+  const handleTogglePublish = async (test: Test) => {
+    try {
+      const { error } = await supabase
+        .from('tests')
+        .update({ is_published: !test.is_published })
+        .eq('id', test.id)
+
+      if (error) throw error
+
+      showToast({ 
+        type: 'success', 
+        title: test.is_published ? 'Teste despublicado' : 'Teste publicado' 
+      })
+      fetchTests()
+    } catch (error) {
+      console.error('Error toggling publish:', error)
+      showToast({ type: 'error', title: 'Erro ao alterar status do teste' })
+    }
+  }
+
+  const handleDuplicateTest = async (test: Test) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      // Fetch full test data with questions
+      const { data: fullTest, error: fetchError } = await supabase
+        .from('tests')
+        .select(`
+          *,
+          questions:test_questions(*)
+        `)
+        .eq('id', test.id)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      // Create duplicate test
+      const { data: newTest, error: createError } = await supabase
+        .from('tests')
+        .insert({
+          title: `${test.title} (Cópia)`,
+          description: fullTest.description,
+          test_type: fullTest.test_type,
+          duration_minutes: fullTest.duration_minutes,
+          total_points: fullTest.total_points,
+          passing_score: fullTest.passing_score,
+          instructions: fullTest.instructions,
+          is_published: false,
+          show_results: fullTest.show_results,
+          show_answers: fullTest.show_answers,
+          randomize_questions: fullTest.randomize_questions,
+          randomize_options: fullTest.randomize_options,
+          max_attempts: fullTest.max_attempts,
+          course_id: fullTest.course_id,
+          subject_id: fullTest.subject_id,
+          created_by: user.id
+        })
+        .select()
+        .single()
+
+      if (createError) throw createError
+
+      // Duplicate test questions
+      if (fullTest.questions && fullTest.questions.length > 0) {
+        const questionsToInsert = fullTest.questions.map((q: any) => ({
+          test_id: newTest.id,
+          question_id: q.question_id,
+          order_index: q.order_index,
+          points_override: q.points_override
+        }))
+
+        const { error: questionsError } = await supabase
+          .from('test_questions')
+          .insert(questionsToInsert)
+
+        if (questionsError) throw questionsError
+      }
+
+      showToast({ type: 'success', title: 'Teste duplicado com sucesso!' })
+      fetchTests()
+    } catch (error) {
+      console.error('Error duplicating test:', error)
+      showToast({ type: 'error', title: 'Erro ao duplicar teste' })
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!testToDelete) return
+
+    try {
+      // Check if test has attempts
+      const { data: attempts, error: attemptsError } = await supabase
+        .from('test_attempts')
+        .select('id')
+        .eq('test_id', testToDelete.id)
+        .limit(1)
+
+      if (attemptsError) throw attemptsError
+
+      if (attempts && attempts.length > 0) {
+        // Has attempts, soft delete only
+        const { error } = await supabase
+          .from('tests')
+          .update({ is_published: false })
+          .eq('id', testToDelete.id)
+
+        if (error) throw error
+        showToast({ type: 'info', title: 'Teste despublicado (possui tentativas)' })
+      } else {
+        // No attempts, can delete
+        // First delete test questions
+        const { error: questionsError } = await supabase
+          .from('test_questions')
+          .delete()
+          .eq('test_id', testToDelete.id)
+
+        if (questionsError) throw questionsError
+
+        // Then delete test
+        const { error } = await supabase
+          .from('tests')
+          .delete()
+          .eq('id', testToDelete.id)
+
+        if (error) throw error
+        showToast({ type: 'success', title: 'Teste excluído com sucesso!' })
+      }
+
+      setShowDeleteModal(false)
+      setTestToDelete(null)
+      fetchTests()
+    } catch (error) {
+      console.error('Error deleting test:', error)
+      showToast({ type: 'error', title: 'Erro ao excluir teste' })
+    }
+  }
 
   const filteredTests = tests.filter(test => {
     const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      test.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      test.course.toLowerCase().includes(searchTerm.toLowerCase())
+      (test.subject?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (test.course?.title || '').toLowerCase().includes(searchTerm.toLowerCase())
     
-    const matchesType = filterType === 'all' || test.type === filterType
-    const matchesStatus = filterStatus === 'all' || test.status === filterStatus
+    const matchesType = filterType === 'all' || test.test_type === filterType
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'published' ? test.is_published : !test.is_published)
+    const matchesCourse = filterCourse === 'all' || test.course?.title === filterCourse
     
-    return matchesSearch && matchesType && matchesStatus
+    return matchesSearch && matchesType && matchesStatus && matchesCourse
   })
+
+  const calculateAverageScore = (attempts: Test['attempts']) => {
+    if (!attempts || attempts.length === 0) return 0
+    const completedAttempts = attempts.filter(a => a.status === 'completed' && a.score)
+    if (completedAttempts.length === 0) return 0
+    const sum = completedAttempts.reduce((acc, a) => acc + (a.score || 0), 0)
+    return Math.round(sum / completedAttempts.length)
+  }
 
   const getTypeLabel = (type: string) => {
     switch (type) {
@@ -107,8 +261,8 @@ export default function TestsPage() {
         return 'Quiz'
       case 'exam':
         return 'Prova'
-      case 'simulation':
-        return 'Simulado'
+      case 'practice':
+        return 'Prática'
       default:
         return type
     }
@@ -120,7 +274,7 @@ export default function TestsPage() {
         return 'bg-blue-500/20 text-blue-400'
       case 'exam':
         return 'bg-purple-500/20 text-purple-400'
-      case 'simulation':
+      case 'practice':
         return 'bg-orange-500/20 text-orange-400'
       default:
         return 'bg-gray-500/20 text-gray-400'
@@ -151,7 +305,10 @@ export default function TestsPage() {
         </div>
         <Button 
           icon={<Plus className="w-5 h-5" />}
-          onClick={() => handleCreateTest()}
+          onClick={() => {
+            setEditingTestId(undefined)
+            setShowTestForm(true)
+          }}
         >
           Novo Teste
         </Button>
@@ -192,7 +349,7 @@ export default function TestsPage() {
                 <option value="all">Todos</option>
                 <option value="quiz">Quiz</option>
                 <option value="exam">Prova</option>
-                <option value="simulation">Simulado</option>
+                <option value="practice">Prática</option>
               </select>
             </div>
             <div>
@@ -203,21 +360,35 @@ export default function TestsPage() {
                 className="w-full px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
               >
                 <option value="all">Todos</option>
-                <option value="active">Ativo</option>
+                <option value="published">Publicado</option>
                 <option value="draft">Rascunho</option>
               </select>
             </div>
-            <div className="flex items-end">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setFilterType('all')
-                  setFilterStatus('all')
-                }}
+            <div>
+              <label className="block text-sm font-medium text-gold-300 mb-2">Curso</label>
+              <select
+                value={filterCourse}
+                onChange={(e) => setFilterCourse(e.target.value)}
+                className="w-full px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
               >
-                Limpar Filtros
-              </Button>
+                <option value="all">Todos os Cursos</option>
+                {courses.map(course => (
+                  <option key={course.id} value={course.title}>{course.title}</option>
+                ))}
+              </select>
             </div>
+          </div>
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFilterType('all')
+                setFilterStatus('all')
+                setFilterCourse('all')
+              }}
+            >
+              Limpar Filtros
+            </Button>
           </div>
         </Card>
       )}
@@ -237,9 +408,9 @@ export default function TestsPage() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Testes Ativos</p>
+              <p className="text-gold-300 text-sm">Testes Publicados</p>
               <p className="text-2xl font-bold text-gold mt-1">
-                {tests.filter(t => t.status === 'active').length}
+                {tests.filter(t => t.is_published).length}
               </p>
             </div>
             <CheckCircle2 className="w-8 h-8 text-gold-500/30" />
@@ -251,7 +422,7 @@ export default function TestsPage() {
             <div>
               <p className="text-gold-300 text-sm">Total de Questões</p>
               <p className="text-2xl font-bold text-gold mt-1">
-                {tests.reduce((acc, t) => acc + t.questions, 0)}
+                {tests.reduce((acc, t) => acc + (t.questions?.length || 0), 0)}
               </p>
             </div>
             <AlertCircle className="w-8 h-8 text-gold-500/30" />
@@ -261,12 +432,9 @@ export default function TestsPage() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Média Geral</p>
+              <p className="text-gold-300 text-sm">Total de Tentativas</p>
               <p className="text-2xl font-bold text-gold mt-1">
-                {Math.round(
-                  tests.filter(t => t.attempts > 0).reduce((acc, t) => acc + t.avgScore, 0) / 
-                  tests.filter(t => t.attempts > 0).length
-                )}%
+                {tests.reduce((acc, t) => acc + (t.attempts?.length || 0), 0)}
               </p>
             </div>
             <Users className="w-8 h-8 text-gold-500/30" />
@@ -299,28 +467,30 @@ export default function TestsPage() {
                   </td>
                   <td className="py-4 px-4">
                     <div>
-                      <p className="text-gold-200 text-sm">{test.course}</p>
-                      <p className="text-gold-400 text-xs mt-1">{test.subject}</p>
+                      <p className="text-gold-200 text-sm">{test.course?.title || '-'}</p>
+                      <p className="text-gold-400 text-xs mt-1">{test.subject?.name || '-'}</p>
                     </div>
                   </td>
                   <td className="py-4 px-4 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(test.type)}`}>
-                      {getTypeLabel(test.type)}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(test.test_type)}`}>
+                      {getTypeLabel(test.test_type)}
                     </span>
                   </td>
                   <td className="py-4 px-4 text-center">
-                    <span className="text-gold-200">{test.questions}</span>
+                    <span className="text-gold-200">{test.questions?.length || 0}</span>
                   </td>
                   <td className="py-4 px-4 text-center">
-                    <span className="text-gold-200">{test.duration} min</span>
+                    <span className="text-gold-200">
+                      {test.duration_minutes ? `${test.duration_minutes} min` : '-'}
+                    </span>
                   </td>
                   <td className="py-4 px-4 text-center">
-                    <span className="text-gold-200">{test.attempts}</span>
+                    <span className="text-gold-200">{test.attempts?.length || 0}</span>
                   </td>
                   <td className="py-4 px-4 text-center">
-                    {test.attempts > 0 ? (
-                      <span className={`font-medium ${getScoreColor(test.avgScore)}`}>
-                        {test.avgScore}%
+                    {test.attempts && test.attempts.length > 0 ? (
+                      <span className={`font-medium ${getScoreColor(calculateAverageScore(test.attempts))}`}>
+                        {calculateAverageScore(test.attempts)}%
                       </span>
                     ) : (
                       <span className="text-gold-500">-</span>
@@ -328,28 +498,42 @@ export default function TestsPage() {
                   </td>
                   <td className="py-4 px-4 text-center">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      test.status === 'active' 
+                      test.is_published 
                         ? 'bg-green-500/20 text-green-400' 
                         : 'bg-yellow-500/20 text-yellow-400'
                     }`}>
-                      {test.status === 'active' ? 'Ativo' : 'Rascunho'}
+                      {test.is_published ? 'Publicado' : 'Rascunho'}
                     </span>
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center justify-end gap-2">
                       <button 
                         className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                        onClick={() => handleViewTest(test)}
+                        onClick={() => setPreviewTestId(test.id)}
                         title="Visualizar"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
                       <button 
                         className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                        onClick={() => handleEditTest(test)}
+                        onClick={() => {
+                          setEditingTestId(test.id)
+                          setShowTestForm(true)
+                        }}
                         title="Editar"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+                      <button 
+                        className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                        onClick={() => handleTogglePublish(test)}
+                        title={test.is_published ? 'Despublicar' : 'Publicar'}
+                      >
+                        {test.is_published ? (
+                          <ToggleRight className="w-4 h-4" />
+                        ) : (
+                          <ToggleLeft className="w-4 h-4" />
+                        )}
                       </button>
                       <button 
                         className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
@@ -360,7 +544,10 @@ export default function TestsPage() {
                       </button>
                       <button 
                         className="p-2 text-red-400 hover:text-red-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                        onClick={() => handleDeleteTest(test)}
+                        onClick={() => {
+                          setTestToDelete(test)
+                          setShowDeleteModal(true)
+                        }}
                         title="Excluir"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -402,48 +589,30 @@ export default function TestsPage() {
           </div>
         </div>
       )}
+
+      {/* Test Form Modal */}
+      <TestForm
+        isOpen={showTestForm}
+        onClose={() => {
+          setShowTestForm(false)
+          setEditingTestId(undefined)
+        }}
+        testId={editingTestId}
+        onSuccess={() => {
+          setShowTestForm(false)
+          setEditingTestId(undefined)
+          fetchTests()
+        }}
+      />
+
+      {/* Test Preview Modal */}
+      {previewTestId && (
+        <TestPreview
+          isOpen={!!previewTestId}
+          onClose={() => setPreviewTestId(undefined)}
+          testId={previewTestId}
+        />
+      )}
     </div>
   )
-
-  // Handler functions
-  function handleCreateTest() {
-    console.log('Criar novo teste')
-    // TODO: Navegar para página de criação ou abrir modal
-    alert('Funcionalidade de criar teste será implementada em breve')
-  }
-
-  function handleViewTest(test: any) {
-    console.log('Visualizar teste:', test)
-    // TODO: Navegar para página de visualização
-    alert(`Visualizando teste: ${test.title}`)
-  }
-
-  function handleEditTest(test: any) {
-    console.log('Editar teste:', test)
-    // TODO: Navegar para página de edição ou abrir modal
-    alert(`Editando teste: ${test.title}`)
-  }
-
-  function handleDuplicateTest(test: any) {
-    console.log('Duplicar teste:', test)
-    // TODO: Implementar lógica de duplicação
-    alert(`Teste "${test.title}" duplicado com sucesso!`)
-  }
-
-  function handleDeleteTest(test: any) {
-    setTestToDelete(test)
-    setShowDeleteModal(true)
-  }
-
-  function confirmDelete() {
-    if (testToDelete) {
-      console.log('Excluindo teste:', testToDelete)
-      // TODO: Implementar lógica de exclusão no banco
-      alert(`Teste "${testToDelete.title}" excluído com sucesso!`)
-      setShowDeleteModal(false)
-      setTestToDelete(null)
-      // Recarregar lista de testes
-      fetchTests()
-    }
-  }
 }
