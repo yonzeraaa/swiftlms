@@ -41,7 +41,7 @@ export function RouteAnnouncer() {
 }
 
 // Focus trap hook for modals and drawers
-export function useFocusTrap(isActive: boolean, containerRef: React.RefObject<HTMLElement>) {
+export function useFocusTrap(isActive: boolean, containerRef: React.RefObject<HTMLElement | null>) {
   useEffect(() => {
     if (!isActive || !containerRef.current) return
 

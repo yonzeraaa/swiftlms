@@ -31,7 +31,7 @@ export default function MobileDrawer({
   width = '80%',
   className = ''
 }: MobileDrawerProps) {
-  const drawerRef = useRef<HTMLDivElement>(null)
+  const drawerRef = useRef<HTMLElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [dragDistance, setDragDistance] = useState(0)
   const [startX, setStartX] = useState(0)
@@ -134,7 +134,7 @@ export default function MobileDrawer({
 
       {/* Drawer */}
       <div
-        ref={drawerRef}
+        ref={drawerRef as React.RefObject<HTMLDivElement>}
         role="dialog"
         aria-modal="true"
         aria-label={title || 'Menu lateral'}
