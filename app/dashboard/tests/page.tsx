@@ -3,17 +3,24 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Edit, Trash2, FileCheck, Clock, Users, MoreVertical, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, FileCheck, Clock, Users, MoreVertical, AlertCircle, CheckCircle2, Eye, Copy, Download } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { useRouter } from 'next/navigation'
 
 export default function TestsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [testToDelete, setTestToDelete] = useState<any>(null)
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterType, setFilterType] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
   const { t } = useTranslation()
   const supabase = createClient()
+  const router = useRouter()
 
   useEffect(() => {
     fetchTests()
@@ -83,11 +90,16 @@ export default function TestsPage() {
     }
   ]
 
-  const filteredTests = tests.filter(test =>
-    test.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    test.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    test.course.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredTests = tests.filter(test => {
+    const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      test.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      test.course.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesType = filterType === 'all' || test.type === filterType
+    const matchesStatus = filterStatus === 'all' || test.status === filterStatus
+    
+    return matchesSearch && matchesType && matchesStatus
+  })
 
   const getTypeLabel = (type: string) => {
     switch (type) {
@@ -137,7 +149,10 @@ export default function TestsPage() {
           <h1 className="text-3xl font-bold text-gold">Testes</h1>
           <p className="text-gold-300 mt-1">Gerencie as avaliações e testes</p>
         </div>
-        <Button icon={<Plus className="w-5 h-5" />}>
+        <Button 
+          icon={<Plus className="w-5 h-5" />}
+          onClick={() => handleCreateTest()}
+        >
           Novo Teste
         </Button>
       </div>
@@ -154,10 +169,58 @@ export default function TestsPage() {
             className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
           />
         </div>
-        <Button variant="secondary" icon={<Filter className="w-5 h-5" />}>
+        <Button 
+          variant="secondary" 
+          icon={<Filter className="w-5 h-5" />}
+          onClick={() => setShowFilters(!showFilters)}
+        >
           Filtros
         </Button>
       </div>
+
+      {/* Filters Panel */}
+      {showFilters && (
+        <Card>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gold-300 mb-2">Tipo</label>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="w-full px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              >
+                <option value="all">Todos</option>
+                <option value="quiz">Quiz</option>
+                <option value="exam">Prova</option>
+                <option value="simulation">Simulado</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gold-300 mb-2">Status</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="w-full px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+              >
+                <option value="all">Todos</option>
+                <option value="active">Ativo</option>
+                <option value="draft">Rascunho</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setFilterType('all')
+                  setFilterStatus('all')
+                }}
+              >
+                Limpar Filtros
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -274,14 +337,33 @@ export default function TestsPage() {
                   </td>
                   <td className="py-4 px-4">
                     <div className="flex items-center justify-end gap-2">
-                      <button className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors">
+                      <button 
+                        className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                        onClick={() => handleViewTest(test)}
+                        title="Visualizar"
+                      >
+                        <Eye className="w-4 h-4" />
+                      </button>
+                      <button 
+                        className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                        onClick={() => handleEditTest(test)}
+                        title="Editar"
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors">
-                        <Trash2 className="w-4 h-4" />
+                      <button 
+                        className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                        onClick={() => handleDuplicateTest(test)}
+                        title="Duplicar"
+                      >
+                        <Copy className="w-4 h-4" />
                       </button>
-                      <button className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4" />
+                      <button 
+                        className="p-2 text-red-400 hover:text-red-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                        onClick={() => handleDeleteTest(test)}
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -291,6 +373,77 @@ export default function TestsPage() {
           </table>
         </div>
       </Card>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && testToDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-navy-800 border border-gold-500/20 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-xl font-bold text-gold mb-4">Confirmar Exclusão</h3>
+            <p className="text-gold-200 mb-6">
+              Tem certeza que deseja excluir o teste "{testToDelete.title}"? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowDeleteModal(false)
+                  setTestToDelete(null)
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => confirmDelete()}
+              >
+                Excluir
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
+
+  // Handler functions
+  function handleCreateTest() {
+    console.log('Criar novo teste')
+    // TODO: Navegar para página de criação ou abrir modal
+    alert('Funcionalidade de criar teste será implementada em breve')
+  }
+
+  function handleViewTest(test: any) {
+    console.log('Visualizar teste:', test)
+    // TODO: Navegar para página de visualização
+    alert(`Visualizando teste: ${test.title}`)
+  }
+
+  function handleEditTest(test: any) {
+    console.log('Editar teste:', test)
+    // TODO: Navegar para página de edição ou abrir modal
+    alert(`Editando teste: ${test.title}`)
+  }
+
+  function handleDuplicateTest(test: any) {
+    console.log('Duplicar teste:', test)
+    // TODO: Implementar lógica de duplicação
+    alert(`Teste "${test.title}" duplicado com sucesso!`)
+  }
+
+  function handleDeleteTest(test: any) {
+    setTestToDelete(test)
+    setShowDeleteModal(true)
+  }
+
+  function confirmDelete() {
+    if (testToDelete) {
+      console.log('Excluindo teste:', testToDelete)
+      // TODO: Implementar lógica de exclusão no banco
+      alert(`Teste "${testToDelete.title}" excluído com sucesso!`)
+      setShowDeleteModal(false)
+      setTestToDelete(null)
+      // Recarregar lista de testes
+      fetchTests()
+    }
+  }
 }
