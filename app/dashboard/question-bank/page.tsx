@@ -327,17 +327,6 @@ export default function QuestionBankPage() {
           {filteredQuestions.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gold-400">Nenhuma questão encontrada</p>
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                className="mt-4"
-                onClick={() => {
-                  setEditingQuestionId(undefined)
-                  setShowQuestionForm(true)
-                }}
-              >
-                Criar primeira questão
-              </Button>
             </div>
           ) : (
             filteredQuestions.map((question) => (
