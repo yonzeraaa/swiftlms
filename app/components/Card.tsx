@@ -2,7 +2,7 @@
 
 import { ReactNode, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { morphingCard, hoverLift, tapScale } from '../lib/animations'
+import { hoverLift, tapScale } from '../lib/animations'
 
 interface CardProps {
   children: ReactNode

@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, AlertCircle, Activity, BarChart3 } from 'lucide-react'
+import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, AlertCircle, Activity } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -42,7 +42,7 @@ interface RecentActivity {
 
 export default function StudentDashboard() {
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [, setUser] = useState<any>(null)
   const [stats, setStats] = useState<StudentStats>({
     enrolledCourses: 0,
     completedCourses: 0,
@@ -202,7 +202,7 @@ export default function StudentDashboard() {
       .sort((a, b) => b.getTime() - a.getTime())
 
     let streak = 0
-    let currentDate = new Date(today)
+    const currentDate = new Date(today)
 
     for (let i = 0; i < 30; i++) { // Check last 30 days
       const hasActivity = activityDates.some(date => {
