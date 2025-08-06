@@ -967,4 +967,16 @@ nav a, nav button {
     animation: ripple 0.6s ease-out;
     pointer-events: none;
   }
+
+  /* Toast animations */
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
 }

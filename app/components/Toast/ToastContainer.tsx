@@ -10,7 +10,7 @@ interface ToastContainerProps {
 
 export default function ToastContainer({ toasts, removeToast }: ToastContainerProps) {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 pointer-events-none">
+    <div className="fixed top-4 right-4 z-[9999] space-y-2 pointer-events-none">
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
       ))}

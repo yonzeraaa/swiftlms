@@ -25,40 +25,38 @@ const toastStyles: Record<ToastType, string> = {
 
 export default function ToastItem({ toast, onClose }: ToastItemProps) {
   const [isExiting, setIsExiting] = useState(false)
+  const [isEntering, setIsEntering] = useState(true)
   const Icon = toastIcons[toast.type]
 
   const handleClose = () => {
     setIsExiting(true)
-    setTimeout(onClose, 200) // Wait for animation to complete
+    setTimeout(onClose, 300) // Wait for animation to complete
   }
 
   useEffect(() => {
-    // Add enter animation
+    // Trigger enter animation
     const timer = setTimeout(() => {
-      const element = document.getElementById(`toast-${toast.id}`)
-      if (element) {
-        element.classList.add('translate-x-0', 'opacity-100')
-      }
+      setIsEntering(false)
     }, 10)
 
     return () => clearTimeout(timer)
-  }, [toast.id])
+  }, [])
 
   return (
     <div
       id={`toast-${toast.id}`}
       className={`
         pointer-events-auto min-w-[300px] max-w-md
-        transform transition-all duration-200 ease-out
-        translate-x-full opacity-0
-        ${isExiting ? 'translate-x-full opacity-0' : ''}
+        transform transition-all duration-300 ease-out
+        ${isEntering ? 'translate-x-full opacity-0' : 
+          isExiting ? 'translate-x-full opacity-0' : 'translate-x-0 opacity-100'}
       `}
     >
       <div
         className={`
           flex items-start gap-3 p-4 rounded-xl border backdrop-blur-sm
           ${toastStyles[toast.type]}
-          shadow-2xl
+          shadow-2xl bg-navy-800
         `}
       >
         <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
