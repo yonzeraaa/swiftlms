@@ -716,23 +716,22 @@ export default function ExploreCourses() {
                   <Button 
                     onClick={() => handleEnroll(selectedCourse)}
                     disabled={enrolling === selectedCourse.id}
+                    icon={
+                      enrolling === selectedCourse.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : selectedCourse.isEnrolled ? (
+                        <TrendingUp className="w-4 h-4" />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )
+                    }
                   >
-                    {enrolling === selectedCourse.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Matriculando...
-                      </>
-                    ) : selectedCourse.isEnrolled ? (
-                      <>
-                        <TrendingUp className="w-4 h-4 mr-2" />
-                        Ir para o Curso
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4 mr-2" />
-                        Matricular-se
-                      </>
-                    )}
+                    {enrolling === selectedCourse.id ? 
+                      'Matriculando...' : 
+                      selectedCourse.isEnrolled ? 
+                      'Ir para o Curso' : 
+                      'Matricular-se'
+                    }
                   </Button>
                 </div>
               </div>
