@@ -263,7 +263,7 @@ export default function CourseProgressPage() {
     : 0
 
   const statsCards = [
-    <div className="flex items-center justify-between">
+    <div key="progress" className="flex items-center justify-between">
       <div>
         <p className="text-gold-300 text-sm">Progresso Geral</p>
         <p className="text-2xl font-bold text-gold mt-1">{progressPercentage}%</p>
@@ -276,7 +276,7 @@ export default function CourseProgressPage() {
       />
     </div>,
     
-    <div className="flex items-center justify-between">
+    <div key="lessons" className="flex items-center justify-between">
       <div>
         <p className="text-gold-300 text-sm">Aulas Concluídas</p>
         <p className="text-2xl font-bold text-gold mt-1">
@@ -286,7 +286,7 @@ export default function CourseProgressPage() {
       <CheckCircle2 className="w-8 h-8 text-green-500/30" />
     </div>,
 
-    <div className="flex items-center justify-between">
+    <div key="time" className="flex items-center justify-between">
       <div>
         <p className="text-gold-300 text-sm">Tempo Investido</p>
         <p className="text-2xl font-bold text-gold mt-1">{Math.floor(progressData.timeSpent / 60)}h {progressData.timeSpent % 60}m</p>
@@ -294,7 +294,7 @@ export default function CourseProgressPage() {
       <Clock className="w-8 h-8 text-blue-500/30" />
     </div>,
 
-    <div className="flex items-center justify-between">
+    <div key="achievements" className="flex items-center justify-between">
       <div>
         <p className="text-gold-300 text-sm">Conquistas</p>
         <p className="text-2xl font-bold text-gold mt-1">
