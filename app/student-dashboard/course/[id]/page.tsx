@@ -13,7 +13,9 @@ import {
   Video,
   Award,
   Users,
-  BarChart3
+  BarChart3,
+  FileImage,
+  Link
 } from 'lucide-react'
 import Card from '../../../components/Card'
 import Button from '../../../components/Button'
@@ -22,6 +24,7 @@ import { Database } from '@/lib/database.types'
 import ProgressRing from '../../../components/ui/ProgressRing'
 import { motion } from 'framer-motion'
 import VideoPlayer from '../../components/VideoPlayer'
+import DocumentViewer from '../../components/DocumentViewer'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
@@ -344,12 +347,27 @@ export default function CoursePage() {
                   {module.lessons.map((lesson, lessonIndex) => {
                     const isCompleted = lesson.progress?.is_completed
                     const isSelected = selectedLesson?.id === lesson.id
-                    // Unlock logic: first module is always unlocked, others require previous module completion
-                    const previousModuleCompleted = moduleIndex === 0 || 
-                      (moduleIndex > 0 && course.modules[moduleIndex - 1].lessons.every(l => 
-                        module.lessons.find(ml => ml.id === l.id)?.progress?.is_completed
-                      ))
-                    const isLocked = !previousModuleCompleted && lessonIndex > 0
+                    
+                    // Unlock logic: Progressive unlocking
+                    let isLocked = false
+                    
+                    // First lesson of first module is always unlocked
+                    if (moduleIndex === 0 && lessonIndex === 0) {
+                      isLocked = false
+                    }
+                    // For other lessons in the first module, check if previous lesson is completed
+                    else if (moduleIndex === 0) {
+                      isLocked = !module.lessons[lessonIndex - 1]?.progress?.is_completed
+                    }
+                    // For first lesson of other modules, check if all lessons from previous module are completed
+                    else if (lessonIndex === 0) {
+                      const previousModule = course.modules[moduleIndex - 1]
+                      isLocked = !previousModule.lessons.every(l => l.progress?.is_completed)
+                    }
+                    // For other lessons in other modules, check if previous lesson in same module is completed
+                    else {
+                      isLocked = !module.lessons[lessonIndex - 1]?.progress?.is_completed
+                    }
                     
                     return (
                       <motion.button
@@ -357,12 +375,15 @@ export default function CoursePage() {
                         onClick={() => !isLocked && handleLessonSelect(lesson)}
                         disabled={isLocked}
                         className={`
-                          w-full text-left p-3 rounded-lg transition-all
+                          w-full text-left p-3 rounded-lg transition-all relative
                           ${isSelected 
                             ? 'bg-gold-500/20 border border-gold-500/50' 
-                            : 'bg-navy-800/30 hover:bg-navy-800/50'
+                            : isCompleted 
+                              ? 'bg-green-500/10 hover:bg-green-500/20'
+                              : 'bg-navy-800/30 hover:bg-navy-800/50'
                           }
                           ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                          ${!isLocked && !isCompleted && !isSelected ? 'ring-2 ring-gold-500/30 animate-pulse' : ''}
                         `}
                         whileHover={!isLocked ? { scale: 1.02 } : {}}
                         whileTap={!isLocked ? { scale: 0.98 } : {}}
@@ -379,16 +400,28 @@ export default function CoursePage() {
                           </div>
                           <div className="flex-1">
                             <p className={`text-sm font-medium ${
-                              isSelected ? 'text-gold' : 'text-gold-200'
+                              isSelected ? 'text-gold' : isCompleted ? 'text-green-400' : 'text-gold-200'
                             }`}>
                               {lesson.title}
                             </p>
                             <div className="flex items-center gap-2 mt-1">
                               {lesson.content_type === 'video' && <Video className="w-3 h-3 text-gold-400" />}
-                              {lesson.content_type === 'text' && <FileText className="w-3 h-3 text-gold-400" />}
+                              {lesson.content_type === 'text' && lesson.content_url && <Link className="w-3 h-3 text-gold-400" />}
+                              {lesson.content_type === 'text' && !lesson.content_url && <FileText className="w-3 h-3 text-gold-400" />}
+                              {lesson.content_type === 'document' && <FileImage className="w-3 h-3 text-gold-400" />}
                               {lesson.duration_minutes && (
                                 <span className="text-xs text-gold-300/50">
                                   {lesson.duration_minutes} min
+                                </span>
+                              )}
+                              {isLocked && (
+                                <span className="text-xs text-red-400">
+                                  Complete a aula anterior
+                                </span>
+                              )}
+                              {!isLocked && !isCompleted && !isSelected && (
+                                <span className="text-xs text-gold-400 font-semibold">
+                                  Disponível
                                 </span>
                               )}
                             </div>
@@ -446,28 +479,62 @@ export default function CoursePage() {
                       </div>
                     )
                   ) : selectedLesson.content_type === 'text' ? (
-                    <div className="w-full h-[400px] overflow-y-auto">
-                      <div className="prose prose-gold max-w-none">
-                        {selectedLesson.content ? (
-                          <div 
-                            className="text-gold-200 leading-relaxed"
-                            dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center h-full">
-                            <div className="text-center">
-                              <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                              <p className="text-gold-300">Conteúdo de texto não disponível</p>
+                    // Verificar se há URL de documento primeiro
+                    selectedLesson.content_url ? (
+                      <DocumentViewer
+                        url={selectedLesson.content_url}
+                        title={selectedLesson.title}
+                        onComplete={() => markLessonComplete(selectedLesson.id)}
+                      />
+                    ) : (
+                      <div className="w-full h-[400px] overflow-y-auto">
+                        <div className="prose prose-gold max-w-none">
+                          {selectedLesson.content ? (
+                            <div 
+                              className="text-gold-200 leading-relaxed"
+                              dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full">
+                              <div className="text-center">
+                                <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                                <p className="text-gold-300">Conteúdo não disponível</p>
+                                <p className="text-gold-300/50 text-sm mt-2">
+                                  Nenhum documento ou texto foi configurado para esta aula
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )
+                  ) : selectedLesson.content_type === 'document' ? (
+                    // Novo tipo: documento
+                    selectedLesson.content_url ? (
+                      <DocumentViewer
+                        url={selectedLesson.content_url}
+                        title={selectedLesson.title}
+                        onComplete={() => markLessonComplete(selectedLesson.id)}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-[400px]">
+                        <div className="text-center">
+                          <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                          <p className="text-gold-300">Documento não disponível</p>
+                          <p className="text-gold-300/50 text-sm mt-2">
+                            Nenhuma URL de documento foi configurada para esta aula
+                          </p>
+                        </div>
+                      </div>
+                    )
                   ) : (
                     <div className="flex items-center justify-center h-[400px]">
                       <div className="text-center">
                         <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
                         <p className="text-gold-300">Tipo de conteúdo não suportado</p>
+                        <p className="text-gold-300/50 text-sm mt-2">
+                          Tipo: {selectedLesson.content_type}
+                        </p>
                       </div>
                     </div>
                   )}

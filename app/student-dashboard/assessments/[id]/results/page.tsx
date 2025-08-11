@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import Card from '../../../../components/Card'
 import Button from '../../../../components/Button'
+import QuestionContent from '../../../../components/QuestionContent'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { motion } from 'framer-motion'
@@ -30,6 +31,8 @@ type TestAnswer = Database['public']['Tables']['test_answers']['Row']
 
 interface QuestionWithOptions extends Question {
   options: QuestionOption[]
+  question_image_url?: string | null
+  has_formula?: boolean | null
 }
 
 interface TestResults {
@@ -150,8 +153,19 @@ export default function TestResultsPage() {
       setUserAttempts(attemptsCount || 0)
 
       // Calculate detailed results
-      const score = attemptData.score || 0
-      const passed = score >= (testData.passing_score || 60)
+      // Converter score para número (vem como string do banco numeric)
+      const score = attemptData.score !== null && attemptData.score !== undefined 
+        ? Number(attemptData.score) 
+        : 0
+      const passingScore = testData.passing_score || 60
+      const passed = score >= passingScore
+      
+      console.log('Score calculation:', {
+        rawScore: attemptData.score,
+        parsedScore: score,
+        passingScore,
+        passed
+      })
       let correctCount = 0
 
       questions.forEach(question => {
@@ -482,9 +496,15 @@ export default function TestResultsPage() {
                       <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                     )}
                     <div className="flex-1">
-                      <h4 className="font-medium text-gold-200 mb-2">
-                        Questão {index + 1}: {question.question_text}
-                      </h4>
+                      <div className="mb-2">
+                        <span className="font-medium text-gold-200">Questão {index + 1}: </span>
+                        <QuestionContent 
+                          text={question.question_text}
+                          imageUrl={question.question_image_url}
+                          hasFormula={question.has_formula}
+                          className="inline-block"
+                        />
+                      </div>
                     </div>
                   </div>
 

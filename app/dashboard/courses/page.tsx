@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, UserPlus, BookMarked } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, UserPlus, BookMarked, UserMinus } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -62,6 +62,9 @@ export default function CoursesPage() {
   const [selectedStudents, setSelectedStudents] = useState<string[]>([])
   const [enrolling, setEnrolling] = useState(false)
   const [showSubjectsModal, setShowSubjectsModal] = useState(false)
+  const [showManageStudentsModal, setShowManageStudentsModal] = useState(false)
+  const [enrolledStudents, setEnrolledStudents] = useState<any[]>([])
+  const [loadingEnrolledStudents, setLoadingEnrolledStudents] = useState(false)
   const supabase = createClient()
   const { t } = useTranslation()
   
@@ -322,6 +325,68 @@ export default function CoursesPage() {
     setShowViewModal(true)
   }
   
+  const openManageStudentsModal = async (course: Course) => {
+    setSelectedCourse(course)
+    setShowManageStudentsModal(true)
+    setOpenDropdown(null)
+    await fetchEnrolledStudents(course.id)
+  }
+  
+  const fetchEnrolledStudents = async (courseId: string) => {
+    setLoadingEnrolledStudents(true)
+    try {
+      const { data, error } = await supabase
+        .from('enrollments')
+        .select(`
+          *,
+          user:profiles!enrollments_user_id_fkey(
+            id,
+            full_name,
+            email
+          )
+        `)
+        .eq('course_id', courseId)
+        .in('status', ['active', 'completed', 'paused'])
+        .order('enrolled_at', { ascending: false })
+      
+      if (error) throw error
+      setEnrolledStudents(data || [])
+    } catch (error) {
+      console.error('Error fetching enrolled students:', error)
+      setEnrolledStudents([])
+    } finally {
+      setLoadingEnrolledStudents(false)
+    }
+  }
+  
+  const unenrollStudent = async (enrollmentId: string, studentName: string) => {
+    if (!confirm(`Tem certeza que deseja desmatricular ${studentName} deste curso?`)) {
+      return
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('enrollments')
+        .delete()
+        .eq('id', enrollmentId)
+      
+      if (error) throw error
+      
+      // Refresh enrolled students list
+      if (selectedCourse) {
+        await fetchEnrolledStudents(selectedCourse.id)
+      }
+      
+      // Refresh courses to update enrollment count
+      await fetchCourses()
+      
+      alert(`Aluno ${studentName} foi desmatriculado com sucesso!`)
+    } catch (error: any) {
+      console.error('Error unenrolling student:', error)
+      alert('Erro ao desmatricular aluno: ' + error.message)
+    }
+  }
+  
   const enrollStudents = async () => {
     if (!selectedCourse || selectedStudents.length === 0) return
     setEnrolling(true)
@@ -528,6 +593,13 @@ export default function CoursesPage() {
                       >
                         <UserPlus className="w-4 h-4" />
                         {t('courses.enrollStudents')}
+                      </button>
+                      <button 
+                        onClick={() => openManageStudentsModal(course)}
+                        className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2"
+                      >
+                        <Users className="w-4 h-4" />
+                        Gerenciar Alunos
                       </button>
                       <button 
                         onClick={() => {
@@ -1240,6 +1312,104 @@ export default function CoursesPage() {
                   {t('courses.enrollStudents')}
                 </Button>
               </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      
+      {/* Manage Students Modal */}
+      {showManageStudentsModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
+                <Users className="w-6 h-6" />
+                Gerenciar Alunos - {selectedCourse.title}
+              </h2>
+              <button
+                onClick={() => setShowManageStudentsModal(false)}
+                className="text-gold-400 hover:text-gold-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4 p-3 bg-navy-900/50 rounded-lg">
+              <p className="text-gold-300 text-sm">
+                Total de alunos matriculados: <span className="font-bold text-gold">{enrolledStudents.length}</span>
+              </p>
+            </div>
+            
+            {loadingEnrolledStudents ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500"></div>
+              </div>
+            ) : enrolledStudents.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
+                <p className="text-gold-300">Nenhum aluno matriculado neste curso</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {enrolledStudents.map((enrollment) => (
+                  <div
+                    key={enrollment.id}
+                    className="flex items-center justify-between p-4 bg-navy-900/50 rounded-lg hover:bg-navy-900/70 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <p className="text-gold-200 font-medium">
+                        {enrollment.user?.full_name || enrollment.user?.email || 'Aluno'}
+                      </p>
+                      <p className="text-gold-400 text-sm">{enrollment.user?.email}</p>
+                      <div className="flex items-center gap-4 mt-1">
+                        <span className="text-xs text-gold-300">
+                          Matriculado em: {new Date(enrollment.enrolled_at).toLocaleDateString('pt-BR')}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          enrollment.status === 'active' ? 'bg-green-500/20 text-green-400' :
+                          enrollment.status === 'completed' ? 'bg-blue-500/20 text-blue-400' :
+                          'bg-yellow-500/20 text-yellow-400'
+                        }`}>
+                          {enrollment.status === 'active' ? 'Ativo' :
+                           enrollment.status === 'completed' ? 'Concluído' : 'Pausado'}
+                        </span>
+                        {enrollment.progress_percentage > 0 && (
+                          <span className="text-xs text-gold-300">
+                            Progresso: {enrollment.progress_percentage}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => unenrollStudent(
+                        enrollment.id,
+                        enrollment.user?.full_name || enrollment.user?.email || 'este aluno'
+                      )}
+                      icon={<UserMinus className="w-4 h-4" />}
+                    >
+                      Desmatricular
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gold-500/20">
+              <Button
+                variant="primary"
+                onClick={() => openEnrollModal(selectedCourse)}
+                icon={<UserPlus className="w-4 h-4" />}
+              >
+                Matricular Novos Alunos
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowManageStudentsModal(false)}
+              >
+                Fechar
+              </Button>
             </div>
           </Card>
         </div>

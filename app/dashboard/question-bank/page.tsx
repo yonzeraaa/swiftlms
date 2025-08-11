@@ -3,13 +3,15 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Edit, Trash2, Database, FileQuestion, Tag, MoreVertical, Copy, Archive, Eye, Check } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, Database, FileQuestion, Tag, MoreVertical, Copy, Archive, Eye, Check, Upload } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { Question, QuestionOption } from '@/lib/database.types'
 import QuestionForm from '../../components/QuestionForm'
+import QuestionImporter from '../../components/QuestionImporter'
+import QuestionContent from '../../components/QuestionContent'
 import Modal from '../../components/Modal'
 import { useToast } from '../../components/Toast'
 
@@ -17,6 +19,8 @@ interface QuestionWithDetails extends Question {
   options?: QuestionOption[]
   subject?: { name: string }
   creator?: { full_name: string }
+  question_image_url?: string | null
+  has_formula?: boolean | null
 }
 
 export default function QuestionBankPage() {
@@ -27,7 +31,9 @@ export default function QuestionBankPage() {
   const [categories, setCategories] = useState<string[]>(['all'])
   const [selectedDifficulty, setSelectedDifficulty] = useState('all')
   const [selectedType, setSelectedType] = useState('all')
+  const [showArchived, setShowArchived] = useState(false)
   const [showQuestionForm, setShowQuestionForm] = useState(false)
+  const [showImporter, setShowImporter] = useState(false)
   const [editingQuestionId, setEditingQuestionId] = useState<string | undefined>()
   const [previewQuestion, setPreviewQuestion] = useState<QuestionWithDetails | null>(null)
   const { t } = useTranslation()
@@ -70,7 +76,7 @@ export default function QuestionBankPage() {
     }
   }
 
-  const handleDeleteQuestion = async (questionId: string) => {
+  const handleArchiveQuestion = async (questionId: string) => {
     if (!confirm('Tem certeza que deseja arquivar esta questão?')) return
 
     try {
@@ -86,6 +92,51 @@ export default function QuestionBankPage() {
     } catch (error) {
       console.error('Error archiving question:', error)
       showToast({ type: 'error', title: 'Erro ao arquivar questão' })
+    }
+  }
+
+  const handleRestoreQuestion = async (questionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .update({ is_active: true })
+        .eq('id', questionId)
+
+      if (error) throw error
+
+      showToast({ type: 'success', title: 'Questão restaurada com sucesso' })
+      fetchQuestions()
+    } catch (error) {
+      console.error('Error restoring question:', error)
+      showToast({ type: 'error', title: 'Erro ao restaurar questão' })
+    }
+  }
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    if (!confirm('ATENÇÃO: Esta ação é irreversível!\n\nTem certeza que deseja EXCLUIR PERMANENTEMENTE esta questão?\n\nEla será removida de todos os testes onde está sendo usada.')) return
+
+    try {
+      // Primeiro, deletar as opções da questão
+      const { error: optionsError } = await supabase
+        .from('question_options')
+        .delete()
+        .eq('question_id', questionId)
+
+      if (optionsError) throw optionsError
+
+      // Depois, deletar a questão
+      const { error: questionError } = await supabase
+        .from('questions')
+        .delete()
+        .eq('id', questionId)
+
+      if (questionError) throw questionError
+
+      showToast({ type: 'success', title: 'Questão excluída permanentemente' })
+      fetchQuestions()
+    } catch (error) {
+      console.error('Error deleting question:', error)
+      showToast({ type: 'error', title: 'Erro ao excluir questão. Verifique se ela não está sendo usada em testes.' })
     }
   }
 
@@ -145,7 +196,8 @@ export default function QuestionBankPage() {
     const matchesCategory = selectedCategory === 'all' || question.category === selectedCategory
     const matchesDifficulty = selectedDifficulty === 'all' || question.difficulty === selectedDifficulty
     const matchesType = selectedType === 'all' || question.question_type === selectedType
-    return matchesSearch && matchesCategory && matchesDifficulty && matchesType && question.is_active !== false
+    const matchesArchived = showArchived ? question.is_active === false : question.is_active !== false
+    return matchesSearch && matchesCategory && matchesDifficulty && matchesType && matchesArchived
   })
 
   const getTypeLabel = (type: string) => {
@@ -220,60 +272,91 @@ export default function QuestionBankPage() {
           <h1 className="text-3xl font-bold text-gold">Banco de Questões</h1>
           <p className="text-gold-300 mt-1">Gerencie e organize questões para testes e avaliações</p>
         </div>
-        <Button 
-          icon={<Plus className="w-5 h-5" />}
-          onClick={() => {
-            setEditingQuestionId(undefined)
-            setShowQuestionForm(true)
-          }}
-        >
-          Nova Questão
-        </Button>
+        <div className="flex gap-3">
+          <Button 
+            variant="secondary"
+            icon={<Upload className="w-5 h-5" />}
+            onClick={() => setShowImporter(true)}
+          >
+            Importar do Google Docs
+          </Button>
+          <Button 
+            icon={<Plus className="w-5 h-5" />}
+            onClick={() => {
+              setEditingQuestionId(undefined)
+              setShowQuestionForm(true)
+            }}
+          >
+            Nova Questão
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="flex gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
-          <input
-            type="text"
-            placeholder="Buscar questões, tags ou disciplinas..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-          />
+      <div className="space-y-4">
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+            <input
+              type="text"
+              placeholder="Buscar questões, tags ou disciplinas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+            />
+          </div>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+          >
+            <option value="all">Todas as Categorias</option>
+            {categories.slice(1).map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+          <select
+            value={selectedDifficulty}
+            onChange={(e) => setSelectedDifficulty(e.target.value)}
+            className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+          >
+            <option value="all">Todas as Dificuldades</option>
+            <option value="easy">Fácil</option>
+            <option value="medium">Médio</option>
+            <option value="hard">Difícil</option>
+          </select>
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+          >
+            <option value="all">Todos os Tipos</option>
+            <option value="multiple_choice">Múltipla Escolha</option>
+            <option value="true_false">V ou F</option>
+            <option value="essay">Dissertativa</option>
+            <option value="fill_blank">Preencher Lacunas</option>
+          </select>
         </div>
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-        >
-          <option value="all">Todas as Categorias</option>
-          {categories.slice(1).map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-        <select
-          value={selectedDifficulty}
-          onChange={(e) => setSelectedDifficulty(e.target.value)}
-          className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-        >
-          <option value="all">Todas as Dificuldades</option>
-          <option value="easy">Fácil</option>
-          <option value="medium">Médio</option>
-          <option value="hard">Difícil</option>
-        </select>
-        <select
-          value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value)}
-          className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-        >
-          <option value="all">Todos os Tipos</option>
-          <option value="multiple_choice">Múltipla Escolha</option>
-          <option value="true_false">V ou F</option>
-          <option value="essay">Dissertativa</option>
-          <option value="fill_blank">Preencher Lacunas</option>
-        </select>
+        
+        {/* Toggle Archived */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${
+              showArchived 
+                ? 'bg-gold-500/20 text-gold-300 border border-gold-500/30' 
+                : 'bg-navy-900/50 text-gold-400 border border-gold-500/20 hover:bg-navy-800/50'
+            }`}
+          >
+            <Archive className="w-4 h-4" />
+            {showArchived ? 'Mostrando Arquivadas' : 'Mostrar Arquivadas'}
+          </button>
+          {showArchived && (
+            <p className="text-gold-400 text-sm">
+              Visualizando questões arquivadas. Você pode restaurá-las ou excluí-las permanentemente.
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -330,10 +413,27 @@ export default function QuestionBankPage() {
             </div>
           ) : (
             filteredQuestions.map((question) => (
-              <div key={question.id} className="p-4 bg-navy-900/30 rounded-lg border border-gold-500/10 hover:border-gold-500/30 transition-colors">
+              <div key={question.id} className={`p-4 rounded-lg border transition-colors ${
+                question.is_active === false 
+                  ? 'bg-navy-900/20 border-red-500/20 hover:border-red-500/30' 
+                  : 'bg-navy-900/30 border-gold-500/10 hover:border-gold-500/30'
+              }`}>
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1">
-                    <p className="text-gold-100 font-medium mb-2">{question.question_text}</p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex-1">
+                        <QuestionContent 
+                          text={question.question_text}
+                          imageUrl={question.question_image_url}
+                          hasFormula={question.has_formula}
+                        />
+                      </div>
+                      {question.is_active === false && (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+                          Arquivada
+                        </span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-2 mb-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(question.question_type)}`}>
                         {getTypeLabel(question.question_type)}
@@ -380,29 +480,49 @@ export default function QuestionBankPage() {
                     >
                       <Eye className="w-4 h-4" />
                     </button>
+                    {question.is_active !== false && (
+                      <>
+                        <button 
+                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors" 
+                          title="Duplicar"
+                          onClick={() => handleDuplicateQuestion(question)}
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button 
+                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors" 
+                          title="Editar"
+                          onClick={() => {
+                            setEditingQuestionId(question.id)
+                            setShowQuestionForm(true)
+                          }}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors" 
+                          title="Arquivar"
+                          onClick={() => handleArchiveQuestion(question.id)}
+                        >
+                          <Archive className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    {question.is_active === false && (
+                      <button 
+                        className="p-2 text-green-400 hover:text-green-200 hover:bg-green-700/50 rounded-lg transition-colors" 
+                        title="Restaurar"
+                        onClick={() => handleRestoreQuestion(question.id)}
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                    )}
                     <button 
-                      className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors" 
-                      title="Duplicar"
-                      onClick={() => handleDuplicateQuestion(question)}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                    <button 
-                      className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors" 
-                      title="Editar"
-                      onClick={() => {
-                        setEditingQuestionId(question.id)
-                        setShowQuestionForm(true)
-                      }}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button 
-                      className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors" 
-                      title="Arquivar"
+                      className="p-2 text-red-400 hover:text-red-200 hover:bg-red-700/50 rounded-lg transition-colors" 
+                      title="Excluir Permanentemente"
                       onClick={() => handleDeleteQuestion(question.id)}
                     >
-                      <Archive className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -427,6 +547,18 @@ export default function QuestionBankPage() {
         }}
       />
 
+      {/* Question Importer Modal */}
+      {showImporter && (
+        <QuestionImporter
+          onClose={() => setShowImporter(false)}
+          onImport={() => {
+            setShowImporter(false)
+            fetchQuestions()
+            showToast({ type: 'success', title: 'Questões importadas com sucesso!' })
+          }}
+        />
+      )}
+
       {/* Question Preview Modal */}
       {previewQuestion && (
         <Modal
@@ -438,7 +570,11 @@ export default function QuestionBankPage() {
           <div className="space-y-4">
             <div>
               <h3 className="text-sm font-medium text-gold-300 mb-2">Questão</h3>
-              <p className="text-gold-100">{previewQuestion.question_text}</p>
+              <QuestionContent 
+                text={previewQuestion.question_text}
+                imageUrl={previewQuestion.question_image_url}
+                hasFormula={previewQuestion.has_formula}
+              />
             </div>
 
             <div className="flex flex-wrap gap-2">

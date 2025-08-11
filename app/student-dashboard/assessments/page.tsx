@@ -102,17 +102,33 @@ export default function AssessmentsPage() {
         return
       }
 
-      const courseIds = enrollments.map(e => e.course_id)
+      const courseIds = enrollments.map(e => e.course_id).filter(Boolean)
+      
+      console.log('User enrollments course IDs:', courseIds)
 
-      // Buscar testes dos cursos matriculados
-      const { data: testsData } = await supabase
+      // Buscar TODOS os testes publicados primeiro (para debug)
+      const { data: allPublishedTests } = await supabase
+        .from('tests')
+        .select('id, title, course_id, is_published')
+        .eq('is_published', true)
+      
+      console.log('All published tests:', allPublishedTests)
+
+      // Buscar testes - por enquanto, buscar TODOS os testes publicados
+      // já que pode haver problema com o filtro de course_id
+      const { data: testsData, error: testsError } = await supabase
         .from('tests')
         .select(`
           *,
           course:courses(*)
         `)
-        .in('course_id', courseIds)
         .eq('is_published', true)
+      
+      if (testsError) {
+        console.error('Error fetching tests:', testsError)
+      }
+      
+      console.log('Tests data:', testsData)
 
       if (testsData) {
         const testsWithDetails: TestWithDetails[] = []

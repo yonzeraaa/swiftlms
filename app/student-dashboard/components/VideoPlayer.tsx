@@ -124,16 +124,20 @@ export default function VideoPlayer({ url, title, onComplete, autoPlay = false }
 
   const isYouTubeUrl = url?.includes('youtube.com') || url?.includes('youtu.be')
   const isVimeoUrl = url?.includes('vimeo.com')
+  const isGoogleDriveVideo = url?.includes('drive.google.com')
 
-  if (isYouTubeUrl || isVimeoUrl) {
+  if (isYouTubeUrl || isVimeoUrl || isGoogleDriveVideo) {
     let embedUrl = ''
     
     if (isYouTubeUrl) {
       const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)?.[1]
-      embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=${autoPlay ? 1 : 0}` : ''
+      embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=${autoPlay ? 1 : 0}&rel=0&modestbranding=1` : ''
     } else if (isVimeoUrl) {
       const videoId = url.match(/vimeo\.com\/(\d+)/)?.[1]
       embedUrl = videoId ? `https://player.vimeo.com/video/${videoId}?autoplay=${autoPlay ? 1 : 0}` : ''
+    } else if (isGoogleDriveVideo) {
+      const fileId = url.match(/\/file\/d\/([^\/]+)/)?.[1]
+      embedUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : ''
     }
 
     if (!embedUrl) {
@@ -145,13 +149,23 @@ export default function VideoPlayer({ url, title, onComplete, autoPlay = false }
     }
 
     return (
-      <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
-        <iframe
-          src={embedUrl}
-          className="absolute inset-0 w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-        />
+      <div ref={containerRef} className="relative w-full bg-black rounded-lg overflow-hidden">
+        <div className="relative w-full aspect-video">
+          <iframe
+            src={embedUrl}
+            className="absolute inset-0 w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowFullScreen
+          />
+          {/* Botão de tela cheia customizado */}
+          <button
+            onClick={handleFullscreen}
+            className="absolute bottom-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70 transition-colors z-10"
+            title="Tela cheia"
+          >
+            <Maximize className="w-5 h-5 text-white" />
+          </button>
+        </div>
       </div>
     )
   }

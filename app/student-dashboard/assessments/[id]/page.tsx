@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import Card from '../../../components/Card'
 import Button from '../../../components/Button'
+import QuestionContent from '../../../components/QuestionContent'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -26,6 +27,8 @@ type TestAttempt = Database['public']['Tables']['test_attempts']['Row']
 
 interface QuestionWithOptions extends Question {
   options: QuestionOption[]
+  question_image_url?: string | null
+  has_formula?: boolean | null
 }
 
 interface TestWithDetails extends Test {
@@ -179,6 +182,11 @@ export default function TakeTestPage() {
               .order('order_index')
             
             
+            // Log para debug de imagens
+            if ((questionData as any).question_image_url) {
+              console.log('Question has image:', (questionData as any).question_image_url)
+            }
+            
             questions.push({
               ...questionData,
               options: options || []
@@ -282,6 +290,12 @@ export default function TakeTestPage() {
       }
 
       const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0
+      
+      console.log('Test submission:', {
+        correctAnswers,
+        totalQuestions,
+        calculatedScore: score
+      })
 
       // Update attempt
       const { error: updateError } = await supabase
@@ -426,10 +440,13 @@ export default function TakeTestPage() {
       {question && (
         <Card variant="glass" className="min-h-[400px]">
           <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gold mb-4">
-                {question.question_text}
-              </h2>
+            <div className="mb-4">
+              <QuestionContent 
+                text={question.question_text}
+                imageUrl={question.question_image_url}
+                hasFormula={question.has_formula}
+                className="text-xl font-semibold text-gold"
+              />
             </div>
 
             <div className="space-y-3">
