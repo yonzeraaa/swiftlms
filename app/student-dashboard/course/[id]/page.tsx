@@ -21,6 +21,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import ProgressRing from '../../../components/ui/ProgressRing'
 import { motion } from 'framer-motion'
+import VideoPlayer from '../../components/VideoPlayer'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
@@ -200,6 +201,31 @@ export default function CoursePage() {
         })
 
       if (!error) {
+        // Auto-advance to next lesson
+        const currentModuleIndex = course.modules.findIndex(m => 
+          m.lessons.some(l => l.id === lessonId)
+        )
+        const currentModule = course.modules[currentModuleIndex]
+        const currentLessonIndex = currentModule.lessons.findIndex(l => l.id === lessonId)
+        
+        let nextLesson = null
+        
+        // Try next lesson in same module
+        if (currentLessonIndex < currentModule.lessons.length - 1) {
+          nextLesson = currentModule.lessons[currentLessonIndex + 1]
+        } 
+        // Try first lesson of next module
+        else if (currentModuleIndex < course.modules.length - 1) {
+          const nextModule = course.modules[currentModuleIndex + 1]
+          if (nextModule.lessons.length > 0) {
+            nextLesson = nextModule.lessons[0]
+          }
+        }
+        
+        if (nextLesson) {
+          setSelectedLesson(nextLesson)
+        }
+        
         // Refresh course data
         await fetchCourseData()
       }
@@ -318,7 +344,12 @@ export default function CoursePage() {
                   {module.lessons.map((lesson, lessonIndex) => {
                     const isCompleted = lesson.progress?.is_completed
                     const isSelected = selectedLesson?.id === lesson.id
-                    const isLocked = moduleIndex > 0 && completedLessons === 0 // Simple lock logic
+                    // Unlock logic: first module is always unlocked, others require previous module completion
+                    const previousModuleCompleted = moduleIndex === 0 || 
+                      (moduleIndex > 0 && course.modules[moduleIndex - 1].lessons.every(l => 
+                        module.lessons.find(ml => ml.id === l.id)?.progress?.is_completed
+                      ))
+                    const isLocked = !previousModuleCompleted && lessonIndex > 0
                     
                     return (
                       <motion.button
@@ -395,35 +426,49 @@ export default function CoursePage() {
                 </div>
 
                 {/* Lesson Content */}
-                <div className="bg-navy-900/50 rounded-lg p-6 min-h-[400px] flex items-center justify-center">
+                <div className="bg-navy-900/50 rounded-lg p-6 min-h-[400px]">
                   {selectedLesson.content_type === 'video' ? (
-                    <div className="text-center">
-                      <Video className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                      <p className="text-gold-300">Conteúdo de vídeo será implementado aqui</p>
-                      <p className="text-gold-300/50 text-sm mt-2">
-                        URL do vídeo: {selectedLesson.content_url || 'Não definida'}
-                      </p>
-                    </div>
+                    selectedLesson.content_url ? (
+                      <VideoPlayer
+                        url={selectedLesson.content_url}
+                        title={selectedLesson.title}
+                        onComplete={() => markLessonComplete(selectedLesson.id)}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-[400px]">
+                        <div className="text-center">
+                          <Video className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                          <p className="text-gold-300">Vídeo não disponível</p>
+                          <p className="text-gold-300/50 text-sm mt-2">
+                            Nenhuma URL de vídeo foi configurada para esta aula
+                          </p>
+                        </div>
+                      </div>
+                    )
                   ) : selectedLesson.content_type === 'text' ? (
-                    <div className="w-full">
+                    <div className="w-full h-[400px] overflow-y-auto">
                       <div className="prose prose-gold max-w-none">
                         {selectedLesson.content ? (
                           <div 
-                            className="text-gold-200"
+                            className="text-gold-200 leading-relaxed"
                             dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
                           />
                         ) : (
-                          <div className="text-center">
-                            <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                            <p className="text-gold-300">Conteúdo de texto não disponível</p>
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                              <p className="text-gold-300">Conteúdo de texto não disponível</p>
+                            </div>
                           </div>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center">
-                      <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                      <p className="text-gold-300">Conteúdo da aula</p>
+                    <div className="flex items-center justify-center h-[400px]">
+                      <div className="text-center">
+                        <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                        <p className="text-gold-300">Tipo de conteúdo não suportado</p>
+                      </div>
                     </div>
                   )}
                 </div>
