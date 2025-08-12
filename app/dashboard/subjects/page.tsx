@@ -521,7 +521,7 @@ export default function SubjectsPage() {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
           <div className="bg-navy-800 rounded-2xl max-w-md w-full p-6 border border-gold-500/20">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gold">
@@ -642,7 +642,7 @@ export default function SubjectsPage() {
 
       {/* Lessons Association Modal */}
       {showLessonsModal && selectedSubjectForLessons && (
-        <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
           <div className="bg-navy-800 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col border border-gold-500/20">
             <div className="flex items-center justify-between p-6 border-b border-gold-500/20">
               <div>

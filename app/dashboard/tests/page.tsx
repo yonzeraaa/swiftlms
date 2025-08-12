@@ -688,7 +688,7 @@ export default function TestsPage() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && testToDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
           <div className="bg-navy-800 border border-gold-500/20 rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-xl font-bold text-gold mb-4">Confirmar Exclusão</h3>
             <p className="text-gold-200 mb-6">

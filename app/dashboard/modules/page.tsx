@@ -124,9 +124,17 @@ export default function ModulesPage() {
       await fetchData()
     } catch (error: any) {
       console.error('Error saving module:', error)
+      let errorMessage = 'Erro ao salvar módulo'
+      
+      if (error.message?.includes('row-level security')) {
+        errorMessage = 'Erro de permissão. Verifique se você tem autorização para realizar esta ação.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
       setMessage({ 
         type: 'error', 
-        text: error.message || 'Erro ao salvar módulo' 
+        text: errorMessage 
       })
     } finally {
       setSubmitting(false)
@@ -170,7 +178,16 @@ export default function ModulesPage() {
 
   const openCreateModal = () => {
     setEditingModule(null)
-    setFormData({ title: '', description: '', course_id: '', order_index: '0' })
+    // Calcula o próximo order_index disponível (máximo + 1)
+    const maxOrderIndex = modules.length > 0 
+      ? Math.max(...modules.map(m => m.order_index || 0)) + 1
+      : 0
+    setFormData({ 
+      title: '', 
+      description: '', 
+      course_id: '', 
+      order_index: maxOrderIndex.toString() 
+    })
     setShowModal(true)
   }
 
@@ -314,7 +331,7 @@ export default function ModulesPage() {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
           <div className="bg-navy-800 rounded-2xl max-w-md w-full p-6 border border-gold-500/20">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gold">
@@ -350,7 +367,19 @@ export default function ModulesPage() {
                 <select
                   required
                   value={formData.course_id}
-                  onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
+                  onChange={(e) => {
+                    const courseId = e.target.value
+                    // Recalcula o order_index baseado nos módulos do curso selecionado
+                    const courseModules = modules.filter(m => m.course_id === courseId)
+                    const maxOrderIndex = courseModules.length > 0 
+                      ? Math.max(...courseModules.map(m => m.order_index || 0)) + 1
+                      : 0
+                    setFormData({ 
+                      ...formData, 
+                      course_id: courseId,
+                      order_index: maxOrderIndex.toString()
+                    })
+                  }}
                   className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
                 >
                   <option value="">Selecione um curso</option>
@@ -375,7 +404,7 @@ export default function ModulesPage() {
                   min="0"
                   step="1"
                 />
-                <p className="text-xs text-gold-300 mt-1">Posição do módulo dentro do curso</p>
+                <p className="text-xs text-gold-300 mt-1">Posição do módulo (preenchido automaticamente com o próximo número disponível)</p>
               </div>
 
               <div>

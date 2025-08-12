@@ -548,7 +548,7 @@ export default function CoursesPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredCourses.map((course) => (
-            <Card key={course.id} className="hover:shadow-2xl transition-shadow">
+            <Card key={course.id} className="hover:shadow-2xl transition-shadow overflow-visible">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-gold mb-2">{course.title}</h3>
@@ -563,7 +563,7 @@ export default function CoursesPage() {
                   </button>
                   
                   {openDropdown === course.id && (
-                    <div className="dropdown-menu absolute right-0 mt-2 w-48 bg-navy-800 border border-gold-500/20 rounded-lg shadow-lg z-10">
+                    <div className="dropdown-menu absolute right-0 mt-2 w-56 bg-navy-800 border border-gold-500/20 rounded-lg shadow-xl z-[9998] overflow-visible">
                       <button 
                         onClick={() => openEditModal(course)}
                         className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 rounded-t-lg"
@@ -726,7 +726,7 @@ export default function CoursesPage() {
       
       {/* Create Course Modal */}
       {showNewCourseModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
@@ -888,7 +888,7 @@ export default function CoursesPage() {
       
       {/* Edit Course Modal */}
       {showEditModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
@@ -1049,7 +1049,7 @@ export default function CoursesPage() {
       
       {/* Delete Course Modal */}
       {showDeleteModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <Card className="w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-red-400 flex items-center gap-2">
@@ -1108,7 +1108,7 @@ export default function CoursesPage() {
       
       {/* Enroll Students Modal */}
       {showEnrollModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
@@ -1192,7 +1192,7 @@ export default function CoursesPage() {
       
       {/* View Course Modal */}
       {showViewModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gold flex items-center gap-2">
@@ -1319,7 +1319,7 @@ export default function CoursesPage() {
       
       {/* Manage Students Modal */}
       {showManageStudentsModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
@@ -1417,7 +1417,7 @@ export default function CoursesPage() {
       
       {/* Subject Manager Modal */}
       {showSubjectsModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">

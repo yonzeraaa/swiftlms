@@ -609,7 +609,7 @@ export default function StructurePage() {
 
       {/* Associate Items Modal */}
       {showAssociateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <Card className="w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
