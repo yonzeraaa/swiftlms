@@ -20,7 +20,8 @@ import {
   Database,
   ChevronLeft,
   ChevronRight,
-  Layers
+  Layers,
+  Folder
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import { createClient } from '@/lib/supabase/client'
@@ -58,6 +59,7 @@ export default function DashboardLayout({
     { name: t('nav.dashboard'), href: '/dashboard', icon: LayoutDashboard },
     { name: t('nav.users'), href: '/dashboard/users', icon: Users },
     { name: t('nav.courses'), href: '/dashboard/courses', icon: BookOpen },
+    { name: 'Módulos', href: '/dashboard/modules', icon: Folder },
     { name: 'Estrutura', href: '/dashboard/structure', icon: Layers },
     { name: t('nav.subjects'), href: '/dashboard/subjects', icon: GraduationCap },
     { name: t('nav.lessons'), href: '/dashboard/lessons', icon: PlayCircle },

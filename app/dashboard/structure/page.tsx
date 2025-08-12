@@ -41,19 +41,11 @@ export default function StructurePage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
-  const [showAddModuleModal, setShowAddModuleModal] = useState(false)
-  const [showEditModuleModal, setShowEditModuleModal] = useState(false)
   const [showAssociateModal, setShowAssociateModal] = useState(false)
-  const [associateType, setAssociateType] = useState<'subject' | 'lesson' | 'test'>('subject')
+  const [associateType, setAssociateType] = useState<'module' | 'subject' | 'lesson' | 'test'>('subject')
   const [parentNode, setParentNode] = useState<TreeNode | null>(null)
   const [availableItems, setAvailableItems] = useState<any[]>([])
   const [selectedItems, setSelectedItems] = useState<string[]>([])
-  const [moduleForm, setModuleForm] = useState({
-    title: '',
-    description: '',
-    orderIndex: ''
-  })
-  const [editingModule, setEditingModule] = useState<TreeNode | null>(null)
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [associating, setAssociating] = useState(false)
   const supabase = createClient()
@@ -219,25 +211,8 @@ export default function StructurePage() {
     }
   }
 
-  const handleAddModule = (parent: TreeNode) => {
-    setParentNode(parent)
-    const currentModuleCount = parent.children?.filter(c => c.type === 'module').length || 0
-    setModuleForm({ title: '', description: '', orderIndex: currentModuleCount.toString() })
-    setShowAddModuleModal(true)
-  }
 
-  const handleEditModule = (module: TreeNode) => {
-    if (module.type !== 'module' || !module.data) return
-    setEditingModule(module)
-    setModuleForm({
-      title: module.data.title || '',
-      description: module.data.description || '',
-      orderIndex: module.data.order_index?.toString() || '0'
-    })
-    setShowEditModuleModal(true)
-  }
-
-  const handleAssociate = async (parent: TreeNode, type: 'subject' | 'lesson' | 'test') => {
+  const handleAssociate = async (parent: TreeNode, type: 'module' | 'subject' | 'lesson' | 'test') => {
     setParentNode(parent)
     setAssociateType(type)
     setSelectedItems([])
@@ -247,7 +222,17 @@ export default function StructurePage() {
     try {
       let data: any[] = []
       
-      if (type === 'subject' && parent.type === 'module') {
+      if (type === 'module' && parent.type === 'course') {
+        // Get all modules for this course (including unassociated ones)
+        const { data: allModules } = await supabase
+          .from('course_modules')
+          .select('*')
+          .eq('course_id', parent.id)
+          .order('order_index')
+        
+        data = allModules || []
+      } 
+      else if (type === 'subject' && parent.type === 'module') {
         // Get all subjects not already associated with this module
         const { data: allSubjects } = await supabase.from('subjects').select('*').order('name')
         const { data: moduleSubjects } = await supabase
@@ -282,52 +267,6 @@ export default function StructurePage() {
     }
   }
 
-  const saveNewModule = async () => {
-    if (!parentNode || parentNode.type !== 'course') return
-
-    try {
-      const { error } = await supabase
-        .from('course_modules')
-        .insert({
-          course_id: parentNode.id,
-          title: moduleForm.title,
-          description: moduleForm.description,
-          order_index: parseInt(moduleForm.orderIndex) || 0
-        })
-
-      if (error) throw error
-      
-      setShowAddModuleModal(false)
-      fetchHierarchicalData()
-    } catch (error) {
-      console.error('Error saving module:', error)
-      alert('Erro ao salvar módulo')
-    }
-  }
-
-  const saveEditModule = async () => {
-    if (!editingModule || !editingModule.data) return
-
-    try {
-      const { error } = await supabase
-        .from('course_modules')
-        .update({
-          title: moduleForm.title,
-          description: moduleForm.description,
-          order_index: parseInt(moduleForm.orderIndex) || 0
-        })
-        .eq('id', editingModule.id)
-
-      if (error) throw error
-      
-      setShowEditModuleModal(false)
-      setEditingModule(null)
-      fetchHierarchicalData()
-    } catch (error) {
-      console.error('Error updating module:', error)
-      alert('Erro ao atualizar módulo')
-    }
-  }
 
   const saveAssociations = async () => {
     if (!parentNode || selectedItems.length === 0) return
@@ -490,33 +429,22 @@ export default function StructurePage() {
             </span>
 
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {/* Add module button for courses */}
+              {/* Associate modules button for courses */}
               {node.type === 'course' && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    handleAddModule(node)
+                    handleAssociate(node, 'module')
                   }}
                   className="p-1 hover:bg-navy-700 rounded"
-                  title="Adicionar Módulo"
+                  title="Gerenciar Módulos"
                 >
-                  <Plus className="w-3 h-3 text-gold-400" />
+                  <Link2 className="w-3 h-3 text-blue-400" />
                 </button>
               )}
               
-              {/* Edit and Associate buttons for modules */}
+              {/* Associate subjects button for modules */}
               {node.type === 'module' && (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleEditModule(node)
-                    }}
-                    className="p-1 hover:bg-navy-700 rounded"
-                    title="Editar Módulo"
-                  >
-                    <Edit className="w-3 h-3 text-blue-400" />
-                  </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -527,7 +455,6 @@ export default function StructurePage() {
                 >
                   <Link2 className="w-3 h-3 text-green-400" />
                 </button>
-                </>
               )}
               
               {/* Associate lessons/tests button for subjects */}
@@ -641,7 +568,8 @@ export default function StructurePage() {
           <div className="text-sm text-gold-300">
             <p className="font-semibold text-gold-200 mb-1">Como funciona:</p>
             <ul className="space-y-1">
-              <li>• <span className="text-gold-400">Módulos</span>: Podem ser criados diretamente nos cursos</li>
+              <li>• <span className="text-gold-400">Cursos</span>: Clique no ícone de link para gerenciar módulos</li>
+              <li>• <span className="text-blue-400">Módulos</span>: Crie na página de Módulos e associe aos cursos</li>
               <li>• <span className="text-green-400">Disciplinas</span>: Associe disciplinas existentes aos módulos</li>
               <li>• <span className="text-purple-400">Aulas</span> e <span className="text-red-400">Testes</span>: Associe às disciplinas</li>
             </ul>
@@ -679,178 +607,6 @@ export default function StructurePage() {
         </div>
       </Card>
 
-      {/* Add Module Modal */}
-      {showAddModuleModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
-                <Folder className="w-6 h-6" />
-                Adicionar Módulo
-              </h2>
-              <button
-                onClick={() => setShowAddModuleModal(false)}
-                className="text-gold-400 hover:text-gold-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
-                  Título do Módulo
-                </label>
-                <input
-                  type="text"
-                  value={moduleForm.title}
-                  onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  placeholder="Ex: Módulo 1: Fundamentos"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
-                  Descrição
-                </label>
-                <textarea
-                  value={moduleForm.description}
-                  onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  rows={3}
-                  placeholder="Descrição do módulo..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
-                  Ordem no Curso
-                </label>
-                <input
-                  type="number"
-                  value={moduleForm.orderIndex}
-                  onChange={(e) => setModuleForm({ ...moduleForm, orderIndex: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  placeholder="Ex: 0"
-                  min="0"
-                  required
-                />
-                <p className="text-xs text-gold-300 mt-1">Posição do módulo dentro do curso</p>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowAddModuleModal(false)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={saveNewModule}
-                  disabled={!moduleForm.title}
-                  className="flex-1"
-                >
-                  Adicionar Módulo
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Edit Module Modal */}
-      {showEditModuleModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
-                <Edit className="w-6 h-6" />
-                Editar Módulo
-              </h2>
-              <button
-                onClick={() => {
-                  setShowEditModuleModal(false)
-                  setEditingModule(null)
-                }}
-                className="text-gold-400 hover:text-gold-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
-                  Título do Módulo
-                </label>
-                <input
-                  type="text"
-                  value={moduleForm.title}
-                  onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  placeholder="Ex: Módulo 1: Fundamentos"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
-                  Descrição
-                </label>
-                <textarea
-                  value={moduleForm.description}
-                  onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  rows={3}
-                  placeholder="Descrição do módulo..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
-                  Ordem no Curso
-                </label>
-                <input
-                  type="number"
-                  value={moduleForm.orderIndex}
-                  onChange={(e) => setModuleForm({ ...moduleForm, orderIndex: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  placeholder="Ex: 0"
-                  min="0"
-                  required
-                />
-                <p className="text-xs text-gold-300 mt-1">Posição do módulo dentro do curso</p>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setShowEditModuleModal(false)
-                    setEditingModule(null)
-                  }}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={saveEditModule}
-                  disabled={!moduleForm.title}
-                  className="flex-1"
-                >
-                  Salvar Alterações
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
       {/* Associate Items Modal */}
       {showAssociateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -858,8 +614,9 @@ export default function StructurePage() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
                 <Link2 className="w-6 h-6" />
-                Associar {associateType === 'subject' ? 'Disciplinas' : 
-                         associateType === 'lesson' ? 'Aulas' : 'Testes'}
+                {associateType === 'module' ? 'Gerenciar Módulos' :
+                 `Associar ${associateType === 'subject' ? 'Disciplinas' : 
+                           associateType === 'lesson' ? 'Aulas' : 'Testes'}`}
               </h2>
               <button
                 onClick={() => setShowAssociateModal(false)}
@@ -874,11 +631,14 @@ export default function StructurePage() {
                 <div className="text-center py-8">
                   <AlertCircle className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
                   <p className="text-gold-300">
-                    Nenhum {associateType === 'subject' ? 'disciplina disponível' : 
-                            associateType === 'lesson' ? 'aula disponível' : 'teste disponível'}
+                    {associateType === 'module' ? 'Nenhum módulo criado para este curso' :
+                     `Nenhum ${associateType === 'subject' ? 'disciplina disponível' : 
+                              associateType === 'lesson' ? 'aula disponível' : 'teste disponível'}`}
                   </p>
                   <p className="text-gold-400 text-sm mt-2">
-                    Crie novos itens na página correspondente antes de associá-los
+                    {associateType === 'module' ? 
+                     'Crie módulos na página de Módulos e eles aparecerão automaticamente aqui' :
+                     'Crie novos itens na página correspondente antes de associá-los'}
                   </p>
                 </div>
               ) : (
