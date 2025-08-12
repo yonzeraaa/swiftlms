@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 
 export async function DELETE(
@@ -29,31 +28,37 @@ export async function DELETE(
     const { id: userId } = await params
 
     // Delete related data in order to avoid foreign key constraints
-    // 1. Delete activity logs
+    // 1. Delete test attempts
+    await supabase
+      .from('test_attempts')
+      .delete()
+      .eq('user_id', userId)
+
+    // 2. Delete activity logs
     await supabase
       .from('activity_logs')
       .delete()
       .eq('user_id', userId)
 
-    // 2. Delete lesson progress
+    // 3. Delete lesson progress
     await supabase
       .from('lesson_progress')
       .delete()
       .eq('user_id', userId)
 
-    // 3. Delete course reviews
+    // 4. Delete course reviews
     await supabase
       .from('course_reviews')
       .delete()
       .eq('user_id', userId)
 
-    // 4. Delete enrollments
+    // 5. Delete enrollments
     await supabase
       .from('enrollments')
       .delete()
       .eq('user_id', userId)
 
-    // 5. Delete from profiles
+    // 6. Delete from profiles (this will trigger deletion from auth.users)
     const { error: profileError } = await supabase
       .from('profiles')
       .delete()
@@ -61,33 +66,6 @@ export async function DELETE(
 
     if (profileError) {
       throw profileError
-    }
-
-    // Try to delete from auth.users if service role key is available
-    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      try {
-        const serviceSupabase = createServiceClient(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!,
-          {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false
-            }
-          }
-        )
-
-        const { error: authDeleteError } = await serviceSupabase.auth.admin.deleteUser(userId)
-        
-        if (authDeleteError) {
-          console.error('Error deleting auth user:', authDeleteError)
-          // Continue even if auth deletion fails
-        }
-      } catch (error) {
-        console.error('Error using service role:', error)
-      }
-    } else {
-      console.log('Service role key not configured. Auth user will remain but cannot access the system.')
     }
 
     return NextResponse.json({ success: true, message: 'User deleted successfully' })

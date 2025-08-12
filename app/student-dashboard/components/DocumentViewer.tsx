@@ -104,9 +104,9 @@ export default function DocumentViewer({ url, title, onComplete }: DocumentViewe
   const isPDF = embedUrl.endsWith('.pdf')
 
   return (
-    <div ref={containerRef} className="relative w-full h-full min-h-[600px] bg-navy-900/50 rounded-lg overflow-hidden">
+    <div ref={containerRef} className="relative w-full h-[600px] bg-navy-900/50 rounded-lg overflow-hidden flex flex-col">
       {/* Controles */}
-      <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent p-4 z-10">
+      <div className="relative bg-gradient-to-b from-black/70 to-transparent p-4 z-10 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <FileText className="w-5 h-5 text-gold-400" />
@@ -169,32 +169,36 @@ export default function DocumentViewer({ url, title, onComplete }: DocumentViewe
         )}
       </AnimatePresence>
 
-      {/* Visualizador de documento */}
-      {isPDF ? (
-        // Para PDFs, usar embed ou object
-        <embed
-          src={embedUrl}
-          type="application/pdf"
-          className="w-full h-full mt-14"
-          onLoad={() => setIsLoading(false)}
-        />
-      ) : (
-        // Para outros documentos, usar iframe
-        <iframe
-          ref={iframeRef}
-          src={embedUrl}
-          className="w-full h-full mt-14"
-          frameBorder="0"
-          allowFullScreen
-          onLoad={() => setIsLoading(false)}
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-          title={title || 'Documento'}
-        />
-      )}
+      {/* Container do visualizador */}
+      <div className="relative flex-1 w-full">
+        {/* Visualizador de documento */}
+        {isPDF ? (
+          // Para PDFs, usar embed ou object
+          <embed
+            src={embedUrl}
+            type="application/pdf"
+            className="w-full h-full"
+            onLoad={() => setIsLoading(false)}
+          />
+        ) : (
+          // Para outros documentos, usar iframe
+          <iframe
+            ref={iframeRef}
+            src={embedUrl}
+            className="w-full h-full"
+            frameBorder="0"
+            allowFullScreen
+            onLoad={() => setIsLoading(false)}
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            title={title || 'Documento'}
+            style={{ border: 'none' }}
+          />
+        )}
+      </div>
 
       {/* Fallback message */}
       {!isLoading && (
-        <div className="absolute bottom-4 left-4 right-4 bg-navy-800/90 rounded-lg p-3 text-center">
+        <div className="absolute bottom-4 left-4 right-4 bg-navy-800/90 rounded-lg p-3 text-center z-20">
           <p className="text-gold-300 text-sm">
             Problemas para visualizar? 
             <button

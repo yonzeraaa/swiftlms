@@ -97,12 +97,20 @@ export default function CoursePage() {
         return
       }
 
-      // Fetch modules with lessons
+      // Fetch modules with subjects and lessons
       const { data: modulesData } = await supabase
         .from('course_modules')
         .select(`
           *,
-          lessons(*)
+          module_subjects (
+            subject:subjects (
+              *,
+              subject_lessons (
+                lesson:lessons (*)
+              )
+            ),
+            order_index
+          )
         `)
         .eq('course_id', courseId)
         .order('order_index')
@@ -121,21 +129,40 @@ export default function CoursePage() {
 
       if (modulesData) {
         for (const module of modulesData) {
-          const lessons = (module as any).lessons || []
-          const lessonsWithProgress = lessons.map((lesson: Lesson) => {
-            const progress = progressData?.find(p => p.lesson_id === lesson.id)
-            if (progress?.is_completed) {
-              completedLessonCount++
-            } else if (!firstIncompleteLesson) {
-              firstIncompleteLesson = lesson
+          const allLessons: (Lesson & { progress?: LessonProgress })[] = []
+          
+          // Extract lessons from module_subjects -> subjects -> subject_lessons -> lessons
+          const moduleSubjects = (module as any).module_subjects || []
+          
+          // Sort module_subjects by order_index
+          moduleSubjects.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
+          
+          for (const moduleSubject of moduleSubjects) {
+            if (moduleSubject.subject && moduleSubject.subject.subject_lessons) {
+              for (const subjectLesson of moduleSubject.subject.subject_lessons) {
+                if (subjectLesson.lesson) {
+                  const lesson = subjectLesson.lesson
+                  const progress = progressData?.find(p => p.lesson_id === lesson.id)
+                  
+                  if (progress?.is_completed) {
+                    completedLessonCount++
+                  } else if (!firstIncompleteLesson) {
+                    firstIncompleteLesson = lesson
+                  }
+                  
+                  totalLessonCount++
+                  allLessons.push({ ...lesson, progress })
+                }
+              }
             }
-            totalLessonCount++
-            return { ...lesson, progress }
-          })
+          }
+
+          // Sort lessons by order_index
+          allLessons.sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
 
           modulesWithProgress.push({
             ...module,
-            lessons: lessonsWithProgress
+            lessons: allLessons
           })
         }
       }
@@ -204,6 +231,72 @@ export default function CoursePage() {
         })
 
       if (!error) {
+        // Calculate new progress
+        const newCompletedLessons = completedLessons + 1
+        const progressPercentage = totalLessons > 0 
+          ? Math.round((newCompletedLessons / totalLessons) * 100)
+          : 0
+        
+        // Update enrollment progress and status if course is completed
+        const updateData: any = { 
+          progress_percentage: progressPercentage,
+          updated_at: new Date().toISOString()
+        }
+        
+        // If course is 100% complete, update status
+        if (progressPercentage === 100) {
+          updateData.status = 'completed'
+          updateData.completed_at = new Date().toISOString()
+          
+          // Update enrollment
+          await supabase
+            .from('enrollments')
+            .update(updateData)
+            .eq('id', course.enrollment.id)
+          
+          // Check if certificate already exists
+          const { data: existingCert } = await supabase
+            .from('certificates')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('course_id', course.id)
+            .single()
+          
+          // Create certificate if it doesn't exist
+          if (!existingCert) {
+            const certificateNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+            const verificationCode = Math.random().toString(36).substr(2, 16).toUpperCase()
+            
+            const { error: certError } = await supabase
+              .from('certificates')
+              .insert({
+                user_id: user.id,
+                course_id: course.id,
+                enrollment_id: course.enrollment.id,
+                certificate_number: certificateNumber,
+                verification_code: verificationCode,
+                course_hours: course.duration_hours || 0,
+                grade: Math.round((completedLessons / totalLessons) * 100),
+                issued_at: new Date().toISOString(),
+                instructor_name: course.instructor?.name || 'SwiftEDU'
+              })
+            
+            if (!certError) {
+              // Show success message with certificate info
+              alert('🎉 Parabéns! Você concluiu este curso com sucesso!\n\n📜 Seu certificado foi gerado e está disponível na seção "Certificados".')
+            }
+          } else {
+            // Show success message
+            alert('🎉 Parabéns! Você concluiu este curso com sucesso!')
+          }
+        } else {
+          // Just update progress
+          await supabase
+            .from('enrollments')
+            .update(updateData)
+            .eq('id', course.enrollment.id)
+        }
+        
         // Auto-advance to next lesson
         const currentModuleIndex = course.modules.findIndex(m => 
           m.lessons.some(l => l.id === lessonId)
@@ -459,7 +552,7 @@ export default function CoursePage() {
                 </div>
 
                 {/* Lesson Content */}
-                <div className="bg-navy-900/50 rounded-lg p-6 min-h-[400px]">
+                <div className="bg-navy-900/50 rounded-lg overflow-hidden">
                   {selectedLesson.content_type === 'video' ? (
                     selectedLesson.content_url ? (
                       <VideoPlayer

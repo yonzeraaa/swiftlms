@@ -107,7 +107,21 @@ export default function StudentDashboard() {
       // Fetch user progress statistics using the database function
       const { data: progressStats, error: statsError } = await supabase
         .rpc('get_user_progress_stats', { p_user_id: userId })
-        .single()
+        .single() as { 
+          data: {
+            total_enrolled_courses: number
+            completed_courses: number
+            in_progress_courses: number
+            total_lessons: number
+            completed_lessons: number
+            total_hours_content: number
+            hours_completed: number
+            overall_progress: number
+            current_streak: number
+            total_certificates?: number
+          } | null
+          error: any
+        }
 
       if (statsError) {
         console.error('Error fetching progress stats:', statsError)
@@ -145,7 +159,7 @@ export default function StudentDashboard() {
           enrolledCourses: progressStats.total_enrolled_courses || 0,
           completedCourses: progressStats.completed_courses || 0,
           hoursLearned: Math.round(progressStats.hours_completed || 0),
-          certificates: progressStats.completed_courses || 0,
+          certificates: progressStats.total_certificates || progressStats.completed_courses || 0,
           currentStreak: progressStats.current_streak || 0,
           overallProgress: progressStats.overall_progress || 0
         })

@@ -60,12 +60,20 @@ export default function MyCoursesPage() {
 
         for (const enrollment of enrollments) {
           if (enrollment.course) {
-            // Fetch modules and lessons for each course
+            // Fetch modules with subjects and lessons for each course
             const { data: modules } = await supabase
               .from('course_modules')
               .select(`
                 *,
-                lessons(*)
+                module_subjects (
+                  subject:subjects (
+                    *,
+                    subject_lessons (
+                      lesson:lessons (*)
+                    )
+                  ),
+                  order_index
+                )
               `)
               .eq('course_id', enrollment.course.id)
               .order('order_index')
@@ -80,26 +88,110 @@ export default function MyCoursesPage() {
             let totalLessons = 0
             let completedLessons = 0
             let nextLesson: Lesson | undefined
+            const allLessons: Lesson[] = []
 
             if (modules) {
+              // Extract lessons from the nested structure
               modules.forEach(module => {
-                const lessons = (module as any).lessons || []
-                totalLessons += lessons.length
+                const moduleSubjects = (module as any).module_subjects || []
                 
-                lessons.forEach((lesson: Lesson) => {
-                  const progress = lessonProgress?.find(lp => lp.lesson_id === lesson.id)
-                  if (progress?.is_completed) {
-                    completedLessons++
-                  } else if (!nextLesson) {
-                    nextLesson = lesson
+                // Sort module_subjects by order_index
+                moduleSubjects.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
+                
+                moduleSubjects.forEach((moduleSubject: any) => {
+                  if (moduleSubject.subject && moduleSubject.subject.subject_lessons) {
+                    moduleSubject.subject.subject_lessons.forEach((subjectLesson: any) => {
+                      if (subjectLesson.lesson) {
+                        const lesson = subjectLesson.lesson
+                        allLessons.push(lesson)
+                        totalLessons++
+                        
+                        const progress = lessonProgress?.find(lp => lp.lesson_id === lesson.id)
+                        if (progress?.is_completed) {
+                          completedLessons++
+                        } else if (!nextLesson) {
+                          nextLesson = lesson
+                        }
+                      }
+                    })
                   }
                 })
               })
             }
+            
+            // Calculate progress percentage
+            const progressPercentage = totalLessons > 0 
+              ? Math.round((completedLessons / totalLessons) * 100)
+              : 0
+            
+            // Update enrollment progress and status if needed
+            const isCompleted = progressPercentage === 100
+            const shouldUpdateStatus = isCompleted && enrollment.status !== 'completed'
+            const shouldUpdateProgress = enrollment.progress_percentage !== progressPercentage
+            
+            if (shouldUpdateProgress || shouldUpdateStatus) {
+              const updateData: any = { 
+                progress_percentage: progressPercentage,
+                updated_at: new Date().toISOString()
+              }
+              
+              // Update status to completed if course is 100% complete
+              if (shouldUpdateStatus) {
+                updateData.status = 'completed'
+                updateData.completed_at = new Date().toISOString()
+              }
+              
+              const { data: updatedEnrollment, error } = await supabase
+                .from('enrollments')
+                .update(updateData)
+                .eq('id', enrollment.id)
+                .select()
+                .single()
+              
+              // Update local enrollment object with new data
+              if (updatedEnrollment && !error) {
+                enrollment.status = updatedEnrollment.status
+                enrollment.progress_percentage = updatedEnrollment.progress_percentage
+                enrollment.completed_at = updatedEnrollment.completed_at
+              }
+              
+              // Generate certificate if course is completed and doesn't have one
+              if (isCompleted) {
+                const { data: existingCert } = await supabase
+                  .from('certificates')
+                  .select('id')
+                  .eq('user_id', user.id)
+                  .eq('course_id', enrollment.course.id)
+                  .single()
+                
+                if (!existingCert) {
+                  const certificateNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+                  const verificationCode = Math.random().toString(36).substr(2, 16).toUpperCase()
+                  
+                  await supabase
+                    .from('certificates')
+                    .insert({
+                      user_id: user.id,
+                      course_id: enrollment.course.id,
+                      enrollment_id: enrollment.id,
+                      certificate_number: certificateNumber,
+                      verification_code: verificationCode,
+                      course_hours: enrollment.course.duration_hours || 0,
+                      grade: 100,
+                      issued_at: new Date().toISOString(),
+                      instructor_name: 'SwiftEDU'
+                    })
+                }
+              }
+            }
 
             coursesWithDetails.push({
               ...enrollment.course,
-              enrollment: enrollment,
+              enrollment: {
+                ...enrollment,
+                status: progressPercentage === 100 ? 'completed' : enrollment.status,
+                progress_percentage: progressPercentage
+              },
               modules: modules || [],
               totalLessons,
               completedLessons,
@@ -380,13 +472,20 @@ export default function MyCoursesPage() {
                   </p>
                 </div>
 
-                {/* Next Lesson */}
-                {course.nextLesson && course.enrollment.status === 'active' && (
+                {/* Next Lesson or Completion Message */}
+                {course.enrollment.status === 'completed' ? (
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3">
+                    <p className="text-sm text-green-400 font-medium flex items-center gap-2">
+                      <Award className="w-4 h-4" />
+                      Parabéns! Você concluiu este curso!
+                    </p>
+                  </div>
+                ) : course.nextLesson ? (
                   <div className="bg-navy-800/50 rounded-lg p-3">
                     <p className="text-sm text-gold-300 mb-1">Próxima aula:</p>
                     <p className="text-gold font-medium">{course.nextLesson.title}</p>
                   </div>
-                )}
+                ) : null}
 
                 {/* Actions */}
                 <div className="flex gap-3">
@@ -411,17 +510,17 @@ export default function MyCoursesPage() {
                     <>
                       <Button 
                         className="flex-1"
+                        variant="primary"
+                        onClick={() => router.push('/student-dashboard/certificates')}
+                        icon={<Award className="w-4 h-4" />}
+                      >
+                        Ver Certificado
+                      </Button>
+                      <Button 
                         variant="secondary"
                         onClick={() => router.push(`/student-dashboard/course/${course.id}`)}
                       >
-                        Revisar Conteúdo
-                      </Button>
-                      <Button 
-                        variant="primary"
-                        onClick={() => router.push(`/student-dashboard/certificates/${course.id}`)}
-                        icon={<Award className="w-4 h-4" />}
-                      >
-                        {''}
+                        Revisar
                       </Button>
                     </>
                   ) : (
