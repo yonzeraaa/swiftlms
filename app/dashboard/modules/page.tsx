@@ -3,14 +3,157 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Folder, Plus, Edit, Trash2, Search, X, Loader2, AlertCircle, BookOpen } from 'lucide-react'
+import { Folder, Plus, Edit, Trash2, Search, X, Loader2, AlertCircle, BookOpen, GripVertical } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable'
+import {
+  useSortable
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
+
+interface SortableModuleProps {
+  module: CourseModule
+  course?: Course
+  stats: { subjects: number }
+  onEdit: (module: CourseModule) => void
+  onDelete: (module: CourseModule) => void
+}
+
+function SortableModule({ module, course, stats, onEdit, onDelete }: SortableModuleProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+    isSorting
+  } = useSortable({ id: module.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+    scale: isDragging ? 1.05 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`
+        cursor-grab active:cursor-grabbing transition-all duration-200
+        ${isDragging ? 'z-50 rotate-2' : 'z-0'}
+        ${isSorting ? 'cursor-grabbing' : ''}
+      `}
+    >
+      <Card 
+        variant="gradient" 
+        className={`
+          relative group transition-all duration-200
+          ${isDragging ? 'shadow-2xl ring-2 ring-gold-500/50' : 'hover:shadow-xl'}
+          ${!isDragging && !isSorting ? 'hover:scale-[1.02]' : ''}
+        `}
+      >
+        {/* Drag Indicator Overlay */}
+        {isDragging && (
+          <div className="absolute inset-0 bg-gradient-to-r from-gold-500/20 to-transparent rounded-xl pointer-events-none" />
+        )}
+        
+        <div className="space-y-4">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <GripVertical className={`
+                  w-5 h-5 transition-all duration-200
+                  ${isDragging ? 'text-gold-400' : 'text-gold-500/30 group-hover:text-gold-500/50'}
+                `} />
+                <h3 className="text-xl font-bold text-gold">
+                  {module.title}
+                </h3>
+              </div>
+              {course && (
+                <p className="text-sm text-gold-400 mt-1 flex items-center gap-1 ml-7">
+                  <BookOpen className="w-4 h-4" />
+                  {course.title}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit(module)
+                }}
+                className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700 rounded-lg transition-colors"
+                title="Editar módulo"
+              >
+                <Edit className="w-4 h-4" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(module)
+                }}
+                className="p-2 text-red-400 hover:text-red-300 hover:bg-navy-700 rounded-lg transition-colors"
+                title="Excluir módulo"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {module.description && (
+            <p className="text-gold-300 text-sm ml-7">
+              {module.description}
+            </p>
+          )}
+
+          <div className="flex items-center justify-between pt-4 border-t border-gold-500/20">
+            <div className="flex items-center gap-4 text-sm ml-7">
+              <span className="text-gold-400">
+                {stats.subjects} disciplina{stats.subjects !== 1 ? 's' : ''}
+              </span>
+              <span className={`
+                px-2 py-0.5 rounded transition-all duration-200
+                ${isDragging 
+                  ? 'bg-gold-500/30 text-gold-200 font-semibold' 
+                  : 'bg-navy-900/50 text-gold-400'
+                }
+              `}>
+                Ordem: {module.order_index}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}
 
 export default function ModulesPage() {
   const [modules, setModules] = useState<CourseModule[]>([])
@@ -26,10 +169,24 @@ export default function ModulesPage() {
     order_index: '0'
   })
   const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
   const [moduleStats, setModuleStats] = useState<{ [key: string]: { subjects: number } }>({})
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [selectedCourse, setSelectedCourse] = useState<string>('all')
   
   const supabase = createClient()
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   useEffect(() => {
     fetchData()
@@ -251,10 +408,126 @@ export default function ModulesPage() {
     setShowModal(true)
   }
 
-  const filteredModules = modules.filter(module =>
-    module.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    module.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+
+    if (!over || active.id === over.id) return
+
+    const oldIndex = modules.findIndex(m => m.id === active.id)
+    const newIndex = modules.findIndex(m => m.id === over.id)
+
+    if (oldIndex === -1 || newIndex === -1) return
+
+    // Store original order for rollback
+    const originalModules = [...modules]
+
+    // Reorder locally for immediate feedback
+    const reorderedModules = arrayMove(modules, oldIndex, newIndex)
+    setModules(reorderedModules)
+
+    // Save to database
+    setIsSaving(true)
+    setMessage({ type: 'info', text: 'Salvando nova ordem...' })
+    
+    try {
+      // Get only the modules from the same course to avoid conflicts
+      const courseId = reorderedModules[0]?.course_id
+      if (!courseId) throw new Error('Course ID not found')
+
+      // Filter modules by course
+      const courseModules = reorderedModules.filter(m => m.course_id === courseId)
+      
+      // Create update promises with temporary indices first
+      const tempUpdates = courseModules.map((module, index) => 
+        supabase
+          .from('course_modules')
+          .update({ 
+            order_index: 100000 + index,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', module.id)
+          .select()
+      )
+
+      // Execute all temporary updates
+      const tempResults = await Promise.all(tempUpdates)
+      
+      // Check for errors in temporary updates
+      const tempErrors = tempResults.filter(r => r.error)
+      if (tempErrors.length > 0) {
+        throw new Error(`Failed to update temporary indices: ${tempErrors[0].error?.message || 'Unknown error'}`)
+      }
+
+      // Create final update promises
+      const finalUpdates = courseModules.map((module, index) => 
+        supabase
+          .from('course_modules')
+          .update({ 
+            order_index: index,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', module.id)
+          .select()
+      )
+
+      // Execute all final updates
+      const finalResults = await Promise.all(finalUpdates)
+      
+      // Check for errors in final updates
+      const finalErrors = finalResults.filter(r => r.error)
+      if (finalErrors.length > 0) {
+        throw new Error(`Failed to update final indices: ${finalErrors[0].error?.message || 'Unknown error'}`)
+      }
+
+      setMessage({ type: 'success', text: '✓ Ordem atualizada com sucesso!' })
+      
+      // Refresh data to ensure consistency
+      setTimeout(() => {
+        fetchData()
+      }, 500)
+      
+    } catch (error: any) {
+      console.error('Error reordering modules:', error)
+      setMessage({ 
+        type: 'error', 
+        text: `Erro ao reordenar: ${error.message || 'Tente novamente'}` 
+      })
+      // Revert to original order
+      setModules(originalModules)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Filter modules by search and selected course
+  const filteredModules = modules.filter(module => {
+    const matchesSearch = module.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      module.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    
+    const matchesCourse = selectedCourse === 'all' || module.course_id === selectedCourse
+    
+    return matchesSearch && matchesCourse
+  })
+
+  // Sort filtered modules by course and then by order
+  const sortedModules = [...filteredModules].sort((a, b) => {
+    // First sort by course
+    const courseA = courses.find(c => c.id === a.course_id)?.title || ''
+    const courseB = courses.find(c => c.id === b.course_id)?.title || ''
+    const courseCompare = courseA.localeCompare(courseB)
+    
+    if (courseCompare !== 0) return courseCompare
+    
+    // Then sort by order within the same course
+    return (a.order_index || 0) - (b.order_index || 0)
+  })
+
+  const activeModule = activeId ? modules.find(m => m.id === activeId) : null
 
   if (loading) {
     return (
@@ -274,7 +547,7 @@ export default function ModulesPage() {
             Módulos
           </h1>
           <p className="text-gold-300 mt-1">
-            Gerencie os módulos dos cursos
+            Gerencie os módulos dos cursos. Arraste para reordenar.
           </p>
         </div>
         <Button
@@ -291,102 +564,128 @@ export default function ModulesPage() {
           <div className="flex items-center gap-2">
             {message.type === 'success' ? (
               <AlertCircle className="w-5 h-5 text-green-400" />
-            ) : (
+            ) : message.type === 'error' ? (
               <AlertCircle className="w-5 h-5 text-red-400" />
+            ) : (
+              <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
             )}
-            <p className={message.type === 'success' ? 'text-green-300' : 'text-red-300'}>
+            <p className={
+              message.type === 'success' ? 'text-green-300' : 
+              message.type === 'error' ? 'text-red-300' : 
+              'text-blue-300'
+            }>
               {message.text}
             </p>
           </div>
         </Card>
       )}
 
-      {/* Search */}
+      {/* Search and Filters */}
       <Card>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
-          <input
-            type="text"
-            placeholder="Buscar módulos..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
-          />
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+              <input
+                type="text"
+                placeholder="Buscar módulos..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+              />
+            </div>
+            <select
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+            >
+              <option value="all">Todos os cursos</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Drag Instructions */}
+          {sortedModules.length > 1 && (
+            <div className="flex items-center gap-2 text-sm text-gold-400/70">
+              <GripVertical className="w-4 h-4" />
+              <span>Arraste os cards para reordenar os módulos</span>
+            </div>
+          )}
         </div>
       </Card>
 
-      {/* Modules Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredModules.length > 0 ? (
-          filteredModules.map((module) => {
-            const course = courses.find(c => c.id === module.course_id)
-            const stats = moduleStats[module.id] || { subjects: 0 }
-            
-            return (
-              <Card key={module.id} variant="gradient" className="relative group">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gold">
-                        {module.title}
-                      </h3>
-                      {course && (
-                        <p className="text-sm text-gold-400 mt-1 flex items-center gap-1">
-                          <BookOpen className="w-4 h-4" />
-                          {course.title}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(module)}
-                        className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700 rounded-lg transition-colors"
-                        title="Editar módulo"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(module)}
-                        className="p-2 text-red-400 hover:text-red-300 hover:bg-navy-700 rounded-lg transition-colors"
-                        title="Excluir módulo"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {module.description && (
-                    <p className="text-gold-300 text-sm">
-                      {module.description}
-                    </p>
-                  )}
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gold-500/20">
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-gold-400">
-                        {stats.subjects} disciplina{stats.subjects !== 1 ? 's' : ''}
-                      </span>
-                      <span className="text-gold-400">
-                        Ordem: {module.order_index}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )
-          })
-        ) : (
-          <div className="col-span-full">
-            <Card>
-              <div className="text-center py-12">
-                <Folder className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                <p className="text-gold-300">
-                  {searchTerm ? 'Nenhum módulo encontrado' : 'Nenhum módulo cadastrado'}
-                </p>
-              </div>
-            </Card>
+      {/* Modules Grid with Drag and Drop */}
+      <div className="relative">
+        {isSaving && (
+          <div className="absolute inset-0 bg-navy-900/50 backdrop-blur-sm flex items-center justify-center z-50 rounded-xl">
+            <div className="bg-navy-800 px-4 py-2 rounded-lg border border-gold-500/20">
+              <p className="text-gold-300">Salvando alterações...</p>
+            </div>
           </div>
         )}
+        
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={sortedModules.map(m => m.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sortedModules.length > 0 ? (
+                sortedModules.map((module) => {
+                  const course = courses.find(c => c.id === module.course_id)
+                  const stats = moduleStats[module.id] || { subjects: 0 }
+                  
+                  return (
+                    <SortableModule
+                      key={module.id}
+                      module={module}
+                      course={course}
+                      stats={stats}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  )
+                })
+              ) : (
+                <div className="col-span-full">
+                  <Card>
+                    <div className="text-center py-12">
+                      <Folder className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                      <p className="text-gold-300">
+                        {searchTerm ? 'Nenhum módulo encontrado' : 'Nenhum módulo cadastrado'}
+                      </p>
+                    </div>
+                  </Card>
+                </div>
+              )}
+            </div>
+          </SortableContext>
+          
+          <DragOverlay>
+            {activeModule ? (
+              <div className="transform rotate-3 scale-105">
+                <Card variant="gradient" className="shadow-2xl ring-2 ring-gold-500 bg-navy-800/95">
+                  <div className="flex items-center gap-3 px-4 py-3">
+                    <GripVertical className="w-5 h-5 text-gold-400 animate-pulse" />
+                    <div>
+                      <p className="text-gold-200 font-semibold">{activeModule.title}</p>
+                      <p className="text-gold-400 text-xs">Solte para reordenar</p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </div>
 
       {/* Create/Edit Modal */}
