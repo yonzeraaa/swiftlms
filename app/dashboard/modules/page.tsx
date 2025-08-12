@@ -87,15 +87,48 @@ export default function ModulesPage() {
     setMessage(null)
 
     try {
+      const newOrderIndex = parseInt(formData.order_index) || 0
+      
       if (editingModule) {
-        // Update existing module
+        // Check if another module has the same order_index
+        const { data: existingModule } = await supabase
+          .from('course_modules')
+          .select('id, order_index')
+          .eq('course_id', formData.course_id)
+          .eq('order_index', newOrderIndex)
+          .neq('id', editingModule.id)
+          .single()
+        
+        if (existingModule) {
+          // Swap order indices using a temporary value to avoid unique constraint violation
+          const currentOrderIndex = editingModule.order_index || 0
+          const tempOrder = 999999
+          
+          // Step 1: Move editing module to temporary order
+          const { error: tempError } = await supabase
+            .from('course_modules')
+            .update({ order_index: tempOrder })
+            .eq('id', editingModule.id)
+          
+          if (tempError) throw tempError
+          
+          // Step 2: Move existing module to current module's order
+          const { error: swapError } = await supabase
+            .from('course_modules')
+            .update({ order_index: currentOrderIndex })
+            .eq('id', existingModule.id)
+          
+          if (swapError) throw swapError
+        }
+        
+        // Update the current module
         const { error } = await supabase
           .from('course_modules')
           .update({
             title: formData.title,
             description: formData.description,
             course_id: formData.course_id,
-            order_index: parseInt(formData.order_index) || 0,
+            order_index: newOrderIndex,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingModule.id)
@@ -103,6 +136,33 @@ export default function ModulesPage() {
         if (error) throw error
         setMessage({ type: 'success', text: 'Módulo atualizado com sucesso!' })
       } else {
+        // Check if another module has the same order_index for new modules
+        const { data: existingModule } = await supabase
+          .from('course_modules')
+          .select('id')
+          .eq('course_id', formData.course_id)
+          .eq('order_index', newOrderIndex)
+          .single()
+        
+        if (existingModule) {
+          // Increment all modules with order >= newOrderIndex
+          const { data: modulesToShift } = await supabase
+            .from('course_modules')
+            .select('id, order_index')
+            .eq('course_id', formData.course_id)
+            .gte('order_index', newOrderIndex)
+            .order('order_index', { ascending: false })
+          
+          if (modulesToShift) {
+            for (const module of modulesToShift) {
+              await supabase
+                .from('course_modules')
+                .update({ order_index: (module.order_index || 0) + 1 })
+                .eq('id', module.id)
+            }
+          }
+        }
+        
         // Create new module
         const { error } = await supabase
           .from('course_modules')
@@ -110,7 +170,7 @@ export default function ModulesPage() {
             title: formData.title,
             description: formData.description,
             course_id: formData.course_id,
-            order_index: parseInt(formData.order_index) || 0
+            order_index: newOrderIndex
           })
 
         if (error) throw error

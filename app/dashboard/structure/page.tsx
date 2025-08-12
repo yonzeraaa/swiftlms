@@ -19,12 +19,38 @@ import {
   FolderOpen,
   Folder,
   AlertCircle,
-  Check
+  Check,
+  GripVertical,
+  Loader2
 } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  DragOverEvent,
+  Active,
+  Over
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy
+} from '@dnd-kit/sortable'
+import {
+  useSortable
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface TreeNode {
   id: string
@@ -48,7 +74,21 @@ export default function StructurePage() {
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [associating, setAssociating] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
   const supabase = createClient()
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   useEffect(() => {
     fetchHierarchicalData()
@@ -132,7 +172,8 @@ export default function StructurePage() {
                 type: 'lesson',
                 title: lesson.title,
                 parentId: subject.id,
-                data: lesson
+                data: lesson,
+                order: lesson.order_index
               })
             })
 
@@ -147,6 +188,16 @@ export default function StructurePage() {
                 data: test
               })
             })
+
+            // Sort lessons by order
+            if (subjectNode.children) {
+              subjectNode.children.sort((a, b) => {
+                if (a.type === 'lesson' && b.type === 'lesson') {
+                  return (a.order || 0) - (b.order || 0)
+                }
+                return 0
+              })
+            }
 
             moduleNode.children!.push(subjectNode)
           })
@@ -211,7 +262,6 @@ export default function StructurePage() {
     }
   }
 
-
   const handleAssociate = async (parent: TreeNode, type: 'module' | 'subject' | 'lesson' | 'test') => {
     setParentNode(parent)
     setAssociateType(type)
@@ -266,7 +316,6 @@ export default function StructurePage() {
       console.error('Error loading available items:', error)
     }
   }
-
 
   const saveAssociations = async () => {
     if (!parentNode || selectedItems.length === 0) return
@@ -374,146 +423,359 @@ export default function StructurePage() {
     }
   }
 
-  const renderTree = (nodes: TreeNode[], level = 0) => {
-    return nodes.map(node => {
-      const isExpanded = expandedNodes.has(node.id)
-      const hasChildren = node.children && node.children.length > 0
-      const isSelected = selectedNode?.id === node.id
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
 
-      return (
-        <div key={node.id} className="select-none">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className={`
-              flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer
-              hover:bg-navy-800/50 transition-all group
-              ${isSelected ? 'bg-navy-800/70 ring-2 ring-gold-500/50' : ''}
-            `}
-            style={{ paddingLeft: `${level * 24 + 12}px` }}
-            onClick={() => {
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverId(event.over?.id as string || null)
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+    setOverId(null)
+
+    if (!over || active.id === over.id) return
+
+    const activeNode = findNodeById(treeData, active.id as string)
+    const overNode = findNodeById(treeData, over.id as string)
+
+    if (!activeNode || !overNode) return
+    
+    // Only allow reordering items of the same type and same parent
+    if (activeNode.type !== overNode.type) return
+    if (activeNode.parentId !== overNode.parentId) return
+
+    setIsSaving(true)
+    try {
+      if (activeNode.type === 'module' && activeNode.parentId === overNode.parentId) {
+        await reorderModules(activeNode, overNode)
+      } else if (activeNode.type === 'subject' && activeNode.parentId === overNode.parentId) {
+        await reorderSubjects(activeNode, overNode, activeNode.parentId!)
+      } else if (activeNode.type === 'lesson' && activeNode.parentId === overNode.parentId) {
+        await reorderLessons(activeNode, overNode)
+      }
+      
+      await fetchHierarchicalData()
+    } catch (error) {
+      console.error('Error reordering:', error)
+      alert('Erro ao reordenar itens')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const findNodeById = (nodes: TreeNode[], id: string): TreeNode | null => {
+    for (const node of nodes) {
+      if (node.id === id) return node
+      if (node.children) {
+        const found = findNodeById(node.children, id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  const reorderModules = async (activeNode: TreeNode, overNode: TreeNode) => {
+    const parentId = activeNode.parentId
+    if (!parentId) return
+
+    // Get all modules for this course
+    const { data: modules } = await supabase
+      .from('course_modules')
+      .select('*')
+      .eq('course_id', parentId)
+      .order('order_index')
+
+    if (!modules) return
+
+    const activeIndex = modules.findIndex(m => m.id === activeNode.id)
+    const overIndex = modules.findIndex(m => m.id === overNode.id)
+
+    if (activeIndex === -1 || overIndex === -1) return
+
+    // Reorder array
+    const reorderedModules = arrayMove(modules, activeIndex, overIndex)
+
+    // Update all affected modules
+    for (let i = 0; i < reorderedModules.length; i++) {
+      await supabase
+        .from('course_modules')
+        .update({ order_index: i })
+        .eq('id', reorderedModules[i].id)
+    }
+  }
+
+  const reorderSubjects = async (activeNode: TreeNode, overNode: TreeNode, moduleId: string) => {
+    // Get all subjects for this module
+    const { data: moduleSubjects } = await supabase
+      .from('module_subjects')
+      .select('*')
+      .eq('module_id', moduleId)
+      .order('order_index')
+
+    if (!moduleSubjects) return
+
+    const activeIndex = moduleSubjects.findIndex(ms => ms.subject_id === activeNode.id)
+    const overIndex = moduleSubjects.findIndex(ms => ms.subject_id === overNode.id)
+
+    if (activeIndex === -1 || overIndex === -1) return
+
+    // Reorder array
+    const reordered = arrayMove(moduleSubjects, activeIndex, overIndex)
+
+    // Update all affected subjects
+    for (let i = 0; i < reordered.length; i++) {
+      await supabase
+        .from('module_subjects')
+        .update({ order_index: i })
+        .eq('module_id', moduleId)
+        .eq('subject_id', reordered[i].subject_id)
+    }
+  }
+
+  const reorderLessons = async (activeNode: TreeNode, overNode: TreeNode) => {
+    // Get all lessons that share the same parent (through subject_lessons)
+    const { data: subjectLessons } = await supabase
+      .from('subject_lessons')
+      .select('lesson_id')
+      .eq('subject_id', activeNode.parentId!)
+
+    if (!subjectLessons) return
+
+    const lessonIds = subjectLessons.map(sl => sl.lesson_id)
+    
+    const { data: lessons } = await supabase
+      .from('lessons')
+      .select('*')
+      .in('id', lessonIds)
+      .order('order_index')
+
+    if (!lessons) return
+
+    const activeIndex = lessons.findIndex(l => l.id === activeNode.id)
+    const overIndex = lessons.findIndex(l => l.id === overNode.id)
+
+    if (activeIndex === -1 || overIndex === -1) return
+
+    // Reorder array
+    const reordered = arrayMove(lessons, activeIndex, overIndex)
+
+    // Update all affected lessons
+    for (let i = 0; i < reordered.length; i++) {
+      await supabase
+        .from('lessons')
+        .update({ order_index: i })
+        .eq('id', reordered[i].id)
+    }
+  }
+
+  const SortableTreeItem = ({ node, level }: { node: TreeNode; level: number }) => {
+    const isExpanded = expandedNodes.has(node.id)
+    const hasChildren = node.children && node.children.length > 0
+    const isSelected = selectedNode?.id === node.id
+    const canDrag = node.type === 'module' || node.type === 'subject' || node.type === 'lesson'
+    const isDragOver = overId === node.id
+
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging
+    } = useSortable({ 
+      id: node.id,
+      disabled: !canDrag
+    })
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.3 : 1,
+    }
+
+    return (
+      <div ref={setNodeRef} style={style}>
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className={`
+            flex items-center gap-2 py-2 px-3 rounded-lg
+            ${canDrag ? 'cursor-move' : 'cursor-pointer'}
+            ${isDragging ? 'bg-navy-700/50 scale-105' : 'hover:bg-navy-800/50'}
+            ${isDragOver && canDrag ? 'bg-gold-500/10 border-l-4 border-gold-500' : ''}
+            ${isSelected ? 'bg-navy-800/70 ring-2 ring-gold-500/50' : ''}
+            transition-all group relative
+          `}
+          style={{ paddingLeft: `${level * 24 + 12}px` }}
+          onClick={() => {
+            if (!isDragging) {
               setSelectedNode(node)
               if (hasChildren) toggleNode(node.id)
-            }}
-          >
-            {hasChildren && (
+            }
+          }}
+        >
+          {canDrag && (
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab hover:text-gold-300 text-gold-500/50 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="w-4 h-4" />
+            </div>
+          )}
+
+          {hasChildren && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleNode(node.id)
+              }}
+              className="p-0.5 hover:bg-navy-700 rounded"
+            >
+              {isExpanded ? (
+                <ChevronDown className="w-4 h-4 text-gold-400" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gold-400" />
+              )}
+            </button>
+          )}
+          
+          {!hasChildren && !canDrag && <div className="w-5" />}
+          
+          {getNodeIcon(node.type, isExpanded)}
+          
+          <span className="flex-1 text-gold-200">{node.title}</span>
+          
+          {node.order !== undefined && (
+            <span className="text-xs text-gold-500/50 px-2 py-0.5 bg-navy-900/50 rounded">
+              #{node.order}
+            </span>
+          )}
+          
+          <span className={`
+            px-2 py-0.5 rounded-full text-xs font-medium border
+            ${getTypeColor(node.type)}
+          `}>
+            {node.type === 'course' ? 'Curso' :
+             node.type === 'module' ? 'Módulo' :
+             node.type === 'subject' ? 'Disciplina' :
+             node.type === 'lesson' ? 'Aula' : 'Teste'}
+          </span>
+
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Associate modules button for courses */}
+            {node.type === 'course' && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  toggleNode(node.id)
+                  handleAssociate(node, 'module')
                 }}
-                className="p-0.5 hover:bg-navy-700 rounded"
+                className="p-1 hover:bg-navy-700 rounded"
+                title="Gerenciar Módulos"
               >
-                {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-gold-400" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-gold-400" />
-                )}
+                <Link2 className="w-3 h-3 text-blue-400" />
               </button>
             )}
             
-            {!hasChildren && <div className="w-5" />}
-            
-            {getNodeIcon(node.type, isExpanded)}
-            
-            <span className="flex-1 text-gold-200">{node.title}</span>
-            
-            <span className={`
-              px-2 py-0.5 rounded-full text-xs font-medium border
-              ${getTypeColor(node.type)}
-            `}>
-              {node.type === 'course' ? 'Curso' :
-               node.type === 'module' ? 'Módulo' :
-               node.type === 'subject' ? 'Disciplina' :
-               node.type === 'lesson' ? 'Aula' : 'Teste'}
-            </span>
-
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              {/* Associate modules button for courses */}
-              {node.type === 'course' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleAssociate(node, 'module')
-                  }}
-                  className="p-1 hover:bg-navy-700 rounded"
-                  title="Gerenciar Módulos"
-                >
-                  <Link2 className="w-3 h-3 text-blue-400" />
-                </button>
-              )}
-              
-              {/* Associate subjects button for modules */}
-              {node.type === 'module' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleAssociate(node, 'subject')
-                  }}
-                  className="p-1 hover:bg-navy-700 rounded"
-                  title="Associar Disciplinas"
-                >
-                  <Link2 className="w-3 h-3 text-green-400" />
-                </button>
-              )}
-              
-              {/* Associate lessons/tests button for subjects */}
-              {node.type === 'subject' && (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleAssociate(node, 'lesson')
-                    }}
-                    className="p-1 hover:bg-navy-700 rounded"
-                    title="Associar Aulas"
-                  >
-                    <Link2 className="w-3 h-3 text-purple-400" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      handleAssociate(node, 'test')
-                    }}
-                    className="p-1 hover:bg-navy-700 rounded"
-                    title="Associar Testes"
-                  >
-                    <Link2 className="w-3 h-3 text-red-400" />
-                  </button>
-                </>
-              )}
-              
-              {/* Delete button (only for modules and associations) */}
-              {(node.type === 'module' || (node.type !== 'course' && node.parentId)) && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteNode(node)
-                  }}
-                  className="p-1 hover:bg-navy-700 rounded"
-                  title={node.type === 'module' ? 'Excluir Módulo' : 'Remover da Estrutura'}
-                >
-                  <Trash2 className="w-3 h-3 text-red-400" />
-                </button>
-              )}
-            </div>
-          </motion.div>
-
-          <AnimatePresence>
-            {isExpanded && hasChildren && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
+            {/* Associate subjects button for modules */}
+            {node.type === 'module' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleAssociate(node, 'subject')
+                }}
+                className="p-1 hover:bg-navy-700 rounded"
+                title="Associar Disciplinas"
               >
-                {renderTree(node.children!, level + 1)}
-              </motion.div>
+                <Link2 className="w-3 h-3 text-green-400" />
+              </button>
             )}
-          </AnimatePresence>
-        </div>
+            
+            {/* Associate lessons/tests button for subjects */}
+            {node.type === 'subject' && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleAssociate(node, 'lesson')
+                  }}
+                  className="p-1 hover:bg-navy-700 rounded"
+                  title="Associar Aulas"
+                >
+                  <Link2 className="w-3 h-3 text-purple-400" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleAssociate(node, 'test')
+                  }}
+                  className="p-1 hover:bg-navy-700 rounded"
+                  title="Associar Testes"
+                >
+                  <Link2 className="w-3 h-3 text-red-400" />
+                </button>
+              </>
+            )}
+            
+            {/* Delete button (only for modules and associations) */}
+            {(node.type === 'module' || (node.type !== 'course' && node.parentId)) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeleteNode(node)
+                }}
+                className="p-1 hover:bg-navy-700 rounded"
+                title={node.type === 'module' ? 'Excluir Módulo' : 'Remover da Estrutura'}
+              >
+                <Trash2 className="w-3 h-3 text-red-400" />
+              </button>
+            )}
+          </div>
+        </motion.div>
+
+        <AnimatePresence>
+          {isExpanded && hasChildren && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              {renderTree(node.children!, level + 1)}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    )
+  }
+
+  const renderTree = (nodes: TreeNode[], level = 0) => {
+    // Group nodes by type to create separate sortable contexts
+    const sortableIds = nodes
+      .filter(n => n.type === 'module' || n.type === 'subject' || n.type === 'lesson')
+      .map(n => n.id)
+    
+    if (sortableIds.length > 0) {
+      return (
+        <SortableContext
+          items={sortableIds}
+          strategy={verticalListSortingStrategy}
+        >
+          {nodes.map(node => (
+            <SortableTreeItem key={node.id} node={node} level={level} />
+          ))}
+        </SortableContext>
       )
-    })
+    }
+
+    // For non-sortable items
+    return nodes.map(node => (
+      <SortableTreeItem key={node.id} node={node} level={level} />
+    ))
   }
 
   const filterTree = (nodes: TreeNode[], term: string): TreeNode[] => {
@@ -541,10 +803,12 @@ export default function StructurePage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Loader2 className="w-8 h-8 animate-spin text-gold-500" />
       </div>
     )
   }
+
+  const activeNode = activeId ? findNodeById(treeData, activeId) : null
 
   return (
     <div className="space-y-6">
@@ -572,6 +836,7 @@ export default function StructurePage() {
               <li>• <span className="text-blue-400">Módulos</span>: Crie na página de Módulos e associe aos cursos</li>
               <li>• <span className="text-green-400">Disciplinas</span>: Associe disciplinas existentes aos módulos</li>
               <li>• <span className="text-purple-400">Aulas</span> e <span className="text-red-400">Testes</span>: Associe às disciplinas</li>
+              <li>• <span className="text-gold-300">Arraste e solte</span> módulos, disciplinas e aulas para reorganizar</li>
             </ul>
           </div>
         </div>
@@ -592,19 +857,53 @@ export default function StructurePage() {
       </Card>
 
       {/* Tree View */}
-      <Card className="min-h-[500px]">
-        <div className="space-y-1">
-          {displayTree.length > 0 ? (
-            renderTree(displayTree)
-          ) : (
-            <div className="text-center py-12">
-              <Layers className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-              <p className="text-gold-300">
-                {searchTerm ? 'Nenhum item encontrado' : 'Nenhum curso cadastrado'}
-              </p>
+      <Card className="min-h-[500px] relative">
+        {isSaving && (
+          <div className="absolute inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center z-50 rounded-xl">
+            <div className="bg-navy-800 px-6 py-4 rounded-lg border border-gold-500/20 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 animate-spin text-gold-400" />
+              <p className="text-gold-300">Salvando alterações...</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
+        
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="space-y-1">
+            {displayTree.length > 0 ? (
+              renderTree(displayTree)
+            ) : (
+              <div className="text-center py-12">
+                <Layers className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                <p className="text-gold-300">
+                  {searchTerm ? 'Nenhum item encontrado' : 'Nenhum curso cadastrado'}
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <DragOverlay>
+            {activeNode ? (
+              <div className="bg-navy-800 border border-gold-500/30 rounded-lg px-4 py-2 shadow-2xl flex items-center gap-2">
+                {getNodeIcon(activeNode.type)}
+                <span className="text-gold-200 font-medium">{activeNode.title}</span>
+                <span className={`
+                  px-2 py-0.5 rounded-full text-xs font-medium border
+                  ${getTypeColor(activeNode.type)}
+                `}>
+                  {activeNode.type === 'module' ? 'Módulo' :
+                   activeNode.type === 'subject' ? 'Disciplina' :
+                   activeNode.type === 'lesson' ? 'Aula' : activeNode.type}
+                </span>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       </Card>
 
       {/* Associate Items Modal */}
