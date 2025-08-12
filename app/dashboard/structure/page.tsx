@@ -42,6 +42,7 @@ export default function StructurePage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null)
   const [showAddModuleModal, setShowAddModuleModal] = useState(false)
+  const [showEditModuleModal, setShowEditModuleModal] = useState(false)
   const [showAssociateModal, setShowAssociateModal] = useState(false)
   const [associateType, setAssociateType] = useState<'subject' | 'lesson' | 'test'>('subject')
   const [parentNode, setParentNode] = useState<TreeNode | null>(null)
@@ -51,6 +52,7 @@ export default function StructurePage() {
     title: '',
     description: ''
   })
+  const [editingModule, setEditingModule] = useState<TreeNode | null>(null)
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [associating, setAssociating] = useState(false)
   const supabase = createClient()
@@ -222,6 +224,16 @@ export default function StructurePage() {
     setShowAddModuleModal(true)
   }
 
+  const handleEditModule = (module: TreeNode) => {
+    if (module.type !== 'module' || !module.data) return
+    setEditingModule(module)
+    setModuleForm({
+      title: module.data.title || '',
+      description: module.data.description || ''
+    })
+    setShowEditModuleModal(true)
+  }
+
   const handleAssociate = async (parent: TreeNode, type: 'subject' | 'lesson' | 'test') => {
     setParentNode(parent)
     setAssociateType(type)
@@ -287,6 +299,29 @@ export default function StructurePage() {
     } catch (error) {
       console.error('Error saving module:', error)
       alert('Erro ao salvar módulo')
+    }
+  }
+
+  const saveEditModule = async () => {
+    if (!editingModule || !editingModule.data) return
+
+    try {
+      const { error } = await supabase
+        .from('course_modules')
+        .update({
+          title: moduleForm.title,
+          description: moduleForm.description
+        })
+        .eq('id', editingModule.id)
+
+      if (error) throw error
+      
+      setShowEditModuleModal(false)
+      setEditingModule(null)
+      fetchHierarchicalData()
+    } catch (error) {
+      console.error('Error updating module:', error)
+      alert('Erro ao atualizar módulo')
     }
   }
 
@@ -465,8 +500,19 @@ export default function StructurePage() {
                 </button>
               )}
               
-              {/* Associate subjects button for modules */}
+              {/* Edit and Associate buttons for modules */}
               {node.type === 'module' && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleEditModule(node)
+                    }}
+                    className="p-1 hover:bg-navy-700 rounded"
+                    title="Editar Módulo"
+                  >
+                    <Edit className="w-3 h-3 text-blue-400" />
+                  </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -477,6 +523,7 @@ export default function StructurePage() {
                 >
                   <Link2 className="w-3 h-3 text-green-400" />
                 </button>
+                </>
               )}
               
               {/* Associate lessons/tests button for subjects */}
@@ -688,6 +735,79 @@ export default function StructurePage() {
                   className="flex-1"
                 >
                   Adicionar Módulo
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Edit Module Modal */}
+      {showEditModuleModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
+                <Edit className="w-6 h-6" />
+                Editar Módulo
+              </h2>
+              <button
+                onClick={() => {
+                  setShowEditModuleModal(false)
+                  setEditingModule(null)
+                }}
+                className="text-gold-400 hover:text-gold-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gold-200 mb-2">
+                  Título do Módulo
+                </label>
+                <input
+                  type="text"
+                  value={moduleForm.title}
+                  onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })}
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  placeholder="Ex: Módulo 1: Fundamentos"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gold-200 mb-2">
+                  Descrição
+                </label>
+                <textarea
+                  value={moduleForm.description}
+                  onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })}
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  rows={3}
+                  placeholder="Descrição do módulo..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowEditModuleModal(false)
+                    setEditingModule(null)
+                  }}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={saveEditModule}
+                  disabled={!moduleForm.title}
+                  className="flex-1"
+                >
+                  Salvar Alterações
                 </Button>
               </div>
             </div>
