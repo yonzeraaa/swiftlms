@@ -27,45 +27,17 @@ export async function DELETE(
 
     const { id: userId } = await params
 
-    // Delete related data in order to avoid foreign key constraints
-    // 1. Delete test attempts
-    await supabase
-      .from('test_attempts')
-      .delete()
-      .eq('user_id', userId)
+    // Use the new function to delete user completely
+    const { data, error: deleteError } = await supabase
+      .rpc('delete_user_completely', { user_id_to_delete: userId })
 
-    // 2. Delete activity logs
-    await supabase
-      .from('activity_logs')
-      .delete()
-      .eq('user_id', userId)
+    if (deleteError) {
+      console.error('Error in delete_user_completely:', deleteError)
+      throw deleteError
+    }
 
-    // 3. Delete lesson progress
-    await supabase
-      .from('lesson_progress')
-      .delete()
-      .eq('user_id', userId)
-
-    // 4. Delete course reviews
-    await supabase
-      .from('course_reviews')
-      .delete()
-      .eq('user_id', userId)
-
-    // 5. Delete enrollments
-    await supabase
-      .from('enrollments')
-      .delete()
-      .eq('user_id', userId)
-
-    // 6. Delete from profiles (this will trigger deletion from auth.users)
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId)
-
-    if (profileError) {
-      throw profileError
+    if (!data) {
+      throw new Error('Failed to delete user - operation returned false')
     }
 
     return NextResponse.json({ success: true, message: 'User deleted successfully' })

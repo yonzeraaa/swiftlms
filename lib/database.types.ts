@@ -1164,6 +1164,10 @@ export type Database = {
         Args: { test_id_param: string }
         Returns: number
       }
+      delete_user_completely: {
+        Args: { user_id_to_delete: string }
+        Returns: boolean
+      }
       get_enrollment_count: {
         Args: { course_id: string }
         Returns: number
@@ -1180,6 +1184,7 @@ export type Database = {
           hours_completed: number
           overall_progress: number
           current_streak: number
+          total_certificates?: number
         }[]
       }
       log_activity: {
@@ -1191,6 +1196,10 @@ export type Database = {
           p_entity_name?: string
           p_metadata?: Json
         }
+        Returns: undefined
+      }
+      recalculate_enrollment_progress: {
+        Args: { p_enrollment_id: string }
         Returns: undefined
       }
     }
