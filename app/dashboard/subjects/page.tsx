@@ -25,7 +25,8 @@ export default function SubjectsPage() {
     name: '',
     code: '',
     description: '',
-    hours: ''
+    hours: '',
+    moduleOrderIndex: ''
   })
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -37,6 +38,8 @@ export default function SubjectsPage() {
   const [selectedLessons, setSelectedLessons] = useState<string[]>([])
   const [lessonsLoading, setLessonsLoading] = useState(false)
   const [lessonCount, setLessonCount] = useState<{ [key: string]: number }>({})
+  const [currentModuleOrder, setCurrentModuleOrder] = useState<number | null>(null)
+  const [subjectModuleId, setSubjectModuleId] = useState<string | null>(null)
   
   const supabase = createClient()
 
@@ -113,6 +116,17 @@ export default function SubjectsPage() {
           .eq('id', editingSubject.id)
 
         if (error) throw error
+        
+        // Atualizar ordem no módulo se aplicável
+        if (subjectModuleId && formData.moduleOrderIndex !== '') {
+          const { error: orderError } = await supabase
+            .from('module_subjects')
+            .update({ order_index: parseInt(formData.moduleOrderIndex) })
+            .eq('id', subjectModuleId)
+          
+          if (orderError) throw orderError
+        }
+        
         setMessage({ type: 'success', text: 'Disciplina atualizada com sucesso!' })
       } else {
         // Create new subject
@@ -130,8 +144,10 @@ export default function SubjectsPage() {
       }
 
       // Reset form and refresh data
-      setFormData({ name: '', code: '', description: '', hours: '' })
+      setFormData({ name: '', code: '', description: '', hours: '', moduleOrderIndex: '' })
       setEditingSubject(null)
+      setCurrentModuleOrder(null)
+      setSubjectModuleId(null)
       setShowModal(false)
       await fetchSubjects()
     } catch (error: any) {
@@ -145,14 +161,32 @@ export default function SubjectsPage() {
     }
   }
 
-  const handleEdit = (subject: Subject) => {
+  const handleEdit = async (subject: Subject) => {
     setEditingSubject(subject)
     setFormData({
       name: subject.name,
       code: subject.code || '',
       description: subject.description || '',
-      hours: subject.hours?.toString() || ''
+      hours: subject.hours?.toString() || '',
+      moduleOrderIndex: ''
     })
+    
+    // Buscar a ordem atual no módulo se a disciplina estiver associada a algum módulo
+    const { data: moduleSubject } = await supabase
+      .from('module_subjects')
+      .select('order_index, id')
+      .eq('subject_id', subject.id)
+      .single()
+    
+    if (moduleSubject) {
+      setCurrentModuleOrder(moduleSubject.order_index)
+      setSubjectModuleId(moduleSubject.id)
+      setFormData(prev => ({ ...prev, moduleOrderIndex: moduleSubject.order_index?.toString() || '' }))
+    } else {
+      setCurrentModuleOrder(null)
+      setSubjectModuleId(null)
+    }
+    
     setShowModal(true)
   }
 
@@ -192,7 +226,9 @@ export default function SubjectsPage() {
 
   const openCreateModal = () => {
     setEditingSubject(null)
-    setFormData({ name: '', code: '', description: '', hours: '' })
+    setFormData({ name: '', code: '', description: '', hours: '', moduleOrderIndex: '' })
+    setCurrentModuleOrder(null)
+    setSubjectModuleId(null)
     setShowModal(true)
   }
 
@@ -542,6 +578,24 @@ export default function SubjectsPage() {
                 />
                 <p className="text-xs text-gold-300 mt-1">Número de horas da disciplina</p>
               </div>
+
+              {editingSubject && currentModuleOrder !== null && (
+                <div>
+                  <label className="block text-sm font-medium text-gold-200 mb-2">
+                    Ordem no Módulo
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.moduleOrderIndex}
+                    onChange={(e) => setFormData({ ...formData, moduleOrderIndex: e.target.value })}
+                    className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    placeholder="Ex: 1"
+                    min="0"
+                    step="1"
+                  />
+                  <p className="text-xs text-gold-300 mt-1">Posição da disciplina dentro do módulo</p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gold-200 mb-2">

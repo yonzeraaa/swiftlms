@@ -50,7 +50,8 @@ export default function StructurePage() {
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [moduleForm, setModuleForm] = useState({
     title: '',
-    description: ''
+    description: '',
+    orderIndex: ''
   })
   const [editingModule, setEditingModule] = useState<TreeNode | null>(null)
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
@@ -220,7 +221,8 @@ export default function StructurePage() {
 
   const handleAddModule = (parent: TreeNode) => {
     setParentNode(parent)
-    setModuleForm({ title: '', description: '' })
+    const currentModuleCount = parent.children?.filter(c => c.type === 'module').length || 0
+    setModuleForm({ title: '', description: '', orderIndex: currentModuleCount.toString() })
     setShowAddModuleModal(true)
   }
 
@@ -229,7 +231,8 @@ export default function StructurePage() {
     setEditingModule(module)
     setModuleForm({
       title: module.data.title || '',
-      description: module.data.description || ''
+      description: module.data.description || '',
+      orderIndex: module.data.order_index?.toString() || '0'
     })
     setShowEditModuleModal(true)
   }
@@ -289,7 +292,7 @@ export default function StructurePage() {
           course_id: parentNode.id,
           title: moduleForm.title,
           description: moduleForm.description,
-          order_index: parentNode.children?.filter(c => c.type === 'module').length || 0
+          order_index: parseInt(moduleForm.orderIndex) || 0
         })
 
       if (error) throw error
@@ -310,7 +313,8 @@ export default function StructurePage() {
         .from('course_modules')
         .update({
           title: moduleForm.title,
-          description: moduleForm.description
+          description: moduleForm.description,
+          order_index: parseInt(moduleForm.orderIndex) || 0
         })
         .eq('id', editingModule.id)
 
@@ -720,6 +724,22 @@ export default function StructurePage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gold-200 mb-2">
+                  Ordem no Curso
+                </label>
+                <input
+                  type="number"
+                  value={moduleForm.orderIndex}
+                  onChange={(e) => setModuleForm({ ...moduleForm, orderIndex: e.target.value })}
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  placeholder="Ex: 0"
+                  min="0"
+                  required
+                />
+                <p className="text-xs text-gold-300 mt-1">Posição do módulo dentro do curso</p>
+              </div>
+
               <div className="flex gap-3 pt-4">
                 <Button
                   variant="secondary"
@@ -788,6 +808,22 @@ export default function StructurePage() {
                   rows={3}
                   placeholder="Descrição do módulo..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gold-200 mb-2">
+                  Ordem no Curso
+                </label>
+                <input
+                  type="number"
+                  value={moduleForm.orderIndex}
+                  onChange={(e) => setModuleForm({ ...moduleForm, orderIndex: e.target.value })}
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  placeholder="Ex: 0"
+                  min="0"
+                  required
+                />
+                <p className="text-xs text-gold-300 mt-1">Posição do módulo dentro do curso</p>
               </div>
 
               <div className="flex gap-3 pt-4">
