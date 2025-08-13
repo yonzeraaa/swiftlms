@@ -100,6 +100,38 @@ export default function TestResultsPage() {
         return
       }
 
+      // Get enrollment for this course
+      const { data: enrollmentData } = await supabase
+        .from('enrollments')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('course_id', testData.course_id!)
+        .single()
+
+      // Check if test passed and try to generate certificate
+      if (attemptData.score && attemptData.score >= (testData.passing_score || 60) && enrollmentData) {
+        // Call manual certificate generation using raw SQL
+        const { data: certResult } = await supabase
+          .from('certificates')
+          .select('*')
+          .eq('enrollment_id', enrollmentData.id)
+        
+        // If no certificate exists, attempt to generate one
+        if (!certResult || certResult.length === 0) {
+          // First update certificate requirements
+          await supabase.rpc('update_certificate_requirements' as any, {
+            p_enrollment_id: enrollmentData.id
+          })
+          
+          // Then try to generate certificate manually
+          const { data: genResult } = await supabase.rpc('manually_generate_certificate' as any, {
+            p_enrollment_id: enrollmentData.id
+          })
+          
+          console.log('Certificate generation attempted:', genResult)
+        }
+      }
+
       // Fetch test questions with questions and options
       const { data: testQuestionsData } = await supabase
         .from('test_questions')
