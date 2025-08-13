@@ -95,8 +95,8 @@ export default function LoginPage() {
           <div className="glass-morphism border-gradient rounded-3xl shadow-2xl p-1">
             <div className="bg-navy-800/90 rounded-3xl p-8">
               {/* Header com logo */}
-              <div className="text-center mb-8">
-                <div className="flex justify-center mb-4">
+              <div className="text-center mb-4">
+                <div className="flex justify-center mb-2">
                   <Logo width={180} height={80} className="transform hover:scale-110 transition-transform duration-300" />
                 </div>
                 <p className="text-gold-200 text-base">{t('login.systemTitle')}</p>
