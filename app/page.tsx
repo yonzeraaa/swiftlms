@@ -97,9 +97,8 @@ export default function LoginPage() {
               {/* Header com logo */}
               <div className="text-center mb-8">
                 <div className="flex justify-center mb-4">
-                  <Logo className="transform hover:scale-110 transition-transform duration-300" />
+                  <Logo width={180} height={80} className="transform hover:scale-110 transition-transform duration-300" />
                 </div>
-                <h1 className="text-5xl font-bold text-gold mb-2 tracking-wide">SwiftEDU</h1>
                 <p className="text-gold-200 text-base">{t('login.systemTitle')}</p>
                 <p className="text-gold-300 text-sm mt-1">{t('login.systemSubtitle')}</p>
               </div>

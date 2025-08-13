@@ -131,7 +131,7 @@ export default function StudentDashboardLayout({
                 className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center'}`}
                 animate={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
               >
-                <Logo className="w-12 h-12 flex-shrink-0" />
+                <Logo width={48} height={48} />
                 <AnimatePresence>
                   {sidebarOpen && (
                     <motion.div
@@ -140,7 +140,6 @@ export default function StudentDashboardLayout({
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <h1 className="text-xl font-bold text-gold whitespace-nowrap">SwiftEDU</h1>
                       <p className="text-xs text-gold-300 whitespace-nowrap">Portal do Aluno</p>
                     </motion.div>
                   )}

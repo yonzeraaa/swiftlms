@@ -24,6 +24,7 @@ import {
   Folder
 } from 'lucide-react'
 import Logo from '../components/Logo'
+import LogoSwiftEDU from '../components/LogoSwiftEDU'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../contexts/LanguageContext'
 import CommandPalette from '../components/ui/CommandPalette'
@@ -107,26 +108,8 @@ export default function DashboardLayout({
         >
           <div className="flex flex-col h-full p-4">
             {/* Logo e Toggle */}
-            <div className="flex items-center justify-between mb-8">
-              <motion.div 
-                className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center'}`}
-                animate={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
-              >
-                <Logo className="w-12 h-12 flex-shrink-0" />
-                <AnimatePresence>
-                  {sidebarOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <h1 className="text-xl font-bold text-gold whitespace-nowrap">SwiftEDU</h1>
-                      <p className="text-xs text-gold-300 whitespace-nowrap">Admin Dashboard</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
+            <div className="flex items-center justify-center mb-2">
+              <Logo width={sidebarOpen ? 120 : 60} height={sidebarOpen ? 120 : 60} />
             </div>
 
             {/* Sidebar Toggle Button */}
