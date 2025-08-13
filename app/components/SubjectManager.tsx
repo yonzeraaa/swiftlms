@@ -20,7 +20,7 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [courseSubjects, setCourseSubjects] = useState<CourseSubject[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState('');
-  const [semester, setSemester] = useState(1);
+  const [orderIndex, setOrderIndex] = useState(1);
   const [credits, setCredits] = useState(4);
   const [isRequired, setIsRequired] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
         .from('course_subjects')
         .select('*, subjects(*)')
         .eq('course_id', courseId)
-        .order('semester, is_required');
+        .order('order_index, is_required');
 
       if (courseSubjectsError) throw courseSubjectsError;
 
@@ -90,12 +90,23 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
     try {
       setSaving(true);
 
+      // Obter o próximo order_index
+      const { data: maxOrderData } = await supabase
+        .from('course_subjects')
+        .select('order_index')
+        .eq('course_id', courseId)
+        .order('order_index', { ascending: false })
+        .limit(1)
+        .single();
+
+      const nextOrder = maxOrderData ? ((maxOrderData as any).order_index || 0) + 1 : 1;
+
       const { error } = await supabase
         .from('course_subjects')
         .insert({
           course_id: courseId,
           subject_id: selectedSubjectId,
-          semester,
+          order_index: nextOrder,
           credits,
           is_required: isRequired
         });
@@ -107,7 +118,7 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
 
       // Limpar formulário
       setSelectedSubjectId('');
-      setSemester(1);
+      setOrderIndex(1);
       setCredits(4);
       setIsRequired(true);
     } catch (error: any) {
@@ -172,7 +183,7 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
         <Card className="bg-navy-800/50">
           <h4 className="font-medium text-gold mb-4">Adicionar Disciplina ao Curso</h4>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           <div className="lg:col-span-2">
             <label className="block text-sm font-medium text-gold-200 mb-2">
               Disciplina
@@ -190,21 +201,6 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gold-200 mb-2">
-              Semestre
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={semester}
-              onChange={(e) => setSemester(parseInt(e.target.value))}
-              className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-              disabled={saving}
-            />
           </div>
 
           <div>
@@ -281,9 +277,6 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
                       )}
                     </div>
                     <div className="text-sm text-gold-300 mt-1">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-navy-700 text-gold-200 mr-2">
-                        Semestre {cs.semester}
-                      </span>
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-navy-700 text-gold-200 mr-2">
                         {cs.credits} créditos
                       </span>
