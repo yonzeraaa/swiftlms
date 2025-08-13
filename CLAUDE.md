@@ -46,3 +46,5 @@ Após verificações bem-sucedidas:
 - `npm run type-check` - Verificação de tipos TypeScript
 - `npm run lint:full` - ESLint + verificação de tipos
 - `npm run lint:strict` - Verificação de tipos primeiro, depois ESLint
+- Quando for implementar alguma correção ou feature nova, sempre "pense à frente" em possíveis problemas da sua própria implementação e trabalhe para resolvê-los de antemão.
+- Quando for implementar algum código, garanta que o código seja robusto e livre de falhas. Revise quantas vezes precisar para garantir isto.

@@ -26,6 +26,7 @@ import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
+import CourseStructureManager from '../../components/CourseStructureManager'
 
 interface TreeNode {
   id: string
@@ -49,6 +50,9 @@ export default function StructurePage() {
   const [selectedItems, setSelectedItems] = useState<string[]>([])
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [associating, setAssociating] = useState(false)
+  const [viewMode, setViewMode] = useState<'tree' | 'manage'>('tree')
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
+  const [courses, setCourses] = useState<any[]>([])
   const supabase = createClient()
 
   useEffect(() => {
@@ -67,6 +71,12 @@ export default function StructurePage() {
         supabase.from('lessons').select('*').order('order_index'),
         supabase.from('tests').select('*').order('title')
       ])
+      
+      // Store courses for manage mode
+      setCourses(coursesRes.data || [])
+      if (coursesRes.data && coursesRes.data.length > 0 && !selectedCourseId) {
+        setSelectedCourseId(coursesRes.data[0].id)
+      }
 
       // Fetch relationships
       const [moduleSubjectsRes, subjectLessonsRes] = await Promise.all([
@@ -571,6 +581,24 @@ export default function StructurePage() {
         </div>
       </div>
 
+      {/* View Mode Tabs */}
+      <div className="flex gap-2">
+        <Button
+          variant={viewMode === 'tree' ? 'primary' : 'secondary'}
+          onClick={() => setViewMode('tree')}
+          icon={<Folder className="w-4 h-4" />}
+        >
+          Visualização em Árvore
+        </Button>
+        <Button
+          variant={viewMode === 'manage' ? 'primary' : 'secondary'}
+          onClick={() => setViewMode('manage')}
+          icon={<Edit className="w-4 h-4" />}
+        >
+          Gerenciar Ordenação
+        </Button>
+      </div>
+
       {/* Info Box */}
       <Card variant="gradient">
         <div className="flex items-start gap-3">
@@ -601,21 +629,67 @@ export default function StructurePage() {
         </div>
       </Card>
 
-      {/* Tree View */}
-      <Card className="min-h-[500px]">
-        <div className="space-y-1">
-          {displayTree.length > 0 ? (
-            renderTree(displayTree)
-          ) : (
-            <div className="text-center py-12">
-              <Layers className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-              <p className="text-gold-300">
-                {searchTerm ? 'Nenhum item encontrado' : 'Nenhum curso cadastrado'}
-              </p>
-            </div>
-          )}
+      {/* Conditional Rendering based on View Mode */}
+      {viewMode === 'tree' ? (
+        /* Tree View */
+        <Card className="min-h-[500px]">
+          <div className="space-y-1">
+            {displayTree.length > 0 ? (
+              renderTree(displayTree)
+            ) : (
+              <div className="text-center py-12">
+                <Layers className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                <p className="text-gold-300">
+                  {searchTerm ? 'Nenhum item encontrado' : 'Nenhum curso cadastrado'}
+                </p>
+              </div>
+            )}
+          </div>
+        </Card>
+      ) : (
+        /* Management View */
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Course Selector */}
+          <div className="lg:col-span-1">
+            <Card>
+              <h3 className="font-semibold text-gold mb-4">Selecione o Curso</h3>
+              <div className="space-y-2">
+                {courses.map((course: any) => (
+                  <button
+                    key={course.id}
+                    onClick={() => setSelectedCourseId(course.id)}
+                    className={`w-full text-left p-3 rounded-lg transition-all ${
+                      selectedCourseId === course.id
+                        ? 'bg-gold-500/20 border border-gold-500/50'
+                        : 'bg-navy-800/30 hover:bg-navy-800/50 border border-navy-700'
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-gold-200">{course.title}</span>
+                  </button>
+                ))}
+              </div>
+            </Card>
+          </div>
+          
+          {/* Course Structure Manager */}
+          <div className="lg:col-span-3">
+            {selectedCourseId && courses.find((c: any) => c.id === selectedCourseId) ? (
+              <CourseStructureManager
+                courseId={selectedCourseId}
+                courseName={courses.find((c: any) => c.id === selectedCourseId)?.title || ''}
+                canManage={true}
+              />
+            ) : (
+              <Card className="text-center py-12">
+                <Layers className="w-12 h-12 text-gold-400/30 mx-auto mb-4" />
+                <p className="text-gold-300/70">
+                  Selecione um curso para gerenciar sua estrutura
+                </p>
+              </Card>
+            )}
+          </div>
         </div>
-      </Card>
+      )}
 
       {/* Associate Items Modal */}
       {showAssociateModal && (

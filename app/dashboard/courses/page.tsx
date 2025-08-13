@@ -6,7 +6,7 @@ import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
-import SubjectManager from '../../components/SubjectManager'
+import CourseStructureManager from '../../components/CourseStructureManager'
 
 interface Course {
   id: string
@@ -1415,14 +1415,14 @@ export default function CoursesPage() {
         </div>
       )}
       
-      {/* Subject Manager Modal */}
+      {/* Course Structure Manager Modal */}
       {showSubjectsModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
                 <BookMarked className="w-6 h-6" />
-                Gerenciar Disciplinas
+                Gerenciar Estrutura do Curso
               </h2>
               <button
                 onClick={() => setShowSubjectsModal(false)}
@@ -1432,10 +1432,10 @@ export default function CoursesPage() {
               </button>
             </div>
             
-            <SubjectManager 
+            <CourseStructureManager 
               courseId={selectedCourse.id} 
               courseName={selectedCourse.title}
-              instructorId={selectedCourse.instructor_id || undefined}
+              canManage={true}
             />
             
             <div className="flex justify-end mt-6 pt-4 border-t border-gold-500/20">
