@@ -19,6 +19,10 @@ import {
 import Card from './Card';
 import Button from './Button';
 import OrderableList from './OrderableList';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Module {
   id: string;
@@ -56,6 +60,58 @@ interface CourseStructureManagerProps {
   canManage?: boolean;
 }
 
+interface SortableSubjectProps {
+  subject: ModuleSubject;
+  index: number;
+  isDragging?: boolean;
+}
+
+function SortableSubject({ subject, index }: SortableSubjectProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: subject.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 p-2 bg-navy-800/30 rounded-lg ${
+        isDragging ? 'ring-2 ring-gold-500/50' : ''
+      } transition-all`}
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab hover:cursor-grabbing text-gold-400/50 hover:text-gold-400"
+      >
+        <GripVertical className="w-4 h-4" />
+      </div>
+      <span className="text-xs text-gold-400/50 w-6">{index + 1}.</span>
+      <div className="flex-1">
+        <span className="text-sm text-gold-200">
+          {subject.subjects?.name}
+        </span>
+        {subject.subjects?.code && (
+          <span className="text-xs text-gold-400/70 ml-2">
+            ({subject.subjects.code})
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function CourseStructureManager({ 
   courseId, 
   courseName,
@@ -69,8 +125,22 @@ export default function CourseStructureManager({
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [editMode, setEditMode] = useState<'modules' | 'subjects' | 'lessons' | null>(null);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const [draggingModuleId, setDraggingModuleId] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   const supabase = createClient();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     loadCourseStructure();
@@ -354,17 +424,6 @@ export default function CourseStructureManager({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        setEditMode('subjects');
-                        setEditingModuleId(module.id);
-                      }}
-                      icon={<GraduationCap className="w-4 h-4" />}
-                    >
-                      Ordenar Disciplinas
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
                         setEditMode('lessons');
                         setEditingModuleId(module.id);
                       }}
@@ -382,29 +441,101 @@ export default function CourseStructureManager({
                   {/* Disciplinas do Módulo */}
                   {moduleSubjectsList.length > 0 && (
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gold-300 flex items-center gap-2">
-                        <GraduationCap className="w-4 h-4" />
-                        Disciplinas
-                      </h4>
-                      <div className="grid gap-2 ml-6">
-                        {moduleSubjectsList.map((ms, index) => (
-                          <div
-                            key={ms.id}
-                            className="flex items-center gap-2 p-2 bg-navy-800/30 rounded-lg"
-                          >
-                            <span className="text-xs text-gold-400/50 w-6">{index + 1}.</span>
-                            <div className="flex-1">
-                              <span className="text-sm text-gold-200">
-                                {ms.subjects?.name}
-                              </span>
-                              {ms.subjects?.code && (
-                                <span className="text-xs text-gold-400/70 ml-2">
-                                  ({ms.subjects.code})
-                                </span>
-                              )}
-                            </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-sm font-medium text-gold-300 flex items-center gap-2">
+                          <GraduationCap className="w-4 h-4" />
+                          Disciplinas
+                        </h4>
+                        {canManage && hasChanges[module.id] && (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                loadCourseStructure();
+                                setHasChanges(prev => ({ ...prev, [module.id]: false }));
+                              }}
+                              disabled={saving[module.id]}
+                            >
+                              <X className="w-3 h-3" />
+                              Cancelar
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={async () => {
+                                setSaving(prev => ({ ...prev, [module.id]: true }));
+                                try {
+                                  await handleReorderSubjects(module.id, moduleSubjectsList);
+                                  setHasChanges(prev => ({ ...prev, [module.id]: false }));
+                                } catch (error) {
+                                  console.error('Erro ao salvar:', error);
+                                } finally {
+                                  setSaving(prev => ({ ...prev, [module.id]: false }));
+                                }
+                              }}
+                              disabled={saving[module.id]}
+                            >
+                              <Save className="w-3 h-3" />
+                              {saving[module.id] ? 'Salvando...' : 'Salvar'}
+                            </Button>
                           </div>
-                        ))}
+                        )}
+                      </div>
+                      <div className="grid gap-2 ml-6">
+                        {canManage ? (
+                          <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={(event: DragEndEvent) => {
+                              const { active, over } = event;
+                              
+                              if (over && active.id !== over.id) {
+                                const oldIndex = moduleSubjectsList.findIndex((item) => item.id === active.id);
+                                const newIndex = moduleSubjectsList.findIndex((item) => item.id === over.id);
+                                
+                                const newItems = arrayMove(moduleSubjectsList, oldIndex, newIndex);
+                                setModuleSubjects(prev => ({
+                                  ...prev,
+                                  [module.id]: newItems
+                                }));
+                                setHasChanges(prev => ({ ...prev, [module.id]: true }));
+                              }
+                            }}
+                          >
+                            <SortableContext
+                              items={moduleSubjectsList.map(item => item.id)}
+                              strategy={verticalListSortingStrategy}
+                            >
+                              {moduleSubjectsList.map((ms, index) => (
+                                <SortableSubject 
+                                  key={ms.id}
+                                  subject={ms}
+                                  index={index}
+                                />
+                              ))}
+                            </SortableContext>
+                          </DndContext>
+                        ) : (
+                          moduleSubjectsList.map((ms, index) => (
+                            <div
+                              key={ms.id}
+                              className="flex items-center gap-2 p-2 bg-navy-800/30 rounded-lg"
+                            >
+                              <span className="text-xs text-gold-400/50 w-6">{index + 1}.</span>
+                              <div className="flex-1">
+                                <span className="text-sm text-gold-200">
+                                  {ms.subjects?.name}
+                                </span>
+                                {ms.subjects?.code && (
+                                  <span className="text-xs text-gold-400/70 ml-2">
+                                    ({ms.subjects.code})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
