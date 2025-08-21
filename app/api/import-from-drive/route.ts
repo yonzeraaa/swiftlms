@@ -30,6 +30,7 @@ interface CourseStructure {
       order: number
       lessons: {
         name: string
+        code?: string
         order: number
         content?: string
         contentType: string
@@ -141,13 +142,30 @@ async function parseGoogleDriveFolder(drive: any, folderId: string): Promise<Cou
               // Gerar link do Google Drive para o arquivo
               const driveLink = `https://drive.google.com/file/d/${lessonItem.id}/view`
               
+              // Extrair código e nome da aula (formato: "AULA01-Nome da Aula" ou "A01-Nome")
+              const lessonFileName = lessonItem.name.replace(/\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a)$/i, '')
+              const lessonCodeMatch = lessonFileName.match(/^([A-Z0-9]+)-(.+)$/)
+              
+              let lessonCode: string
+              let lessonName: string
+              
+              if (lessonCodeMatch) {
+                lessonCode = lessonCodeMatch[1]
+                lessonName = lessonCodeMatch[2].trim()
+              } else {
+                // Se não seguir o padrão, gerar código automático
+                lessonCode = `A${String(actualLessonIndex + 1).padStart(2, '0')}`
+                lessonName = lessonFileName
+              }
+              
               const lesson = {
-                name: lessonItem.name.replace(/\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a)$/i, ''),
+                name: lessonName,
+                code: lessonCode,
                 order: actualLessonIndex + 1,
                 content: undefined as string | undefined,
                 contentType: contentType,
                 contentUrl: driveLink,
-                description: `Aula importada do Google Drive: ${lessonItem.name}`
+                description: `Aula ${lessonCode}: ${lessonName}`
               }
               actualLessonIndex++
 
@@ -319,12 +337,15 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
         for (let lessonIdx = 0; lessonIdx < subjectData.lessons.length; lessonIdx++) {
           const lessonData = subjectData.lessons[lessonIdx]
           
+          // Criar título completo com código
+          const fullTitle = lessonData.code ? `${lessonData.code} - ${lessonData.name}` : lessonData.name
+          
           // Primeiro criar a aula na tabela lessons
           const { data: newLesson, error: lessonError } = await supabase
             .from('lessons')
             .insert({
-              title: lessonData.name,
-              description: lessonData.description || `Aula ${lessonIdx + 1} - ${subjectData.name}`,
+              title: fullTitle,
+              description: lessonData.description || `Aula importada do Google Drive`,
               content: lessonData.content || '',
               content_type: lessonData.contentType || 'text',
               content_url: lessonData.contentUrl || null,
