@@ -15,11 +15,43 @@ async function authenticateGoogleDrive() {
   
   if (serviceAccountKey && serviceAccountKey.trim() !== '') {
     console.log('Tentando usar GOOGLE_SERVICE_ACCOUNT_KEY do ambiente...')
+    console.log('Tipo da variável:', typeof serviceAccountKey)
+    console.log('Primeiros 50 caracteres:', serviceAccountKey.substring(0, 50))
+    
     // Se a chave estiver disponível como variável de ambiente (JSON string)
     try {
-      const credentials = JSON.parse(serviceAccountKey)
+      // Limpar possíveis problemas de formatação
+      let cleanedKey = serviceAccountKey.trim()
+      
+      // Se começar e terminar com aspas simples ou duplas, remover
+      if ((cleanedKey.startsWith('"') && cleanedKey.endsWith('"')) || 
+          (cleanedKey.startsWith("'") && cleanedKey.endsWith("'"))) {
+        cleanedKey = cleanedKey.slice(1, -1)
+      }
+      
+      // Tentar decodificar se estiver em base64
+      let jsonString = cleanedKey
+      try {
+        // Verificar se é base64
+        if (!jsonString.includes('{')) {
+          console.log('Tentando decodificar de base64...')
+          jsonString = Buffer.from(cleanedKey, 'base64').toString('utf-8')
+        }
+      } catch (e) {
+        console.log('Não é base64, usando string original')
+      }
+      
+      console.log('Tentando parsear JSON...')
+      const credentials = JSON.parse(jsonString)
+      
       console.log('Credenciais parseadas com sucesso')
       console.log('Client email:', credentials.client_email)
+      console.log('Project ID:', credentials.project_id)
+      
+      // Garantir que private_key tem quebras de linha corretas
+      if (credentials.private_key) {
+        credentials.private_key = credentials.private_key.replace(/\\n/g, '\n')
+      }
       
       const auth = new google.auth.GoogleAuth({
         credentials,
@@ -31,7 +63,29 @@ async function authenticateGoogleDrive() {
       return drive
     } catch (error) {
       console.error('Erro ao parsear GOOGLE_SERVICE_ACCOUNT_KEY:', error)
-      console.error('Primeiros 100 caracteres da chave:', serviceAccountKey.substring(0, 100))
+      console.error('Primeiros 200 caracteres da chave original:', serviceAccountKey.substring(0, 200))
+      console.error('Últimos 50 caracteres:', serviceAccountKey.substring(serviceAccountKey.length - 50))
+      
+      // Tentar método alternativo com credenciais individuais
+      console.log('Tentando método alternativo com variáveis separadas...')
+      try {
+        if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+          const auth = new google.auth.GoogleAuth({
+            credentials: {
+              client_email: process.env.GOOGLE_CLIENT_EMAIL,
+              private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            },
+            scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+          })
+          
+          const drive = google.drive({ version: 'v3', auth })
+          console.log('Google Drive autenticado com sucesso via variáveis separadas')
+          return drive
+        }
+      } catch (altError) {
+        console.error('Método alternativo também falhou:', altError)
+      }
+      
       throw new Error(`Erro ao processar credenciais: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
     }
   }
