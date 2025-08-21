@@ -13,7 +13,8 @@ import {
   Save,
   FileQuestion,
   Image,
-  Calculator
+  Calculator,
+  ChevronLeft
 } from 'lucide-react'
 import Card from './Card'
 import Button from './Button'
@@ -22,6 +23,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 interface ParsedQuestion {
   questionText: string
+  questionType?: 'multiple_choice' | 'true_false'
   questionImage?: string
   options: {
     text: string
@@ -223,6 +225,7 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
     let questionImage = ''
     let hasFormula = false
     let startIndex = 0
+    let questionType: 'multiple_choice' | 'true_false' = 'multiple_choice'
     
     console.log('Processing question block:', block.substring(0, 100))
     
@@ -311,69 +314,140 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
     }
         
     
-    const options: { text: string; isCorrect: boolean }[] = []
-    let correctAnswer = ''
+    // Verificar se é uma questão de Verdadeiro ou Falso
+    // Remover indicações de V/F do texto antes de criar as opções
+    let cleanQuestionText = questionText
+    const fullQuestionText = questionText + ' ' + lines.slice(i).join(' ')
+    const trueFalsePatterns = [
+      /\(\s*[VF]\s*\)/i,                              // (V) ou (F)
+      /\[\s*[VF]\s*\]/i,                              // [V] ou [F]
+      /\b(verdadeiro|falso)\b/i,                      // Verdadeiro ou Falso
+      /\b(V|F)\b\s*[\-\)]/i,                         // V) ou F) ou V- ou F-
+      /\(\s*\)\s*(verdadeiro|falso)/i,                // ( ) Verdadeiro
+      /\(\s*\)\s*[VF]/i,                              // ( ) V ou ( ) F
+      /^[VF]\s*$/i,                                   // Apenas V ou F em linha separada
+      /\s+\(\s*[VF]\s*\)\s*$/i,                      // Termina com (V) ou (F)
+      /\s+[VF]\s*$/i,                                // Termina com V ou F
+    ]
     
-    // Procurar por opções e gabarito
-    for (; i < lines.length; i++) {
-      const line = lines[i].trim()
-      
-      // Verificar se é uma opção - aceitar vários formatos
-      const optionPatterns = [
-        /^[a-eA-E][\.\)]\s*(.+)/,           // a) ou a. texto
-        /^\s+[a-eA-E][\.\)]\s*(.+)/,        // Com espaços antes
-        /^\t+[a-eA-E][\.\)]\s*(.+)/,        // Com tabs antes
-        /^[a-eA-E]\)\s*(.+)/,               // Apenas a) sem ponto
-        /^\s*[a-eA-E]\.\s+(.+)/,            // Lista com letra e ponto
-      ]
-      
-      let optionMatch = null
-      for (const pattern of optionPatterns) {
-        optionMatch = line.match(pattern)
-        if (optionMatch) break
-      }
-      
-      if (optionMatch) {
-        const optionText = optionMatch[1].trim()
-        
-        // Detectar fórmulas nas opções
-        if (optionText.includes('$') || optionText.includes('\\')) {
-          hasFormula = true
-        }
-        
-        options.push({
-          text: optionText,
-          isCorrect: false
-        })
-      }
-      
-      // Verificar se é o gabarito - aceitar vários formatos
-      const gabaritoPatterns = [
-        /GABARITO:\s*([a-eA-E])/i,
-        /Gabarito:\s*([a-eA-E])/i,
-        /Resposta:\s*([a-eA-E])/i,
-        /Resposta\s+correta:\s*([a-eA-E])/i,
-        /Alternativa\s+correta:\s*([a-eA-E])/i,
-        /^([a-eA-E])\s*[\-\)]\s*(?:correta|certa)/i,
-        /^Letra\s*([a-eA-E])/i,
-        /^\*\s*([a-eA-E])/i,  // *a ou *A indicando resposta
-        /^R:\s*([a-eA-E])/i,   // R: a
-      ]
-      
-      for (const pattern of gabaritoPatterns) {
-        const match = line.match(pattern)
-        if (match) {
-          correctAnswer = match[1].toLowerCase()
-          break
-        }
+    let isTrueFalse = false
+    for (const pattern of trueFalsePatterns) {
+      if (fullQuestionText.match(pattern)) {
+        isTrueFalse = true
+        questionType = 'true_false'
+        console.log('True/False question detected:', questionText.substring(0, 50))
+        break
       }
     }
     
-    // Marcar a opção correta
-    if (correctAnswer && options.length > 0) {
-      const correctIndex = correctAnswer.charCodeAt(0) - 'a'.charCodeAt(0)
-      if (correctIndex >= 0 && correctIndex < options.length) {
-        options[correctIndex].isCorrect = true
+    const options: { text: string; isCorrect: boolean }[] = []
+    let correctAnswer = ''
+    
+    // Se for questão V/F, criar opções padrão
+    if (isTrueFalse) {
+      options.push(
+        { text: 'Verdadeiro', isCorrect: false },
+        { text: 'Falso', isCorrect: false }
+      )
+      
+      // Procurar pela resposta correta no texto
+      for (; i < lines.length; i++) {
+        const line = lines[i].trim()
+        
+        // Padrões para detectar gabarito de V/F
+        const vfGabaritoPatterns = [
+          /GABARITO:\s*([VF])/i,
+          /Gabarito:\s*([VF])/i,
+          /Resposta:\s*([VF])/i,
+          /Resposta\s+correta:\s*([VF])/i,
+          /Alternativa\s+correta:\s*([VF])/i,
+          /^\*\s*([VF])/i,
+          /^R:\s*([VF])/i,
+          /\(\s*([VF])\s*\)\s*(?:correta|certa)/i,
+          /^\s*([VF])\s*(?:correta|certa|verdadeira)/i,
+          /GABARITO:\s*(verdadeiro|falso)/i,
+          /Resposta:\s*(verdadeiro|falso)/i,
+        ]
+        
+        for (const pattern of vfGabaritoPatterns) {
+          const match = line.match(pattern)
+          if (match) {
+            const answer = match[1].toUpperCase()
+            if (answer === 'V' || answer === 'VERDADEIRO') {
+              options[0].isCorrect = true
+              correctAnswer = 'V'
+            } else if (answer === 'F' || answer === 'FALSO') {
+              options[1].isCorrect = true
+              correctAnswer = 'F'
+            }
+            break
+          }
+        }
+        
+        if (correctAnswer) break
+      }
+    } else {
+      // Procurar por opções de múltipla escolha
+      for (; i < lines.length; i++) {
+        const line = lines[i].trim()
+        
+        // Verificar se é uma opção - aceitar vários formatos
+        const optionPatterns = [
+          /^[a-eA-E][\.\)]\s*(.+)/,           // a) ou a. texto
+          /^\s+[a-eA-E][\.\)]\s*(.+)/,        // Com espaços antes
+          /^\t+[a-eA-E][\.\)]\s*(.+)/,        // Com tabs antes
+          /^[a-eA-E]\)\s*(.+)/,               // Apenas a) sem ponto
+          /^\s*[a-eA-E]\.\s+(.+)/,            // Lista com letra e ponto
+        ]
+        
+        let optionMatch = null
+        for (const pattern of optionPatterns) {
+          optionMatch = line.match(pattern)
+          if (optionMatch) break
+        }
+        
+        if (optionMatch) {
+          const optionText = optionMatch[1].trim()
+          
+          // Detectar fórmulas nas opções
+          if (optionText.includes('$') || optionText.includes('\\')) {
+            hasFormula = true
+          }
+          
+          options.push({
+            text: optionText,
+            isCorrect: false
+          })
+        }
+        
+        // Verificar se é o gabarito - aceitar vários formatos
+        const gabaritoPatterns = [
+          /GABARITO:\s*([a-eA-E])/i,
+          /Gabarito:\s*([a-eA-E])/i,
+          /Resposta:\s*([a-eA-E])/i,
+          /Resposta\s+correta:\s*([a-eA-E])/i,
+          /Alternativa\s+correta:\s*([a-eA-E])/i,
+          /^([a-eA-E])\s*[\-\)]\s*(?:correta|certa)/i,
+          /^Letra\s*([a-eA-E])/i,
+          /^\*\s*([a-eA-E])/i,  // *a ou *A indicando resposta
+          /^R:\s*([a-eA-E])/i,   // R: a
+        ]
+        
+        for (const pattern of gabaritoPatterns) {
+          const match = line.match(pattern)
+          if (match) {
+            correctAnswer = match[1].toLowerCase()
+            break
+          }
+        }
+      }
+      
+      // Marcar a opção correta para múltipla escolha
+      if (correctAnswer && options.length > 0 && !isTrueFalse) {
+        const correctIndex = correctAnswer.charCodeAt(0) - 'a'.charCodeAt(0)
+        if (correctIndex >= 0 && correctIndex < options.length) {
+          options[correctIndex].isCorrect = true
+        }
       }
     }
     
@@ -381,6 +455,7 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
     if (questionText && options.length >= 2) {
       const question: ParsedQuestion = {
         questionText,
+        questionType,
         questionImage,
         options,
         difficulty: 'medium' as 'medium',
@@ -449,7 +524,7 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
           .from('questions')
           .insert({
             question_text: question.questionText,
-            question_type: 'multiple_choice',
+            question_type: question.questionType || 'multiple_choice',
             difficulty: question.difficulty || 'medium',
             points: question.points || 1,
             subject_id: subjectId,
@@ -517,10 +592,10 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gold-500/20">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="w-full max-w-4xl h-[85vh] bg-navy-800 rounded-xl shadow-2xl border border-gold-500/20 flex flex-col">
+        {/* Fixed Header - 80px */}
+        <div className="h-20 flex-shrink-0 flex justify-between items-center px-6 border-b border-gold-500/20">
           <div className="flex items-center gap-3">
             <FileQuestion className="w-6 h-6 text-gold-400" />
             <h2 className="text-xl font-bold text-gold">
@@ -535,10 +610,11 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-hidden">
           {currentStep === 'input' && (
-            <div className="space-y-6">
+            <div className="h-full overflow-y-auto p-6 custom-scrollbar">
+              <div className="space-y-6">
               {/* Instructions */}
               <Card variant="glass">
                 <div className="flex items-start gap-3">
@@ -547,8 +623,9 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
                     <p className="font-semibold text-gold-200">Formato esperado do documento:</p>
                     <ul className="space-y-1 ml-4">
                       <li>• Questões numeradas (1. 2. 3. etc)</li>
-                      <li>• Alternativas com letras (a) b) c) d) e))</li>
-                      <li>• Gabarito indicado com &quot;GABARITO: X&quot;</li>
+                      <li>• <span className="text-gold-400">Múltipla escolha:</span> Alternativas com letras (a) b) c) d) e)</li>
+                      <li>• <span className="text-emerald-400">Verdadeiro/Falso:</span> Questões com (V) ou (F) no texto</li>
+                      <li>• Gabarito indicado com &quot;GABARITO: X&quot; ou &quot;GABARITO: V/F&quot;</li>
                       <li>• Imagens: [IMAGEM: url] ou links diretos</li>
                       <li>• Fórmulas: LaTeX entre $ $ ou $$ $$</li>
                     </ul>
@@ -600,56 +677,64 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
                   <span className="text-sm">{error}</span>
                 </div>
               )}
+              </div>
             </div>
           )}
 
           {currentStep === 'preview' && (
-            <div className="space-y-4">
-              {/* Document Info */}
-              {(documentInfo.title || documentInfo.author) && (
-                <Card variant="glass">
-                  <div className="space-y-2">
-                    {documentInfo.title && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-gold-400 font-medium">Título:</span>
-                        <span className="text-gold-200">{documentInfo.title}</span>
+            <>
+              {/* Single Scrollable Container for Everything */}
+              <div 
+                className="flex-1 overflow-y-auto max-h-[calc(85vh-10rem)] custom-scrollbar" 
+                style={{
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: '#FFD700 #001a33'
+                }}>
+                <div className="p-6 space-y-4">
+                  {/* Document Info */}
+                  {(documentInfo.title || documentInfo.author) && (
+                    <Card variant="glass">
+                      <div className="space-y-2">
+                        {documentInfo.title && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-gold-400 font-medium">Título:</span>
+                            <span className="text-gold-200">{documentInfo.title}</span>
+                          </div>
+                        )}
+                        {documentInfo.author && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-gold-400 font-medium">Autor:</span>
+                            <span className="text-gold-200">{documentInfo.author}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {documentInfo.author && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-gold-400 font-medium">Autor:</span>
-                        <span className="text-gold-200">{documentInfo.author}</span>
+                    </Card>
+                  )}
+                  
+                  {/* Summary */}
+                  <Card variant="gradient">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gold-200 font-semibold">
+                          {parsedQuestions.length} questões encontradas
+                        </p>
+                        <p className="text-gold-300/70 text-sm">
+                          {selectedQuestions.size} selecionadas para importação
+                        </p>
                       </div>
-                    )}
-                  </div>
-                </Card>
-              )}
-              
-              {/* Summary */}
-              <Card variant="gradient">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gold-200 font-semibold">
-                      {parsedQuestions.length} questões encontradas
-                    </p>
-                    <p className="text-gold-300/70 text-sm">
-                      {selectedQuestions.size} selecionadas para importação
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" onClick={selectAll}>
-                      Selecionar Todas
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={deselectAll}>
-                      Desmarcar Todas
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+                      <div className="flex gap-2">
+                        <Button variant="secondary" size="sm" onClick={selectAll}>
+                          Selecionar Todas
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={deselectAll}>
+                          Desmarcar Todas
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
 
-              {/* Questions List */}
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                {parsedQuestions.map((question, index) => (
+                  {/* Questions List - No extra wrappers */}
+                  {parsedQuestions.map((question, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
@@ -684,6 +769,11 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
                               {question.questionText.match(/^\d+[\.\)]/) ? question.questionText : `${index + 1}. ${question.questionText}`}
                             </p>
                             <div className="flex gap-1">
+                              {question.questionType === 'true_false' && (
+                                <span className="px-2 py-1 bg-emerald-500/20 rounded text-xs text-emerald-400 font-medium">
+                                  V/F
+                                </span>
+                              )}
                               {question.questionImage && (
                                 <span className="p-1 bg-blue-500/20 rounded" title="Contém imagem">
                                   <Image className="w-3 h-3 text-blue-400" />
@@ -734,12 +824,34 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
                     </Card>
                   </motion.div>
                 ))}
+                </div>
               </div>
-            </div>
+
+              {/* Fixed Footer - 80px */}
+              <div className="h-20 flex-shrink-0 flex items-center justify-between px-6 border-t border-gold-500/20 bg-navy-800">
+                <Button variant="ghost" onClick={() => setCurrentStep('input')}>
+                  Voltar
+                </Button>
+                <div className="flex gap-3">
+                  <Button variant="secondary" onClick={onClose}>
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={importQuestions}
+                    disabled={selectedQuestions.size === 0 || loading}
+                    icon={<Save className="w-5 h-5" />}
+                    className="bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-navy-900 font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all"
+                  >
+                    Importar {selectedQuestions.size} Questões
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
 
           {currentStep === 'importing' && (
-            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <div className="h-full flex flex-col items-center justify-center p-6 space-y-4">
               {!success ? (
                 <>
                   <Loader2 className="w-12 h-12 text-gold-500 animate-spin" />
@@ -759,40 +871,15 @@ export default function QuestionImporter({ subjectId, onClose, onImport }: Quest
           )}
         </div>
 
-        {/* Footer */}
-        {!success && (
-          <div className="flex justify-between items-center p-6 border-t border-gold-500/20">
-            {currentStep === 'preview' && (
-              <>
-                <Button variant="ghost" onClick={() => setCurrentStep('input')}>
-                  Voltar
-                </Button>
-                <div className="flex gap-3">
-                  <Button variant="secondary" onClick={onClose}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={importQuestions}
-                    disabled={selectedQuestions.size === 0 || loading}
-                    icon={<Save className="w-4 h-4" />}
-                  >
-                    Importar {selectedQuestions.size} Questões
-                  </Button>
-                </div>
-              </>
-            )}
-            
-            {currentStep === 'input' && (
-              <div className="flex justify-end w-full">
-                <Button variant="secondary" onClick={onClose}>
-                  Cancelar
-                </Button>
-              </div>
-            )}
+        {/* Footer for input step */}
+        {currentStep === 'input' && (
+          <div className="h-20 flex-shrink-0 flex items-center justify-end px-6 border-t border-gold-500/20">
+            <Button variant="secondary" onClick={onClose}>
+              Cancelar
+            </Button>
           </div>
         )}
-      </Card>
+      </div>
     </div>
   )
 }

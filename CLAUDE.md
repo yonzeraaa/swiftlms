@@ -8,7 +8,7 @@
 ## 🎨 Consistência Visual
 - **Paleta de Cores**: Manter exatamente a mesma paleta navy (#003366) e gold (#FFD700)
 - **Bordas**: Sempre usar bordas douradas para aspecto premium
-- **Tipografia**: Merriweather (títulos), Roboto (corpo), Work Sans (UI)
+- **Tipografia**: Open Sans para todo o sistema (títulos, corpo e UI)
 
 ## 🔍 Verificação de Qualidade
 Ao final de modificações no código:

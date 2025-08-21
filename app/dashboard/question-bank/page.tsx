@@ -3,12 +3,15 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Edit, Trash2, Database, FileQuestion, Tag, MoreVertical, Copy, Archive, Eye, Check, Upload } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, Database, FileQuestion, Tag, MoreVertical, Copy, Archive, Eye, Check, Upload, CheckSquare, Square, Trash, AlertCircle } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
-import { Question, QuestionOption } from '@/lib/database.types'
+import { Tables } from '@/lib/database.types'
+
+type Question = Tables<'questions'>
+type QuestionOption = Tables<'question_options'>
 import QuestionForm from '../../components/QuestionForm'
 import QuestionImporter from '../../components/QuestionImporter'
 import QuestionContent from '../../components/QuestionContent'
@@ -36,6 +39,8 @@ export default function QuestionBankPage() {
   const [showImporter, setShowImporter] = useState(false)
   const [editingQuestionId, setEditingQuestionId] = useState<string | undefined>()
   const [previewQuestion, setPreviewQuestion] = useState<QuestionWithDetails | null>(null)
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
   const { t } = useTranslation()
   const { showToast } = useToast()
   const supabase = createClient()
@@ -93,6 +98,50 @@ export default function QuestionBankPage() {
       console.error('Error archiving question:', error)
       showToast({ type: 'error', title: 'Erro ao arquivar questão' })
     }
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedQuestions.size === 0) return
+    
+    if (!confirm(`Tem certeza que deseja excluir ${selectedQuestions.size} questões permanentemente?`)) return
+
+    setIsDeleting(true)
+    try {
+      const { error } = await supabase
+        .from('questions')
+        .delete()
+        .in('id', Array.from(selectedQuestions))
+
+      if (error) throw error
+
+      showToast({ type: 'success', title: `${selectedQuestions.size} questões excluídas com sucesso` })
+      setSelectedQuestions(new Set())
+      fetchQuestions()
+    } catch (error) {
+      console.error('Error deleting questions:', error)
+      showToast({ type: 'error', title: 'Erro ao excluir questões' })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const toggleSelectQuestion = (questionId: string) => {
+    const newSelection = new Set(selectedQuestions)
+    if (newSelection.has(questionId)) {
+      newSelection.delete(questionId)
+    } else {
+      newSelection.add(questionId)
+    }
+    setSelectedQuestions(newSelection)
+  }
+
+  const selectAllQuestions = () => {
+    const allIds = filteredQuestions.map(q => q.id)
+    setSelectedQuestions(new Set(allIds))
+  }
+
+  const deselectAllQuestions = () => {
+    setSelectedQuestions(new Set())
   }
 
   const handleRestoreQuestion = async (questionId: string) => {
@@ -359,6 +408,34 @@ export default function QuestionBankPage() {
         </div>
       </div>
 
+      {/* Selection Actions Bar */}
+      {selectedQuestions.size > 0 && (
+        <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-gold-200 font-medium">
+              {selectedQuestions.size} {selectedQuestions.size === 1 ? 'questão selecionada' : 'questões selecionadas'}
+            </span>
+            <button
+              onClick={deselectAllQuestions}
+              className="text-gold-400 hover:text-gold-200 text-sm underline"
+            >
+              Desmarcar todas
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="danger"
+              size="sm"
+              icon={<Trash className="w-4 h-4" />}
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Excluindo...' : 'Excluir Selecionadas'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -407,6 +484,28 @@ export default function QuestionBankPage() {
       {/* Questions List */}
       <Card>
         <div className="space-y-4">
+          {/* Select All Header */}
+          {filteredQuestions.length > 0 && (
+            <div className="flex items-center justify-between pb-3 border-b border-gold-500/20">
+              <button
+                onClick={selectedQuestions.size === filteredQuestions.length ? deselectAllQuestions : selectAllQuestions}
+                className="flex items-center gap-2 text-gold-400 hover:text-gold-200 transition-colors"
+              >
+                {selectedQuestions.size === filteredQuestions.length ? (
+                  <CheckSquare className="w-5 h-5" />
+                ) : (
+                  <Square className="w-5 h-5" />
+                )}
+                <span className="text-sm font-medium">
+                  {selectedQuestions.size === filteredQuestions.length ? 'Desmarcar todas' : 'Selecionar todas'}
+                </span>
+              </button>
+              <span className="text-gold-400 text-sm">
+                {filteredQuestions.length} {filteredQuestions.length === 1 ? 'questão' : 'questões'}
+              </span>
+            </div>
+          )}
+          
           {filteredQuestions.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gold-400">Nenhuma questão encontrada</p>
@@ -419,6 +518,18 @@ export default function QuestionBankPage() {
                   : 'bg-navy-900/30 border-gold-500/10 hover:border-gold-500/30'
               }`}>
                 <div className="flex justify-between items-start gap-4">
+                  {/* Checkbox */}
+                  <button
+                    onClick={() => toggleSelectQuestion(question.id)}
+                    className="mt-1 text-gold-400 hover:text-gold-200 transition-colors"
+                  >
+                    {selectedQuestions.has(question.id) ? (
+                      <CheckSquare className="w-5 h-5" />
+                    ) : (
+                      <Square className="w-5 h-5" />
+                    )}
+                  </button>
+                  
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex-1">

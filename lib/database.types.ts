@@ -563,6 +563,66 @@ export type Database = {
           },
         ]
       }
+      import_progress: {
+        Row: {
+          completed: boolean | null
+          course_id: string | null
+          created_at: string | null
+          current_item: string | null
+          current_step: string | null
+          errors: Json | null
+          id: string
+          percentage: number | null
+          phase: string | null
+          processed_lessons: number | null
+          processed_modules: number | null
+          processed_subjects: number | null
+          total_lessons: number | null
+          total_modules: number | null
+          total_subjects: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed?: boolean | null
+          course_id?: string | null
+          created_at?: string | null
+          current_item?: string | null
+          current_step?: string | null
+          errors?: Json | null
+          id: string
+          percentage?: number | null
+          phase?: string | null
+          processed_lessons?: number | null
+          processed_modules?: number | null
+          processed_subjects?: number | null
+          total_lessons?: number | null
+          total_modules?: number | null
+          total_subjects?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed?: boolean | null
+          course_id?: string | null
+          created_at?: string | null
+          current_item?: string | null
+          current_step?: string | null
+          errors?: Json | null
+          id?: string
+          percentage?: number | null
+          phase?: string | null
+          processed_lessons?: number | null
+          processed_modules?: number | null
+          processed_subjects?: number | null
+          total_lessons?: number | null
+          total_modules?: number | null
+          total_subjects?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       lesson_progress: {
         Row: {
           completed_at: string | null
@@ -1340,6 +1400,10 @@ export type Database = {
           was_fixed: boolean
         }[]
       }
+      clean_old_import_progress: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       delete_user_completely: {
         Args: { user_id_to_delete: string }
         Returns: boolean
@@ -1571,6 +1635,3 @@ export const Constants = {
     },
   },
 } as const
-
-export type Question = Database['public']['Tables']['questions']['Row']
-export type QuestionOption = Database['public']['Tables']['question_options']['Row']

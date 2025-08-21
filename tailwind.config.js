@@ -9,9 +9,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'merriweather': ['var(--font-merriweather)', 'serif'],
-        'roboto': ['var(--font-roboto)', 'sans-serif'],
-        'work-sans': ['var(--font-work-sans)', 'sans-serif'],
+        'open-sans': ['var(--font-open-sans)', 'sans-serif'],
+        'sans': ['var(--font-open-sans)', 'sans-serif'],
       },
       colors: {
         'navy': {

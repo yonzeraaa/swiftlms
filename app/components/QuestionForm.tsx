@@ -6,9 +6,11 @@ import Button from './Button'
 import Card from './Card'
 import Modal from './Modal'
 import { createClient } from '@/lib/supabase/client'
-import { Question, QuestionOption, Database } from '@/lib/database.types'
+import { Database, Tables } from '@/lib/database.types'
 import { useToast } from '../components/Toast'
 
+type Question = Tables<'questions'>
+type QuestionOption = Tables<'question_options'>
 type QuestionType = Database['public']['Enums']['question_type']
 type DifficultyLevel = Database['public']['Enums']['difficulty_level']
 

@@ -4,19 +4,27 @@ import { createClient } from '@/lib/supabase/server'
 import path from 'path'
 import fs from 'fs'
 
-// Store para armazenar o progresso das importações
-let importProgressStore: Map<string, any>
-
-if (typeof global !== 'undefined') {
-  // @ts-ignore
-  if (!global.importProgressStore) {
-    // @ts-ignore
-    global.importProgressStore = new Map()
+// Função para atualizar progresso no Supabase
+async function updateImportProgress(supabase: any, importId: string, userId: string, courseId: string, progress: any) {
+  try {
+    const { error } = await supabase
+      .from('import_progress')
+      .upsert({
+        id: importId,
+        user_id: userId,
+        course_id: courseId,
+        ...progress,
+        updated_at: new Date().toISOString()
+      })
+    
+    if (error) {
+      console.error('[PROGRESS] Erro ao atualizar progresso:', error)
+    } else {
+      console.log('[PROGRESS] Progresso atualizado:', progress)
+    }
+  } catch (err) {
+    console.error('[PROGRESS] Erro ao salvar progresso:', err)
   }
-  // @ts-ignore
-  importProgressStore = global.importProgressStore
-} else {
-  importProgressStore = new Map()
 }
 
 async function authenticateGoogleDrive() {
@@ -244,7 +252,7 @@ async function countDriveFolderItems(drive: any, folderId: string): Promise<{tot
   }
 }
 
-async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: string, totals?: {totalModules: number, totalSubjects: number, totalLessons: number}): Promise<CourseStructure> {
+async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: string, totals?: {totalModules: number, totalSubjects: number, totalLessons: number}, supabase?: any, userId?: string, courseId?: string): Promise<CourseStructure> {
   const structure: CourseStructure = { modules: [] }
   
   // Usar totais pré-calculados se fornecidos, senão inicializar com zero
@@ -256,8 +264,8 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
   let processedLessons = 0
   
   // Atualizar progresso se importId fornecido
-  const updateProgress = (progress: any) => {
-    if (importId && importProgressStore) {
+  const updateProgress = async (progress: any) => {
+    if (importId && supabase && userId && courseId) {
       const fullProgress = {
         ...progress,
         percentage: totalModules + totalSubjects + totalLessons > 0 
@@ -265,7 +273,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
           : 0
       }
       console.log(`[PROGRESS] Atualizando progresso:`, fullProgress)
-      importProgressStore.set(importId, fullProgress)
+      await updateImportProgress(supabase, importId, userId, courseId, fullProgress)
     }
   }
 
@@ -289,14 +297,14 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
     // Atualizar progresso inicial
     updateProgress({
       phase: 'processing',
-      currentStep: 'Iniciando processamento',
-      totalModules,
-      processedModules,
-      totalSubjects,
-      processedSubjects,
-      totalLessons,
+      current_step: 'Iniciando processamento',
+      total_modules: totalModules,
+      processed_modules: processedModules,
+      total_subjects: totalSubjects,
+      processed_subjects: processedSubjects,
+      total_lessons: totalLessons,
       processedLessons,
-      currentItem: 'Preparando importação...',
+      current_item: 'Preparando importação...',
       errors: []
     })
     
@@ -312,15 +320,15 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
         }
         
         // Atualizar progresso ANTES de processar o módulo
-        updateProgress({
-          currentStep: `Processando módulo ${processedModules + 1}/${totalModules}`,
-          totalModules,
-          processedModules,
-          totalSubjects,
-          processedSubjects,
-          totalLessons,
-          processedLessons,
-          currentItem: `Módulo: ${module.name}`,
+        await updateProgress({
+          current_step: `Processando módulo ${processedModules + 1}/${totalModules}`,
+          total_modules: totalModules,
+          processed_modules: processedModules,
+          total_subjects: totalSubjects,
+          processed_subjects: processedSubjects,
+          total_lessons: totalLessons,
+          processed_lessons: processedLessons,
+          current_item: `Módulo: ${module.name}`,
           errors: []
         })
 
@@ -345,15 +353,15 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
             }
             
             // Atualizar progresso ANTES de processar a disciplina
-            updateProgress({
-              currentStep: `Processando disciplina ${processedSubjects + 1}/${totalSubjects}`,
-              totalModules,
-              processedModules,
-              totalSubjects,
-              processedSubjects,
-              totalLessons,
-              processedLessons,
-              currentItem: `Disciplina: ${subject.name}`,
+            await updateProgress({
+              current_step: `Processando disciplina ${processedSubjects + 1}/${totalSubjects}`,
+              total_modules: totalModules,
+              processed_modules: processedModules,
+              total_subjects: totalSubjects,
+              processed_subjects: processedSubjects,
+              total_lessons: totalLessons,
+              processed_lessons: processedLessons,
+              current_item: `Disciplina: ${subject.name}`,
               errors: []
             })
 
@@ -381,15 +389,15 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               console.log(`      Processando arquivo: ${lessonItem.name} (${lessonItem.mimeType})`)
               
               // Atualizar progresso ANTES de processar a aula
-              updateProgress({
-                currentStep: `Processando aula ${processedLessons + 1}/${totalLessons}`,
-                totalModules,
-                processedModules,
-                totalSubjects,
-                processedSubjects,
-                totalLessons,
-                processedLessons,
-                currentItem: `Aula: ${lessonItem.name}`,
+              await updateProgress({
+                current_step: `Processando aula ${processedLessons + 1}/${totalLessons}`,
+                total_modules: totalModules,
+                processed_modules: processedModules,
+                total_subjects: totalSubjects,
+                processed_subjects: processedSubjects,
+                total_lessons: totalLessons,
+                processed_lessons: processedLessons,
+                current_item: `Aula: ${lessonItem.name}`,
                 errors: []
               })
               
@@ -446,15 +454,15 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               actualLessonIndex++
 
               // Atualizar progresso para indicar download de conteúdo
-              updateProgress({
-                currentStep: `Baixando conteúdo da aula ${processedLessons + 1}/${totalLessons}`,
-                totalModules,
-                processedModules,
-                totalSubjects,
-                processedSubjects,
-                totalLessons,
-                processedLessons,
-                currentItem: `Baixando: ${lessonItem.name}`,
+              await updateProgress({
+                current_step: `Baixando conteúdo da aula ${processedLessons + 1}/${totalLessons}`,
+                total_modules: totalModules,
+                processed_modules: processedModules,
+                total_subjects: totalSubjects,
+                processed_subjects: processedSubjects,
+                total_lessons: totalLessons,
+                processed_lessons: processedLessons,
+                current_item: `Baixando: ${lessonItem.name}`,
                 errors: []
               })
               
@@ -506,15 +514,15 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               processedLessons++
               
               // Atualizar progresso APÓS processar a aula
-              updateProgress({
-                currentStep: `Aula ${processedLessons}/${totalLessons} processada`,
-                totalModules,
-                processedModules,
-                totalSubjects,
-                processedSubjects,
-                totalLessons,
-                processedLessons,
-                currentItem: `Concluído: ${lesson.name}`,
+              await updateProgress({
+                current_step: `Aula ${processedLessons}/${totalLessons} processada`,
+                total_modules: totalModules,
+                processed_modules: processedModules,
+                total_subjects: totalSubjects,
+                processed_subjects: processedSubjects,
+                total_lessons: totalLessons,
+                processed_lessons: processedLessons,
+                current_item: `Concluído: ${lesson.name}`,
                 errors: []
               })
             }
@@ -525,15 +533,15 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
             processedSubjects++
             
             // Atualizar progresso após processar disciplina
-            updateProgress({
-              currentStep: `Disciplina ${processedSubjects}/${totalSubjects} processada`,
-              totalModules,
-              processedModules,
-              totalSubjects,
-              processedSubjects,
-              totalLessons,
-              processedLessons,
-              currentItem: `Concluído: ${subject.name}`,
+            await updateProgress({
+              current_step: `Disciplina ${processedSubjects}/${totalSubjects} processada`,
+              total_modules: totalModules,
+              processed_modules: processedModules,
+              total_subjects: totalSubjects,
+              processed_subjects: processedSubjects,
+              total_lessons: totalLessons,
+              processed_lessons: processedLessons,
+              current_item: `Concluído: ${subject.name}`,
               errors: []
             })
           }
@@ -543,15 +551,15 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
         processedModules++
         
         // Atualizar progresso após processar módulo
-        updateProgress({
-          currentStep: `Módulo ${processedModules}/${totalModules} processado`,
-          totalModules,
-          processedModules,
-          totalSubjects,
-          processedSubjects,
-          totalLessons,
-          processedLessons,
-          currentItem: `Concluído: ${module.name}`,
+        await updateProgress({
+          current_step: `Módulo ${processedModules}/${totalModules} processado`,
+          total_modules: totalModules,
+          processed_modules: processedModules,
+          total_subjects: totalSubjects,
+          processed_subjects: processedSubjects,
+          total_lessons: totalLessons,
+          processed_lessons: processedLessons,
+          current_item: `Concluído: ${module.name}`,
           errors: []
         })
       }
@@ -564,7 +572,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
   }
 }
 
-async function importToDatabase(structure: CourseStructure, courseId: string, supabase: any, importId?: string) {
+async function importToDatabase(structure: CourseStructure, courseId: string, supabase: any, importId?: string, userId?: string) {
   const results = {
     modules: 0,
     subjects: 0,
@@ -573,16 +581,12 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
   }
 
   // Função para atualizar progresso durante importação
-  const updateDatabaseProgress = (step: string, item: string) => {
-    if (importId && importProgressStore) {
-      const currentProgress = importProgressStore.get(importId)
-      if (currentProgress) {
-        importProgressStore.set(importId, {
-          ...currentProgress,
-          currentStep: step,
-          currentItem: item
-        })
-      }
+  const updateDatabaseProgress = async (step: string, item: string) => {
+    if (importId && supabase && userId) {
+      await updateImportProgress(supabase, importId, userId, courseId, {
+        current_step: step,
+        current_item: item
+      })
     }
   }
   
@@ -706,7 +710,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
         for (let lessonIdx = 0; lessonIdx < subjectData.lessons.length; lessonIdx++) {
           const lessonData = subjectData.lessons[lessonIdx]
           
-          updateDatabaseProgress(
+          await updateDatabaseProgress(
             `Salvando aula ${lessonIdx + 1}/${subjectData.lessons.length}`,
             `Aula: ${lessonData.name}`
           )
@@ -812,17 +816,17 @@ export async function POST(req: NextRequest) {
     // Gerar ID único para esta importação
     importId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     
-    // Inicializar progresso
-    importProgressStore.set(importId, {
+    // Inicializar progresso no Supabase
+    await updateImportProgress(supabase, importId, user.id, courseId, {
       phase: 'counting',
-      currentStep: 'Contando arquivos...',
-      totalModules: 0,
-      processedModules: 0,
-      totalSubjects: 0,
-      processedSubjects: 0,
-      totalLessons: 0,
-      processedLessons: 0,
-      currentItem: 'Analisando estrutura do Google Drive',
+      current_step: 'Contando arquivos...',
+      total_modules: 0,
+      processed_modules: 0,
+      total_subjects: 0,
+      processed_subjects: 0,
+      total_lessons: 0,
+      processed_lessons: 0,
+      current_item: 'Analisando estrutura do Google Drive',
       percentage: 0,
       errors: []
     })
@@ -834,23 +838,23 @@ export async function POST(req: NextRequest) {
     const totals = await countDriveFolderItems(drive, folderId)
     
     // Atualizar progresso com totais
-    importProgressStore.set(importId, {
+    await updateImportProgress(supabase, importId, user.id, courseId, {
       phase: 'processing',
-      currentStep: 'Iniciando processamento',
-      totalModules: totals.totalModules,
-      processedModules: 0,
-      totalSubjects: totals.totalSubjects,
-      processedSubjects: 0,
-      totalLessons: totals.totalLessons,
-      processedLessons: 0,
-      currentItem: 'Preparando para processar arquivos',
+      current_step: 'Iniciando processamento',
+      total_modules: totals.totalModules,
+      processed_modules: 0,
+      total_subjects: totals.totalSubjects,
+      processed_subjects: 0,
+      total_lessons: totals.totalLessons,
+      processed_lessons: 0,
+      current_item: 'Preparando para processar arquivos',
       percentage: 0,
       errors: []
     })
     
     // FASE 2: Processar estrutura da pasta
     console.log('\n=== FASE 2: Processando conteúdo ===')
-    const structure = await parseGoogleDriveFolder(drive, folderId, importId, totals)
+    const structure = await parseGoogleDriveFolder(drive, folderId, importId, totals, supabase, user.id, courseId)
 
     if (structure.modules.length === 0) {
       return NextResponse.json(
@@ -860,29 +864,27 @@ export async function POST(req: NextRequest) {
     }
 
     // Importar para o banco de dados
-    const results = await importToDatabase(structure, courseId, supabase, importId)
+    const results = await importToDatabase(structure, courseId, supabase, importId, user.id)
 
     // Atualizar progresso final
-    const progressStore = importProgressStore
-    if (progressStore) {
-      progressStore.set(importId, {
-        currentStep: 'Importação concluída',
-        totalModules: results.modules,
-        processedModules: results.modules,
-        totalSubjects: results.subjects,
-        processedSubjects: results.subjects,
-        totalLessons: results.lessons,
-        processedLessons: results.lessons,
-        currentItem: '',
-        errors: results.errors,
-        completed: true
-      })
-    }
+    await updateImportProgress(supabase, importId, user.id, courseId, {
+      current_step: 'Importação concluída',
+      total_modules: results.modules,
+      processed_modules: results.modules,
+      total_subjects: results.subjects,
+      processed_subjects: results.subjects,
+      total_lessons: results.lessons,
+      processed_lessons: results.lessons,
+      current_item: '',
+      errors: results.errors,
+      completed: true,
+      percentage: 100
+    })
     
-    // Retornar importId imediatamente para o frontend começar o polling
+    // Retornar importId e resultados
     return NextResponse.json({
       success: true,
-      message: 'Importação iniciada. Acompanhe o progresso.',
+      message: `Importação concluída: ${results.modules} módulos, ${results.subjects} disciplinas e ${results.lessons} aulas importados`,
       importId,
       modulesImported: results.modules,
       subjectsImported: results.subjects,
@@ -895,20 +897,25 @@ export async function POST(req: NextRequest) {
     console.error('Erro na importação:', error)
     
     // Atualizar progresso com erro
-    if (importProgressStore && importId) {
-      importProgressStore.set(importId, {
-        currentStep: 'Erro na importação',
-        totalModules: 0,
-        processedModules: 0,
-        totalSubjects: 0,
-        processedSubjects: 0,
-        totalLessons: 0,
-        processedLessons: 0,
-        currentItem: error.message || 'Erro desconhecido',
-        errors: [error.message || 'Erro ao processar importação'],
-        completed: true,
-        percentage: 0
-      })
+    if (importId) {
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        await updateImportProgress(supabase, importId, user.id, '', {
+          current_step: 'Erro na importação',
+          total_modules: 0,
+          processed_modules: 0,
+          total_subjects: 0,
+          processed_subjects: 0,
+          total_lessons: 0,
+          processed_lessons: 0,
+          current_item: error.message || 'Erro desconhecido',
+          errors: [error.message || 'Erro ao processar importação'],
+          completed: true,
+          percentage: 0
+        })
+      }
     }
     
     return NextResponse.json(

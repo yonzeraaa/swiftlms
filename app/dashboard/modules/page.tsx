@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Folder, Plus, Edit, Trash2, Search, X, Loader2, AlertCircle, BookOpen, GripVertical } from 'lucide-react'
+import { Folder, Plus, Edit, Trash2, Search, X, Loader2, AlertCircle, BookOpen, GripVertical, CheckSquare, Square, Trash } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
 import { createClient } from '@/lib/supabase/client'
@@ -39,9 +39,11 @@ interface SortableModuleProps {
   stats: { subjects: number }
   onEdit: (module: CourseModule) => void
   onDelete: (module: CourseModule) => void
+  isSelected: boolean
+  onToggleSelect: (moduleId: string) => void
 }
 
-function SortableModule({ module, course, stats, onEdit, onDelete }: SortableModuleProps) {
+function SortableModule({ module, course, stats, onEdit, onDelete, isSelected, onToggleSelect }: SortableModuleProps) {
   const {
     attributes,
     listeners,
@@ -88,6 +90,19 @@ function SortableModule({ module, course, stats, onEdit, onDelete }: SortableMod
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onToggleSelect(module.id)
+                  }}
+                  className="text-gold-400 hover:text-gold-200 transition-colors"
+                >
+                  {isSelected ? (
+                    <CheckSquare className="w-5 h-5" />
+                  ) : (
+                    <Square className="w-5 h-5" />
+                  )}
+                </button>
                 <GripVertical className={`
                   w-5 h-5 transition-all duration-200
                   ${isDragging ? 'text-gold-400' : 'text-gold-500/30 group-hover:text-gold-500/50'}
@@ -184,6 +199,8 @@ export default function ModulesPage() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<string>('all')
+  const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
   
   const supabase = createClient()
   
@@ -406,6 +423,52 @@ export default function ModulesPage() {
     }
   }
 
+  const handleBulkDelete = async () => {
+    if (selectedModules.size === 0) return
+    
+    if (!confirm(`Tem certeza que deseja excluir ${selectedModules.size} módulos permanentemente? Isso removerá todas as associações com disciplinas.`)) return
+
+    setIsDeleting(true)
+    setMessage({ type: 'info', text: 'Excluindo módulos...' })
+    
+    try {
+      const { error } = await supabase
+        .from('course_modules')
+        .delete()
+        .in('id', Array.from(selectedModules))
+
+      if (error) throw error
+
+      setMessage({ type: 'success', text: `${selectedModules.size} módulos excluídos com sucesso!` })
+      setSelectedModules(new Set())
+      await fetchData()
+    } catch (error: any) {
+      console.error('Error deleting modules:', error)
+      setMessage({ type: 'error', text: error.message || 'Erro ao excluir módulos' })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  const toggleSelectModule = (moduleId: string) => {
+    const newSelection = new Set(selectedModules)
+    if (newSelection.has(moduleId)) {
+      newSelection.delete(moduleId)
+    } else {
+      newSelection.add(moduleId)
+    }
+    setSelectedModules(newSelection)
+  }
+
+  const selectAllModules = () => {
+    const allIds = sortedModules.map(m => m.id)
+    setSelectedModules(new Set(allIds))
+  }
+
+  const deselectAllModules = () => {
+    setSelectedModules(new Set())
+  }
+
   const openCreateModal = () => {
     setEditingModule(null)
     // Calcula o próximo order_index disponível (máximo + 1)
@@ -594,6 +657,34 @@ export default function ModulesPage() {
         </Card>
       )}
 
+      {/* Selection Actions Bar */}
+      {selectedModules.size > 0 && (
+        <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-gold-200 font-medium">
+              {selectedModules.size} {selectedModules.size === 1 ? 'módulo selecionado' : 'módulos selecionados'}
+            </span>
+            <button
+              onClick={deselectAllModules}
+              className="text-gold-400 hover:text-gold-200 text-sm underline"
+            >
+              Desmarcar todos
+            </button>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="danger"
+              size="sm"
+              icon={<Trash className="w-4 h-4" />}
+              onClick={handleBulkDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Excluindo...' : 'Excluir Selecionados'}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Search and Filters */}
       <Card>
         <div className="space-y-4">
@@ -622,13 +713,30 @@ export default function ModulesPage() {
             </select>
           </div>
           
-          {/* Drag Instructions */}
-          {sortedModules.length > 1 && (
-            <div className="flex items-center gap-2 text-sm text-gold-400/70">
-              <GripVertical className="w-4 h-4" />
-              <span>Arraste os cards para reordenar os módulos</span>
-            </div>
-          )}
+          {/* Actions Row */}
+          <div className="flex items-center justify-between">
+            {sortedModules.length > 0 && (
+              <button
+                onClick={selectedModules.size === sortedModules.length ? deselectAllModules : selectAllModules}
+                className="flex items-center gap-2 text-gold-400 hover:text-gold-200 transition-colors"
+              >
+                {selectedModules.size === sortedModules.length ? (
+                  <CheckSquare className="w-5 h-5" />
+                ) : (
+                  <Square className="w-5 h-5" />
+                )}
+                <span className="text-sm font-medium">
+                  {selectedModules.size === sortedModules.length ? 'Desmarcar todos' : 'Selecionar todos'}
+                </span>
+              </button>
+            )}
+            {sortedModules.length > 1 && (
+              <div className="flex items-center gap-2 text-sm text-gold-400/70">
+                <GripVertical className="w-4 h-4" />
+                <span>Arraste os cards para reordenar os módulos</span>
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
@@ -666,6 +774,8 @@ export default function ModulesPage() {
                       stats={stats}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
+                      isSelected={selectedModules.has(module.id)}
+                      onToggleSelect={toggleSelectModule}
                     />
                   )
                 })
