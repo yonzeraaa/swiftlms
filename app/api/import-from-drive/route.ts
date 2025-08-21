@@ -777,6 +777,8 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
 }
 
 export async function POST(req: NextRequest) {
+  let importId: string | undefined
+  
   try {
     const supabase = await createClient()
 
@@ -808,7 +810,7 @@ export async function POST(req: NextRequest) {
     const drive = await authenticateGoogleDrive()
 
     // Gerar ID único para esta importação
-    const importId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    importId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     
     // Inicializar progresso
     importProgressStore.set(importId, {
@@ -824,6 +826,8 @@ export async function POST(req: NextRequest) {
       percentage: 0,
       errors: []
     })
+    
+    console.log(`[IMPORT] Iniciando importação com ID: ${importId}`)
     
     // FASE 1: Contar todos os itens primeiro
     console.log('\n=== FASE 1: Contando itens ===')
@@ -875,19 +879,38 @@ export async function POST(req: NextRequest) {
       })
     }
     
+    // Retornar importId imediatamente para o frontend começar o polling
     return NextResponse.json({
       success: true,
-      message: `Importação concluída: ${results.modules} módulos, ${results.subjects} disciplinas e ${results.lessons} aulas importados`,
+      message: 'Importação iniciada. Acompanhe o progresso.',
+      importId,
       modulesImported: results.modules,
       subjectsImported: results.subjects,
       lessonsImported: results.lessons,
       errors: results.errors,
-      structure,
-      importId
+      structure
     })
 
   } catch (error: any) {
     console.error('Erro na importação:', error)
+    
+    // Atualizar progresso com erro
+    if (importProgressStore && importId) {
+      importProgressStore.set(importId, {
+        currentStep: 'Erro na importação',
+        totalModules: 0,
+        processedModules: 0,
+        totalSubjects: 0,
+        processedSubjects: 0,
+        totalLessons: 0,
+        processedLessons: 0,
+        currentItem: error.message || 'Erro desconhecido',
+        errors: [error.message || 'Erro ao processar importação'],
+        completed: true,
+        percentage: 0
+      })
+    }
+    
     return NextResponse.json(
       { error: error.message || 'Erro ao processar importação do Google Drive' },
       { status: 500 }
