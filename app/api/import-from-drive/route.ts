@@ -3,6 +3,7 @@ import { google } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
 import path from 'path'
 import fs from 'fs'
+import { importProgressStore } from '../import-from-drive-status/route'
 
 async function authenticateGoogleDrive() {
   console.log('Iniciando autenticação Google Drive...')
@@ -168,8 +169,15 @@ function extractDriveFolderId(url: string): string | null {
   return null
 }
 
-async function parseGoogleDriveFolder(drive: any, folderId: string): Promise<CourseStructure> {
+async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: string): Promise<CourseStructure> {
   const structure: CourseStructure = { modules: [] }
+  
+  // Atualizar progresso se importId fornecido
+  const updateProgress = (progress: any) => {
+    if (importId && importProgressStore) {
+      importProgressStore.set(importId, progress)
+    }
+  }
 
   try {
     // Listar todos os arquivos e pastas dentro da pasta principal
@@ -182,6 +190,14 @@ async function parseGoogleDriveFolder(drive: any, folderId: string): Promise<Cou
     const items = response.data.files || []
     console.log(`Encontrados ${items.length} módulos na pasta principal`)
     
+    // Contar total de itens para progresso
+    let totalModules = items.filter((i: any) => i.mimeType === 'application/vnd.google-apps.folder').length
+    let processedModules = 0
+    let totalSubjects = 0
+    let processedSubjects = 0
+    let totalLessons = 0
+    let processedLessons = 0
+    
     // Processar módulos (pastas de primeiro nível)
     for (let moduleIndex = 0; moduleIndex < items.length; moduleIndex++) {
       const item = items[moduleIndex]
@@ -192,6 +208,19 @@ async function parseGoogleDriveFolder(drive: any, folderId: string): Promise<Cou
           order: moduleIndex + 1,
           subjects: [] as any[]
         }
+        
+        // Atualizar progresso
+        updateProgress({
+          currentStep: 'Processando módulos',
+          totalModules,
+          processedModules,
+          totalSubjects,
+          processedSubjects,
+          totalLessons,
+          processedLessons,
+          currentItem: module.name,
+          errors: []
+        })
 
         // Listar disciplinas dentro do módulo
         const subjectsResponse = await drive.files.list({
@@ -202,6 +231,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string): Promise<Cou
 
         const subjects = subjectsResponse.data.files || []
         console.log(`  Módulo '${module.name}': ${subjects.length} disciplinas encontradas`)
+        totalSubjects += subjects.filter((s: any) => s.mimeType === 'application/vnd.google-apps.folder').length
 
         for (let subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
           const subjectItem = subjects[subjectIndex]
@@ -212,6 +242,19 @@ async function parseGoogleDriveFolder(drive: any, folderId: string): Promise<Cou
               order: subjectIndex + 1,
               lessons: [] as any[]
             }
+            
+            // Atualizar progresso
+            updateProgress({
+              currentStep: 'Processando disciplinas',
+              totalModules,
+              processedModules,
+              totalSubjects,
+              processedSubjects,
+              totalLessons,
+              processedLessons,
+              currentItem: subject.name,
+              errors: []
+            })
 
             // Listar aulas dentro da disciplina
             const lessonsResponse = await drive.files.list({
@@ -222,6 +265,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string): Promise<Cou
 
             const lessons = lessonsResponse.data.files || []
             console.log(`    Disciplina '${subject.name}': ${lessons.length} arquivos/pastas encontrados`)
+            totalLessons += lessons.filter((l: any) => l.mimeType !== 'application/vnd.google-apps.folder').length
 
             let actualLessonIndex = 0
             for (let lessonIndex = 0; lessonIndex < lessons.length; lessonIndex++) {
@@ -229,28 +273,39 @@ async function parseGoogleDriveFolder(drive: any, folderId: string): Promise<Cou
               
               // Ignorar pastas - apenas processar arquivos
               if (lessonItem.mimeType === 'application/vnd.google-apps.folder') {
+                console.log(`      Ignorando pasta: ${lessonItem.name}`)
+                // TODO: Poderia processar subpastas recursivamente se necessário
                 continue
               }
               
+              console.log(`      Processando arquivo: ${lessonItem.name} (${lessonItem.mimeType})`)
+              
               // Determinar tipo de conteúdo baseado no mimeType
               let contentType = 'text'
-              if (lessonItem.mimeType.includes('video')) {
+              if (lessonItem.mimeType.includes('video') || lessonItem.mimeType.includes('mp4') || lessonItem.mimeType.includes('avi') || lessonItem.mimeType.includes('mov')) {
                 contentType = 'video'
-              } else if (lessonItem.mimeType.includes('audio')) {
+              } else if (lessonItem.mimeType.includes('audio') || lessonItem.mimeType.includes('mp3') || lessonItem.mimeType.includes('wav') || lessonItem.mimeType.includes('m4a')) {
                 contentType = 'audio'
               } else if (lessonItem.mimeType.includes('pdf')) {
                 contentType = 'pdf'
-              } else if (lessonItem.mimeType.includes('presentation') || lessonItem.mimeType.includes('powerpoint')) {
+              } else if (lessonItem.mimeType.includes('presentation') || lessonItem.mimeType.includes('powerpoint') || lessonItem.mimeType.includes('slide')) {
                 contentType = 'slides'
-              } else if (lessonItem.mimeType.includes('spreadsheet') || lessonItem.mimeType.includes('excel')) {
+              } else if (lessonItem.mimeType.includes('spreadsheet') || lessonItem.mimeType.includes('excel') || lessonItem.mimeType.includes('sheet')) {
                 contentType = 'spreadsheet'
+              } else if (lessonItem.mimeType.includes('image') || lessonItem.mimeType.includes('png') || lessonItem.mimeType.includes('jpg') || lessonItem.mimeType.includes('jpeg')) {
+                contentType = 'image'
+              } else if (lessonItem.mimeType.includes('zip') || lessonItem.mimeType.includes('rar') || lessonItem.mimeType.includes('compressed')) {
+                contentType = 'archive'
               }
               
               // Gerar link do Google Drive para o arquivo
               const driveLink = `https://drive.google.com/file/d/${lessonItem.id}/view`
               
+              // Lista expandida de extensões de arquivo
+              const fileExtensions = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
+              
               // Extrair código e nome da aula (formato: "AULA01-Nome da Aula" ou "A01-Nome")
-              const lessonFileName = lessonItem.name.replace(/\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a)$/i, '')
+              const lessonFileName = lessonItem.name.replace(fileExtensions, '')
               const lessonCodeMatch = lessonFileName.match(/^([A-Z0-9]+)-(.+)$/)
               
               let lessonCode: string
@@ -321,15 +376,31 @@ async function parseGoogleDriveFolder(drive: any, folderId: string): Promise<Cou
               // Apenas adicionar se for um arquivo válido
               subject.lessons.push(lesson)
               console.log(`      Aula adicionada: '${lesson.name}' (tipo: ${lessonItem.mimeType})`)
+              processedLessons++
+              
+              // Atualizar progresso
+              updateProgress({
+                currentStep: 'Processando aulas',
+                totalModules,
+                processedModules,
+                totalSubjects,
+                processedSubjects,
+                totalLessons,
+                processedLessons,
+                currentItem: lesson.name,
+                errors: []
+              })
             }
             
             console.log(`    Total de aulas processadas para '${subject.name}': ${subject.lessons.length}`)
 
             module.subjects.push(subject)
+            processedSubjects++
           }
         }
 
         structure.modules.push(module)
+        processedModules++
       }
     }
 
@@ -527,8 +598,11 @@ export async function POST(req: NextRequest) {
     // Autenticar com Google Drive
     const drive = await authenticateGoogleDrive()
 
+    // Gerar ID único para esta importação
+    const importId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    
     // Processar estrutura da pasta
-    const structure = await parseGoogleDriveFolder(drive, folderId)
+    const structure = await parseGoogleDriveFolder(drive, folderId, importId)
 
     if (structure.modules.length === 0) {
       return NextResponse.json(
@@ -540,6 +614,22 @@ export async function POST(req: NextRequest) {
     // Importar para o banco de dados
     const results = await importToDatabase(structure, courseId, supabase)
 
+    // Atualizar progresso final
+    if (importProgressStore) {
+      importProgressStore.set(importId, {
+        currentStep: 'Importação concluída',
+        totalModules: results.modules,
+        processedModules: results.modules,
+        totalSubjects: results.subjects,
+        processedSubjects: results.subjects,
+        totalLessons: results.lessons,
+        processedLessons: results.lessons,
+        currentItem: '',
+        errors: results.errors,
+        completed: true
+      })
+    }
+    
     return NextResponse.json({
       success: true,
       message: `Importação concluída: ${results.modules} módulos, ${results.subjects} disciplinas e ${results.lessons} aulas importados`,
@@ -547,7 +637,8 @@ export async function POST(req: NextRequest) {
       subjectsImported: results.subjects,
       lessonsImported: results.lessons,
       errors: results.errors,
-      structure
+      structure,
+      importId
     })
 
   } catch (error: any) {

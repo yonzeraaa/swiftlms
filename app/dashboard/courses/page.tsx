@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, UserPlus, BookMarked, UserMinus, Upload, FileText } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
+import ImportProgress from '../../components/ImportProgress'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
@@ -74,6 +75,19 @@ export default function CoursesPage() {
   const [showDriveImportModal, setShowDriveImportModal] = useState(false)
   const [driveUrl, setDriveUrl] = useState('')
   const [importingFromDrive, setImportingFromDrive] = useState(false)
+  const [importProgress, setImportProgress] = useState({
+    currentStep: '',
+    totalModules: 0,
+    processedModules: 0,
+    totalSubjects: 0,
+    processedSubjects: 0,
+    totalLessons: 0,
+    processedLessons: 0,
+    currentItem: '',
+    errors: [] as string[]
+  })
+  const [importId, setImportId] = useState<string | null>(null)
+  const progressInterval = useRef<NodeJS.Timeout | null>(null)
   const supabase = createClient()
   const { t } = useTranslation()
   
@@ -487,11 +501,52 @@ export default function CoursesPage() {
     }
   }
   
+  // Limpar intervalo quando componente desmontar ou importação terminar
+  useEffect(() => {
+    return () => {
+      if (progressInterval.current) {
+        clearInterval(progressInterval.current)
+      }
+    }
+  }, [])
+
+  const checkImportProgress = async (importId: string) => {
+    try {
+      const response = await fetch(`/api/import-from-drive-status?importId=${importId}`)
+      if (response.ok) {
+        const progress = await response.json()
+        setImportProgress(progress)
+        
+        // Se importação completou, parar de verificar
+        if (progress.completed) {
+          if (progressInterval.current) {
+            clearInterval(progressInterval.current)
+            progressInterval.current = null
+          }
+          setImportingFromDrive(false)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar progresso:', error)
+    }
+  }
+
   const handleDriveImport = async () => {
     if (!driveUrl || !selectedCourse) return
     
     setImportingFromDrive(true)
     setError(null)
+    setImportProgress({
+      currentStep: 'Iniciando importação...',
+      totalModules: 0,
+      processedModules: 0,
+      totalSubjects: 0,
+      processedSubjects: 0,
+      totalLessons: 0,
+      processedLessons: 0,
+      currentItem: '',
+      errors: []
+    })
     
     try {
       const response = await fetch('/api/import-from-drive', {
@@ -511,15 +566,20 @@ export default function CoursesPage() {
         throw new Error(result.error || 'Erro na importação')
       }
       
-      alert(`Importação concluída! ${result.modulesImported} módulos, ${result.subjectsImported} disciplinas e ${result.lessonsImported} aulas importados.`)
+      // Salvar importId e iniciar polling de progresso
+      if (result.importId) {
+        setImportId(result.importId)
+        
+        // Verificar progresso a cada 1 segundo
+        progressInterval.current = setInterval(() => {
+          checkImportProgress(result.importId)
+        }, 1000)
+      }
       
-      setShowDriveImportModal(false)
-      setDriveUrl('')
-      setSelectedCourse(null)
+      // Não fechar o modal imediatamente - deixar aberto para mostrar progresso
       
     } catch (error: any) {
       setError(error.message || 'Erro ao importar do Google Drive')
-    } finally {
       setImportingFromDrive(false)
     }
   }
@@ -1650,28 +1710,55 @@ export default function CoursesPage() {
                 </p>
               </div>
               
+              {/* Progress Display */}
+              {importingFromDrive && (
+                <ImportProgress
+                  isImporting={importingFromDrive}
+                  progress={importProgress}
+                />
+              )}
+              
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
                   variant="secondary"
                   onClick={() => {
+                    // Limpar intervalo se existir
+                    if (progressInterval.current) {
+                      clearInterval(progressInterval.current)
+                      progressInterval.current = null
+                    }
                     setShowDriveImportModal(false)
                     setDriveUrl('')
                     setError(null)
+                    setImportingFromDrive(false)
+                    setImportProgress({
+                      currentStep: '',
+                      totalModules: 0,
+                      processedModules: 0,
+                      totalSubjects: 0,
+                      processedSubjects: 0,
+                      totalLessons: 0,
+                      processedLessons: 0,
+                      currentItem: '',
+                      errors: []
+                    })
                   }}
                   className="flex-1"
                 >
-                  Cancelar
+                  {importingFromDrive ? 'Cancelar' : 'Fechar'}
                 </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={handleDriveImport}
-                  disabled={!driveUrl || importingFromDrive}
-                  className="flex-1"
-                >
-                  {importingFromDrive ? 'Importando...' : 'Importar'}
-                </Button>
+                {!importingFromDrive && (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleDriveImport}
+                    disabled={!driveUrl}
+                    className="flex-1"
+                  >
+                    Importar
+                  </Button>
+                )}
               </div>
             </div>
           </Card>
