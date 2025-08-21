@@ -21,16 +21,21 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const importId = searchParams.get('importId')
   
+  console.log(`[PROGRESS-STATUS] GET request for importId: ${importId}`)
+  
   if (!importId) {
     return NextResponse.json({ error: 'Import ID required' }, { status: 400 })
   }
   
   const progress = importProgressStore.get(importId)
+  console.log(`[PROGRESS-STATUS] Progress found:`, progress ? 'Yes' : 'No')
   
   if (!progress) {
+    console.log(`[PROGRESS-STATUS] Available importIds:`, Array.from(importProgressStore.keys()))
     return NextResponse.json({ error: 'Import not found' }, { status: 404 })
   }
   
+  console.log(`[PROGRESS-STATUS] Returning progress:`, progress)
   return NextResponse.json(progress)
 }
 

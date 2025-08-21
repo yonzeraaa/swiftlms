@@ -183,16 +183,89 @@ function extractDriveFolderId(url: string): string | null {
   return null
 }
 
-async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: string): Promise<CourseStructure> {
+// Função para contar todos os itens antes de processar
+async function countDriveFolderItems(drive: any, folderId: string): Promise<{totalModules: number, totalSubjects: number, totalLessons: number}> {
+  let totalModules = 0
+  let totalSubjects = 0
+  let totalLessons = 0
+  
+  try {
+    // Listar módulos (pastas de primeiro nível)
+    const modulesResponse = await drive.files.list({
+      q: `'${folderId}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'`,
+      fields: 'files(id, name)',
+      pageSize: 1000
+    })
+    
+    const modules = modulesResponse.data.files || []
+    totalModules = modules.length
+    console.log(`Contando: ${totalModules} módulos encontrados`)
+    
+    // Para cada módulo, contar disciplinas
+    for (const module of modules) {
+      const subjectsResponse = await drive.files.list({
+        q: `'${module.id}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'`,
+        fields: 'files(id, name)',
+        pageSize: 1000
+      })
+      
+      const subjects = subjectsResponse.data.files || []
+      totalSubjects += subjects.length
+      console.log(`  Módulo '${module.name}': ${subjects.length} disciplinas`)
+      
+      // Para cada disciplina, contar aulas (TODOS os arquivos, não apenas alguns tipos)
+      for (const subject of subjects) {
+        const lessonsResponse = await drive.files.list({
+          q: `'${subject.id}' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'`,
+          fields: 'files(id, name, mimeType)',
+          pageSize: 1000
+        })
+        
+        const lessons = lessonsResponse.data.files || []
+        totalLessons += lessons.length
+        console.log(`    Disciplina '${subject.name}': ${lessons.length} aulas`)
+        
+        // Log dos tipos de arquivo encontrados para debug
+        const mimeTypes = lessons.reduce((acc: any, lesson: any) => {
+          acc[lesson.mimeType] = (acc[lesson.mimeType] || 0) + 1
+          return acc
+        }, {})
+        if (Object.keys(mimeTypes).length > 0) {
+          console.log(`      Tipos de arquivo:`, mimeTypes)
+        }
+      }
+    }
+    
+    console.log(`\nTotal contabilizado: ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} aulas`)
+    return { totalModules, totalSubjects, totalLessons }
+  } catch (error) {
+    console.error('Erro ao contar itens:', error)
+    throw error
+  }
+}
+
+async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: string, totals?: {totalModules: number, totalSubjects: number, totalLessons: number}): Promise<CourseStructure> {
   const structure: CourseStructure = { modules: [] }
+  
+  // Usar totais pré-calculados se fornecidos, senão inicializar com zero
+  let totalModules = totals?.totalModules || 0
+  let totalSubjects = totals?.totalSubjects || 0  
+  let totalLessons = totals?.totalLessons || 0
+  let processedModules = 0
+  let processedSubjects = 0
+  let processedLessons = 0
   
   // Atualizar progresso se importId fornecido
   const updateProgress = (progress: any) => {
-    if (importId) {
-      const progressStore = importProgressStore
-      if (progressStore) {
-        progressStore.set(importId, progress)
+    if (importId && importProgressStore) {
+      const fullProgress = {
+        ...progress,
+        percentage: totalModules + totalSubjects + totalLessons > 0 
+          ? Math.round(((processedModules + processedSubjects + processedLessons) / (totalModules + totalSubjects + totalLessons)) * 100)
+          : 0
       }
+      console.log(`[PROGRESS] Atualizando progresso:`, fullProgress)
+      importProgressStore.set(importId, fullProgress)
     }
   }
 
@@ -205,52 +278,24 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
     })
 
     const items = response.data.files || []
-    console.log(`Encontrados ${items.length} módulos na pasta principal`)
+    console.log(`Processando ${items.length} itens na pasta principal`)
     
-    // Contar total de itens para progresso
-    let totalModules = items.filter((i: any) => i.mimeType === 'application/vnd.google-apps.folder').length
-    let processedModules = 0
-    let totalSubjects = 0
-    let processedSubjects = 0
-    let totalLessons = 0
-    let processedLessons = 0
-    
-    // Primeiro, contar todos os itens para ter totais precisos
-    for (const item of items) {
-      if (item.mimeType === 'application/vnd.google-apps.folder') {
-        const subjectsResponse = await drive.files.list({
-          q: `'${item.id}' in parents and trashed = false`,
-          fields: 'files(id, mimeType)',
-          orderBy: 'name'
-        })
-        const subjects = subjectsResponse.data.files || []
-        const subjectFolders = subjects.filter((s: any) => s.mimeType === 'application/vnd.google-apps.folder')
-        totalSubjects += subjectFolders.length
-        
-        // Contar aulas em cada disciplina
-        for (const subjectItem of subjectFolders) {
-          const lessonsResponse = await drive.files.list({
-            q: `'${subjectItem.id}' in parents and trashed = false`,
-            fields: 'files(id, mimeType)',
-            orderBy: 'name'
-          })
-          const lessons = lessonsResponse.data.files || []
-          totalLessons += lessons.filter((l: any) => l.mimeType !== 'application/vnd.google-apps.folder').length
-        }
-      }
+    // Se não temos totais pré-calculados, contar agora (fallback)
+    if (!totals) {
+      console.log('Aviso: Totais não fornecidos, contando durante processamento...')
+      totalModules = items.filter((i: any) => i.mimeType === 'application/vnd.google-apps.folder').length
     }
     
-    console.log(`Total para processar: ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} aulas`)
-    
-    // Atualizar progresso inicial com totais corretos
+    // Atualizar progresso inicial
     updateProgress({
+      phase: 'processing',
       currentStep: 'Iniciando processamento',
       totalModules,
-      processedModules: 0,
+      processedModules,
       totalSubjects,
-      processedSubjects: 0,
+      processedSubjects,
       totalLessons,
-      processedLessons: 0,
+      processedLessons,
       currentItem: 'Preparando importação...',
       errors: []
     })
@@ -349,22 +394,23 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               })
               
               // Determinar tipo de conteúdo baseado no mimeType
-              let contentType = 'text'
-              if (lessonItem.mimeType.includes('video') || lessonItem.mimeType.includes('mp4') || lessonItem.mimeType.includes('avi') || lessonItem.mimeType.includes('mov')) {
+              // IMPORTANTE: O banco só aceita 'video', 'text', 'quiz' ou 'assignment'
+              let contentType = 'text' // Padrão para a maioria dos arquivos
+              const mimeType = lessonItem.mimeType.toLowerCase()
+              
+              // Arquivos de vídeo
+              if (mimeType.includes('video') || 
+                  mimeType === 'video/mp4' || 
+                  mimeType === 'video/mpeg' || 
+                  mimeType === 'video/quicktime' || 
+                  mimeType === 'video/x-msvideo' ||
+                  mimeType === 'application/vnd.google-apps.video') {
                 contentType = 'video'
-              } else if (lessonItem.mimeType.includes('audio') || lessonItem.mimeType.includes('mp3') || lessonItem.mimeType.includes('wav') || lessonItem.mimeType.includes('m4a')) {
-                contentType = 'audio'
-              } else if (lessonItem.mimeType.includes('pdf')) {
-                contentType = 'pdf'
-              } else if (lessonItem.mimeType.includes('presentation') || lessonItem.mimeType.includes('powerpoint') || lessonItem.mimeType.includes('slide')) {
-                contentType = 'slides'
-              } else if (lessonItem.mimeType.includes('spreadsheet') || lessonItem.mimeType.includes('excel') || lessonItem.mimeType.includes('sheet')) {
-                contentType = 'spreadsheet'
-              } else if (lessonItem.mimeType.includes('image') || lessonItem.mimeType.includes('png') || lessonItem.mimeType.includes('jpg') || lessonItem.mimeType.includes('jpeg')) {
-                contentType = 'image'
-              } else if (lessonItem.mimeType.includes('zip') || lessonItem.mimeType.includes('rar') || lessonItem.mimeType.includes('compressed')) {
-                contentType = 'archive'
               }
+              // Todos os outros tipos serão tratados como 'text'
+              // Isso inclui: PDFs, áudio, apresentações, planilhas, imagens, etc.
+              
+              console.log(`        Tipo detectado: ${contentType} para ${lessonItem.name} (${mimeType})`)
               
               // Gerar link do Google Drive para o arquivo
               const driveLink = `https://drive.google.com/file/d/${lessonItem.id}/view`
@@ -644,6 +690,18 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           results.subjects++
         }
 
+        // Buscar o maior order_index existente para aulas neste módulo
+        const { data: existingLessons } = await supabase
+          .from('lessons')
+          .select('order_index')
+          .eq('module_id', module.id)
+          .order('order_index', { ascending: false })
+          .limit(1)
+        
+        const startLessonIndex = existingLessons && existingLessons.length > 0 
+          ? (existingLessons[0].order_index + 1) 
+          : 0
+        
         // Importar aulas da disciplina
         for (let lessonIdx = 0; lessonIdx < subjectData.lessons.length; lessonIdx++) {
           const lessonData = subjectData.lessons[lessonIdx]
@@ -656,7 +714,20 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           // Criar título completo com código
           const fullTitle = lessonData.code ? `${lessonData.code} - ${lessonData.name}` : lessonData.name
           
-          // Primeiro criar a aula na tabela lessons
+          // Verificar se a aula já existe
+          const { data: existingLesson } = await supabase
+            .from('lessons')
+            .select('id')
+            .eq('module_id', module.id)
+            .eq('title', fullTitle)
+            .single()
+          
+          if (existingLesson) {
+            console.log(`Aula já existe: ${fullTitle}, pulando...`)
+            continue
+          }
+          
+          // Criar a aula na tabela lessons com order_index único
           const { data: newLesson, error: lessonError } = await supabase
             .from('lessons')
             .insert({
@@ -665,7 +736,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
               content: lessonData.content || '',
               content_type: lessonData.contentType || 'text',
               content_url: lessonData.contentUrl || null,
-              order_index: lessonIdx,
+              order_index: startLessonIndex + lessonIdx,
               module_id: module.id
             })
             .select()
@@ -739,8 +810,43 @@ export async function POST(req: NextRequest) {
     // Gerar ID único para esta importação
     const importId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     
-    // Processar estrutura da pasta
-    const structure = await parseGoogleDriveFolder(drive, folderId, importId)
+    // Inicializar progresso
+    importProgressStore.set(importId, {
+      phase: 'counting',
+      currentStep: 'Contando arquivos...',
+      totalModules: 0,
+      processedModules: 0,
+      totalSubjects: 0,
+      processedSubjects: 0,
+      totalLessons: 0,
+      processedLessons: 0,
+      currentItem: 'Analisando estrutura do Google Drive',
+      percentage: 0,
+      errors: []
+    })
+    
+    // FASE 1: Contar todos os itens primeiro
+    console.log('\n=== FASE 1: Contando itens ===')
+    const totals = await countDriveFolderItems(drive, folderId)
+    
+    // Atualizar progresso com totais
+    importProgressStore.set(importId, {
+      phase: 'processing',
+      currentStep: 'Iniciando processamento',
+      totalModules: totals.totalModules,
+      processedModules: 0,
+      totalSubjects: totals.totalSubjects,
+      processedSubjects: 0,
+      totalLessons: totals.totalLessons,
+      processedLessons: 0,
+      currentItem: 'Preparando para processar arquivos',
+      percentage: 0,
+      errors: []
+    })
+    
+    // FASE 2: Processar estrutura da pasta
+    console.log('\n=== FASE 2: Processando conteúdo ===')
+    const structure = await parseGoogleDriveFolder(drive, folderId, importId, totals)
 
     if (structure.modules.length === 0) {
       return NextResponse.json(

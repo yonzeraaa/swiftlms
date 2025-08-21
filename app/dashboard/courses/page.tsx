@@ -512,22 +512,40 @@ export default function CoursesPage() {
 
   const checkImportProgress = async (importId: string) => {
     try {
+      console.log(`[FRONTEND] Checking progress for importId: ${importId}`)
       const response = await fetch(`/api/import-from-drive-status?importId=${importId}`)
+      
       if (response.ok) {
         const progress = await response.json()
-        setImportProgress(progress)
+        console.log(`[FRONTEND] Progress received:`, progress)
+        // Garantir que todos os campos esperados existem
+        setImportProgress({
+          currentStep: progress.currentStep || '',
+          totalModules: progress.totalModules || 0,
+          processedModules: progress.processedModules || 0,
+          totalSubjects: progress.totalSubjects || 0,
+          processedSubjects: progress.processedSubjects || 0,
+          totalLessons: progress.totalLessons || 0,
+          processedLessons: progress.processedLessons || 0,
+          currentItem: progress.currentItem || '',
+          errors: progress.errors || []
+        })
         
         // Se importação completou, parar de verificar
         if (progress.completed) {
+          console.log(`[FRONTEND] Import completed, stopping polling`)
           if (progressInterval.current) {
             clearInterval(progressInterval.current)
             progressInterval.current = null
           }
           setImportingFromDrive(false)
         }
+      } else {
+        const error = await response.json()
+        console.error('[FRONTEND] Error response:', error)
       }
     } catch (error) {
-      console.error('Erro ao verificar progresso:', error)
+      console.error('[FRONTEND] Erro ao verificar progresso:', error)
     }
   }
 
@@ -568,12 +586,18 @@ export default function CoursesPage() {
       
       // Salvar importId e iniciar polling de progresso
       if (result.importId) {
+        console.log('[FRONTEND] Import started with ID:', result.importId)
         setImportId(result.importId)
+        
+        // Fazer primeira verificação imediatamente
+        checkImportProgress(result.importId)
         
         // Verificar progresso a cada 1 segundo
         progressInterval.current = setInterval(() => {
           checkImportProgress(result.importId)
         }, 1000)
+      } else {
+        console.error('[FRONTEND] No importId received from backend')
       }
       
       // Não fechar o modal imediatamente - deixar aberto para mostrar progresso
