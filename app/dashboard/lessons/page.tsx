@@ -15,7 +15,22 @@ type Course = Database['public']['Tables']['courses']['Row']
 type SubjectLessonView = Database['public']['Views']['subject_lessons_view']['Row']
 
 interface LessonWithRelations extends Lesson {
-  subject_lessons?: SubjectLessonView[]
+  subject_lessons?: Array<{
+    subject_id: string
+    subjects: {
+      id: string
+      name: string
+      code: string | null
+    }
+  }>
+  course_modules?: {
+    id: string
+    title: string
+    courses?: {
+      id: string
+      title: string
+    } | null
+  } | null
 }
 
 export default function LessonsPage() {

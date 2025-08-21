@@ -15,7 +15,7 @@ import QuestionContent from '../../components/QuestionContent'
 import Modal from '../../components/Modal'
 import { useToast } from '../../components/Toast'
 
-interface QuestionWithDetails extends Question {
+interface QuestionWithDetails extends Omit<Question, 'has_formula' | 'question_image_url'> {
   options?: QuestionOption[]
   subject?: { name: string }
   creator?: { full_name: string }

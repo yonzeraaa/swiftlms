@@ -25,7 +25,7 @@ type Question = Database['public']['Tables']['questions']['Row']
 type QuestionOption = Database['public']['Tables']['question_options']['Row']
 type TestAttempt = Database['public']['Tables']['test_attempts']['Row']
 
-interface QuestionWithOptions extends Question {
+interface QuestionWithOptions extends Omit<Question, 'has_formula' | 'question_image_url'> {
   options: QuestionOption[]
   question_image_url?: string | null
   has_formula?: boolean | null
