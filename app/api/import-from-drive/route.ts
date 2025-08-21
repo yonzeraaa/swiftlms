@@ -5,11 +5,31 @@ import path from 'path'
 import fs from 'fs'
 
 async function authenticateGoogleDrive() {
+  // Primeiro tentar usar as credenciais do ambiente (para produção)
+  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
+  
+  if (serviceAccountKey) {
+    // Se a chave estiver disponível como variável de ambiente (JSON string)
+    try {
+      const credentials = JSON.parse(serviceAccountKey)
+      const auth = new google.auth.GoogleAuth({
+        credentials,
+        scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+      })
+      
+      const drive = google.drive({ version: 'v3', auth })
+      return drive
+    } catch (error) {
+      console.error('Erro ao parsear GOOGLE_SERVICE_ACCOUNT_KEY:', error)
+    }
+  }
+  
+  // Fallback para arquivo local (desenvolvimento)
   const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './service-account-key.json'
   const absolutePath = path.resolve(process.cwd(), keyPath)
   
   if (!fs.existsSync(absolutePath)) {
-    throw new Error(`Service account key file not found at ${absolutePath}`)
+    throw new Error(`Service account key não encontrado. Configure GOOGLE_SERVICE_ACCOUNT_KEY como variável de ambiente ou coloque o arquivo em ${absolutePath}`)
   }
 
   const auth = new google.auth.GoogleAuth({

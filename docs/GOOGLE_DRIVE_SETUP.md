@@ -67,16 +67,35 @@ Para acesso sem autenticação do usuário:
 
 ## Passo 5: Configurar Variáveis de Ambiente
 
-Adicione ao arquivo `.env.local`:
+### Para Desenvolvimento Local
+
+1. Coloque o arquivo JSON da conta de serviço na raiz do projeto como `service-account-key.json`
+2. Adicione ao `.gitignore`:
+```
+service-account-key.json
+```
+
+### Para Produção (Vercel)
+
+1. Copie todo o conteúdo do arquivo JSON da conta de serviço
+2. No Vercel, vá para Settings > Environment Variables
+3. Adicione uma nova variável:
+   - Nome: `GOOGLE_SERVICE_ACCOUNT_KEY`
+   - Valor: Cole o conteúdo JSON completo
+   - Environment: Production
+
+Alternativamente, você pode adicionar ao arquivo `.env.local`:
 
 ```env
 # Para OAuth 2.0
 GOOGLE_CLIENT_ID=seu_client_id_aqui
 GOOGLE_CLIENT_SECRET=seu_client_secret_aqui
 
-# Para Conta de Serviço
-GOOGLE_SERVICE_ACCOUNT_EMAIL=swiftedu-drive-service@seu-projeto.iam.gserviceaccount.com
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+# Para Conta de Serviço (desenvolvimento)
+GOOGLE_SERVICE_ACCOUNT_KEY_PATH=./service-account-key.json
+
+# Para Conta de Serviço (produção - cole o JSON completo)
+GOOGLE_SERVICE_ACCOUNT_KEY='{"type":"service_account","project_id":"...","private_key":"...","client_email":"..."}'
 ```
 
 ## Passo 6: Instalar Dependências

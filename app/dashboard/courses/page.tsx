@@ -1634,9 +1634,14 @@ export default function CoursesPage() {
                 <ul className="list-disc list-inside space-y-1 ml-2">
                   <li>📁 CÓDIGO-Nome do Módulo</li>
                   <li className="ml-4">📁 CÓDIGO-Nome da Disciplina</li>
-                  <li className="ml-8">📄 Aulas da disciplina</li>
+                  <li className="ml-8">📄 CÓDIGO-Nome da Aula</li>
                 </ul>
-                <p className="mt-2">Exemplo: DCA01-Fundamentos da Logística</p>
+                <p className="mt-2">Exemplos:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2 text-gold-300">
+                  <li>DCA01-Fundamentos da Logística (Módulo)</li>
+                  <li>DCA01-Introdução à Cadeia de Suprimentos (Disciplina)</li>
+                  <li>AULA01-Conceitos Básicos.pdf (Aula)</li>
+                </ul>
               </div>
               
               <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg">
