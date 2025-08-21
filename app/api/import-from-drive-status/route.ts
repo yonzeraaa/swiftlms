@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Store para armazenar o progresso das importações
-const importProgressStore = new Map<string, any>()
+// Usando uma variável global para manter estado entre requisições
+// Em produção, seria melhor usar Redis ou um banco de dados
+let importProgressStore: Map<string, any>
+
+if (typeof global !== 'undefined') {
+  // @ts-ignore
+  if (!global.importProgressStore) {
+    // @ts-ignore
+    global.importProgressStore = new Map()
+  }
+  // @ts-ignore
+  importProgressStore = global.importProgressStore
+} else {
+  importProgressStore = new Map()
+}
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -38,4 +52,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ success: true })
 }
 
-export { importProgressStore }
+// Função helper para acessar o store (não é exportação de rota)
+export function getProgressStore() {
+  return importProgressStore
+}

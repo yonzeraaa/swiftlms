@@ -3,7 +3,7 @@ import { google } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
 import path from 'path'
 import fs from 'fs'
-import { importProgressStore } from '../import-from-drive-status/route'
+import { getProgressStore } from '../import-from-drive-status/route'
 
 async function authenticateGoogleDrive() {
   console.log('Iniciando autenticação Google Drive...')
@@ -174,8 +174,11 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
   
   // Atualizar progresso se importId fornecido
   const updateProgress = (progress: any) => {
-    if (importId && importProgressStore) {
-      importProgressStore.set(importId, progress)
+    if (importId) {
+      const progressStore = getProgressStore()
+      if (progressStore) {
+        progressStore.set(importId, progress)
+      }
     }
   }
 
@@ -615,8 +618,9 @@ export async function POST(req: NextRequest) {
     const results = await importToDatabase(structure, courseId, supabase)
 
     // Atualizar progresso final
-    if (importProgressStore) {
-      importProgressStore.set(importId, {
+    const progressStore = getProgressStore()
+    if (progressStore) {
+      progressStore.set(importId, {
         currentStep: 'Importação concluída',
         totalModules: results.modules,
         processedModules: results.modules,
