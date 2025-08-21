@@ -139,13 +139,22 @@ function SortableModule({ module, course, stats, onEdit, onDelete }: SortableMod
                 {stats.subjects} disciplina{stats.subjects !== 1 ? 's' : ''}
               </span>
               <span className={`
+                px-2 py-0.5 rounded text-xs
+                ${module.is_required === false
+                  ? 'bg-blue-500/20 text-blue-300'
+                  : 'bg-green-500/20 text-green-300'
+                }
+              `}>
+                {module.is_required === false ? 'Opcional' : 'Obrigatório'}
+              </span>
+              <span className={`
                 px-2 py-0.5 rounded transition-all duration-200
                 ${isDragging 
                   ? 'bg-gold-500/30 text-gold-200 font-semibold' 
                   : 'bg-navy-900/50 text-gold-400'
                 }
               `}>
-                Ordem: {module.order_index}
+                Ordem: {(module.order_index || 0) + 1}
               </span>
             </div>
           </div>
@@ -166,7 +175,8 @@ export default function ModulesPage() {
     title: '',
     description: '',
     course_id: '',
-    order_index: '0'
+    order_index: '0',
+    is_required: true
   })
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
@@ -286,6 +296,7 @@ export default function ModulesPage() {
             description: formData.description,
             course_id: formData.course_id,
             order_index: newOrderIndex,
+            is_required: formData.is_required,
             updated_at: new Date().toISOString()
           })
           .eq('id', editingModule.id)
@@ -327,7 +338,8 @@ export default function ModulesPage() {
             title: formData.title,
             description: formData.description,
             course_id: formData.course_id,
-            order_index: newOrderIndex
+            order_index: newOrderIndex,
+            is_required: formData.is_required
           })
 
         if (error) throw error
@@ -335,7 +347,7 @@ export default function ModulesPage() {
       }
 
       // Reset form and refresh data
-      setFormData({ title: '', description: '', course_id: '', order_index: '0' })
+      setFormData({ title: '', description: '', course_id: '', order_index: '0', is_required: true })
       setEditingModule(null)
       setShowModal(false)
       await fetchData()
@@ -364,7 +376,8 @@ export default function ModulesPage() {
       title: module.title,
       description: module.description || '',
       course_id: module.course_id,
-      order_index: module.order_index?.toString() || '0'
+      order_index: module.order_index?.toString() || '0',
+      is_required: module.is_required ?? true
     })
     setShowModal(true)
   }
@@ -403,7 +416,8 @@ export default function ModulesPage() {
       title: '', 
       description: '', 
       course_id: '', 
-      order_index: maxOrderIndex.toString() 
+      order_index: maxOrderIndex.toString(),
+      is_required: true 
     })
     setShowModal(true)
   }
@@ -764,6 +778,34 @@ export default function ModulesPage() {
                   step="1"
                 />
                 <p className="text-xs text-gold-300 mt-1">Posição do módulo (preenchido automaticamente com o próximo número disponível)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gold-200 mb-2">
+                  Tipo de Módulo
+                </label>
+                <div className="flex gap-4">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="is_required"
+                      checked={formData.is_required === true}
+                      onChange={() => setFormData({ ...formData, is_required: true })}
+                      className="mr-2 w-4 h-4 text-gold-500 bg-navy-900 border-gold-500/50 focus:ring-gold-500 focus:ring-2"
+                    />
+                    <span className="text-gold-100">Obrigatório</span>
+                  </label>
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="is_required"
+                      checked={formData.is_required === false}
+                      onChange={() => setFormData({ ...formData, is_required: false })}
+                      className="mr-2 w-4 h-4 text-gold-500 bg-navy-900 border-gold-500/50 focus:ring-gold-500 focus:ring-2"
+                    />
+                    <span className="text-gold-100">Opcional</span>
+                  </label>
+                </div>
               </div>
 
               <div>

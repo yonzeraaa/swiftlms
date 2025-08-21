@@ -49,14 +49,36 @@ export default function LessonsPage() {
     try {
       setLoading(true)
       
-      // Fetch lessons
+      // Fetch lessons with their relationships
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
-        .select('*')
-        .order('title')
+        .select(`
+          *,
+          subject_lessons (
+            subject_id,
+            subjects (
+              id,
+              name,
+              code
+            )
+          ),
+          course_modules (
+            id,
+            title,
+            courses (
+              id,
+              title
+            )
+          )
+        `)
+        .order('created_at', { ascending: false })
 
-      if (lessonsError) throw lessonsError
+      if (lessonsError) {
+        console.error('Error fetching lessons:', lessonsError)
+        throw lessonsError
+      }
 
+      console.log('Lessons fetched:', lessonsData?.length || 0, 'lessons')
       setLessons(lessonsData || [])
 
       // Fetch lesson progress stats
@@ -353,10 +375,10 @@ export default function LessonsPage() {
             <thead>
               <tr className="border-b border-gold-500/20">
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Aula</th>
+                <th className="text-left py-4 px-4 text-gold-200 font-medium">Disciplina</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Tipo</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Duração</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Ordem</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Conclusões</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Preview</th>
                 <th className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
               </tr>
@@ -375,6 +397,18 @@ export default function LessonsPage() {
                           )}
                         </div>
                       </td>
+                      <td className="py-4 px-4">
+                        <div className="text-gold-300 text-sm">
+                          {(lesson as any).subject_lessons?.[0]?.subjects ? (
+                            <div>
+                              <p className="text-gold-200">{(lesson as any).subject_lessons[0].subjects.name}</p>
+                              <p className="text-gold-400 text-xs">{(lesson as any).subject_lessons[0].subjects.code}</p>
+                            </div>
+                          ) : (
+                            <span className="text-gold-500">-</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-4 px-4 text-center">
                         <div className="flex items-center justify-center gap-2 text-gold-300">
                           {getTypeIcon(lesson.content_type)}
@@ -388,16 +422,6 @@ export default function LessonsPage() {
                       </td>
                       <td className="py-4 px-4 text-center">
                         <span className="text-gold-200">{lesson.order_index}</span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <div className="flex flex-col items-center">
-                          <span className="text-gold-200">{progress.completed}/{progress.total}</span>
-                          {progress.total > 0 && (
-                            <span className="text-gold-400 text-xs">
-                              ({Math.round((progress.completed / progress.total) * 100)}%)
-                            </span>
-                          )}
-                        </div>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${

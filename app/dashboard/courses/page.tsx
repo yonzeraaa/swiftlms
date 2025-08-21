@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, UserPlus, BookMarked, UserMinus } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, UserPlus, BookMarked, UserMinus, Upload, FileText } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -52,6 +52,9 @@ export default function CoursesPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [showFilters, setShowFilters] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [dropdownCourse, setDropdownCourse] = useState<Course | null>(null)
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null)
+  const dropdownRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,6 +68,12 @@ export default function CoursesPage() {
   const [showManageStudentsModal, setShowManageStudentsModal] = useState(false)
   const [enrolledStudents, setEnrolledStudents] = useState<any[]>([])
   const [loadingEnrolledStudents, setLoadingEnrolledStudents] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [showDriveImportModal, setShowDriveImportModal] = useState(false)
+  const [driveUrl, setDriveUrl] = useState('')
+  const [importingFromDrive, setImportingFromDrive] = useState(false)
   const supabase = createClient()
   const { t } = useTranslation()
   
@@ -443,6 +452,78 @@ export default function CoursesPage() {
     }
   }
   
+  const handleImport = async () => {
+    if (!importFile || !selectedCourse) return
+    
+    setImporting(true)
+    setError(null)
+    
+    try {
+      const formData = new FormData()
+      formData.append('file', importFile)
+      formData.append('courseId', selectedCourse.id)
+      
+      const response = await fetch('/api/import-course-structure', {
+        method: 'POST',
+        body: formData
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro na importação')
+      }
+      
+      alert(`Importação concluída! ${result.modulesImported} módulos e ${result.subjectsImported} disciplinas importados.`)
+      
+      setShowImportModal(false)
+      setImportFile(null)
+      setSelectedCourse(null)
+      
+    } catch (error: any) {
+      setError(error.message || 'Erro ao importar arquivo')
+    } finally {
+      setImporting(false)
+    }
+  }
+  
+  const handleDriveImport = async () => {
+    if (!driveUrl || !selectedCourse) return
+    
+    setImportingFromDrive(true)
+    setError(null)
+    
+    try {
+      const response = await fetch('/api/import-from-drive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          driveUrl,
+          courseId: selectedCourse.id
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro na importação')
+      }
+      
+      alert(`Importação concluída! ${result.modulesImported} módulos, ${result.subjectsImported} disciplinas e ${result.lessonsImported} aulas importados.`)
+      
+      setShowDriveImportModal(false)
+      setDriveUrl('')
+      setSelectedCourse(null)
+      
+    } catch (error: any) {
+      setError(error.message || 'Erro ao importar do Google Drive')
+    } finally {
+      setImportingFromDrive(false)
+    }
+  }
+  
   const filteredCourses = courses
     .filter(course => {
       const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -548,7 +629,7 @@ export default function CoursesPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredCourses.map((course) => (
-            <Card key={course.id} className="hover:shadow-2xl transition-shadow overflow-visible">
+            <Card key={course.id} className="hover:shadow-2xl transition-shadow relative">
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-gold mb-2">{course.title}</h3>
@@ -556,71 +637,27 @@ export default function CoursesPage() {
                 </div>
                 <div className="relative">
                   <button 
+                    ref={(el) => { dropdownRefs.current[course.id] = el }}
                     className="text-gold-400 hover:text-gold-200 transition-colors ml-4 p-1"
-                    onClick={() => setOpenDropdown(openDropdown === course.id ? null : course.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (openDropdown === course.id) {
+                        setOpenDropdown(null);
+                        setDropdownCourse(null);
+                        setDropdownPosition(null);
+                      } else {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setDropdownPosition({
+                          top: rect.bottom + window.scrollY,
+                          left: rect.right - 224 + window.scrollX // 224px = 14rem (w-56)
+                        });
+                        setOpenDropdown(course.id);
+                        setDropdownCourse(course);
+                      }
+                    }}
                   >
                     <MoreVertical className="w-5 h-5" />
                   </button>
-                  
-                  {openDropdown === course.id && (
-                    <div className="dropdown-menu absolute right-0 mt-2 w-56 bg-navy-800 border border-gold-500/20 rounded-lg shadow-xl z-[9998] overflow-visible">
-                      <button 
-                        onClick={() => openEditModal(course)}
-                        className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 rounded-t-lg"
-                      >
-                        <Edit className="w-4 h-4" />
-                        {t('courses.edit')}
-                      </button>
-                      <button 
-                        onClick={() => togglePublishStatus(course)}
-                        className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2"
-                      >
-                        {course.is_published ? (
-                          <>
-                            <XCircle className="w-4 h-4" />
-                            {t('courses.unpublish')}
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-4 h-4" />
-                            {t('courses.publish')}
-                          </>
-                        )}
-                      </button>
-                      <button 
-                        onClick={() => openEnrollModal(course)}
-                        className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        {t('courses.enrollStudents')}
-                      </button>
-                      <button 
-                        onClick={() => openManageStudentsModal(course)}
-                        className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2"
-                      >
-                        <Users className="w-4 h-4" />
-                        Gerenciar Alunos
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setSelectedCourse(course);
-                          setShowSubjectsModal(true);
-                          setOpenDropdown(null);
-                        }}
-                        className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2"
-                      >
-                        <BookMarked className="w-4 h-4" />
-                        Gerenciar Disciplinas
-                      </button>
-                      <button 
-                        onClick={() => openDeleteModal(course)}
-                        className="w-full px-4 py-2 text-left text-red-400 hover:bg-navy-700 flex items-center gap-2 rounded-b-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        {t('courses.delete')}
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -726,7 +763,7 @@ export default function CoursesPage() {
       
       {/* Create Course Modal */}
       {showNewCourseModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
@@ -888,7 +925,7 @@ export default function CoursesPage() {
       
       {/* Edit Course Modal */}
       {showEditModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
@@ -1049,7 +1086,7 @@ export default function CoursesPage() {
       
       {/* Delete Course Modal */}
       {showDeleteModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
           <Card className="w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-red-400 flex items-center gap-2">
@@ -1108,7 +1145,7 @@ export default function CoursesPage() {
       
       {/* Enroll Students Modal */}
       {showEnrollModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
           <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
@@ -1192,7 +1229,7 @@ export default function CoursesPage() {
       
       {/* View Course Modal */}
       {showViewModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
           <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gold flex items-center gap-2">
@@ -1319,7 +1356,7 @@ export default function CoursesPage() {
       
       {/* Manage Students Modal */}
       {showManageStudentsModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
           <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
@@ -1417,7 +1454,7 @@ export default function CoursesPage() {
       
       {/* Course Structure Manager Modal */}
       {showSubjectsModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
           <Card className="w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gold flex items-center gap-2">
@@ -1448,6 +1485,339 @@ export default function CoursesPage() {
             </div>
           </Card>
         </div>
+      )}
+      
+      {/* Import Modal */}
+      {showImportModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
+          <Card className="w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
+                <Upload className="w-6 h-6" />
+                Importar Estrutura do Curso
+              </h2>
+              <button
+                onClick={() => {
+                  setShowImportModal(false)
+                  setImportFile(null)
+                  setError(null)
+                }}
+                className="text-gold-400 hover:text-gold-200 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {error && (
+              <div className="mb-4 p-3 bg-red-900/20 border border-red-500/50 rounded-lg text-red-400 text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" />
+                {error}
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-gold-300 text-sm mb-4">
+                  Importar módulos e disciplinas para o curso: <strong className="text-gold">{selectedCourse.title}</strong>
+                </p>
+                
+                <div className="bg-navy-800/50 border-2 border-dashed border-gold-500/30 rounded-lg p-6 text-center">
+                  <input
+                    type="file"
+                    id="import-file"
+                    accept=".xlsx,.xls"
+                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                  <label 
+                    htmlFor="import-file" 
+                    className="cursor-pointer block"
+                  >
+                    <Upload className="w-12 h-12 text-gold-400 mx-auto mb-3" />
+                    <p className="text-gold-200 mb-1">
+                      {importFile ? importFile.name : 'Clique para selecionar arquivo'}
+                    </p>
+                    <p className="text-gold-400 text-xs">
+                      Aceita arquivos .xlsx ou .xls
+                    </p>
+                  </label>
+                </div>
+                
+                <div className="mt-4 text-xs text-gold-400 space-y-1">
+                  <p>O arquivo deve conter:</p>
+                  <ul className="list-disc list-inside space-y-1 ml-2">
+                    <li>Módulos com seus títulos</li>
+                    <li>Disciplinas com código, nome e carga horária</li>
+                    <li>Descrição das disciplinas (opcional)</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowImportModal(false)
+                    setImportFile(null)
+                    setError(null)
+                  }}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleImport}
+                  disabled={!importFile || importing}
+                  className="flex-1"
+                >
+                  {importing ? 'Importando...' : 'Importar'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+      
+      {/* Google Drive Import Modal */}
+      {showDriveImportModal && selectedCourse && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
+          <Card className="w-full max-w-md">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
+                <FileText className="w-6 h-6" />
+                Importar do Google Drive
+              </h2>
+              <button
+                onClick={() => {
+                  setShowDriveImportModal(false)
+                  setDriveUrl('')
+                  setError(null)
+                }}
+                className="text-gold-400 hover:text-gold-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <p className="text-sm text-red-400">{error}</p>
+              </div>
+            )}
+            
+            <div className="space-y-4">
+              <div>
+                <p className="text-gold-200 mb-2">
+                  Importando para: <span className="font-semibold">{selectedCourse.title}</span>
+                </p>
+              </div>
+              
+              <div>
+                <label htmlFor="driveUrl" className="block text-sm font-medium text-gold-300 mb-2">
+                  URL da pasta do Google Drive
+                </label>
+                <input
+                  type="url"
+                  id="driveUrl"
+                  value={driveUrl}
+                  onChange={(e) => setDriveUrl(e.target.value)}
+                  placeholder="https://drive.google.com/drive/folders/..."
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div className="text-xs text-gold-400 space-y-1">
+                <p>A estrutura da pasta deve seguir o padrão:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  <li>📁 CÓDIGO-Nome do Módulo</li>
+                  <li className="ml-4">📁 CÓDIGO-Nome da Disciplina</li>
+                  <li className="ml-8">📄 Aulas da disciplina</li>
+                </ul>
+                <p className="mt-2">Exemplo: DCA01-Fundamentos da Logística</p>
+              </div>
+              
+              <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg">
+                <p className="text-xs text-yellow-400">
+                  ⚠️ Nota: Para usar esta funcionalidade, é necessário configurar as credenciais da Google Drive API.
+                </p>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setShowDriveImportModal(false)
+                    setDriveUrl('')
+                    setError(null)
+                  }}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleDriveImport}
+                  disabled={!driveUrl || importingFromDrive}
+                  className="flex-1"
+                >
+                  {importingFromDrive ? 'Importando...' : 'Importar'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Dropdown Portal */}
+      {dropdownCourse && dropdownPosition && (
+        <>
+          <div 
+            className="fixed inset-0 z-[9998]" 
+            onClick={() => {
+              console.log('Overlay clicked - closing dropdown');
+              setOpenDropdown(null);
+              setDropdownCourse(null);
+              setDropdownPosition(null);
+            }}
+          />
+          <div 
+            className="fixed w-56 bg-navy-800 border border-gold-500/20 rounded-lg shadow-xl z-[9999]"
+            style={{
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`
+            }}
+          >
+            <button 
+              type="button"
+              onClick={() => {
+                console.log('Edit clicked for course:', dropdownCourse);
+                openEditModal(dropdownCourse);
+                setOpenDropdown(null);
+                setDropdownCourse(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 rounded-t-lg transition-colors"
+            >
+              <Edit className="w-4 h-4" />
+              {t('courses.edit')}
+            </button>
+            <button
+              type="button" 
+              onClick={() => {
+                console.log('Toggle publish clicked for course:', dropdownCourse);
+                togglePublishStatus(dropdownCourse);
+                setOpenDropdown(null);
+                setDropdownCourse(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+            >
+              {dropdownCourse.is_published ? (
+                <>
+                  <XCircle className="w-4 h-4" />
+                  {t('courses.unpublish')}
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  {t('courses.publish')}
+                </>
+              )}
+            </button>
+            <button
+              type="button" 
+              onClick={() => {
+                console.log('Enroll students clicked for course:', dropdownCourse);
+                openEnrollModal(dropdownCourse);
+                setOpenDropdown(null);
+                setDropdownCourse(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+            >
+              <UserPlus className="w-4 h-4" />
+              {t('courses.enrollStudents')}
+            </button>
+            <button
+              type="button" 
+              onClick={() => {
+                console.log('Manage students clicked for course:', dropdownCourse);
+                openManageStudentsModal(dropdownCourse);
+                setOpenDropdown(null);
+                setDropdownCourse(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              Gerenciar Alunos
+            </button>
+            <button
+              type="button" 
+              onClick={() => {
+                console.log('Manage subjects clicked for course:', dropdownCourse);
+                setSelectedCourse(dropdownCourse);
+                setShowSubjectsModal(true);
+                setOpenDropdown(null);
+                setDropdownCourse(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+            >
+              <BookMarked className="w-4 h-4" />
+              Gerenciar Disciplinas
+            </button>
+            <button
+              type="button" 
+              onClick={() => {
+                console.log('Import Excel clicked for course:', dropdownCourse);
+                setSelectedCourse(dropdownCourse);
+                setShowImportModal(true);
+                setOpenDropdown(null);
+                setDropdownCourse(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              Importar Estrutura (Excel)
+            </button>
+            <button
+              type="button" 
+              onClick={() => {
+                console.log('Import Drive clicked for course:', dropdownCourse);
+                setSelectedCourse(dropdownCourse);
+                setShowDriveImportModal(true);
+                setOpenDropdown(null);
+                setDropdownCourse(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              Importar do Google Drive
+            </button>
+            <button
+              type="button" 
+              onClick={() => {
+                console.log('Delete clicked for course:', dropdownCourse);
+                openDeleteModal(dropdownCourse);
+                setOpenDropdown(null);
+                setDropdownCourse(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full px-4 py-2 text-left text-red-400 hover:bg-navy-700 flex items-center gap-2 rounded-b-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              {t('courses.delete')}
+            </button>
+          </div>
+        </>
       )}
     </div>
   )

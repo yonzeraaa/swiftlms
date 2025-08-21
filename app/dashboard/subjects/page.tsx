@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, Loader2, AlertCircle, Link2, CheckCircle2 } from 'lucide-react'
+import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, Loader2, AlertCircle, Link2, CheckCircle2, CheckSquare, Square, Trash } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
 import { createClient } from '@/lib/supabase/client'
@@ -40,6 +40,9 @@ export default function SubjectsPage() {
   const [lessonCount, setLessonCount] = useState<{ [key: string]: number }>({})
   const [currentModuleOrder, setCurrentModuleOrder] = useState<number | null>(null)
   const [subjectModuleId, setSubjectModuleId] = useState<string | null>(null)
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([])
+  const [selectAll, setSelectAll] = useState(false)
+  const [deletingMultiple, setDeletingMultiple] = useState(false)
   
   const supabase = createClient()
 
@@ -55,7 +58,7 @@ export default function SubjectsPage() {
       const { data: subjectsData, error } = await supabase
         .from('subjects')
         .select('*')
-        .order('name')
+        .order('code')
 
       if (error) throw error
 
@@ -221,6 +224,110 @@ export default function SubjectsPage() {
         type: 'error', 
         text: error.message || 'Erro ao excluir disciplina' 
       })
+    }
+  }
+
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedSubjects([])
+      setSelectAll(false)
+    } else {
+      setSelectedSubjects(filteredSubjects.map(s => s.id))
+      setSelectAll(true)
+    }
+  }
+
+  const handleSelectSubject = (subjectId: string) => {
+    if (selectedSubjects.includes(subjectId)) {
+      setSelectedSubjects(selectedSubjects.filter(id => id !== subjectId))
+      setSelectAll(false)
+    } else {
+      setSelectedSubjects([...selectedSubjects, subjectId])
+      if (selectedSubjects.length + 1 === filteredSubjects.length) {
+        setSelectAll(true)
+      }
+    }
+  }
+
+  const handleDeleteMultiple = async () => {
+    if (selectedSubjects.length === 0) return
+    
+    const subjectNames = subjects
+      .filter(s => selectedSubjects.includes(s.id))
+      .map(s => s.name)
+      .join(', ')
+    
+    if (!confirm(`Tem certeza que deseja excluir ${selectedSubjects.length} disciplina(s)?\n\nDisciplinas: ${subjectNames}`)) {
+      return
+    }
+
+    setDeletingMultiple(true)
+    setMessage(null)
+
+    try {
+      // Verificar se as disciplinas estão sendo usadas
+      const { data: usedSubjects } = await supabase
+        .from('module_subjects')
+        .select('subject_id')
+        .in('subject_id', selectedSubjects)
+
+      const usedIds = usedSubjects?.map(ms => ms.subject_id) || []
+      const safeToDelete = selectedSubjects.filter(id => !usedIds.includes(id))
+      const cannotDelete = selectedSubjects.filter(id => usedIds.includes(id))
+
+      if (cannotDelete.length > 0) {
+        const cannotDeleteNames = subjects
+          .filter(s => cannotDelete.includes(s.id))
+          .map(s => s.name)
+          .join(', ')
+        
+        if (safeToDelete.length === 0) {
+          setMessage({ 
+            type: 'error', 
+            text: `Não foi possível excluir as disciplinas selecionadas pois estão sendo usadas em módulos` 
+          })
+          return
+        } else {
+          setMessage({ 
+            type: 'error', 
+            text: `Algumas disciplinas não puderam ser excluídas pois estão em uso: ${cannotDeleteNames}` 
+          })
+        }
+      }
+
+      if (safeToDelete.length > 0) {
+        // Primeiro, remover associações com aulas
+        await supabase
+          .from('subject_lessons')
+          .delete()
+          .in('subject_id', safeToDelete)
+
+        // Depois, excluir as disciplinas
+        const { error } = await supabase
+          .from('subjects')
+          .delete()
+          .in('id', safeToDelete)
+
+        if (error) throw error
+
+        setMessage({ 
+          type: 'success', 
+          text: `${safeToDelete.length} disciplina(s) excluída(s) com sucesso` 
+        })
+        
+        // Limpar seleção e recarregar
+        setSelectedSubjects([])
+        setSelectAll(false)
+        await fetchSubjects()
+      }
+    } catch (error: any) {
+      console.error('Error deleting subjects:', error)
+      setMessage({ 
+        type: 'error', 
+        text: error.message || 'Erro ao excluir disciplinas' 
+      })
+    } finally {
+      setDeletingMultiple(false)
     }
   }
 
@@ -419,6 +526,16 @@ export default function SubjectsPage() {
               className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
             />
           </div>
+          {selectedSubjects.length > 0 && (
+            <Button 
+              variant="secondary"
+              icon={deletingMultiple ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash className="w-4 h-4" />}
+              onClick={handleDeleteMultiple}
+              disabled={deletingMultiple}
+            >
+              {deletingMultiple ? 'Excluindo...' : `Excluir ${selectedSubjects.length} selecionado(s)`}
+            </Button>
+          )}
           <Button 
             variant="secondary"
             icon={<Filter className="w-4 h-4" />}
@@ -434,6 +551,14 @@ export default function SubjectsPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gold-500/20">
+                <th className="text-center py-4 px-4 text-gold-200 font-medium w-12">
+                  <button
+                    onClick={handleSelectAll}
+                    className="text-gold-400 hover:text-gold-200 transition-colors"
+                  >
+                    {selectAll ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                  </button>
+                </th>
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Código</th>
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Nome</th>
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Descrição</th>
@@ -448,6 +573,17 @@ export default function SubjectsPage() {
               {filteredSubjects.length > 0 ? (
                 filteredSubjects.map((subject) => (
                   <tr key={subject.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">
+                    <td className="py-4 px-4 text-center">
+                      <button
+                        onClick={() => handleSelectSubject(subject.id)}
+                        className="text-gold-400 hover:text-gold-200 transition-colors"
+                      >
+                        {selectedSubjects.includes(subject.id) ? 
+                          <CheckSquare className="w-5 h-5" /> : 
+                          <Square className="w-5 h-5" />
+                        }
+                      </button>
+                    </td>
                     <td className="py-4 px-4">
                       <span className="text-gold-400 font-mono">{subject.code || '-'}</span>
                     </td>
@@ -506,7 +642,7 @@ export default function SubjectsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center">
+                  <td colSpan={9} className="py-12 text-center">
                     <BookOpen className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
                     <p className="text-gold-300">
                       {searchTerm ? 'Nenhuma disciplina encontrada com os critérios de busca' : 'Nenhuma disciplina cadastrada'}

@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -46,6 +46,86 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      certificate_requirements: {
+        Row: {
+          all_lessons_completed: boolean | null
+          certificate_generated: boolean | null
+          checked_at: string | null
+          completed_lessons: number | null
+          course_id: string | null
+          enrollment_id: string | null
+          highest_test_score: number | null
+          id: string
+          required_test_score: number | null
+          requirements_met: boolean | null
+          test_passed: boolean | null
+          total_lessons: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          all_lessons_completed?: boolean | null
+          certificate_generated?: boolean | null
+          checked_at?: string | null
+          completed_lessons?: number | null
+          course_id?: string | null
+          enrollment_id?: string | null
+          highest_test_score?: number | null
+          id?: string
+          required_test_score?: number | null
+          requirements_met?: boolean | null
+          test_passed?: boolean | null
+          total_lessons?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          all_lessons_completed?: boolean | null
+          certificate_generated?: boolean | null
+          checked_at?: string | null
+          completed_lessons?: number | null
+          course_id?: string | null
+          enrollment_id?: string | null
+          highest_test_score?: number | null
+          id?: string
+          required_test_score?: number | null
+          requirements_met?: boolean | null
+          test_passed?: boolean | null
+          total_lessons?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_requirements_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "course_statistics"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "certificate_requirements_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificate_requirements_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "subject_lessons_view"
+            referencedColumns: ["course_id"]
+          },
+          {
+            foreignKeyName: "certificate_requirements_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: true
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       certificates: {
         Row: {
@@ -129,6 +209,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "certificates_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_management"
+            referencedColumns: ["id"]
+          },
         ]
       }
       course_modules: {
@@ -137,8 +224,10 @@ export type Database = {
           created_at: string | null
           description: string | null
           id: string
+          is_required: boolean | null
           order_index: number
           title: string
+          total_hours: number | null
           updated_at: string | null
         }
         Insert: {
@@ -146,8 +235,10 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_required?: boolean | null
           order_index: number
           title: string
+          total_hours?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -155,8 +246,10 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           id?: string
+          is_required?: boolean | null
           order_index?: number
           title?: string
+          total_hours?: number | null
           updated_at?: string | null
         }
         Relationships: [
@@ -249,6 +342,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "course_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_management"
+            referencedColumns: ["id"]
+          },
         ]
       }
       course_subjects: {
@@ -258,6 +358,7 @@ export type Database = {
           credits: number | null
           id: string
           is_required: boolean | null
+          order_index: number | null
           semester: number | null
           subject_id: string
         }
@@ -267,6 +368,7 @@ export type Database = {
           credits?: number | null
           id?: string
           is_required?: boolean | null
+          order_index?: number | null
           semester?: number | null
           subject_id: string
         }
@@ -276,6 +378,7 @@ export type Database = {
           credits?: number | null
           id?: string
           is_required?: boolean | null
+          order_index?: number | null
           semester?: number | null
           subject_id?: string
         }
@@ -385,6 +488,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "courses_instructor_id_fkey"
+            columns: ["instructor_id"]
+            isOneToOne: false
+            referencedRelation: "user_management"
+            referencedColumns: ["id"]
+          },
         ]
       }
       enrollments: {
@@ -444,6 +554,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "enrollments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_management"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lesson_progress: {
@@ -500,6 +617,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_management"
             referencedColumns: ["id"]
           },
         ]
@@ -562,7 +686,7 @@ export type Database = {
           created_at: string | null
           id: string
           module_id: string
-          order_index: number | null
+          order_index: number
           subject_id: string
           updated_at: string | null
         }
@@ -570,7 +694,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           module_id: string
-          order_index?: number | null
+          order_index?: number
           subject_id: string
           updated_at?: string | null
         }
@@ -578,7 +702,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           module_id?: string
-          order_index?: number | null
+          order_index?: number
           subject_id?: string
           updated_at?: string | null
         }
@@ -680,9 +804,11 @@ export type Database = {
           created_by: string | null
           difficulty: Database["public"]["Enums"]["difficulty_level"]
           explanation: string | null
+          has_formula: boolean | null
           id: string
           is_active: boolean | null
           points: number
+          question_image_url: string | null
           question_text: string
           question_type: Database["public"]["Enums"]["question_type"]
           subject_id: string | null
@@ -696,9 +822,11 @@ export type Database = {
           created_by?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"]
           explanation?: string | null
+          has_formula?: boolean | null
           id?: string
           is_active?: boolean | null
           points?: number
+          question_image_url?: string | null
           question_text: string
           question_type: Database["public"]["Enums"]["question_type"]
           subject_id?: string | null
@@ -712,9 +840,11 @@ export type Database = {
           created_by?: string | null
           difficulty?: Database["public"]["Enums"]["difficulty_level"]
           explanation?: string | null
+          has_formula?: boolean | null
           id?: string
           is_active?: boolean | null
           points?: number
+          question_image_url?: string | null
           question_text?: string
           question_type?: Database["public"]["Enums"]["question_type"]
           subject_id?: string | null
@@ -728,6 +858,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "questions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_management"
             referencedColumns: ["id"]
           },
           {
@@ -912,6 +1049,13 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "test_attempts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_management"
+            referencedColumns: ["id"]
+          },
         ]
       }
       test_questions: {
@@ -1056,6 +1200,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tests_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "user_management"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tests_subject_id_fkey"
             columns: ["subject_id"]
             isOneToOne: false
@@ -1154,6 +1305,20 @@ export type Database = {
           },
         ]
       }
+      user_management: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string | null
+          phone: string | null
+          role: string | null
+          status: string | null
+          total_certificates: number | null
+          total_enrollments: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_enrollment_progress: {
@@ -1164,43 +1329,107 @@ export type Database = {
         Args: { test_id_param: string }
         Returns: number
       }
+      check_and_fix_enrollment_progress: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          actual_progress: number
+          calculated_progress: number
+          certificate_generated: boolean
+          course_title: string
+          user_email: string
+          was_fixed: boolean
+        }[]
+      }
       delete_user_completely: {
         Args: { user_id_to_delete: string }
         Returns: boolean
+      }
+      fix_all_enrollment_progress: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          enrollment_id: string
+          new_progress: number
+          old_progress: number
+          status: string
+        }[]
       }
       get_enrollment_count: {
         Args: { course_id: string }
         Returns: number
       }
+      get_next_order_index: {
+        Args: {
+          p_filter_column: string
+          p_filter_value: string
+          p_table_name: string
+        }
+        Returns: number
+      }
       get_user_progress_stats: {
         Args: { p_user_id: string }
         Returns: {
-          total_enrolled_courses: number
           completed_courses: number
-          in_progress_courses: number
-          total_lessons: number
           completed_lessons: number
-          total_hours_content: number
-          hours_completed: number
-          overall_progress: number
           current_streak: number
-          total_certificates?: number
+          hours_completed: number
+          in_progress_courses: number
+          overall_progress: number
+          total_certificates: number
+          total_enrolled_courses: number
+          total_hours_content: number
+          total_lessons: number
         }[]
       }
       log_activity: {
         Args: {
-          p_user_id: string
           p_action: string
-          p_entity_type: string
           p_entity_id?: string
           p_entity_name?: string
+          p_entity_type: string
           p_metadata?: Json
+          p_user_id: string
         }
         Returns: undefined
+      }
+      manually_generate_certificate: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          certificate_id: string
+          message: string
+          success: boolean
+        }[]
+      }
+      preview_user_deletion: {
+        Args: { user_id_to_check: string }
+        Returns: {
+          count: number
+          data_type: string
+          details: string
+        }[]
       }
       recalculate_enrollment_progress: {
         Args: { p_enrollment_id: string }
         Returns: undefined
+      }
+      reorder_course_modules: {
+        Args: { p_course_id: string; p_module_ids: string[] }
+        Returns: boolean
+      }
+      reorder_lessons: {
+        Args: { p_lesson_ids: string[]; p_module_id: string }
+        Returns: boolean
+      }
+      reorder_module_subjects: {
+        Args: { p_module_id: string; p_subject_ids: string[] }
+        Returns: boolean
+      }
+      update_certificate_requirements: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          can_generate: boolean
+          details: Json
+          message: string
+        }[]
       }
     }
     Enums: {
@@ -1332,10 +1561,16 @@ export type CompositeTypes<
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
-// Types adicionais para facilitar uso
-export type Question = Tables<'questions'>
-export type QuestionOption = Tables<'question_options'>
-export type Test = Tables<'tests'>
-export type TestQuestion = Tables<'test_questions'>
-export type TestAttempt = Tables<'test_attempts'>
-export type TestAnswer = Tables<'test_answers'>
+export const Constants = {
+  public: {
+    Enums: {
+      attempt_status: ["in_progress", "completed", "abandoned"],
+      difficulty_level: ["easy", "medium", "hard"],
+      question_type: ["multiple_choice", "true_false", "essay", "fill_blank"],
+      test_type: ["quiz", "exam", "practice"],
+    },
+  },
+} as const
+
+export type Question = Database['public']['Tables']['questions']['Row']
+export type QuestionOption = Database['public']['Tables']['question_options']['Row']
