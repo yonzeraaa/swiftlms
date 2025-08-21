@@ -5,39 +5,72 @@ import path from 'path'
 import fs from 'fs'
 
 async function authenticateGoogleDrive() {
+  console.log('Iniciando autenticação Google Drive...')
+  console.log('Ambiente:', process.env.NODE_ENV)
+  console.log('GOOGLE_SERVICE_ACCOUNT_KEY existe?', !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
+  console.log('Tamanho da chave:', process.env.GOOGLE_SERVICE_ACCOUNT_KEY?.length || 0)
+  
   // Primeiro tentar usar as credenciais do ambiente (para produção)
   const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
   
-  if (serviceAccountKey) {
+  if (serviceAccountKey && serviceAccountKey.trim() !== '') {
+    console.log('Tentando usar GOOGLE_SERVICE_ACCOUNT_KEY do ambiente...')
     // Se a chave estiver disponível como variável de ambiente (JSON string)
     try {
       const credentials = JSON.parse(serviceAccountKey)
+      console.log('Credenciais parseadas com sucesso')
+      console.log('Client email:', credentials.client_email)
+      
       const auth = new google.auth.GoogleAuth({
         credentials,
         scopes: ['https://www.googleapis.com/auth/drive.readonly'],
       })
       
       const drive = google.drive({ version: 'v3', auth })
+      console.log('Google Drive autenticado com sucesso via variável de ambiente')
       return drive
     } catch (error) {
       console.error('Erro ao parsear GOOGLE_SERVICE_ACCOUNT_KEY:', error)
+      console.error('Primeiros 100 caracteres da chave:', serviceAccountKey.substring(0, 100))
+      throw new Error(`Erro ao processar credenciais: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
     }
   }
+  
+  console.log('GOOGLE_SERVICE_ACCOUNT_KEY não encontrada ou vazia, tentando arquivo local...')
   
   // Fallback para arquivo local (desenvolvimento)
   const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './service-account-key.json'
   const absolutePath = path.resolve(process.cwd(), keyPath)
   
+  console.log('Procurando arquivo em:', absolutePath)
+  console.log('Arquivo existe?', fs.existsSync(absolutePath))
+  
   if (!fs.existsSync(absolutePath)) {
-    throw new Error(`Service account key não encontrado. Configure GOOGLE_SERVICE_ACCOUNT_KEY como variável de ambiente ou coloque o arquivo em ${absolutePath}`)
+    const errorMsg = `Service account key não encontrado. 
+    
+Para produção (Vercel):
+1. Vá para Settings > Environment Variables no Vercel
+2. Adicione GOOGLE_SERVICE_ACCOUNT_KEY com o JSON completo
+3. Certifique-se de que está marcado para Production
+4. Faça redeploy do projeto
+
+Para desenvolvimento local:
+Coloque o arquivo service-account-key.json na raiz do projeto
+
+Path tentado: ${absolutePath}`
+    
+    console.error(errorMsg)
+    throw new Error(errorMsg)
   }
 
+  console.log('Usando arquivo local para autenticação')
   const auth = new google.auth.GoogleAuth({
     keyFile: absolutePath,
     scopes: ['https://www.googleapis.com/auth/drive.readonly'],
   })
 
   const drive = google.drive({ version: 'v3', auth })
+  console.log('Google Drive autenticado com sucesso via arquivo local')
   return drive
 }
 
