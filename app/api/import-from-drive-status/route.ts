@@ -52,7 +52,3 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ success: true })
 }
 
-// Função helper para acessar o store (não é exportação de rota)
-export function getProgressStore() {
-  return importProgressStore
-}
