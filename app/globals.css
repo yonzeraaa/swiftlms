@@ -41,6 +41,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Progress bar animation */
+@keyframes slide {
+  0% {
+    transform: translateX(-20px);
+  }
+  100% {
+    transform: translateX(20px);
+  }
+}
+
 /* Light theme specific styles */
 .light body {
   background: #f5f7fa;

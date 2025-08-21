@@ -215,6 +215,46 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
     let totalLessons = 0
     let processedLessons = 0
     
+    // Primeiro, contar todos os itens para ter totais precisos
+    for (const item of items) {
+      if (item.mimeType === 'application/vnd.google-apps.folder') {
+        const subjectsResponse = await drive.files.list({
+          q: `'${item.id}' in parents and trashed = false`,
+          fields: 'files(id, mimeType)',
+          orderBy: 'name'
+        })
+        const subjects = subjectsResponse.data.files || []
+        const subjectFolders = subjects.filter((s: any) => s.mimeType === 'application/vnd.google-apps.folder')
+        totalSubjects += subjectFolders.length
+        
+        // Contar aulas em cada disciplina
+        for (const subjectItem of subjectFolders) {
+          const lessonsResponse = await drive.files.list({
+            q: `'${subjectItem.id}' in parents and trashed = false`,
+            fields: 'files(id, mimeType)',
+            orderBy: 'name'
+          })
+          const lessons = lessonsResponse.data.files || []
+          totalLessons += lessons.filter((l: any) => l.mimeType !== 'application/vnd.google-apps.folder').length
+        }
+      }
+    }
+    
+    console.log(`Total para processar: ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} aulas`)
+    
+    // Atualizar progresso inicial com totais corretos
+    updateProgress({
+      currentStep: 'Iniciando processamento',
+      totalModules,
+      processedModules: 0,
+      totalSubjects,
+      processedSubjects: 0,
+      totalLessons,
+      processedLessons: 0,
+      currentItem: 'Preparando importação...',
+      errors: []
+    })
+    
     // Processar módulos (pastas de primeiro nível)
     for (let moduleIndex = 0; moduleIndex < items.length; moduleIndex++) {
       const item = items[moduleIndex]
@@ -226,16 +266,16 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
           subjects: [] as any[]
         }
         
-        // Atualizar progresso
+        // Atualizar progresso ANTES de processar o módulo
         updateProgress({
-          currentStep: 'Processando módulos',
+          currentStep: `Processando módulo ${processedModules + 1}/${totalModules}`,
           totalModules,
           processedModules,
           totalSubjects,
           processedSubjects,
           totalLessons,
           processedLessons,
-          currentItem: module.name,
+          currentItem: `Módulo: ${module.name}`,
           errors: []
         })
 
@@ -248,7 +288,6 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
 
         const subjects = subjectsResponse.data.files || []
         console.log(`  Módulo '${module.name}': ${subjects.length} disciplinas encontradas`)
-        totalSubjects += subjects.filter((s: any) => s.mimeType === 'application/vnd.google-apps.folder').length
 
         for (let subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
           const subjectItem = subjects[subjectIndex]
@@ -260,16 +299,16 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               lessons: [] as any[]
             }
             
-            // Atualizar progresso
+            // Atualizar progresso ANTES de processar a disciplina
             updateProgress({
-              currentStep: 'Processando disciplinas',
+              currentStep: `Processando disciplina ${processedSubjects + 1}/${totalSubjects}`,
               totalModules,
               processedModules,
               totalSubjects,
               processedSubjects,
               totalLessons,
               processedLessons,
-              currentItem: subject.name,
+              currentItem: `Disciplina: ${subject.name}`,
               errors: []
             })
 
@@ -282,7 +321,6 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
 
             const lessons = lessonsResponse.data.files || []
             console.log(`    Disciplina '${subject.name}': ${lessons.length} arquivos/pastas encontrados`)
-            totalLessons += lessons.filter((l: any) => l.mimeType !== 'application/vnd.google-apps.folder').length
 
             let actualLessonIndex = 0
             for (let lessonIndex = 0; lessonIndex < lessons.length; lessonIndex++) {
@@ -296,6 +334,19 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               }
               
               console.log(`      Processando arquivo: ${lessonItem.name} (${lessonItem.mimeType})`)
+              
+              // Atualizar progresso ANTES de processar a aula
+              updateProgress({
+                currentStep: `Processando aula ${processedLessons + 1}/${totalLessons}`,
+                totalModules,
+                processedModules,
+                totalSubjects,
+                processedSubjects,
+                totalLessons,
+                processedLessons,
+                currentItem: `Aula: ${lessonItem.name}`,
+                errors: []
+              })
               
               // Determinar tipo de conteúdo baseado no mimeType
               let contentType = 'text'
@@ -348,6 +399,19 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               }
               actualLessonIndex++
 
+              // Atualizar progresso para indicar download de conteúdo
+              updateProgress({
+                currentStep: `Baixando conteúdo da aula ${processedLessons + 1}/${totalLessons}`,
+                totalModules,
+                processedModules,
+                totalSubjects,
+                processedSubjects,
+                totalLessons,
+                processedLessons,
+                currentItem: `Baixando: ${lessonItem.name}`,
+                errors: []
+              })
+              
               // Tentar obter o conteúdo baseado no tipo do arquivo
               try {
                 if (lessonItem.mimeType === 'application/vnd.google-apps.document') {
@@ -395,16 +459,16 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               console.log(`      Aula adicionada: '${lesson.name}' (tipo: ${lessonItem.mimeType})`)
               processedLessons++
               
-              // Atualizar progresso
+              // Atualizar progresso APÓS processar a aula
               updateProgress({
-                currentStep: 'Processando aulas',
+                currentStep: `Aula ${processedLessons}/${totalLessons} processada`,
                 totalModules,
                 processedModules,
                 totalSubjects,
                 processedSubjects,
                 totalLessons,
                 processedLessons,
-                currentItem: lesson.name,
+                currentItem: `Concluído: ${lesson.name}`,
                 errors: []
               })
             }
@@ -413,11 +477,37 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
 
             module.subjects.push(subject)
             processedSubjects++
+            
+            // Atualizar progresso após processar disciplina
+            updateProgress({
+              currentStep: `Disciplina ${processedSubjects}/${totalSubjects} processada`,
+              totalModules,
+              processedModules,
+              totalSubjects,
+              processedSubjects,
+              totalLessons,
+              processedLessons,
+              currentItem: `Concluído: ${subject.name}`,
+              errors: []
+            })
           }
         }
 
         structure.modules.push(module)
         processedModules++
+        
+        // Atualizar progresso após processar módulo
+        updateProgress({
+          currentStep: `Módulo ${processedModules}/${totalModules} processado`,
+          totalModules,
+          processedModules,
+          totalSubjects,
+          processedSubjects,
+          totalLessons,
+          processedLessons,
+          currentItem: `Concluído: ${module.name}`,
+          errors: []
+        })
       }
     }
 
@@ -428,7 +518,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
   }
 }
 
-async function importToDatabase(structure: CourseStructure, courseId: string, supabase: any) {
+async function importToDatabase(structure: CourseStructure, courseId: string, supabase: any, importId?: string) {
   const results = {
     modules: 0,
     subjects: 0,
@@ -436,7 +526,23 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
     errors: [] as string[]
   }
 
+  // Função para atualizar progresso durante importação
+  const updateDatabaseProgress = (step: string, item: string) => {
+    if (importId && importProgressStore) {
+      const currentProgress = importProgressStore.get(importId)
+      if (currentProgress) {
+        importProgressStore.set(importId, {
+          ...currentProgress,
+          currentStep: step,
+          currentItem: item
+        })
+      }
+    }
+  }
+  
   try {
+    updateDatabaseProgress('Salvando no banco de dados', 'Preparando importação...')
+    
     // Buscar o maior order_index existente para módulos
     const { data: existingModules } = await supabase
       .from('course_modules')
@@ -452,6 +558,11 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
     // Importar módulos
     for (let moduleIdx = 0; moduleIdx < structure.modules.length; moduleIdx++) {
       const moduleData = structure.modules[moduleIdx]
+      
+      updateDatabaseProgress(
+        `Salvando módulo ${moduleIdx + 1}/${structure.modules.length}`,
+        `Módulo: ${moduleData.name}`
+      )
       
       const { data: module, error: moduleError } = await supabase
         .from('course_modules')
@@ -474,6 +585,11 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
       // Importar disciplinas do módulo
       for (let subjectIdx = 0; subjectIdx < moduleData.subjects.length; subjectIdx++) {
         const subjectData = moduleData.subjects[subjectIdx]
+        
+        updateDatabaseProgress(
+          `Salvando disciplina ${subjectIdx + 1}/${moduleData.subjects.length} do módulo ${moduleIdx + 1}`,
+          `Disciplina: ${subjectData.name}`
+        )
         
         // Extrair código da disciplina se existir (formato: "DCA01-Nome" -> código: "DCA01")
         const codeMatch = subjectData.name.match(/^([A-Z0-9]+)-(.+)$/)
@@ -531,6 +647,11 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
         // Importar aulas da disciplina
         for (let lessonIdx = 0; lessonIdx < subjectData.lessons.length; lessonIdx++) {
           const lessonData = subjectData.lessons[lessonIdx]
+          
+          updateDatabaseProgress(
+            `Salvando aula ${lessonIdx + 1}/${subjectData.lessons.length}`,
+            `Aula: ${lessonData.name}`
+          )
           
           // Criar título completo com código
           const fullTitle = lessonData.code ? `${lessonData.code} - ${lessonData.name}` : lessonData.name
@@ -629,7 +750,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Importar para o banco de dados
-    const results = await importToDatabase(structure, courseId, supabase)
+    const results = await importToDatabase(structure, courseId, supabase, importId)
 
     // Atualizar progresso final
     const progressStore = importProgressStore

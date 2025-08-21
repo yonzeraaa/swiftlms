@@ -24,7 +24,17 @@ export default function ImportProgress({ isImporting, progress }: ImportProgress
     const processed = progress.processedModules + progress.processedSubjects + progress.processedLessons
     
     if (total === 0) return 0
-    return Math.round((processed / total) * 100)
+    
+    // Calcular percentual com precisão decimal para animação mais suave
+    const rawPercentage = (processed / total) * 100
+    
+    // Se estiver processando algo, adicionar um pequeno incremento para mostrar atividade
+    if (isImporting && progress.currentItem && rawPercentage < 100) {
+      // Adicionar 0.5% para indicar processamento em andamento
+      return Math.min(99.5, rawPercentage + 0.5)
+    }
+    
+    return Math.min(100, rawPercentage)
   }
 
   const percentage = calculatePercentage()
@@ -50,15 +60,25 @@ export default function ImportProgress({ isImporting, progress }: ImportProgress
             </>
           )}
         </h3>
-        <span className="text-gold-300 font-medium">{percentage}%</span>
+        <span className="text-gold-300 font-medium">{percentage.toFixed(1)}%</span>
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full bg-navy-900/50 rounded-full h-3 overflow-hidden">
+      <div className="w-full bg-navy-900/50 rounded-full h-3 overflow-hidden relative">
         <div 
-          className="h-full bg-gradient-to-r from-gold-500 to-gold-600 transition-all duration-500 ease-out"
+          className="h-full bg-gradient-to-r from-gold-500 to-gold-600 transition-all duration-300 ease-out"
           style={{ width: `${percentage}%` }}
         />
+        {/* Animated stripe overlay for active processing */}
+        {isImporting && (
+          <div 
+            className="absolute inset-0 opacity-20"
+            style={{
+              backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 215, 0, 0.5) 10px, rgba(255, 215, 0, 0.5) 20px)',
+              animation: 'slide 1s linear infinite'
+            }}
+          />
+        )}
       </div>
 
       {/* Status Details */}
