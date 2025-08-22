@@ -133,7 +133,7 @@ export default function CertificatesPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data, error } = await supabase.rpc('approve_certificate_request', {
+      const { data, error } = await supabase.rpc('approve_certificate_request' as any, {
         p_request_id: requestId,
         p_admin_id: user.id
       })
@@ -165,7 +165,7 @@ export default function CertificatesPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const { data, error } = await supabase.rpc('reject_certificate_request', {
+      const { data, error } = await supabase.rpc('reject_certificate_request' as any, {
         p_request_id: requestId,
         p_admin_id: user.id,
         p_reason: rejectionReason
