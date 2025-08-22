@@ -68,12 +68,12 @@ export default function CertificatesPage() {
 
       // Fetch certificate requests with related data
       const { data: requests } = await supabase
-        .from('certificate_requests')
+        .from('certificate_requests' as any)
         .select('*')
         .order('request_date', { ascending: false })
       
       // Fetch related data for each request
-      const requestsWithRelations = await Promise.all((requests || []).map(async (request) => {
+      const requestsWithRelations = await Promise.all((requests || []).map(async (request: any) => {
         const [userRes, courseRes] = await Promise.all([
           supabase.from('profiles').select('*').eq('id', request.user_id).single(),
           supabase.from('courses').select('*').eq('id', request.course_id).single()
