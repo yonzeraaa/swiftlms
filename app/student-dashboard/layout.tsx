@@ -23,7 +23,6 @@ import {
 import Logo from '../components/Logo'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../contexts/LanguageContext'
-import CommandPalette from '../components/ui/CommandPalette'
 import PageTransition from '../components/ui/PageTransition'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -113,8 +112,6 @@ export default function StudentDashboardLayout({
     <div className="min-h-screen bg-pattern">
       <div className="absolute inset-0 bg-gradient-to-br from-navy-600/50 via-navy-700/50 to-navy-900/50" />
       
-      {/* Command Palette */}
-      <CommandPalette />
       
       <div className="relative flex h-screen">
         {/* Sidebar */}
