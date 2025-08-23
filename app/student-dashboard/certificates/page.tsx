@@ -370,14 +370,14 @@ export default function CertificatesPage() {
             }}
           >
             {/* Certificate Content for PDF */}
-            <div style={{ textAlign: 'center' }}>
+            <div style={{ textAlign: 'center', paddingTop: '40px' }}>
               {/* Logo/Header */}
               <div style={{ marginBottom: '30px' }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
                   <div style={{ 
                     width: '80px',
                     height: '80px',
-                    background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                    backgroundColor: '#FFD700',
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
@@ -391,10 +391,7 @@ export default function CertificatesPage() {
                   fontSize: '48px',
                   fontWeight: 'bold',
                   marginBottom: '10px',
-                  background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
+                  color: '#FFD700',
                   letterSpacing: '3px'
                 }}>
                   CERTIFICADO
@@ -413,10 +410,7 @@ export default function CertificatesPage() {
                   fontSize: '32px',
                   fontWeight: 'bold',
                   marginBottom: '30px',
-                  background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
+                  color: '#FFD700',
                   lineHeight: '1.2'
                 }}>
                   {selectedCertificate.course.title}
@@ -447,8 +441,8 @@ export default function CertificatesPage() {
                 borderTop: '1px solid rgba(255, 215, 0, 0.3)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px' }}>
-                  <Shield style={{ width: '18px', height: '18px', color: '#00ff00' }} />
-                  <p style={{ color: '#00ff00', fontSize: '14px' }}>Certificado Autêntico</p>
+                  <Shield style={{ width: '18px', height: '18px', color: '#00ff00', display: 'inline-block', marginTop: '6px' }} />
+                  <span style={{ color: '#00ff00', fontSize: '14px', display: 'inline-block' }}>Certificado Autêntico</span>
                 </div>
                 <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '12px', marginBottom: '5px' }}>
                   Nº {selectedCertificate.certificate_number}
