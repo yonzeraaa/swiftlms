@@ -21,7 +21,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  Folder
+  Folder,
+  Award
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import LogoSwiftEDU from '../components/LogoSwiftEDU'
@@ -39,6 +40,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [pendingCertificates, setPendingCertificates] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -56,10 +58,39 @@ export default function DashboardLayout({
     localStorage.setItem('sidebarOpen', JSON.stringify(sidebarOpen))
   }, [sidebarOpen])
 
+  // Fetch pending certificate requests count
+  useEffect(() => {
+    const fetchPendingCertificates = async () => {
+      const { count } = await supabase
+        .from('certificate_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending')
+      
+      setPendingCertificates(count || 0)
+    }
+
+    fetchPendingCertificates()
+    
+    // Set up real-time subscription
+    const subscription = supabase
+      .channel('certificate_requests')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'certificate_requests' 
+      }, fetchPendingCertificates)
+      .subscribe()
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [])
+
   const menuItems = [
     { name: t('nav.dashboard'), href: '/dashboard', icon: LayoutDashboard },
     { name: t('nav.users'), href: '/dashboard/users', icon: Users },
     { name: t('nav.courses'), href: '/dashboard/courses', icon: BookOpen },
+    { name: 'Certificados', href: '/dashboard/certificates', icon: Award },
     { name: 'Módulos', href: '/dashboard/modules', icon: Folder },
     { name: 'Estrutura', href: '/dashboard/structure', icon: Layers },
     { name: t('nav.subjects'), href: '/dashboard/subjects', icon: GraduationCap },
@@ -142,7 +173,7 @@ export default function DashboardLayout({
                     <Link
                       href={item.href}
                       className={`
-                        flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group
+                        flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
                         ${active 
                           ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
                           : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
@@ -154,7 +185,7 @@ export default function DashboardLayout({
                       <AnimatePresence>
                         {sidebarOpen && (
                           <motion.span 
-                            className="font-medium whitespace-nowrap"
+                            className="font-medium whitespace-nowrap flex-1"
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -10 }}
@@ -164,6 +195,16 @@ export default function DashboardLayout({
                           </motion.span>
                         )}
                       </AnimatePresence>
+                      {/* Badge for pending certificates */}
+                      {item.href === '/dashboard/certificates' && pendingCertificates > 0 && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className={`${sidebarOpen ? 'relative' : 'absolute top-1 right-1'} bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1`}
+                        >
+                          {pendingCertificates}
+                        </motion.div>
+                      )}
                     </Link>
 
                     {/* Tooltip for collapsed sidebar */}

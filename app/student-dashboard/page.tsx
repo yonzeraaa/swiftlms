@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, AlertCircle, Activity, Sparkles } from 'lucide-react'
+import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, AlertCircle, Activity, Sparkles, UserPlus, BookPlus } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -12,8 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../contexts/LanguageContext'
 import { useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ScaleTransition, StaggerTransition, StaggerItem, FadeTransition } from '../components/ui/PageTransition'
+import { SkeletonStatCard } from '../components/Skeleton'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
@@ -154,16 +153,18 @@ export default function StudentDashboard() {
       }
 
       // Set statistics from database function or calculate fallback
-      if (progressStats) {
+      if (progressStats && !statsError) {
+        console.log('Using database stats:', progressStats)
         setStats({
           enrolledCourses: progressStats.total_enrolled_courses || 0,
           completedCourses: progressStats.completed_courses || 0,
           hoursLearned: Math.round(progressStats.hours_completed || 0),
-          certificates: progressStats.total_certificates || progressStats.completed_courses || 0,
+          certificates: progressStats.total_certificates || 0, // Only show existing certificates
           currentStreak: progressStats.current_streak || 0,
           overallProgress: progressStats.overall_progress || 0
         })
       } else {
+        console.log('Using fallback stats calculation')
         // Fallback calculation if function fails
         const totalProgress = enrolledCoursesData.reduce((sum, course) => sum + course.progress, 0)
         const overallProgress = enrolledCoursesData.length > 0 
@@ -334,375 +335,281 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="rounded-full h-12 w-12 border-b-2 border-gold-500"
-        />
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-gold-300 text-sm"
-        >
-          Carregando seu painel...
-        </motion.p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div>
+            <div className="h-8 w-48 bg-navy-700/50 rounded-lg animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-navy-700/30 rounded animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <SkeletonStatCard key={i} />
+          ))}
+        </div>
+
+        {/* Content Grid Skeleton */}
+        <div className="bg-navy-800/50 rounded-xl p-6 animate-pulse">
+          <div className="h-6 w-32 bg-navy-700/50 rounded mb-4"></div>
+          <div className="space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 bg-navy-700/30 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <FadeTransition>
-        <div>
-          <motion.h1 
-            className="text-3xl font-bold text-gold flex items-center gap-2"
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            Meu Painel de Aprendizagem
-            <Sparkles className="w-6 h-6 text-gold-400 animate-pulse" />
-          </motion.h1>
-          <motion.p 
-            className="text-gold-300 mt-1"
-            initial={{ y: -10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
-            Acompanhe seu progresso e continue aprendendo
-          </motion.p>
-        </div>
-      </FadeTransition>
-
-      {/* Stats Grid */}
-      <StaggerTransition staggerDelay={0.1}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsCards.map((stat, index) => (
-            <StaggerItem key={index}>
-              <motion.div
-                whileHover={{ scale: 1.05, y: -5 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              >
-                <StatCard {...stat} />
-              </motion.div>
-            </StaggerItem>
-          ))}
-        </div>
-      </StaggerTransition>
-
-      {/* Progress Overview */}
-      <StaggerTransition staggerDelay={0.15}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <StaggerItem>
-            <motion.div
-              whileHover={{ scale: 1.03 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <Card>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gold mb-2">Progresso Geral</h3>
-                    <p className="text-sm text-gold-300">Média de todos os cursos</p>
-                  </div>
-                  <ProgressChart 
-                    progress={stats.overallProgress} 
-                    size={100}
-                    strokeWidth={6}
-                    labelSize="md"
-                  />
-                </div>
-              </Card>
-            </motion.div>
-          </StaggerItem>
-
-          <StaggerItem>
-            <motion.div
-              whileHover={{ scale: 1.03 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <Card>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gold mb-2">Horas de Estudo</h3>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-gold">{stats.hoursLearned}</span>
-                      <span className="text-sm text-gold-300">/ {Math.round(enrolledCourses.reduce((sum, c) => sum + (c.duration_hours || 0), 0))}h</span>
-                    </div>
-                    <div className="mt-2 w-full bg-navy-800 rounded-full h-2">
-                      <div 
-                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${enrolledCourses.length > 0 ? (stats.hoursLearned / enrolledCourses.reduce((sum, c) => sum + (c.duration_hours || 0), 0)) * 100 : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                  <Clock className="w-10 h-10 text-blue-500/30" />
-                </div>
-              </Card>
-            </motion.div>
-          </StaggerItem>
-
-          <StaggerItem>
-            <motion.div
-              whileHover={{ scale: 1.03 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <Card>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gold mb-2">Taxa de Conclusão</h3>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-gold">{stats.completedCourses}</span>
-                      <span className="text-sm text-gold-300">/ {stats.enrolledCourses} cursos</span>
-                    </div>
-                    <p className="text-sm text-green-400 mt-2">
-                      {stats.enrolledCourses > 0 ? Math.round((stats.completedCourses / stats.enrolledCourses) * 100) : 0}% concluídos
-                    </p>
-                  </div>
-                  <Award className="w-10 h-10 text-green-500/30" />
-                </div>
-              </Card>
-            </motion.div>
-          </StaggerItem>
-        </div>
-      </StaggerTransition>
-
-      {/* Main Content Grid */}
-      <motion.div 
-        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        {/* Meus Cursos - 2 columns */}
-        <motion.div 
-          className="lg:col-span-2"
-          whileHover={{ scale: 1.01 }}
-          transition={{ type: "spring", stiffness: 400 }}
-        >
-          <Card 
-            title="Meus Cursos"
-            subtitle="Continue de onde parou"
-            action={
-              enrolledCourses.length > 0 && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => router.push('/student-dashboard/my-courses')}
-                >
-                  Ver todos
-                </Button>
-              )
-            }
-          >
-            <StaggerTransition staggerDelay={0.1}>
-              <div className="space-y-4">
-                {enrolledCourses.length > 0 ? (
-                  enrolledCourses.slice(0, 3).map((course, index) => (
-                    <StaggerItem key={course.id}>
-                      <motion.div 
-                        className="bg-navy-900/50 rounded-xl p-4 hover:bg-navy-900/70 transition-all cursor-pointer group"
-                        onClick={() => router.push('/student-dashboard/my-courses')}
-                        whileHover={{ x: 10, backgroundColor: "rgba(3, 26, 51, 0.7)" }}
-                        whileTap={{ scale: 0.98 }}
-                        transition={{ type: "spring", stiffness: 300 }}
-                      >
-                        <div className="flex items-start gap-4">
-                      {/* Progress Circle */}
-                      <div className="flex-shrink-0">
-                        <ProgressChart 
-                          progress={course.progress} 
-                          size={80}
-                          strokeWidth={6}
-                          labelSize="sm"
-                          color={course.enrollment.status === 'completed' ? 'green' : 'gold'}
-                        />
-                      </div>
-
-                      {/* Course Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="font-semibold text-gold text-lg group-hover:text-gold-400 transition-colors">{course.title}</h3>
-                            <p className="text-gold-300 text-sm mt-1">{course.category}</p>
-                          </div>
-                          <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
-                            course.enrollment.status === 'completed' 
-                              ? 'bg-green-500/20 text-green-400'
-                              : course.progress >= 50
-                              ? 'bg-blue-500/20 text-blue-400'
-                              : 'bg-yellow-500/20 text-yellow-400'
-                          }`}>
-                            {course.enrollment.status === 'completed' 
-                              ? 'Concluído' 
-                              : course.progress >= 50 
-                              ? 'Em progresso' 
-                              : 'Iniciado'}
-                          </span>
-                        </div>
-
-                        {/* Progress Details */}
-                        <div className="grid grid-cols-2 gap-4 mt-3">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Clock className="w-4 h-4 text-gold-500/50" />
-                            <div>
-                              <span className="text-gold-400 font-medium">
-                                {Math.round((course.duration_hours || 0) * (course.progress / 100))}h
-                              </span>
-                              <span className="text-gold-500/60"> / {course.duration_hours}h</span>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <Activity className="w-4 h-4 text-gold-500/50" />
-                            <span className="text-gold-400">{formatTimeAgo(course.lastAccessed || '', t)}</span>
-                          </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="mt-3">
-                          <div className="w-full bg-navy-800 rounded-full h-1.5">
-                            <div 
-                              className={`h-1.5 rounded-full transition-all duration-500 ${
-                                course.enrollment.status === 'completed'
-                                  ? 'bg-gradient-to-r from-green-500 to-green-600'
-                                  : 'bg-gradient-to-r from-gold-500 to-gold-600'
-                              }`}
-                              style={{ width: `${course.progress}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                        </div>
-                      </motion.div>
-                    </StaggerItem>
-                  ))
-                ) : (
-                  <div className="flex items-center justify-center min-h-[400px]">
-                  <div className="text-center">
-                    <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                    <p className="text-gold-300 text-lg mb-4">Você ainda não está matriculado em nenhum curso</p>
-                    <Button onClick={() => router.push('/student-dashboard/courses')}>
-                      Explorar cursos disponíveis
-                    </Button>
-                  </div>
-                  </div>
-                )}
-              </div>
-            </StaggerTransition>
-          </Card>
-        </motion.div>
-
-        {/* Right Column */}
-        <motion.div 
-          className="space-y-6"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-        >
-          {/* Sequência de Estudo */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            <Card>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold text-gold">Sequência de Estudo</h3>
-              <div className="flex items-center gap-2 text-gold-400">
-                <TrendingUp className="w-5 h-5" />
-                <span className="font-bold">{stats.currentStreak}</span>
-                <span className="text-sm">dias</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-7 gap-1">
-              {[...Array(28)].map((_, i) => {
-                const isActive = i >= 28 - stats.currentStreak
-                return (
-                  <div
-                    key={i}
-                    className={`aspect-square rounded ${
-                      isActive 
-                        ? 'bg-gradient-to-br from-gold-500 to-gold-600' 
-                        : 'bg-navy-800'
-                    }`}
-                  />
-                )
-              })}
-            </div>
-            <p className="text-sm text-gold-300 mt-3 text-center">
-              Continue estudando para manter sua sequência!
-            </p>
-            </Card>
-          </motion.div>
-
-          {/* Atividades Recentes */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            <Card title="Atividades Recentes">
-              <AnimatePresence>
-                <div className="space-y-3">
-                  {recentActivities.length > 0 ? (
-                    recentActivities.map((activity, index) => (
-                      <motion.div 
-                        key={activity.id} 
-                        className="flex items-start gap-3"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                      >
-                    <div className="w-8 h-8 rounded-full bg-gold-500/20 flex items-center justify-center text-gold flex-shrink-0">
-                      {activity.icon === 'lesson' && <CheckCircle className="w-4 h-4" />}
-                      {activity.icon === 'course' && <BookOpen className="w-4 h-4" />}
-                      {activity.icon === 'achievement' && <Award className="w-4 h-4" />}
-                      {activity.icon === 'test' && <AlertCircle className="w-4 h-4" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-gold-200 text-sm">{activity.description}</p>
-                      <p className="text-gold-500/60 text-xs mt-1">{activity.timestamp}</p>
-                    </div>
-                      </motion.div>
-                    ))
-                  ) : (
-                    <p className="text-gold-300 text-center py-4">Nenhuma atividade recente</p>
-                  )}
-                </div>
-              </AnimatePresence>
-            </Card>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-
-      {/* Próximas Aulas */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-        whileHover={{ scale: 1.01 }}
-      >
-        <Card 
-        title="Próximas Aulas"
-        subtitle="Aulas agendadas para esta semana"
-        action={
-          <Button 
-            variant="secondary" 
-            size="sm"
-            onClick={() => router.push('/student-dashboard/calendar')}
-            icon={<Calendar className="w-4 h-4" />}
-          >
-            Ver calendário
-          </Button>
-        }
-      >
-        <div className="text-center py-8">
-          <Calendar className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
-          <p className="text-gold-300">Nenhuma aula agendada para os próximos dias</p>
+      {/* Welcome Banner */}
+      <Card variant="gradient" className="mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+              <Sparkles className="w-8 h-8 text-gold-400 animate-pulse" />
+              Meu Painel de Aprendizagem
+            </h1>
+            <p className="text-gold-300 mt-1">Acompanhe seu progresso e continue aprendendo</p>
+          </div>
+          <div className="text-gold-400/60 text-sm">
+            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </div>
         </div>
       </Card>
-      </motion.div>
+
+      {/* Stats Grid with Enhanced Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          {...statsCards[0]} 
+          variant="gradient" 
+          color="blue" 
+        />
+        <StatCard 
+          {...statsCards[1]} 
+          variant="gradient" 
+          color="green" 
+        />
+        <StatCard 
+          {...statsCards[2]} 
+          variant="gradient" 
+          color="purple" 
+        />
+        <StatCard 
+          {...statsCards[3]} 
+          variant="gradient" 
+          color="gold" 
+        />
+      </div>
+
+      {/* Meus Cursos */}
+      <Card 
+        title="Meus Cursos"
+        subtitle="Continue de onde parou"
+        variant="elevated"
+        action={
+          enrolledCourses.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push('/student-dashboard/my-courses')}
+            >
+              Ver todos
+            </Button>
+          )
+        }
+      >
+        <div className="space-y-4">
+          {enrolledCourses.length > 0 ? (
+            enrolledCourses.slice(0, 3).map((course) => (
+              <div 
+                key={course.id}
+                className="bg-navy-900/50 rounded-xl p-4 hover:bg-navy-900/70 transition-all cursor-pointer"
+                onClick={() => router.push('/student-dashboard/my-courses')}
+              >
+                <div className="flex items-start gap-4">
+                  {/* Progress Circle */}
+                  <div className="flex-shrink-0">
+                    <ProgressChart 
+                      progress={course.progress} 
+                      size={80}
+                      strokeWidth={6}
+                      labelSize="sm"
+                      color={course.enrollment.status === 'completed' ? 'green' : 'gold'}
+                    />
+                  </div>
+
+                  {/* Course Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <h3 className="font-semibold text-gold text-lg">{course.title}</h3>
+                        <p className="text-gold-300 text-sm mt-1">{course.category}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+                        course.enrollment.status === 'completed' 
+                          ? 'bg-green-500/20 text-green-400'
+                          : course.progress >= 50
+                          ? 'bg-blue-500/20 text-blue-400'
+                          : 'bg-yellow-500/20 text-yellow-400'
+                      }`}>
+                        {course.enrollment.status === 'completed' 
+                          ? 'Concluído' 
+                          : course.progress >= 50 
+                          ? 'Em progresso' 
+                          : 'Iniciado'}
+                      </span>
+                    </div>
+
+                    {/* Progress Details */}
+                    <div className="grid grid-cols-2 gap-4 mt-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="w-4 h-4 text-gold-500/50" />
+                        <div>
+                          <span className="text-gold-400 font-medium">
+                            {Math.round((course.duration_hours || 0) * (course.progress / 100))}h
+                          </span>
+                          <span className="text-gold-500/60"> / {course.duration_hours}h</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Activity className="w-4 h-4 text-gold-500/50" />
+                        <span className="text-gold-400">{formatTimeAgo(course.lastAccessed || '', t)}</span>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-3">
+                      <div className="w-full bg-navy-800 rounded-full h-1.5">
+                        <div 
+                          className={`h-1.5 rounded-full transition-all duration-500 ${
+                            course.enrollment.status === 'completed'
+                              ? 'bg-gradient-to-r from-green-500 to-green-600'
+                              : 'bg-gradient-to-r from-gold-500 to-gold-600'
+                          }`}
+                          style={{ width: `${course.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <BookOpen className="w-16 h-16 text-gold-500/30 mb-4" />
+              <p className="text-gold-300 text-lg mb-4">Você ainda não está matriculado em nenhum curso</p>
+              <Button onClick={() => router.push('/student-dashboard/courses')}>
+                Explorar cursos disponíveis
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Atividades Recentes */}
+      <Card 
+        title="Atividades Recentes"
+        variant="elevated"
+        action={
+          recentActivities.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => window.open('/student-dashboard/activities', '_blank')}
+            >
+              Ver todas
+            </Button>
+          )
+        }
+      >
+        <div className="space-y-4">
+          {recentActivities.length > 0 ? (
+            recentActivities.map((activity, index) => (
+              <div key={index} className="flex items-start gap-3 pb-4 border-b border-gold-500/20 last:border-0">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-500/30 to-gold-600/20 flex items-center justify-center text-gold shadow-lg transition-transform hover:scale-110">
+                  {activity.icon === 'lesson' && <CheckCircle className="w-5 h-5" />}
+                  {activity.icon === 'course' && <BookPlus className="w-5 h-5" />}
+                  {activity.icon === 'achievement' && <Award className="w-5 h-5" />}
+                  {activity.icon === 'test' && <Activity className="w-5 h-5" />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-gold-200">{activity.description}</p>
+                  <p className="text-gold-500/60 text-xs mt-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {activity.timestamp}
+                  </p>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gold-300">Nenhuma atividade recente</p>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* Sequência de Estudo */}
+      <Card title="Sequência de Estudo" subtitle={`${stats.currentStreak} dias consecutivos`}>
+        <div className="grid grid-cols-7 gap-1 mb-4">
+          {[...Array(28)].map((_, i) => {
+            const isActive = i >= 28 - stats.currentStreak
+            return (
+              <div
+                key={i}
+                className={`aspect-square rounded ${
+                  isActive 
+                    ? 'bg-gradient-to-br from-gold-500 to-gold-600' 
+                    : 'bg-navy-800'
+                }`}
+              />
+            )
+          })}
+        </div>
+        <p className="text-sm text-gold-300 text-center">
+          Continue estudando para manter sua sequência!
+        </p>
+      </Card>
+
+      {/* Additional Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Taxa de Conclusão</p>
+              <p className="text-2xl font-bold text-gold mt-1">
+                {stats.enrolledCourses > 0 ? Math.round((stats.completedCourses / stats.enrolledCourses) * 100) : 0}%
+              </p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-gold-500/30" />
+          </div>
+        </Card>
+        
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Próxima Aula</p>
+              <p className="text-2xl font-bold text-gold mt-1">--</p>
+            </div>
+            <Calendar className="w-8 h-8 text-gold-500/30" />
+          </div>
+        </Card>
+        
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Em Progresso</p>
+              <p className="text-2xl font-bold text-gold mt-1">{stats.enrolledCourses - stats.completedCourses}</p>
+            </div>
+            <Activity className="w-8 h-8 text-gold-500/30" />
+          </div>
+        </Card>
+      </div>
     </div>
   )
 }

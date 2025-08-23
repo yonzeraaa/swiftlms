@@ -108,27 +108,23 @@ export default function TestResultsPage() {
         .eq('course_id', testData.course_id!)
         .single()
 
-      // Check if test passed and try to generate certificate
+      // Check if test passed and create certificate request
       if (attemptData.score && attemptData.score >= (testData.passing_score || 60) && enrollmentData) {
-        // Call manual certificate generation using raw SQL
-        const { data: certResult } = await supabase
-          .from('certificates')
+        // Check if certificate request already exists
+        const { data: certReqResult } = await supabase
+          .from('certificate_requests')
           .select('*')
           .eq('enrollment_id', enrollmentData.id)
+          .eq('status', 'pending')
         
-        // If no certificate exists, attempt to generate one
-        if (!certResult || certResult.length === 0) {
-          // First update certificate requirements
-          await supabase.rpc('update_certificate_requirements' as any, {
+        // If no pending request exists, create one
+        if (!certReqResult || certReqResult.length === 0) {
+          // Create certificate request for admin approval
+          const { data: reqResult } = await supabase.rpc('create_certificate_request' as any, {
             p_enrollment_id: enrollmentData.id
           })
           
-          // Then try to generate certificate manually
-          const { data: genResult } = await supabase.rpc('manually_generate_certificate' as any, {
-            p_enrollment_id: enrollmentData.id
-          })
-          
-          console.log('Certificate generation attempted:', genResult)
+          console.log('Certificate request created:', reqResult)
         }
       }
 

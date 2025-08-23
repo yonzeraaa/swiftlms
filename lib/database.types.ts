@@ -47,6 +47,79 @@ export type Database = {
         }
         Relationships: []
       }
+      certificate_requests: {
+        Row: {
+          completed_lessons: number | null
+          course_id: string
+          created_at: string | null
+          enrollment_id: string
+          highest_test_score: number | null
+          id: string
+          notes: string | null
+          processed_at: string | null
+          processed_by: string | null
+          request_date: string | null
+          status: string | null
+          total_lessons: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_lessons?: number | null
+          course_id: string
+          created_at?: string | null
+          enrollment_id: string
+          highest_test_score?: number | null
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          request_date?: string | null
+          status?: string | null
+          total_lessons?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_lessons?: number | null
+          course_id?: string
+          created_at?: string | null
+          enrollment_id?: string
+          highest_test_score?: number | null
+          id?: string
+          notes?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          request_date?: string | null
+          status?: string | null
+          total_lessons?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificate_requests_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificate_requests_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: true
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificate_requests_processed_by_fkey"
+            columns: ["processed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificate_requirements: {
         Row: {
           all_lessons_completed: boolean | null
@@ -129,6 +202,9 @@ export type Database = {
       }
       certificates: {
         Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           certificate_number: string
           course_hours: number | null
           course_id: string
@@ -139,11 +215,15 @@ export type Database = {
           instructor_name: string | null
           issued_at: string | null
           metadata: Json | null
+          rejection_reason: string | null
           updated_at: string | null
           user_id: string
           verification_code: string
         }
         Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           certificate_number: string
           course_hours?: number | null
           course_id: string
@@ -154,11 +234,15 @@ export type Database = {
           instructor_name?: string | null
           issued_at?: string | null
           metadata?: Json | null
+          rejection_reason?: string | null
           updated_at?: string | null
           user_id: string
           verification_code: string
         }
         Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           certificate_number?: string
           course_hours?: number | null
           course_id?: string
@@ -169,11 +253,19 @@ export type Database = {
           instructor_name?: string | null
           issued_at?: string | null
           metadata?: Json | null
+          rejection_reason?: string | null
           updated_at?: string | null
           user_id?: string
           verification_code?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "certificates_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "certificates_course_id_fkey"
             columns: ["course_id"]
@@ -857,6 +949,42 @@ export type Database = {
           },
         ]
       }
+      question_subjects: {
+        Row: {
+          created_at: string | null
+          id: string
+          question_id: string
+          subject_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          question_id: string
+          subject_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          question_id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_subjects_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "question_subjects_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questions: {
         Row: {
           category: string | null
@@ -1381,6 +1509,14 @@ export type Database = {
       }
     }
     Functions: {
+      approve_certificate_request: {
+        Args: { p_admin_id: string; p_request_id: string }
+        Returns: {
+          certificate_id: string
+          message: string
+          success: boolean
+        }[]
+      }
       calculate_enrollment_progress: {
         Args: { p_enrollment_id: string }
         Returns: number
@@ -1403,6 +1539,14 @@ export type Database = {
       clean_old_import_progress: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      create_certificate_request: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          message: string
+          request_id: string
+          success: boolean
+        }[]
       }
       delete_user_completely: {
         Args: { user_id_to_delete: string }
@@ -1474,6 +1618,13 @@ export type Database = {
       recalculate_enrollment_progress: {
         Args: { p_enrollment_id: string }
         Returns: undefined
+      }
+      reject_certificate_request: {
+        Args: { p_admin_id: string; p_reason: string; p_request_id: string }
+        Returns: {
+          message: string
+          success: boolean
+        }[]
       }
       reorder_course_modules: {
         Args: { p_course_id: string; p_module_ids: string[] }

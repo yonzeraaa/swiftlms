@@ -39,15 +39,16 @@ export default function CertificatesPage() {
         return
       }
 
-      // Fetch certificates with course details
+      // Fetch only approved certificates with course details
       const { data: certificatesData, error } = await supabase
         .from('certificates')
         .select(`
           *,
           course:courses(*),
-          user:profiles(*)
+          user:profiles!certificates_user_id_fkey(*)
         `)
         .eq('user_id', user.id)
+        .eq('approval_status', 'approved')
         .order('issued_at', { ascending: false })
 
       if (error) {
@@ -56,7 +57,7 @@ export default function CertificatesPage() {
       }
 
       if (certificatesData) {
-        setCertificates(certificatesData as CertificateWithDetails[])
+        setCertificates(certificatesData as any as CertificateWithDetails[])
       }
     } catch (error) {
       console.error('Error fetching certificates:', error)
