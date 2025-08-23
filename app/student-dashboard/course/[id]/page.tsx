@@ -213,6 +213,52 @@ export default function CoursePage() {
     setSelectedLesson(lesson)
   }
 
+  const markAllLessonsComplete = async () => {
+    if (!course?.enrollment) return
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Mark all lessons as complete
+      const allLessons = course.modules.flatMap(m => m.lessons)
+      
+      for (const lesson of allLessons) {
+        await supabase
+          .from('lesson_progress')
+          .upsert({
+            enrollment_id: course.enrollment.id,
+            lesson_id: lesson.id,
+            user_id: user.id,
+            is_completed: true,
+            completed_at: new Date().toISOString()
+          })
+      }
+
+      // Update enrollment progress to 100%
+      const updateData: any = { 
+        progress_percentage: 100,
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+      
+      await supabase
+        .from('enrollments')
+        .update(updateData)
+        .eq('id', course.enrollment.id)
+      
+      // Show success message
+      alert('🎉 Todas as aulas foram marcadas como concluídas!\n\n📜 Seu certificado será emitido pela administração em breve.')
+      
+      // Refresh course data
+      await fetchCourseData()
+    } catch (error) {
+      console.error('Error marking all lessons complete:', error)
+      alert('Erro ao marcar todas as aulas como concluídas')
+    }
+  }
+
   const markLessonComplete = async (lessonId: string) => {
     if (!course?.enrollment) return
 
@@ -254,41 +300,8 @@ export default function CoursePage() {
             .update(updateData)
             .eq('id', course.enrollment.id)
           
-          // Check if certificate already exists
-          const { data: existingCert } = await supabase
-            .from('certificates')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('course_id', course.id)
-            .single()
-          
-          // Create certificate if it doesn't exist
-          if (!existingCert) {
-            const certificateNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-            const verificationCode = Math.random().toString(36).substr(2, 16).toUpperCase()
-            
-            const { error: certError } = await supabase
-              .from('certificates')
-              .insert({
-                user_id: user.id,
-                course_id: course.id,
-                enrollment_id: course.enrollment.id,
-                certificate_number: certificateNumber,
-                verification_code: verificationCode,
-                course_hours: course.duration_hours || 0,
-                grade: Math.round((completedLessons / totalLessons) * 100),
-                issued_at: new Date().toISOString(),
-                instructor_name: course.instructor?.name || 'SwiftEDU'
-              })
-            
-            if (!certError) {
-              // Show success message with certificate info
-              alert('🎉 Parabéns! Você concluiu este curso com sucesso!\n\n📜 Seu certificado foi gerado e está disponível na seção "Certificados".')
-            }
-          } else {
-            // Show success message
-            alert('🎉 Parabéns! Você concluiu este curso com sucesso!')
-          }
+          // Show success message (certificate will be issued by admin)
+          alert('🎉 Parabéns! Você concluiu este curso com sucesso!\n\n📜 Seu certificado será emitido pela administração em breve.')
         } else {
           // Just update progress
           await supabase
@@ -400,6 +413,18 @@ export default function CoursePage() {
                 </p>
               </div>
             </div>
+            {/* Mark All Complete Button */}
+            {completedLessons < totalLessons && (
+              <div className="mt-4">
+                <Button 
+                  onClick={markAllLessonsComplete}
+                  variant="secondary"
+                  icon={<CheckCircle2 className="w-4 h-4" />}
+                >
+                  Marcar todas as aulas como concluídas
+                </Button>
+              </div>
+            )}
             {course.instructor && (
               <div className="flex items-center gap-3 pt-2 border-t border-gold-500/20">
                 <div className="w-10 h-10 bg-gradient-to-br from-gold-500/30 to-gold-600/20 rounded-full flex items-center justify-center">
@@ -441,32 +466,13 @@ export default function CoursePage() {
                     const isCompleted = lesson.progress?.is_completed
                     const isSelected = selectedLesson?.id === lesson.id
                     
-                    // Unlock logic: Progressive unlocking
-                    let isLocked = false
-                    
-                    // First lesson of first module is always unlocked
-                    if (moduleIndex === 0 && lessonIndex === 0) {
-                      isLocked = false
-                    }
-                    // For other lessons in the first module, check if previous lesson is completed
-                    else if (moduleIndex === 0) {
-                      isLocked = !module.lessons[lessonIndex - 1]?.progress?.is_completed
-                    }
-                    // For first lesson of other modules, check if all lessons from previous module are completed
-                    else if (lessonIndex === 0) {
-                      const previousModule = course.modules[moduleIndex - 1]
-                      isLocked = !previousModule.lessons.every(l => l.progress?.is_completed)
-                    }
-                    // For other lessons in other modules, check if previous lesson in same module is completed
-                    else {
-                      isLocked = !module.lessons[lessonIndex - 1]?.progress?.is_completed
-                    }
+                    // All lessons are unlocked - student can watch in any order
+                    const isLocked = false
                     
                     return (
                       <motion.button
                         key={lesson.id}
-                        onClick={() => !isLocked && handleLessonSelect(lesson)}
-                        disabled={isLocked}
+                        onClick={() => handleLessonSelect(lesson)}
                         className={`
                           w-full text-left p-3 rounded-lg transition-all relative
                           ${isSelected 
@@ -475,17 +481,15 @@ export default function CoursePage() {
                               ? 'bg-green-500/10 hover:bg-green-500/20'
                               : 'bg-navy-800/30 hover:bg-navy-800/50'
                           }
-                          ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                          ${!isLocked && !isCompleted && !isSelected ? 'ring-2 ring-gold-500/30 animate-pulse' : ''}
+                          cursor-pointer
+                          ${!isCompleted && !isSelected ? 'ring-2 ring-gold-500/30' : ''}
                         `}
-                        whileHover={!isLocked ? { scale: 1.02 } : {}}
-                        whileTap={!isLocked ? { scale: 0.98 } : {}}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                       >
                         <div className="flex items-center gap-3">
                           <div className="flex-shrink-0">
-                            {isLocked ? (
-                              <Lock className="w-4 h-4 text-gold-300/50" />
-                            ) : isCompleted ? (
+                            {isCompleted ? (
                               <CheckCircle2 className="w-4 h-4 text-green-400" />
                             ) : (
                               <div className="w-4 h-4 rounded-full border-2 border-gold-500/50" />
@@ -507,13 +511,8 @@ export default function CoursePage() {
                                   {lesson.duration_minutes} min
                                 </span>
                               )}
-                              {isLocked && (
-                                <span className="text-xs text-red-400">
-                                  Complete a aula anterior
-                                </span>
-                              )}
-                              {!isLocked && !isCompleted && !isSelected && (
-                                <span className="text-xs text-gold-400 font-semibold">
+                              {!isCompleted && !isSelected && (
+                                <span className="text-xs text-gold-400">
                                   Disponível
                                 </span>
                               )}
@@ -558,7 +557,7 @@ export default function CoursePage() {
                       <VideoPlayer
                         url={selectedLesson.content_url}
                         title={selectedLesson.title}
-                        onComplete={() => markLessonComplete(selectedLesson.id)}
+                        onComplete={() => {/* Removed auto-complete */}}
                       />
                     ) : (
                       <div className="flex items-center justify-center h-[400px]">
@@ -577,7 +576,7 @@ export default function CoursePage() {
                       <DocumentViewer
                         url={selectedLesson.content_url}
                         title={selectedLesson.title}
-                        onComplete={() => markLessonComplete(selectedLesson.id)}
+                        onComplete={() => {/* Removed auto-complete */}}
                       />
                     ) : (
                       <div className="w-full h-[400px] overflow-y-auto">
@@ -607,7 +606,7 @@ export default function CoursePage() {
                       <DocumentViewer
                         url={selectedLesson.content_url}
                         title={selectedLesson.title}
-                        onComplete={() => markLessonComplete(selectedLesson.id)}
+                        onComplete={() => {/* Removed auto-complete */}}
                       />
                     ) : (
                       <div className="flex items-center justify-center h-[400px]">
@@ -646,7 +645,7 @@ export default function CoursePage() {
                       onClick={() => markLessonComplete(selectedLesson.id)}
                       icon={<CheckCircle2 className="w-4 h-4" />}
                     >
-                      Marcar como Concluída
+                      Marcar esta aula como concluída
                     </Button>
                   )}
                 </div>

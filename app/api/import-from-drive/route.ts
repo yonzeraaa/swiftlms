@@ -7,21 +7,57 @@ import fs from 'fs'
 // Função para atualizar progresso no Supabase
 async function updateImportProgress(supabase: any, importId: string, userId: string, courseId: string, progress: any) {
   try {
-    const { error } = await supabase
+    // Primeiro verificar se existe
+    const { data: existing } = await supabase
       .from('import_progress')
-      .upsert({
-        id: importId,
-        user_id: userId,
-        course_id: courseId,
-        ...progress,
-        updated_at: new Date().toISOString()
-      })
+      .select('id')
+      .eq('id', importId)
+      .single()
     
-    if (error) {
-      console.error('[PROGRESS] Erro ao atualizar progresso:', error)
+    if (existing) {
+      // Se existe, fazer update
+      const { data, error } = await supabase
+        .from('import_progress')
+        .update({
+          ...progress,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', importId)
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('[PROGRESS] Erro ao atualizar progresso:', error)
+      } else {
+        console.log('[PROGRESS] Progresso atualizado com sucesso:', {
+          percentage: progress.percentage,
+          processed: `${progress.processed_modules}/${progress.total_modules} módulos, ${progress.processed_subjects}/${progress.total_subjects} disciplinas, ${progress.processed_lessons}/${progress.total_lessons} aulas`
+        })
+      }
     } else {
-      console.log('[PROGRESS] Progresso atualizado:', progress)
+      // Se não existe, criar
+      const { data, error } = await supabase
+        .from('import_progress')
+        .insert({
+          id: importId,
+          user_id: userId,
+          course_id: courseId,
+          ...progress,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+      
+      if (error) {
+        console.error('[PROGRESS] Erro ao criar progresso:', error)
+      } else {
+        console.log('[PROGRESS] Progresso criado com sucesso')
+      }
     }
+    
+    // Adicionar pequeno delay para garantir que a UI possa atualizar
+    await new Promise(resolve => setTimeout(resolve, 50))
   } catch (err) {
     console.error('[PROGRESS] Erro ao salvar progresso:', err)
   }
@@ -266,10 +302,13 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
   // Atualizar progresso se importId fornecido
   const updateProgress = async (progress: any) => {
     if (importId && supabase && userId && courseId) {
+      // Garantir que processed_lessons seja usado corretamente
+      const processedLessonsValue = progress.processed_lessons !== undefined ? progress.processed_lessons : processedLessons
       const fullProgress = {
         ...progress,
+        processed_lessons: processedLessonsValue,
         percentage: totalModules + totalSubjects + totalLessons > 0 
-          ? Math.round(((processedModules + processedSubjects + processedLessons) / (totalModules + totalSubjects + totalLessons)) * 100)
+          ? Math.round(((processedModules + processedSubjects + processedLessonsValue) / (totalModules + totalSubjects + totalLessons)) * 100)
           : 0
       }
       console.log(`[PROGRESS] Atualizando progresso:`, fullProgress)
@@ -295,7 +334,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
     }
     
     // Atualizar progresso inicial
-    updateProgress({
+    await updateProgress({
       phase: 'processing',
       current_step: 'Iniciando processamento',
       total_modules: totalModules,
@@ -303,7 +342,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
       total_subjects: totalSubjects,
       processed_subjects: processedSubjects,
       total_lessons: totalLessons,
-      processedLessons,
+      processed_lessons: processedLessons,
       current_item: 'Preparando importação...',
       errors: []
     })
@@ -523,6 +562,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
                 total_lessons: totalLessons,
                 processed_lessons: processedLessons,
                 current_item: `Concluído: ${lesson.name}`,
+                phase: 'processing',
                 errors: []
               })
             }
@@ -542,6 +582,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               total_lessons: totalLessons,
               processed_lessons: processedLessons,
               current_item: `Concluído: ${subject.name}`,
+              phase: 'processing',
               errors: []
             })
           }
@@ -560,6 +601,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
           total_lessons: totalLessons,
           processed_lessons: processedLessons,
           current_item: `Concluído: ${module.name}`,
+          phase: 'processing',
           errors: []
         })
       }

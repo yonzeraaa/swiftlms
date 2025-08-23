@@ -251,28 +251,24 @@ export default function DashboardPage() {
       title: t('dashboard.totalStudents'),
       value: stats.totalStudents.toString(),
       icon: <Users className="w-6 h-6" />,
-      trend: { value: 0, isPositive: true },
       subtitle: `${stats.activeUsers} ${t('dashboard.active')}`
     },
     {
       title: t('dashboard.activeCourses'),
       value: stats.publishedCourses.toString(),
       icon: <BookOpen className="w-6 h-6" />,
-      trend: { value: 0, isPositive: true },
       subtitle: `${stats.totalCourses} ${t('dashboard.total')}`
     },
     {
       title: t('dashboard.completionRate'),
       value: `${stats.completionRate}%`,
       icon: <GraduationCap className="w-6 h-6" />,
-      trend: { value: 0, isPositive: true },
       subtitle: `${stats.completedEnrollments} ${t('dashboard.completed')}`
     },
     {
       title: t('dashboard.enrollments'),
       value: stats.totalEnrollments.toString(),
       icon: <TrendingUp className="w-6 h-6" />,
-      trend: { value: 0, isPositive: true },
       subtitle: t('dashboard.totalEnrollments')
     }
   ]

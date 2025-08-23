@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Edit, Trash2, Database, FileQuestion, Tag, MoreVertical, Copy, Archive, Eye, Check, Upload, CheckSquare, Square, Trash, AlertCircle } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, Database, FileQuestion, Tag, MoreVertical, Copy, Archive, Eye, Check, Upload, CheckSquare, Square, Trash, AlertCircle, Link, X } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -41,13 +41,32 @@ export default function QuestionBankPage() {
   const [previewQuestion, setPreviewQuestion] = useState<QuestionWithDetails | null>(null)
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showLinkSubjectsModal, setShowLinkSubjectsModal] = useState(false)
+  const [availableSubjects, setAvailableSubjects] = useState<any[]>([])
+  const [selectedSubjects, setSelectedSubjects] = useState<Set<string>>(new Set())
+  const [isLinking, setIsLinking] = useState(false)
   const { t } = useTranslation()
   const { showToast } = useToast()
   const supabase = createClient()
 
   useEffect(() => {
     fetchQuestions()
+    fetchSubjects()
   }, [])
+
+  const fetchSubjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('id, name, code')
+        .order('name')
+
+      if (error) throw error
+      setAvailableSubjects(data || [])
+    } catch (error) {
+      console.error('Error fetching subjects:', error)
+    }
+  }
 
   const fetchQuestions = async () => {
     try {
@@ -97,6 +116,46 @@ export default function QuestionBankPage() {
     } catch (error) {
       console.error('Error archiving question:', error)
       showToast({ type: 'error', title: 'Erro ao arquivar questão' })
+    }
+  }
+
+  const handleLinkToSubjects = async () => {
+    if (selectedQuestions.size === 0 || selectedSubjects.size === 0) return
+
+    setIsLinking(true)
+    try {
+      // Para cada questão selecionada, vincular com cada disciplina selecionada
+      const links = []
+      for (const questionId of selectedQuestions) {
+        for (const subjectId of selectedSubjects) {
+          links.push({
+            question_id: questionId,
+            subject_id: subjectId
+          })
+        }
+      }
+
+      // Usar upsert para evitar duplicatas
+      const { error } = await supabase
+        .from('question_subjects')
+        .upsert(links, { onConflict: 'question_id,subject_id' })
+
+      if (error) throw error
+
+      showToast({ 
+        type: 'success', 
+        title: `${selectedQuestions.size} questões vinculadas a ${selectedSubjects.size} disciplinas` 
+      })
+      
+      setShowLinkSubjectsModal(false)
+      setSelectedSubjects(new Set())
+      setSelectedQuestions(new Set())
+      fetchQuestions()
+    } catch (error) {
+      console.error('Error linking questions to subjects:', error)
+      showToast({ type: 'error', title: 'Erro ao vincular questões' })
+    } finally {
+      setIsLinking(false)
     }
   }
 
@@ -424,6 +483,14 @@ export default function QuestionBankPage() {
           </div>
           <div className="flex items-center gap-3">
             <Button
+              variant="secondary"
+              size="sm"
+              icon={<Link className="w-4 h-4" />}
+              onClick={() => setShowLinkSubjectsModal(true)}
+            >
+              Vincular a Disciplinas
+            </Button>
+            <Button
               variant="danger"
               size="sm"
               icon={<Trash className="w-4 h-4" />}
@@ -668,6 +735,87 @@ export default function QuestionBankPage() {
             showToast({ type: 'success', title: 'Questões importadas com sucesso!' })
           }}
         />
+      )}
+
+      {/* Link to Subjects Modal */}
+      {showLinkSubjectsModal && (
+        <Modal
+          isOpen={showLinkSubjectsModal}
+          onClose={() => {
+            setShowLinkSubjectsModal(false)
+            setSelectedSubjects(new Set())
+          }}
+          title="Vincular Questões a Disciplinas"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <p className="text-blue-400 text-sm">
+                Você está vinculando {selectedQuestions.size} {selectedQuestions.size === 1 ? 'questão' : 'questões'} às disciplinas selecionadas.
+                As questões podem ser vinculadas a múltiplas disciplinas.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gold-200 mb-2">
+                Selecione as Disciplinas
+              </label>
+              <div className="max-h-[300px] overflow-y-auto space-y-2 border border-gold-500/20 rounded-lg p-3">
+                {availableSubjects.map((subject) => (
+                  <label
+                    key={subject.id}
+                    className="flex items-center gap-3 p-2 rounded hover:bg-navy-800/30 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedSubjects.has(subject.id)}
+                      onChange={(e) => {
+                        const newSelection = new Set(selectedSubjects)
+                        if (e.target.checked) {
+                          newSelection.add(subject.id)
+                        } else {
+                          newSelection.delete(subject.id)
+                        }
+                        setSelectedSubjects(newSelection)
+                      }}
+                      className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/50 rounded focus:ring-gold-500 focus:ring-2"
+                    />
+                    <div className="flex-1">
+                      <p className="text-gold-100 font-medium">{subject.name}</p>
+                      {subject.code && (
+                        <p className="text-gold-400 text-xs">{subject.code}</p>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center pt-4 border-t border-gold-500/20">
+              <p className="text-gold-300 text-sm">
+                {selectedSubjects.size} {selectedSubjects.size === 1 ? 'disciplina selecionada' : 'disciplinas selecionadas'}
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowLinkSubjectsModal(false)
+                    setSelectedSubjects(new Set())
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleLinkToSubjects}
+                  disabled={selectedSubjects.size === 0 || isLinking}
+                  icon={isLinking ? <AlertCircle className="w-4 h-4 animate-spin" /> : <Link className="w-4 h-4" />}
+                >
+                  {isLinking ? 'Vinculando...' : 'Vincular'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Question Preview Modal */}

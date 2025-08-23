@@ -34,6 +34,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Import not found' }, { status: 404 })
     }
     
+    // Log detalhado do progresso recebido do banco
+    console.log(`[PROGRESS-STATUS] Raw progress from DB:`, {
+      id: progress.id,
+      processed_lessons: progress.processed_lessons,
+      total_lessons: progress.total_lessons,
+      processed_modules: progress.processed_modules,
+      total_modules: progress.total_modules,
+      processed_subjects: progress.processed_subjects,
+      total_subjects: progress.total_subjects,
+      percentage: progress.percentage,
+      phase: progress.phase
+    })
+    
+    // Calcular porcentagem se n\u00e3o estiver no banco
+    const calculatePercentage = () => {
+      const total = (progress.total_modules || 0) + (progress.total_subjects || 0) + (progress.total_lessons || 0)
+      const processed = (progress.processed_modules || 0) + (progress.processed_subjects || 0) + (progress.processed_lessons || 0)
+      
+      if (total === 0) return 0
+      return Math.round((processed / total) * 100)
+    }
+    
     // Converter campos do banco para o formato esperado pelo frontend
     const formattedProgress = {
       currentStep: progress.current_step || '',
@@ -46,11 +68,11 @@ export async function GET(request: NextRequest) {
       currentItem: progress.current_item || '',
       errors: progress.errors || [],
       completed: progress.completed || false,
-      percentage: progress.percentage || 0,
+      percentage: progress.percentage !== null && progress.percentage !== undefined ? progress.percentage : calculatePercentage(),
       phase: progress.phase || ''
     }
     
-    console.log(`[PROGRESS-STATUS] Returning progress:`, formattedProgress)
+    console.log(`[PROGRESS-STATUS] Formatted progress for frontend:`, formattedProgress)
     return NextResponse.json(formattedProgress)
     
   } catch (error) {

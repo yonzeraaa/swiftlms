@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, Loader2, AlertCircle, BookOpen, Video, FileQuestion } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, Loader2, AlertCircle, BookOpen, Video, FileQuestion, Eye, EyeOff } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -271,7 +271,7 @@ export default function LessonsPage() {
   }
 
   const totalDuration = lessons.reduce((acc, lesson) => acc + (lesson.duration_minutes || 0), 0)
-  const publishedLessons = lessons.filter(lesson => lesson.is_preview === false).length
+  const previewLessons = lessons.filter(lesson => lesson.is_preview === true).length
   const completionRate = Object.values(lessonProgress).length > 0
     ? Math.round(
         Object.values(lessonProgress).reduce((acc, progress) => 
@@ -331,10 +331,10 @@ export default function LessonsPage() {
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Aulas Publicadas</p>
-              <p className="text-2xl font-bold text-gold mt-1">{publishedLessons}</p>
+              <p className="text-gold-300 text-sm">Aulas de Preview</p>
+              <p className="text-2xl font-bold text-gold mt-1">{previewLessons}</p>
             </div>
-            <CheckCircle className="w-8 h-8 text-green-500/30" />
+            <Eye className="w-8 h-8 text-blue-500/30" />
           </div>
         </Card>
         
@@ -439,13 +439,40 @@ export default function LessonsPage() {
                         <span className="text-gold-200">{lesson.order_index}</span>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          lesson.is_preview
-                            ? 'bg-blue-500/20 text-blue-400'
-                            : 'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {lesson.is_preview ? 'Sim' : 'Não'}
-                        </span>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const { error } = await supabase
+                                .from('lessons')
+                                .update({ is_preview: !lesson.is_preview })
+                                .eq('id', lesson.id)
+                              
+                              if (error) throw error
+                              
+                              setMessage({ 
+                                type: 'success', 
+                                text: `Aula ${!lesson.is_preview ? 'marcada como' : 'removida de'} preview` 
+                              })
+                              await fetchData()
+                            } catch (error: any) {
+                              setMessage({ 
+                                type: 'error', 
+                                text: 'Erro ao atualizar status de preview' 
+                              })
+                            }
+                          }}
+                          className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium transition-all hover:scale-105 ${
+                            lesson.is_preview
+                              ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                              : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                          }`}
+                        >
+                          {lesson.is_preview ? (
+                            <><Eye className="w-3 h-3" /> Preview</>
+                          ) : (
+                            <><EyeOff className="w-3 h-3" /> Privada</>
+                          )}
+                        </button>
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center justify-center gap-2">
@@ -608,8 +635,11 @@ export default function LessonsPage() {
                     onChange={(e) => setFormData({ ...formData, is_preview: e.target.checked })}
                     className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/50 rounded focus:ring-gold-500 focus:ring-2"
                   />
-                  <label htmlFor="is_preview" className="ml-2 text-sm text-gold-200">
-                    Aula de Preview (visível sem matrícula)
+                  <label htmlFor="is_preview" className="ml-2 text-sm text-gold-200 cursor-pointer">
+                    <span className="font-medium">Aula de Preview</span>
+                    <span className="block text-xs text-gold-400 mt-0.5">
+                      Visível para alunos não matriculados como demonstração
+                    </span>
                   </label>
                 </div>
               </div>

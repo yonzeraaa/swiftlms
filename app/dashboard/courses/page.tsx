@@ -5,6 +5,7 @@ import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, 
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import ImportProgress from '../../components/ImportProgress'
+import { useImportProgress } from '../../hooks/useImportProgress'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
@@ -74,20 +75,23 @@ export default function CoursesPage() {
   const [importing, setImporting] = useState(false)
   const [showDriveImportModal, setShowDriveImportModal] = useState(false)
   const [driveUrl, setDriveUrl] = useState('')
-  const [importingFromDrive, setImportingFromDrive] = useState(false)
-  const [importProgress, setImportProgress] = useState({
-    currentStep: '',
-    totalModules: 0,
-    processedModules: 0,
-    totalSubjects: 0,
-    processedSubjects: 0,
-    totalLessons: 0,
-    processedLessons: 0,
-    currentItem: '',
-    errors: [] as string[]
+  
+  // Usar o novo hook de progresso
+  const { 
+    progress: importProgress, 
+    isImporting: importingFromDrive, 
+    startImport, 
+    cancelImport 
+  } = useImportProgress({
+    onComplete: () => {
+      console.log('[CoursesPage] Import completed successfully')
+      fetchCourses() // Recarregar cursos ap\u00f3s importa\u00e7\u00e3o
+    },
+    onError: (error) => {
+      console.error('[CoursesPage] Import error:', error)
+      setError(error)
+    }
   })
-  const [importId, setImportId] = useState<string | null>(null)
-  const progressInterval = useRef<NodeJS.Timeout | null>(null)
   const supabase = createClient()
   const { t } = useTranslation()
   
@@ -502,109 +506,19 @@ export default function CoursesPage() {
   }
   
   // Limpar intervalo quando componente desmontar ou importação terminar
-  useEffect(() => {
-    return () => {
-      if (progressInterval.current) {
-        clearInterval(progressInterval.current)
-      }
-    }
-  }, [])
 
-  const checkImportProgress = async (importId: string) => {
-    try {
-      console.log(`[FRONTEND] Checking progress for importId: ${importId}`)
-      const response = await fetch(`/api/import-from-drive-status?importId=${importId}`)
-      
-      if (response.ok) {
-        const progress = await response.json()
-        console.log(`[FRONTEND] Progress received:`, progress)
-        // Garantir que todos os campos esperados existem
-        setImportProgress({
-          currentStep: progress.currentStep || '',
-          totalModules: progress.totalModules || 0,
-          processedModules: progress.processedModules || 0,
-          totalSubjects: progress.totalSubjects || 0,
-          processedSubjects: progress.processedSubjects || 0,
-          totalLessons: progress.totalLessons || 0,
-          processedLessons: progress.processedLessons || 0,
-          currentItem: progress.currentItem || '',
-          errors: progress.errors || []
-        })
-        
-        // Se importação completou, parar de verificar
-        if (progress.completed) {
-          console.log(`[FRONTEND] Import completed, stopping polling`)
-          if (progressInterval.current) {
-            clearInterval(progressInterval.current)
-            progressInterval.current = null
-          }
-          setImportingFromDrive(false)
-        }
-      } else {
-        const error = await response.json()
-        console.error('[FRONTEND] Error response:', error)
-      }
-    } catch (error) {
-      console.error('[FRONTEND] Erro ao verificar progresso:', error)
-    }
-  }
 
   const handleDriveImport = async () => {
     if (!driveUrl || !selectedCourse) return
     
-    setImportingFromDrive(true)
     setError(null)
-    setImportProgress({
-      currentStep: 'Iniciando importação...',
-      totalModules: 0,
-      processedModules: 0,
-      totalSubjects: 0,
-      processedSubjects: 0,
-      totalLessons: 0,
-      processedLessons: 0,
-      currentItem: '',
-      errors: []
-    })
     
     try {
-      const response = await fetch('/api/import-from-drive', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          driveUrl,
-          courseId: selectedCourse.id
-        })
-      })
-      
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro na importação')
-      }
-      
-      // Salvar importId e iniciar polling de progresso
-      if (result.importId) {
-        console.log('[FRONTEND] Import started with ID:', result.importId)
-        setImportId(result.importId)
-        
-        // Fazer primeira verificação imediatamente
-        checkImportProgress(result.importId)
-        
-        // Verificar progresso a cada 1 segundo
-        progressInterval.current = setInterval(() => {
-          checkImportProgress(result.importId)
-        }, 1000)
-      } else {
-        console.error('[FRONTEND] No importId received from backend')
-      }
-      
-      // Não fechar o modal imediatamente - deixar aberto para mostrar progresso
-      
+      await startImport(driveUrl, selectedCourse.id)
+      console.log('[CoursesPage] Import started successfully')
     } catch (error: any) {
-      setError(error.message || 'Erro ao importar do Google Drive')
-      setImportingFromDrive(false)
+      console.error('[CoursesPage] Failed to start import:', error)
+      setError(error.message || 'Erro ao iniciar importação')
     }
   }
   
@@ -1735,10 +1649,11 @@ export default function CoursesPage() {
               </div>
               
               {/* Progress Display */}
-              {importingFromDrive && (
+              {(importingFromDrive || importProgress.completed) && (
                 <ImportProgress
                   isImporting={importingFromDrive}
                   progress={importProgress}
+                  onCancel={cancelImport}
                 />
               )}
               
@@ -1747,26 +1662,12 @@ export default function CoursesPage() {
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    // Limpar intervalo se existir
-                    if (progressInterval.current) {
-                      clearInterval(progressInterval.current)
-                      progressInterval.current = null
+                    if (importingFromDrive) {
+                      cancelImport()
                     }
                     setShowDriveImportModal(false)
                     setDriveUrl('')
                     setError(null)
-                    setImportingFromDrive(false)
-                    setImportProgress({
-                      currentStep: '',
-                      totalModules: 0,
-                      processedModules: 0,
-                      totalSubjects: 0,
-                      processedSubjects: 0,
-                      totalLessons: 0,
-                      processedLessons: 0,
-                      currentItem: '',
-                      errors: []
-                    })
                   }}
                   className="flex-1"
                 >

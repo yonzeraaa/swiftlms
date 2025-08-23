@@ -307,28 +307,24 @@ export default function StudentDashboard() {
       title: 'Cursos Matriculados',
       value: stats.enrolledCourses.toString(),
       icon: <BookOpen className="w-6 h-6" />,
-      trend: { value: 0, isPositive: true },
       subtitle: `${stats.completedCourses} concluídos`
     },
     {
       title: 'Horas de Estudo',
       value: stats.hoursLearned.toString(),
       icon: <Clock className="w-6 h-6" />,
-      trend: { value: 0, isPositive: true },
       subtitle: 'Total acumulado'
     },
     {
       title: 'Progresso Geral',
       value: `${stats.overallProgress}%`,
       icon: <Target className="w-6 h-6" />,
-      trend: { value: 0, isPositive: true },
       subtitle: 'Média dos cursos'
     },
     {
       title: 'Certificados',
       value: stats.certificates.toString(),
       icon: <Award className="w-6 h-6" />,
-      trend: { value: 0, isPositive: true },
       subtitle: 'Conquistados'
     }
   ]

@@ -90,21 +90,6 @@ export default function StatCard({
               </span>
             </p>
             
-            {trend && (
-              <div className={`
-                flex items-center gap-2 mt-3 text-sm font-medium
-                ${trend.isPositive ? 'text-green-400' : 'text-red-400'}
-              `}>
-                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-current/10">
-                  {trend.isPositive ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
-                  )}
-                  <span>{Math.abs(trend.value)}%</span>
-                </div>
-              </div>
-            )}
             
             {subtitle && (
               <p className="text-gold-400/60 text-xs mt-2">{subtitle}</p>

@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Search, Filter, BookOpen, Clock, Users, Star, DollarSign, Tag, TrendingUp, X, Check, AlertCircle, Loader2, User, Sparkles } from 'lucide-react'
+import { Search, Filter, BookOpen, Clock, Users, Star, DollarSign, Tag, TrendingUp, X, Check, AlertCircle, Loader2, User, Sparkles, Eye, Lock, BookMarked } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -185,62 +185,61 @@ export default function ExploreCourses() {
     setFilteredCourses(filtered)
   }
 
-  const handleEnroll = async (course: CourseWithDetails) => {
-    if (course.isEnrolled) {
-      router.push('/student-dashboard/my-courses')
-      return
-    }
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [previewModules, setPreviewModules] = useState<any[]>([])
+  const [loadingPreview, setLoadingPreview] = useState(false)
 
-    setEnrolling(course.id)
-    setMessage(null)
+  const handleViewPreview = async (course: CourseWithDetails) => {
+    setSelectedCourse(course)
+    setShowPreviewModal(true)
+    setLoadingPreview(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
+      // Buscar módulos do curso com aulas marcadas como preview
+      const { data: modules } = await supabase
+        .from('course_modules')
+        .select(`
+          *,
+          module_subjects!inner(
+            *,
+            subjects(
+              *,
+              subject_lessons(
+                *,
+                lessons!inner(
+                  *
+                )
+              )
+            )
+          )
+        `)
+        .eq('course_id', course.id)
+        .order('order_index')
 
-      // Create enrollment
-      const { data: enrollment, error } = await supabase
-        .from('enrollments')
-        .insert({
-          user_id: user.id,
-          course_id: course.id,
-          status: 'active',
-          progress_percentage: 0
-        })
-        .select()
-        .single()
+      // Filtrar apenas aulas marcadas como preview
+      if (modules) {
+        const modulesWithPreview = modules.map((module: any) => ({
+          ...module,
+          module_subjects: module.module_subjects?.map((ms: any) => ({
+            ...ms,
+            subjects: {
+              ...ms.subjects,
+              subject_lessons: ms.subjects?.subject_lessons?.filter((sl: any) => 
+                sl.lessons?.is_preview === true
+              ) || []
+            }
+          })).filter((ms: any) => ms.subjects?.subject_lessons?.length > 0)
+        })).filter((m: any) => m.module_subjects?.length > 0)
 
-      if (error) throw error
-
-      // Log activity
-      await supabase
-        .from('activity_logs')
-        .insert({
-          user_id: user.id,
-          action: 'enrolled_in_course',
-          entity_type: 'course',
-          entity_id: course.id,
-          entity_name: course.title
-        })
-
-      // Update local state
-      setCourses(courses.map(c => 
-        c.id === course.id 
-          ? { ...c, isEnrolled: true, enrollment, enrollmentCount: (c.enrollmentCount || 0) + 1 }
-          : c
-      ))
-
-      setMessage({ type: 'success', text: `Matrícula realizada com sucesso em "${course.title}"!` })
-      setShowDetailsModal(false)
-
-      // Redirect to course after 2 seconds
-      setTimeout(() => {
-        router.push('/student-dashboard/my-courses')
-      }, 2000)
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Erro ao realizar matrícula' })
+        setPreviewModules(modulesWithPreview)
+      } else {
+        setPreviewModules([])
+      }
+    } catch (error) {
+      console.error('Erro ao carregar preview:', error)
+      setPreviewModules([])
     } finally {
-      setEnrolling(null)
+      setLoadingPreview(false)
     }
   }
 
@@ -303,7 +302,7 @@ export default function ExploreCourses() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            Explorar Cursos
+            Catálogo de Cursos
             <Sparkles className="w-6 h-6 text-gold-400 animate-pulse" />
           </motion.h1>
           <motion.p 
@@ -312,7 +311,7 @@ export default function ExploreCourses() {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            Descubra novos conhecimentos e desenvolva suas habilidades
+            Explore nossos cursos disponíveis e veja o conteúdo programático
           </motion.p>
         </div>
       </FadeTransition>
@@ -540,28 +539,17 @@ export default function ExploreCourses() {
                   <span className="text-lg font-bold text-gold">
                     {formatPrice(course.price)}
                   </span>
-                  {course.isEnrolled ? (
-                    <Button 
-                      size="sm" 
-                      variant="secondary"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        router.push('/student-dashboard/my-courses')
-                      }}
-                    >
-                      Continuar
-                    </Button>
-                  ) : (
-                    <Button 
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openCourseDetails(course)
-                      }}
-                    >
-                      Ver Detalhes
-                    </Button>
-                  )}
+                  <Button 
+                    size="sm"
+                    variant="secondary"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      openCourseDetails(course)
+                    }}
+                    icon={<Eye className="w-4 h-4" />}
+                  >
+                    Visualizar
+                  </Button>
                 </div>
               </div>
               </Card>
@@ -705,36 +693,161 @@ export default function ExploreCourses() {
             <div className="bg-navy-900/50 p-6 border-t border-gold-500/20">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-gold">{formatPrice(selectedCourse.price)}</p>
-                  {selectedCourse.isEnrolled && (
-                    <p className="text-sm text-green-400 mt-1">Você já está matriculado neste curso</p>
-                  )}
+                  <div className="flex items-center gap-2 text-gold-300">
+                    <Lock className="w-5 h-5" />
+                    <p className="text-sm">Matrículas realizadas apenas pela administração</p>
+                  </div>
                 </div>
                 <div className="flex gap-3">
                   <Button variant="secondary" onClick={() => setShowDetailsModal(false)}>
                     Fechar
                   </Button>
                   <Button 
-                    onClick={() => handleEnroll(selectedCourse)}
-                    disabled={enrolling === selectedCourse.id}
-                    icon={
-                      enrolling === selectedCourse.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : selectedCourse.isEnrolled ? (
-                        <TrendingUp className="w-4 h-4" />
-                      ) : (
-                        <Check className="w-4 h-4" />
-                      )
-                    }
+                    onClick={() => handleViewPreview(selectedCourse)}
+                    icon={<BookMarked className="w-4 h-4" />}
                   >
-                    {enrolling === selectedCourse.id ? 
-                      'Matriculando...' : 
-                      selectedCourse.isEnrolled ? 
-                      'Ir para o Curso' : 
-                      'Matricular-se'
-                    }
+                    Ver Conteúdo Programático
                   </Button>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {showPreviewModal && selectedCourse && (
+        <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-navy-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden border border-gold-500/20">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-gold-500/20 to-gold-600/20 p-6 border-b border-gold-500/20">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gold mb-2">Conteúdo Programático</h2>
+                  <p className="text-gold-300">{selectedCourse.title}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowPreviewModal(false)
+                    setPreviewModules([])
+                  }}
+                  className="text-gold-400 hover:text-gold-200 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {loadingPreview ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 text-gold-500 animate-spin mb-4" />
+                  <p className="text-gold-300">Carregando conteúdo...</p>
+                </div>
+              ) : previewModules.length > 0 ? (
+                <div className="space-y-6">
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 flex items-start gap-3">
+                    <Eye className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-blue-400 font-semibold">Aulas de Demonstração</p>
+                      <p className="text-blue-300 text-sm mt-1">
+                        Estas são as aulas disponíveis para preview. Para acesso completo ao curso, 
+                        entre em contato com a administração para solicitar sua matrícula.
+                      </p>
+                    </div>
+                  </div>
+
+                  {previewModules.map((module, moduleIndex) => (
+                    <div key={module.id} className="bg-navy-900/50 rounded-lg p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-gold-500/20 rounded-full flex items-center justify-center">
+                          <span className="text-gold font-bold">{moduleIndex + 1}</span>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-gold">{module.name}</h3>
+                          {module.description && (
+                            <p className="text-gold-300 text-sm mt-1">{module.description}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {module.module_subjects && module.module_subjects.length > 0 && (
+                        <div className="ml-12 space-y-3">
+                          {module.module_subjects.map((moduleSubject: any, subjectIndex: number) => (
+                            <div key={moduleSubject.id} className="bg-navy-800/50 rounded-lg p-4">
+                              <div className="flex items-start gap-3">
+                                <BookOpen className="w-5 h-5 text-gold-400 mt-0.5" />
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-gold-200">
+                                    {moduleSubject.subjects?.name || 'Disciplina'}
+                                  </h4>
+                                  {moduleSubject.subjects?.description && (
+                                    <p className="text-gold-300/70 text-sm mt-1">
+                                      {moduleSubject.subjects.description}
+                                    </p>
+                                  )}
+                                  {moduleSubject.subjects?.subject_lessons && moduleSubject.subjects.subject_lessons.length > 0 && (
+                                    <div className="mt-3 space-y-2">
+                                      <p className="text-gold-300 text-sm font-medium">Aulas:</p>
+                                      <ul className="space-y-1">
+                                        {moduleSubject.subjects.subject_lessons.map((subjectLesson: any) => (
+                                          <li key={subjectLesson.id} className="flex items-center gap-2 text-gold-300/60 text-sm">
+                                            <Eye className="w-3 h-3 text-blue-400" />
+                                            <span className="flex-1">{subjectLesson.lessons?.title || 'Aula'}</span>
+                                            {subjectLesson.lessons?.duration_minutes && (
+                                              <span className="text-gold-400 text-xs">
+                                                {subjectLesson.lessons.duration_minutes} min
+                                              </span>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+
+                  <div className="bg-navy-900/30 rounded-lg p-6 text-center">
+                    <Lock className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
+                    <p className="text-gold-300 mb-2">Conteúdo completo disponível apenas para alunos matriculados</p>
+                    <p className="text-gold-400 text-sm">
+                      Entre em contato com a administração para solicitar sua matrícula
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                  <p className="text-gold-300 mb-2">Nenhuma aula de preview disponível para este curso</p>
+                  <p className="text-gold-400 text-sm">
+                    O administrador ainda não configurou aulas de demonstração para este curso.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-navy-900/50 p-6 border-t border-gold-500/20">
+              <div className="flex justify-between items-center">
+                <p className="text-gold-300 text-sm">
+                  Para matrícula, contate a administração
+                </p>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    setShowPreviewModal(false)
+                    setPreviewModules([])
+                  }}
+                >
+                  Fechar Preview
+                </Button>
               </div>
             </div>
           </div>
