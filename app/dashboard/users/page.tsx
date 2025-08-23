@@ -65,7 +65,7 @@ export default function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [showNewUserModal, setShowNewUserModal] = useState(false)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   const [showFilters, setShowFilters] = useState(false)
   const [filterRole, setFilterRole] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -95,8 +95,19 @@ export default function UsersPage() {
   const supabase = createClient()
 
   useEffect(() => {
+    // Load view preference from localStorage
+    const savedViewMode = localStorage.getItem('usersViewMode')
+    if (savedViewMode === 'grid' || savedViewMode === 'list') {
+      setViewMode(savedViewMode)
+    }
+    
     fetchUsers()
   }, [])
+
+  // Save view mode preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('usersViewMode', viewMode)
+  }, [viewMode])
 
   // Close dropdown when clicking outside
   useEffect(() => {

@@ -2,13 +2,14 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Award, Download, Eye, Check, X, Calendar, Clock, Medal, Shield } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
+import { generateCertificatePDF } from '@/app/lib/certificate-pdf'
 
 type Certificate = Database['public']['Tables']['certificates']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -24,6 +25,8 @@ export default function CertificatesPage() {
   const [certificates, setCertificates] = useState<CertificateWithDetails[]>([])
   const [selectedCertificate, setSelectedCertificate] = useState<CertificateWithDetails | null>(null)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
+  const [generatingPDF, setGeneratingPDF] = useState(false)
+  const certificateRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
 
@@ -79,30 +82,24 @@ export default function CertificatesPage() {
     setShowCertificateModal(true)
   }
 
-  const handleDownloadCertificate = (certificate: CertificateWithDetails) => {
-    // In a real implementation, this would generate and download a PDF
-    const certificateContent = `
-CERTIFICADO DE CONCLUSÃO
-
-Certificamos que ${certificate.user.full_name}
-concluiu com êxito o curso de
-
-${certificate.course.title}
-
-com carga horária de ${certificate.course_hours} horas
-em ${formatDate(certificate.issued_at || '')}
-
-Certificado Nº: ${certificate.certificate_number}
-Código de Verificação: ${certificate.verification_code}
-    `
-    
-    const blob = new Blob([certificateContent], { type: 'text/plain' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `certificado-${certificate.certificate_number}.txt`
-    a.click()
-    window.URL.revokeObjectURL(url)
+  const handleDownloadCertificate = async (certificate: CertificateWithDetails) => {
+    try {
+      setGeneratingPDF(true)
+      setSelectedCertificate(certificate)
+      
+      // Wait for the certificate to be rendered
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Generate PDF from the hidden certificate element
+      await generateCertificatePDF('certificate-pdf', `certificado-${certificate.certificate_number}.pdf`)
+      
+      setSelectedCertificate(null)
+    } catch (error) {
+      console.error('Error generating certificate PDF:', error)
+      alert('Erro ao gerar o certificado. Por favor, tente novamente.')
+    } finally {
+      setGeneratingPDF(false)
+    }
   }
 
   if (loading) {
@@ -233,8 +230,9 @@ Código de Verificação: ${certificate.verification_code}
                       onClick={() => handleDownloadCertificate(certificate)}
                       className="flex-1"
                       icon={<Download className="w-4 h-4" />}
+                      disabled={generatingPDF}
                     >
-                      Baixar
+                      {generatingPDF ? 'Gerando...' : 'Baixar'}
                     </Button>
                   </div>
                 </div>
@@ -338,8 +336,9 @@ Código de Verificação: ${certificate.verification_code}
                   variant="primary"
                   onClick={() => handleDownloadCertificate(selectedCertificate)}
                   icon={<Download className="w-4 h-4" />}
+                  disabled={generatingPDF}
                 >
-                  Baixar Certificado
+                  {generatingPDF ? 'Gerando PDF...' : 'Baixar Certificado'}
                 </Button>
                 <Button
                   variant="secondary"
@@ -349,6 +348,99 @@ Código de Verificação: ${certificate.verification_code}
                 </Button>
               </div>
             </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden Certificate for PDF Generation */}
+      {selectedCertificate && (
+        <div className="fixed left-[-9999px] top-0">
+          <div 
+            id="certificate-pdf" 
+            ref={certificateRef}
+            className="w-[800px] h-[600px] bg-gradient-to-br from-navy-900 to-navy-800 p-12 flex flex-col justify-center"
+            style={{
+              background: 'linear-gradient(135deg, #001a33 0%, #002244 100%)'
+            }}
+          >
+            {/* Certificate Content for PDF */}
+            <div className="text-center">
+              {/* Logo/Header */}
+              <div className="mb-8">
+                <div className="flex justify-center mb-4">
+                  <div className="w-24 h-24 bg-gradient-to-br from-gold-500 to-gold-600 rounded-full flex items-center justify-center shadow-2xl"
+                       style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)' }}>
+                    <Award className="w-12 h-12 text-navy-900" style={{ color: '#001a33' }} />
+                  </div>
+                </div>
+                <h1 className="text-5xl font-bold mb-2" style={{ 
+                  background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>
+                  CERTIFICADO
+                </h1>
+                <p className="text-xl" style={{ color: '#FFD700' }}>DE CONCLUSÃO</p>
+              </div>
+
+              {/* Certificate Text */}
+              <div className="space-y-3">
+                <p style={{ color: '#FFD700', opacity: 0.8 }}>Certificamos que</p>
+                <p className="text-3xl font-bold" style={{ color: '#FFD700' }}>
+                  {selectedCertificate.user.full_name}
+                </p>
+                <p style={{ color: '#FFD700', opacity: 0.8 }}>concluiu com êxito o curso de</p>
+                <p className="text-4xl font-bold mb-4" style={{ 
+                  background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>
+                  {selectedCertificate.course.title}
+                </p>
+                
+                <div className="flex justify-center gap-12 mt-6 mb-4">
+                  <div>
+                    <p className="text-sm" style={{ color: '#FFD700', opacity: 0.7 }}>Carga Horária</p>
+                    <p className="text-2xl font-bold" style={{ color: '#FFD700' }}>{selectedCertificate.course_hours} horas</p>
+                  </div>
+                  {selectedCertificate.grade && (
+                    <div>
+                      <p className="text-sm" style={{ color: '#FFD700', opacity: 0.7 }}>Aproveitamento</p>
+                      <p className="text-2xl font-bold" style={{ color: '#FFD700' }}>{selectedCertificate.grade}%</p>
+                    </div>
+                  )}
+                </div>
+                
+                <p style={{ color: '#FFD700', opacity: 0.8 }}>
+                  Emitido em {formatDate(selectedCertificate.issued_at || '')}
+                </p>
+              </div>
+
+              {/* Verification */}
+              <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(255, 215, 0, 0.3)' }}>
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Shield className="w-5 h-5" style={{ color: '#00ff00' }} />
+                  <p className="text-sm" style={{ color: '#00ff00' }}>Certificado Autêntico</p>
+                </div>
+                <p className="text-xs" style={{ color: '#FFD700', opacity: 0.7 }}>
+                  Nº {selectedCertificate.certificate_number}
+                </p>
+                <p className="text-xs" style={{ color: '#FFD700', opacity: 0.7 }}>
+                  Código de Verificação: {selectedCertificate.verification_code}
+                </p>
+              </div>
+
+              {/* Instructor Signature */}
+              {selectedCertificate.instructor_name && (
+                <div className="mt-8">
+                  <div style={{ borderTop: '1px solid rgba(255, 215, 0, 0.5)', width: '200px', margin: '0 auto 8px' }} />
+                  <p className="text-sm" style={{ color: '#FFD700', opacity: 0.8 }}>{selectedCertificate.instructor_name}</p>
+                  <p className="text-xs" style={{ color: '#FFD700', opacity: 0.6 }}>Instrutor</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

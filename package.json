@@ -43,6 +43,8 @@
     "framer-motion": "^12.23.12",
     "google-auth-library": "^10.2.1",
     "googleapis": "^156.0.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.536.0",
     "next": "^15.4.5",
@@ -63,6 +65,7 @@
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
+    "@types/html2canvas": "^1.0.0",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
     "eslint": "^9.32.0",
