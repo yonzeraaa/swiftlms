@@ -811,90 +811,122 @@ export default function CertificatesPage() {
 
       {/* Hidden Certificate for PDF Generation */}
       {selectedCertificate && (
-        <div className="fixed left-[-9999px] top-0">
+        <div className="fixed" style={{ left: '-9999px', top: 0 }}>
           <div 
             id="certificate-pdf-admin" 
             ref={certificateRef}
-            className="w-[800px] h-[600px] bg-gradient-to-br from-navy-900 to-navy-800 p-12 flex flex-col justify-center"
             style={{
-              background: 'linear-gradient(135deg, #001a33 0%, #002244 100%)'
+              width: '1100px',
+              height: '850px',
+              background: 'linear-gradient(135deg, #001a33 0%, #002244 100%)',
+              padding: '60px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              fontFamily: 'Open Sans, sans-serif'
             }}
           >
             {/* Certificate Content for PDF */}
-            <div className="text-center">
+            <div style={{ textAlign: 'center' }}>
               {/* Logo/Header */}
-              <div className="mb-8">
-                <div className="flex justify-center mb-4">
-                  <div className="w-24 h-24 bg-gradient-to-br from-gold-500 to-gold-600 rounded-full flex items-center justify-center shadow-2xl"
-                       style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)' }}>
-                    <Award className="w-12 h-12 text-navy-900" style={{ color: '#001a33' }} />
+              <div style={{ marginBottom: '30px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                  <div style={{ 
+                    width: '80px',
+                    height: '80px',
+                    background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 10px 30px rgba(255, 215, 0, 0.3)'
+                  }}>
+                    <Award style={{ width: '40px', height: '40px', color: '#001a33' }} />
                   </div>
                 </div>
-                <h1 className="text-5xl font-bold mb-2" style={{ 
+                <h1 style={{ 
+                  fontSize: '48px',
+                  fontWeight: 'bold',
+                  marginBottom: '10px',
                   background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
+                  backgroundClip: 'text',
+                  letterSpacing: '3px'
                 }}>
                   CERTIFICADO
                 </h1>
-                <p className="text-xl" style={{ color: '#FFD700' }}>DE CONCLUSÃO</p>
+                <p style={{ fontSize: '18px', color: '#FFD700', letterSpacing: '2px' }}>DE CONCLUSÃO</p>
               </div>
 
               {/* Certificate Text */}
-              <div className="space-y-3">
-                <p style={{ color: '#FFD700', opacity: 0.8 }}>Certificamos que</p>
-                <p className="text-3xl font-bold" style={{ color: '#FFD700' }}>
+              <div style={{ marginTop: '30px', marginBottom: '30px' }}>
+                <p style={{ color: '#FFD700', opacity: 0.8, fontSize: '16px', marginBottom: '15px' }}>Certificamos que</p>
+                <p style={{ color: '#FFD700', fontSize: '28px', fontWeight: 'bold', marginBottom: '20px' }}>
                   {selectedCertificate.user?.full_name || 'Aluno'}
                 </p>
-                <p style={{ color: '#FFD700', opacity: 0.8 }}>concluiu com êxito o curso de</p>
-                <p className="text-4xl font-bold mb-4" style={{ 
+                <p style={{ color: '#FFD700', opacity: 0.8, fontSize: '16px', marginBottom: '15px' }}>concluiu com êxito o curso de</p>
+                <p style={{ 
+                  fontSize: '32px',
+                  fontWeight: 'bold',
+                  marginBottom: '30px',
                   background: 'linear-gradient(90deg, #FFD700 0%, #FFA500 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
+                  backgroundClip: 'text',
+                  lineHeight: '1.2'
                 }}>
                   {selectedCertificate.course?.title || 'Curso'}
                 </p>
                 
-                <div className="flex justify-center gap-12 mt-6 mb-4">
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '60px', marginTop: '30px', marginBottom: '30px' }}>
                   <div>
-                    <p className="text-sm" style={{ color: '#FFD700', opacity: 0.7 }}>Carga Horária</p>
-                    <p className="text-2xl font-bold" style={{ color: '#FFD700' }}>{selectedCertificate.course_hours} horas</p>
+                    <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '14px', marginBottom: '5px' }}>Carga Horária</p>
+                    <p style={{ color: '#FFD700', fontSize: '20px', fontWeight: 'bold' }}>{selectedCertificate.course_hours} horas</p>
                   </div>
                   {selectedCertificate.grade && (
                     <div>
-                      <p className="text-sm" style={{ color: '#FFD700', opacity: 0.7 }}>Aproveitamento</p>
-                      <p className="text-2xl font-bold" style={{ color: '#FFD700' }}>{selectedCertificate.grade}%</p>
+                      <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '14px', marginBottom: '5px' }}>Aproveitamento</p>
+                      <p style={{ color: '#FFD700', fontSize: '20px', fontWeight: 'bold' }}>{selectedCertificate.grade}%</p>
                     </div>
                   )}
                 </div>
                 
-                <p style={{ color: '#FFD700', opacity: 0.8 }}>
+                <p style={{ color: '#FFD700', opacity: 0.8, fontSize: '16px', marginTop: '20px' }}>
                   Emitido em {selectedCertificate.issued_at ? formatDate(selectedCertificate.issued_at) : ''}
                 </p>
               </div>
 
               {/* Verification */}
-              <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(255, 215, 0, 0.3)' }}>
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <Shield className="w-5 h-5" style={{ color: '#00ff00' }} />
-                  <p className="text-sm" style={{ color: '#00ff00' }}>Certificado Autêntico</p>
+              <div style={{ 
+                marginTop: '40px',
+                paddingTop: '30px',
+                borderTop: '1px solid rgba(255, 215, 0, 0.3)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px' }}>
+                  <Shield style={{ width: '18px', height: '18px', color: '#00ff00' }} />
+                  <p style={{ color: '#00ff00', fontSize: '14px' }}>Certificado Autêntico</p>
                 </div>
-                <p className="text-xs" style={{ color: '#FFD700', opacity: 0.7 }}>
+                <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '12px', marginBottom: '5px' }}>
                   Nº {selectedCertificate.certificate_number}
                 </p>
-                <p className="text-xs" style={{ color: '#FFD700', opacity: 0.7 }}>
+                <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '12px' }}>
                   Código de Verificação: {selectedCertificate.verification_code}
                 </p>
               </div>
 
               {/* Instructor Signature */}
               {selectedCertificate.instructor_name && (
-                <div className="mt-8">
-                  <div style={{ borderTop: '1px solid rgba(255, 215, 0, 0.5)', width: '200px', margin: '0 auto 8px' }} />
-                  <p className="text-sm" style={{ color: '#FFD700', opacity: 0.8 }}>{selectedCertificate.instructor_name}</p>
-                  <p className="text-xs" style={{ color: '#FFD700', opacity: 0.6 }}>Instrutor</p>
+                <div style={{ marginTop: '40px' }}>
+                  <div style={{ 
+                    borderTop: '1px solid rgba(255, 215, 0, 0.5)',
+                    width: '200px',
+                    margin: '0 auto 10px'
+                  }} />
+                  <p style={{ color: '#FFD700', opacity: 0.8, fontSize: '14px', marginBottom: '5px' }}>
+                    {selectedCertificate.instructor_name}
+                  </p>
+                  <p style={{ color: '#FFD700', opacity: 0.6, fontSize: '12px' }}>Instrutor</p>
                 </div>
               )}
             </div>

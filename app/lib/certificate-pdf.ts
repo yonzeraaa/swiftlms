@@ -10,15 +10,15 @@ export async function generateCertificatePDF(elementId: string, fileName: string
 
     // Configure html2canvas options for best quality
     const canvas = await html2canvas(element, {
-      scale: 3, // Higher scale for better quality
+      scale: 2, // Good balance between quality and performance
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#001a33', // Navy background
       logging: false,
-      width: 800,
-      height: 600,
-      windowWidth: 800,
-      windowHeight: 600,
+      width: 1100,
+      height: 850,
+      windowWidth: 1100,
+      windowHeight: 850,
     })
 
     // Convert canvas to PDF
