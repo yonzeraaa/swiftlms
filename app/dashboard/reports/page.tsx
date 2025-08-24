@@ -161,8 +161,9 @@ export default function ReportsPage() {
   }
 
   const generateGradesHistoryReport = () => {
-    // Create CSV content for grades history
-    let csvContent = 'data:text/csv;charset=utf-8,'
+    // Create CSV content for grades history with UTF-8 BOM for proper encoding
+    const BOM = '\uFEFF'
+    let csvContent = BOM
     
     // Add headers
     csvContent += 'Aluno,Email,Curso,Disciplina,Teste,Tipo,Data,Nota,Status\n'
@@ -237,21 +238,24 @@ export default function ReportsPage() {
     csvContent += 'Média Geral,83.6\n'
     csvContent += 'Taxa de Aprovação,100%\n'
     
-    // Create download link
-    const encodedUri = encodeURI(csvContent)
+    // Create download link with proper UTF-8 encoding
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
+    link.setAttribute('href', url)
     link.setAttribute('download', `historico_notas_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
     
     alert(t('reports.gradesReportGenerated'))
   }
 
   const generateEnrollmentAndCompletionReport = () => {
-    // Create CSV content for enrollments and completions
-    let csvContent = 'data:text/csv;charset=utf-8,'
+    // Create CSV content for enrollments and completions with UTF-8 BOM
+    const BOM = '\uFEFF'
+    let csvContent = BOM
     
     // Add headers
     csvContent += 'Relatório de Matrículas e Conclusões\n'
@@ -296,21 +300,24 @@ export default function ReportsPage() {
     csvContent += `Taxa de Conclusão,${Math.round((completionData.length / (reportData?.totalEnrollments || 1)) * 100)}%\n`
     csvContent += `Nota Média dos Concluintes,${(completionData.reduce((acc, c) => acc + c.finalGrade, 0) / completionData.length).toFixed(1)}\n`
     
-    // Create download link
-    const encodedUri = encodeURI(csvContent)
+    // Create download link with proper UTF-8 encoding
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
+    link.setAttribute('href', url)
     link.setAttribute('download', `relatorio_matriculas_conclusoes_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
     
     alert('Relatório de Matrículas e Conclusões gerado com sucesso!')
   }
 
   const generateAccessReport = () => {
-    // Create CSV content for student access statistics
-    let csvContent = 'data:text/csv;charset=utf-8,'
+    // Create CSV content for student access statistics with UTF-8 BOM
+    const BOM = '\uFEFF'
+    let csvContent = BOM
     
     // Add headers
     csvContent += 'Relatório de Estatísticas de Acesso dos Alunos\n'
@@ -375,14 +382,16 @@ export default function ReportsPage() {
     csvContent += 'Horário de Maior Acesso,19:00-21:00\n'
     csvContent += 'Dia com Mais Acessos,Segunda-feira\n'
     
-    // Create download link
-    const encodedUri = encodeURI(csvContent)
+    // Create download link with proper UTF-8 encoding
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
+    link.setAttribute('href', url)
     link.setAttribute('download', `relatorio_acesso_alunos_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
     
     alert('Relatório de Estatísticas de Acesso dos Alunos gerado com sucesso!')
   }
@@ -391,8 +400,9 @@ export default function ReportsPage() {
   const exportToExcel = () => {
     if (!reportData) return
 
-    // Create CSV content
-    let csvContent = 'data:text/csv;charset=utf-8,'
+    // Create CSV content with UTF-8 BOM
+    const BOM = '\uFEFF'
+    let csvContent = BOM
     
     // Add headers and data
     csvContent += `${t('reports.metric')},${t('reports.value')}\n`
@@ -416,14 +426,16 @@ export default function ReportsPage() {
       csvContent += `${course.title},${course.enrollments}\n`
     })
 
-    // Create download link
-    const encodedUri = encodeURI(csvContent)
+    // Create download link with proper UTF-8 encoding
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
-    link.setAttribute('href', encodedUri)
+    link.setAttribute('href', url)
     link.setAttribute('download', `relatorio_swiftedu_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   const reports = [
