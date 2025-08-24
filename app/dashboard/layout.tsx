@@ -22,7 +22,8 @@ import {
   ChevronRight,
   Layers,
   Folder,
-  Award
+  Award,
+  Eye
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import LogoSwiftEDU from '../components/LogoSwiftEDU'
@@ -223,6 +224,57 @@ export default function DashboardLayout({
                 )
               })}
             </nav>
+
+            {/* Seção de Preview */}
+            <div className="border-t border-gold-500/20 pt-4 mb-4">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="relative"
+                onMouseEnter={() => setHoveredItem('/student-dashboard')}
+                onMouseLeave={() => setHoveredItem(null)}
+              >
+                <Link
+                  href="/student-dashboard"
+                  className={`
+                    flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
+                    text-blue-400 hover:bg-blue-500/20 hover:text-blue-300
+                    ${!sidebarOpen && 'justify-center'}
+                  `}
+                >
+                  <Eye className="w-5 h-5 flex-shrink-0" />
+                  <AnimatePresence>
+                    {sidebarOpen && (
+                      <motion.span 
+                        className="font-medium whitespace-nowrap flex-1"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        Visualizar como Aluno
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </Link>
+
+                {/* Tooltip for collapsed sidebar */}
+                <AnimatePresence>
+                  {!sidebarOpen && hoveredItem === '/student-dashboard' && (
+                    <motion.div
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50"
+                    >
+                      <div className="px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg shadow-xl whitespace-nowrap">
+                        <span className="text-sm text-gold-200">Visualizar como Aluno</span>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            </div>
 
             {/* Footer do Sidebar */}
             <div className="border-t border-gold-500/20 pt-4">

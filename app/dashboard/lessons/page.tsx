@@ -3,11 +3,14 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, Loader2, AlertCircle, BookOpen, Video, FileQuestion, Eye, EyeOff } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
+import VideoPlayer from '../../components/VideoPlayer'
+import DocumentViewer from '../../components/DocumentViewer'
 
 type Lesson = Database['public']['Tables']['lessons']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
@@ -34,6 +37,7 @@ interface LessonWithRelations extends Lesson {
 }
 
 export default function LessonsPage() {
+  const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [lessons, setLessons] = useState<LessonWithRelations[]>([])
@@ -53,6 +57,8 @@ export default function LessonsPage() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [lessonProgress, setLessonProgress] = useState<{ [key: string]: { completed: number, total: number } }>({})
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [previewLesson, setPreviewLesson] = useState<LessonWithRelations | null>(null)
   
   const supabase = createClient()
 
@@ -479,7 +485,23 @@ export default function LessonsPage() {
                           <Button 
                             variant="secondary" 
                             size="sm"
+                            onClick={() => {
+                              // Redirecionar para a página do curso do aluno com a aula específica
+                              if (lesson.course_modules?.courses?.id) {
+                                router.push(`/student-dashboard/course/${lesson.course_modules.courses.id}?lesson=${lesson.id}`)
+                              } else {
+                                alert('Esta aula não está associada a um curso')
+                              }
+                            }}
+                            title="Visualizar como Aluno"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
                             onClick={() => handleEdit(lesson)}
+                            title="Editar"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -487,6 +509,7 @@ export default function LessonsPage() {
                             variant="secondary" 
                             size="sm"
                             onClick={() => handleDelete(lesson)}
+                            title="Excluir"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -670,6 +693,126 @@ export default function LessonsPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Preview da Aula */}
+      {showPreviewModal && previewLesson && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="max-w-6xl w-full max-h-[90vh] overflow-hidden">
+            <Card variant="elevated" className="relative">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gold-500/20">
+                <div>
+                  <h2 className="text-2xl font-bold text-gold mb-2">
+                    {previewLesson.title}
+                  </h2>
+                  <div className="flex items-center gap-4 text-sm text-gold-400">
+                    <span className="flex items-center gap-1">
+                      {previewLesson.content_type === 'video' && <Video className="w-4 h-4" />}
+                      {previewLesson.content_type === 'document' && <FileText className="w-4 h-4" />}
+                      {previewLesson.content_type === 'text' && <BookOpen className="w-4 h-4" />}
+                      {previewLesson.content_type === 'quiz' && <FileQuestion className="w-4 h-4" />}
+                      {previewLesson.content_type}
+                    </span>
+                    {previewLesson.duration_minutes && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        {previewLesson.duration_minutes} min
+                      </span>
+                    )}
+                    {previewLesson.is_preview && (
+                      <span className="flex items-center gap-1 text-blue-400">
+                        <Eye className="w-4 h-4" />
+                        Preview
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowPreviewModal(false)
+                    setPreviewLesson(null)
+                  }}
+                  className="text-gold-400 hover:text-gold-200 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 max-h-[60vh] overflow-y-auto">
+                {previewLesson.description && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-gold-300 mb-2">Descri\u00e7\u00e3o</h3>
+                    <p className="text-gold-400">{previewLesson.description}</p>
+                  </div>
+                )}
+
+                {/* Video Player */}
+                {previewLesson.content_type === 'video' && previewLesson.content_url && (
+                  <div className="rounded-lg overflow-hidden bg-navy-900">
+                    <VideoPlayer
+                      url={previewLesson.content_url}
+                      title={previewLesson.title}
+                    />
+                  </div>
+                )}
+
+                {/* Document Viewer */}
+                {previewLesson.content_type === 'document' && previewLesson.content_url && (
+                  <div className="rounded-lg overflow-hidden bg-navy-900 h-[500px]">
+                    <DocumentViewer
+                      url={previewLesson.content_url}
+                      title={previewLesson.title}
+                    />
+                  </div>
+                )}
+
+                {/* Text Content */}
+                {previewLesson.content_type === 'text' && previewLesson.content && (
+                  <div className="prose prose-invert max-w-none">
+                    <div 
+                      className="text-gold-300"
+                      dangerouslySetInnerHTML={{ __html: previewLesson.content }}
+                    />
+                  </div>
+                )}
+
+                {/* Quiz Placeholder */}
+                {previewLesson.content_type === 'quiz' && (
+                  <div className="text-center py-12">
+                    <FileQuestion className="w-16 h-16 text-gold-500/50 mx-auto mb-4" />
+                    <p className="text-gold-400">Preview de quiz n\u00e3o dispon\u00edvel</p>
+                    <p className="text-gold-500 text-sm mt-2">
+                      Os quizzes s\u00e3o visualizados na interface de avalia\u00e7\u00f5es
+                    </p>
+                  </div>
+                )}
+
+                {/* No Content Message */}
+                {!previewLesson.content_url && !previewLesson.content && (
+                  <div className="text-center py-12">
+                    <AlertCircle className="w-16 h-16 text-yellow-500/50 mx-auto mb-4" />
+                    <p className="text-gold-400">Nenhum conte\u00fado dispon\u00edvel para esta aula</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex justify-end gap-4 p-6 border-t border-gold-500/20">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setShowPreviewModal(false)
+                    setPreviewLesson(null)
+                  }}
+                >
+                  Fechar
+                </Button>
+              </div>
+            </Card>
           </div>
         </div>
       )}

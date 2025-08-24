@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { 
   BookOpen, 
   Clock, 
@@ -15,7 +15,8 @@ import {
   Users,
   BarChart3,
   FileImage,
-  Link
+  Link,
+  Eye
 } from 'lucide-react'
 import Card from '../../../components/Card'
 import Button from '../../../components/Button'
@@ -48,7 +49,9 @@ interface CourseWithDetails extends Course {
 export default function CoursePage() {
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const courseId = params.id as string
+  const lessonId = searchParams.get('lesson')
   const supabase = createClient()
 
   const [course, setCourse] = useState<CourseWithDetails | null>(null)
@@ -56,6 +59,7 @@ export default function CoursePage() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [totalLessons, setTotalLessons] = useState(0)
   const [completedLessons, setCompletedLessons] = useState(0)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     if (courseId) {
@@ -84,17 +88,31 @@ export default function CoursePage() {
         return
       }
 
-      // Fetch enrollment
-      const { data: enrollmentData } = await supabase
-        .from('enrollments')
-        .select('*')
-        .eq('course_id', courseId)
-        .eq('user_id', user.id)
+      // Check if user is admin
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
         .single()
+      
+      const isAdmin = profileData?.role === 'admin'
+      setIsAdmin(isAdmin)
 
-      if (!enrollmentData) {
-        router.push('/student-dashboard/courses')
-        return
+      // Fetch enrollment (skip for admin)
+      let enrollmentData = null
+      if (!isAdmin) {
+        const { data: enrollment } = await supabase
+          .from('enrollments')
+          .select('*')
+          .eq('course_id', courseId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (!enrollment) {
+          router.push('/student-dashboard/courses')
+          return
+        }
+        enrollmentData = enrollment
       }
 
       // Fetch modules with subjects and lessons
@@ -115,11 +133,15 @@ export default function CoursePage() {
         .eq('course_id', courseId)
         .order('order_index')
 
-      // Fetch lesson progress
-      const { data: progressData } = await supabase
-        .from('lesson_progress')
-        .select('*')
-        .eq('enrollment_id', enrollmentData.id)
+      // Fetch lesson progress (only for enrolled students)
+      let progressData: any[] = []
+      if (enrollmentData) {
+        const { data } = await supabase
+          .from('lesson_progress')
+          .select('*')
+          .eq('enrollment_id', enrollmentData.id)
+        progressData = data || []
+      }
 
       // Process modules and lessons with progress
       const modulesWithProgress: ModuleWithLessons[] = []
@@ -187,15 +209,23 @@ export default function CoursePage() {
       setCourse({
         ...courseData,
         modules: modulesWithProgress,
-        enrollment: enrollmentData,
+        enrollment: enrollmentData || undefined,
         instructor: instructorInfo
       })
 
       setTotalLessons(totalLessonCount)
       setCompletedLessons(completedLessonCount)
       
-      // Set the first incomplete lesson as selected
-      if (firstIncompleteLesson) {
+      // If there's a lesson ID in the URL, select that lesson
+      if (lessonId) {
+        const lessonToSelect = modulesWithProgress
+          .flatMap(m => m.lessons)
+          .find(l => l.id === lessonId)
+        if (lessonToSelect) {
+          setSelectedLesson(lessonToSelect)
+        }
+      } else if (firstIncompleteLesson) {
+        // Otherwise, set the first incomplete lesson as selected
         setSelectedLesson(firstIncompleteLesson)
       } else if (modulesWithProgress.length > 0 && modulesWithProgress[0].lessons.length > 0) {
         setSelectedLesson(modulesWithProgress[0].lessons[0])
@@ -368,11 +398,36 @@ export default function CoursePage() {
 
   return (
     <div className="space-y-6">
+      {/* Admin Mode Indicator */}
+      {isAdmin && (
+        <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
+                <Eye className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-blue-400">Modo Preview Administrador</p>
+                <p className="text-xs text-gold-400">Você está visualizando este curso como um administrador</p>
+              </div>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => router.push('/dashboard')}
+              icon={<ArrowLeft className="w-4 h-4" />}
+            >
+              Voltar ao Painel Admin
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button 
           variant="ghost" 
-          onClick={() => router.push('/student-dashboard/my-courses')}
+          onClick={() => router.push(isAdmin ? '/dashboard/lessons' : '/student-dashboard/my-courses')}
           icon={<ArrowLeft className="w-4 h-4" />}
         >
           Voltar

@@ -71,15 +71,16 @@ export default function StudentDashboard() {
         return
       }
 
-      // Check if user is a student
+      // Check if user is a student or admin
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single()
 
-      if (profile?.role !== 'student') {
-        router.push('/dashboard')
+      // Allow both students and admins to access
+      if (profile?.role !== 'student' && profile?.role !== 'admin') {
+        router.push('/')
         return
       }
 
