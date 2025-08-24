@@ -41,23 +41,27 @@ export async function middleware(request: NextRequest) {
     'max-age=63072000; includeSubDomains; preload'
   )
   
-  // Add CORS headers for API routes
+  // Strict CORS configuration for API routes
   if (isAPI) {
-    const origin = request.headers.get('origin') || ''
-    const allowedOrigins = [
-      'https://swiftedu.vercel.app',
-      'http://localhost:3000',
-      process.env.NEXT_PUBLIC_APP_URL
-    ].filter(Boolean)
+    const origin = request.headers.get('origin')
     
-    if (allowedOrigins.includes(origin)) {
+    // Only allow CORS for specific production domain
+    // Remove localhost in production for maximum security
+    const allowedOrigins = isDevelopment
+      ? ['http://localhost:3000'] // Only localhost in development
+      : process.env.NEXT_PUBLIC_APP_URL 
+        ? [process.env.NEXT_PUBLIC_APP_URL] // Only configured production URL
+        : [] // No CORS if not configured
+    
+    // Only set CORS headers if origin is explicitly allowed
+    if (origin && allowedOrigins.includes(origin)) {
       response.headers.set('Access-Control-Allow-Origin', origin)
       response.headers.set('Access-Control-Allow-Credentials', 'true')
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+      response.headers.set('Access-Control-Max-Age', '3600') // Reduced from 86400 to 1 hour
     }
-    
-    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    response.headers.set('Access-Control-Max-Age', '86400')
+    // If origin is not allowed, no CORS headers are set (browser will block the request)
   }
   
   // Remove timestamp headers to prevent information disclosure
@@ -112,6 +116,14 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
+
+  // Authentication check for API routes - must be authenticated
+  if (isAPI && !session) {
+    return NextResponse.json(
+      { error: 'Unauthorized - Authentication required' },
+      { status: 401 }
+    )
+  }
 
   // Se não há sessão e a rota é protegida, redireciona para login
   if (!session) {
