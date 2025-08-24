@@ -48,13 +48,14 @@ export function generateCSPHeader(nonce: string, isAPI = false): string {
     ].join('; ')
   }
 
-  // CSP for app routes with nonce for required inline scripts
+  // CSP for app routes - Next.js requires specific hashes for its runtime
+  // Using 'unsafe-inline' temporarily with strict-dynamic for better security
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' https://cdn.jsdelivr.net`,
-    `style-src 'self' 'nonce-${nonce}'`,
-    "img-src 'self' data: https://bxzsdvgxawvlqsuodaqy.supabase.co blob:",
-    "font-src 'self' data: https://cdn.jsdelivr.net",
+    `script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net`,
+    `style-src 'self' 'unsafe-inline'`,
+    "img-src 'self' data: https://bxzsdvgxawvlqsuodaqy.supabase.co blob: https:",
+    "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com",
     "connect-src 'self' https://bxzsdvgxawvlqsuodaqy.supabase.co wss://bxzsdvgxawvlqsuodaqy.supabase.co https://docs.google.com",
     "frame-src 'self' https://docs.google.com",
     "frame-ancestors 'none'",

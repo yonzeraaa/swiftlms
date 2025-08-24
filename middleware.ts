@@ -1,23 +1,17 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { generateCSPNonce, generateCSPHeader } from './app/lib/csp-nonce'
+import { productionCSP, developmentCSP, apiCSP, formatCSP } from './app/lib/csp-config'
 
 export async function middleware(request: NextRequest) {
-  // Generate nonce for this request
-  const nonce = generateCSPNonce()
-  
-  // Clone headers and add nonce
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-csp-nonce', nonce)
-  
   let response = NextResponse.next({
     request: {
-      headers: requestHeaders,
+      headers: request.headers,
     },
   })
 
-  // Determine if this is an API route
+  // Determine environment and route type
   const isAPI = request.nextUrl.pathname.startsWith('/api/')
+  const isDevelopment = process.env.NODE_ENV === 'development'
   
   // Add security headers to all responses
   response.headers.set('X-Content-Type-Options', 'nosniff')
@@ -29,8 +23,17 @@ export async function middleware(request: NextRequest) {
   response.headers.set('X-Download-Options', 'noopen')
   response.headers.set('X-Permitted-Cross-Domain-Policies', 'none')
   
-  // Add CSP with nonce
-  response.headers.set('Content-Security-Policy', generateCSPHeader(nonce, isAPI))
+  // Set appropriate CSP based on route and environment
+  let csp: string
+  if (isAPI) {
+    csp = formatCSP(apiCSP)
+  } else if (isDevelopment) {
+    csp = formatCSP(developmentCSP)
+  } else {
+    csp = formatCSP(productionCSP)
+  }
+  
+  response.headers.set('Content-Security-Policy', csp)
   
   // Add HSTS header - always include it
   response.headers.set(
