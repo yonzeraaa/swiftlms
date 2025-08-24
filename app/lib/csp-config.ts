@@ -31,8 +31,8 @@ export const developmentCSP = {
   ],
   'connect-src': [
     "'self'",
-    'https://bxzsdvgxawvlqsuodaqy.supabase.co',
-    'wss://bxzsdvgxawvlqsuodaqy.supabase.co',
+    'https://mdzgnktlsmkjecdbermo.supabase.co',
+    'wss://mdzgnktlsmkjecdbermo.supabase.co',
     'https://docs.google.com',
     'ws://localhost:*', // HMR websocket
     'http://localhost:*'
@@ -63,7 +63,7 @@ export const productionCSP = {
     "'self'",
     'data:',
     'blob:',
-    'https://bxzsdvgxawvlqsuodaqy.supabase.co'
+    'https://mdzgnktlsmkjecdbermo.supabase.co'
   ],
   'font-src': [
     "'self'",
@@ -73,8 +73,8 @@ export const productionCSP = {
   ],
   'connect-src': [
     "'self'",
-    'https://bxzsdvgxawvlqsuodaqy.supabase.co',
-    'wss://bxzsdvgxawvlqsuodaqy.supabase.co',
+    'https://mdzgnktlsmkjecdbermo.supabase.co',
+    'wss://mdzgnktlsmkjecdbermo.supabase.co',
     'https://docs.google.com'
   ],
   'frame-src': [
