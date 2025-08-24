@@ -33,13 +33,15 @@ export const developmentCSP = {
     "'self'",
     'https://mdzgnktlsmkjecdbermo.supabase.co',
     'wss://mdzgnktlsmkjecdbermo.supabase.co',
+    'wss://mdzgnktlsmkjecdbermo.supabase.co/realtime/v1/websocket',
     'https://docs.google.com',
     'ws://localhost:*', // HMR websocket
     'http://localhost:*'
   ],
   'frame-src': [
     "'self'",
-    'https://docs.google.com'
+    'https://docs.google.com',
+    'https://drive.google.com'
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],
@@ -75,11 +77,13 @@ export const productionCSP = {
     "'self'",
     'https://mdzgnktlsmkjecdbermo.supabase.co',
     'wss://mdzgnktlsmkjecdbermo.supabase.co',
+    'wss://mdzgnktlsmkjecdbermo.supabase.co/realtime/v1/websocket',
     'https://docs.google.com'
   ],
   'frame-src': [
     "'self'",
-    'https://docs.google.com'
+    'https://docs.google.com',
+    'https://drive.google.com'
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],
