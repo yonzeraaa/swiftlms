@@ -1,21 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { apiRateLimiter, getClientIdentifier } from '@/app/lib/rate-limiter'
+
+// Regex para validar URL do Google Docs
+const GOOGLE_DOCS_URL_PATTERN = /^https:\/\/docs\.google\.com\/document\/d\/[a-zA-Z0-9-_]+/
 
 export async function POST(request: NextRequest) {
+  // Rate limiting
+  const clientId = getClientIdentifier(request)
+  if (!apiRateLimiter.isAllowed(clientId)) {
+    return NextResponse.json(
+      { error: 'Muitas requisições. Tente novamente mais tarde.' },
+      { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': '100',
+          'X-RateLimit-Remaining': String(apiRateLimiter.getRemainingRequests(clientId)),
+          'X-RateLimit-Reset': String(apiRateLimiter.getResetTime(clientId))
+        }
+      }
+    )
+  }
+  
   try {
-    const { url } = await request.json()
+    const body = await request.json()
+    const { url } = body
     
-    if (!url) {
+    // Validação de entrada
+    if (!url || typeof url !== 'string') {
       return NextResponse.json(
-        { error: 'URL é obrigatória' },
+        { error: 'URL é obrigatória e deve ser uma string' },
         { status: 400 }
       )
     }
 
-    // Verificar se é uma URL do Google Docs
-    if (!url.includes('docs.google.com')) {
+    // Validação rigorosa da URL do Google Docs
+    if (!GOOGLE_DOCS_URL_PATTERN.test(url)) {
       return NextResponse.json(
-        { error: 'URL inválida. Use uma URL do Google Docs' },
+        { error: 'URL inválida. Use uma URL válida do Google Docs (https://docs.google.com/document/d/...)' },
         { status: 400 }
+      )
+    }
+    
+    // Prevenir SSRF - bloquear URLs internas e localhost
+    const parsedUrl = new URL(url)
+    const blockedHosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1']
+    if (blockedHosts.includes(parsedUrl.hostname)) {
+      return NextResponse.json(
+        { error: 'URL não permitida' },
+        { status: 403 }
       )
     }
 

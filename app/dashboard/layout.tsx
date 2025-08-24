@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import ErrorBoundary from '../components/ErrorBoundary'
 import { 
   LayoutDashboard, 
   Users, 
@@ -334,11 +335,13 @@ export default function DashboardLayout({
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto">
           {/* Page Content with Animation */}
-          <PageTransition>
-            <div className="p-8">
-              {children}
-            </div>
-          </PageTransition>
+          <ErrorBoundary>
+            <PageTransition>
+              <div className="p-8">
+                {children}
+              </div>
+            </PageTransition>
+          </ErrorBoundary>
         </main>
       </div>
     </div>

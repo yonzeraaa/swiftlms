@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import DOMPurify from 'dompurify'
 
 interface MathFormulaProps {
   content: string
@@ -8,17 +9,30 @@ interface MathFormulaProps {
   className?: string
 }
 
+interface MathJaxConfig {
+  tex: {
+    inlineMath: string[][]
+    displayMath: string[][]
+    processEscapes: boolean
+  }
+  svg: {
+    fontCache: string
+  }
+}
+
 export default function MathFormula({ content, inline = false, className = '' }: MathFormulaProps) {
   const elementRef = useRef<HTMLSpanElement | HTMLDivElement>(null)
 
   useEffect(() => {
     // Carregar MathJax dinamicamente se ainda não estiver carregado
-    if (typeof window !== 'undefined' && !(window as any).MathJax) {
+    const windowWithMathJax = window as Window & { MathJax?: MathJaxConfig }
+    
+    if (typeof window !== 'undefined' && !windowWithMathJax.MathJax) {
       const script = document.createElement('script')
       script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js'
       script.async = true
       script.onload = () => {
-        (window as any).MathJax = {
+        windowWithMathJax.MathJax = {
           tex: {
             inlineMath: [['$', '$'], ['\\(', '\\)']],
             displayMath: [['$$', '$$'], ['\\[', '\\]']],
@@ -37,8 +51,14 @@ export default function MathFormula({ content, inline = false, className = '' }:
   }, [content])
 
   const renderMath = () => {
-    if ((window as any).MathJax && elementRef.current) {
-      (window as any).MathJax.typesetPromise([elementRef.current]).catch((e: any) => {
+    const windowWithMathJax = window as Window & { 
+      MathJax?: { 
+        typesetPromise: (elements: Element[]) => Promise<void> 
+      } 
+    }
+    
+    if (windowWithMathJax.MathJax && elementRef.current) {
+      windowWithMathJax.MathJax.typesetPromise([elementRef.current]).catch((e: Error) => {
         console.error('MathJax rendering error:', e)
       })
     }
@@ -53,14 +73,21 @@ export default function MathFormula({ content, inline = false, className = '' }:
       .replace(/\\\(/g, '$')
       .replace(/\\\)/g, '$')
     
-    return processed
+    // Sanitizar HTML para prevenir XSS, mantendo apenas tags matemáticas seguras
+    const sanitized = DOMPurify.sanitize(processed, {
+      ALLOWED_TAGS: ['span', 'div', 'math', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac', 'mroot', 'msqrt'],
+      ALLOWED_ATTR: ['class', 'id'],
+      KEEP_CONTENT: true
+    })
+    
+    return sanitized
   }
 
   const Tag = inline ? 'span' : 'div'
 
   return (
     <Tag
-      ref={elementRef as any}
+      ref={elementRef as React.RefObject<HTMLSpanElement> & React.RefObject<HTMLDivElement>}
       className={`math-content ${className}`}
       dangerouslySetInnerHTML={{ __html: processContent(content) }}
     />
