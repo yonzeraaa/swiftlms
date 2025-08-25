@@ -50,3 +50,4 @@ Após verificações bem-sucedidas:
 - Quando for implementar algum código, garanta que o código seja robusto e livre de falhas. Revise quantas vezes precisar para garantir isto.
 - faça apenas o que lhe foi pedido e siga estritamente as instruções.
 - Não dê informações adicionais. Apenas fale se lhe for solicitado.
+- Quando for implementar uma nova função, utilize o mcp context7 para obter informações atualizadas de como implementá-lo.

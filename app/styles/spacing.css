@@ -1,0 +1,195 @@
+/* ============================== */
+/* GOLDEN RATIO SPACING SYSTEM    */
+/* ============================== */
+
+:root {
+  /* Golden Ratio: 1.618 */
+  --golden-ratio: 1.618;
+  
+  /* Base spacing unit */
+  --space-base: 1rem; /* 16px */
+  
+  /* Golden Ratio Spacing Scale */
+  --space-xs: calc(var(--space-base) / var(--golden-ratio) / var(--golden-ratio)); /* ~0.38rem */
+  --space-sm: calc(var(--space-base) / var(--golden-ratio)); /* ~0.62rem */
+  --space-md: var(--space-base); /* 1rem */
+  --space-lg: calc(var(--space-base) * var(--golden-ratio)); /* ~1.62rem */
+  --space-xl: calc(var(--space-base) * var(--golden-ratio) * var(--golden-ratio)); /* ~2.62rem */
+  --space-2xl: calc(var(--space-base) * var(--golden-ratio) * var(--golden-ratio) * var(--golden-ratio)); /* ~4.24rem */
+  --space-3xl: calc(var(--space-base) * var(--golden-ratio) * var(--golden-ratio) * var(--golden-ratio) * var(--golden-ratio)); /* ~6.85rem */
+  
+  /* Typography Scale based on Golden Ratio */
+  --text-xs: calc(var(--space-base) / var(--golden-ratio)); /* ~0.62rem */
+  --text-sm: calc(var(--space-base) / 1.2); /* ~0.83rem */
+  --text-base: var(--space-base); /* 1rem */
+  --text-lg: calc(var(--space-base) * 1.2); /* 1.2rem */
+  --text-xl: calc(var(--space-base) * var(--golden-ratio)); /* ~1.62rem */
+  --text-2xl: calc(var(--space-base) * var(--golden-ratio) * 1.2); /* ~1.94rem */
+  --text-3xl: calc(var(--space-base) * var(--golden-ratio) * var(--golden-ratio)); /* ~2.62rem */
+  --text-4xl: calc(var(--space-base) * var(--golden-ratio) * var(--golden-ratio) * 1.2); /* ~3.14rem */
+  
+  /* Line Heights based on Golden Ratio */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: var(--golden-ratio);
+  --leading-loose: 2;
+  
+  /* Border Radius based on Golden Ratio */
+  --radius-sm: calc(var(--space-xs) / 2); /* ~0.19rem */
+  --radius-md: var(--space-xs); /* ~0.38rem */
+  --radius-lg: var(--space-sm); /* ~0.62rem */
+  --radius-xl: var(--space-md); /* 1rem */
+  --radius-2xl: var(--space-lg); /* ~1.62rem */
+  --radius-full: 9999px;
+  
+  /* Container Widths based on Golden Ratio */
+  --container-xs: calc(20rem * var(--golden-ratio)); /* ~32.36rem */
+  --container-sm: calc(24rem * var(--golden-ratio)); /* ~38.83rem */
+  --container-md: calc(28rem * var(--golden-ratio)); /* ~45.30rem */
+  --container-lg: calc(32rem * var(--golden-ratio)); /* ~51.78rem */
+  --container-xl: calc(36rem * var(--golden-ratio)); /* ~58.25rem */
+  --container-2xl: calc(42rem * var(--golden-ratio)); /* ~67.96rem */
+}
+
+/* Utility Classes for Golden Ratio Spacing */
+.space-xs { margin: var(--space-xs); }
+.space-sm { margin: var(--space-sm); }
+.space-md { margin: var(--space-md); }
+.space-lg { margin: var(--space-lg); }
+.space-xl { margin: var(--space-xl); }
+.space-2xl { margin: var(--space-2xl); }
+.space-3xl { margin: var(--space-3xl); }
+
+/* Padding Utilities */
+.p-xs { padding: var(--space-xs); }
+.p-sm { padding: var(--space-sm); }
+.p-md { padding: var(--space-md); }
+.p-lg { padding: var(--space-lg); }
+.p-xl { padding: var(--space-xl); }
+.p-2xl { padding: var(--space-2xl); }
+.p-3xl { padding: var(--space-3xl); }
+
+/* Typography Classes */
+.text-xs { font-size: var(--text-xs); }
+.text-sm { font-size: var(--text-sm); }
+.text-base { font-size: var(--text-base); }
+.text-lg { font-size: var(--text-lg); }
+.text-xl { font-size: var(--text-xl); }
+.text-2xl { font-size: var(--text-2xl); }
+.text-3xl { font-size: var(--text-3xl); }
+.text-4xl { font-size: var(--text-4xl); }
+
+/* Heading Hierarchy with Golden Ratio */
+h1 {
+  font-size: var(--text-3xl);
+  line-height: var(--leading-tight);
+  font-weight: 700;
+  margin-bottom: var(--space-lg);
+}
+
+h2 {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+}
+
+h3 {
+  font-size: var(--text-xl);
+  line-height: var(--leading-normal);
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+h4 {
+  font-size: var(--text-lg);
+  line-height: var(--leading-normal);
+  font-weight: 500;
+  margin-bottom: var(--space-sm);
+}
+
+h5 {
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+}
+
+h6 {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+}
+
+/* Paragraph and Content Spacing */
+p {
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-md);
+}
+
+/* Section Spacing */
+section {
+  padding: var(--space-2xl) 0;
+}
+
+/* Card Component Spacing */
+.card {
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-lg);
+}
+
+/* Button Spacing */
+.btn {
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+}
+
+.btn-sm {
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--text-sm);
+}
+
+.btn-lg {
+  padding: var(--space-md) var(--space-xl);
+  font-size: var(--text-lg);
+}
+
+/* Form Elements Spacing */
+input,
+textarea,
+select {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+}
+
+label {
+  margin-bottom: var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+/* Grid and Flexbox Gaps */
+.gap-xs { gap: var(--space-xs); }
+.gap-sm { gap: var(--space-sm); }
+.gap-md { gap: var(--space-md); }
+.gap-lg { gap: var(--space-lg); }
+.gap-xl { gap: var(--space-xl); }
+.gap-2xl { gap: var(--space-2xl); }
+
+/* Responsive Typography Scale */
+@media (min-width: 768px) {
+  :root {
+    --space-base: 1.125rem; /* 18px on larger screens */
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --space-base: 1.25rem; /* 20px on desktop */
+  }
+}

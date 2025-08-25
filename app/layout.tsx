@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Open_Sans } from 'next/font/google'
 import './globals.css'
+import './styles/animations.css'
 
 // Open Sans - fonte moderna, legível e versátil para todo o sistema
 const openSans = Open_Sans({ 

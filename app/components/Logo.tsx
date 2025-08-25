@@ -22,7 +22,7 @@ export default function Logo({
         priority
       />
       {showText && (
-        <span className="font-bold text-xl text-[#EA6D2C]">
+        <span className="font-bold text-xl text-gold-500">
           SWIFTEDU
         </span>
       )}

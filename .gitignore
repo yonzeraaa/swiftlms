@@ -36,3 +36,4 @@ service-account-key.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+claude-code-unlimited/

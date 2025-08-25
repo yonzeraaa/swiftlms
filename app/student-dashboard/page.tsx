@@ -7,6 +7,7 @@ import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, Aler
 import StatCard from '../components/StatCard'
 import Card from '../components/Card'
 import Button from '../components/Button'
+import PremiumLoader, { PremiumSkeleton } from '../components/ui/PremiumLoader'
 import ProgressChart from '../components/ProgressChart'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
@@ -336,8 +337,8 @@ export default function StudentDashboard() {
         {/* Header Skeleton */}
         <div className="flex justify-between items-center">
           <div>
-            <div className="h-8 w-48 bg-navy-700/50 rounded-lg animate-pulse mb-2"></div>
-            <div className="h-4 w-64 bg-navy-700/30 rounded animate-pulse"></div>
+            <PremiumSkeleton height="h-8" className="w-48 mb-2" />
+            <PremiumSkeleton height="h-4" className="w-64" />
           </div>
         </div>
 
@@ -349,7 +350,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Content Grid Skeleton */}
-        <div className="bg-navy-800/50 rounded-xl p-6 animate-pulse">
+        <div className="bg-navy-800/50 rounded-xl p-6">
           <div className="h-6 w-32 bg-navy-700/50 rounded mb-4"></div>
           <div className="space-y-3">
             {[...Array(5)].map((_, i) => (

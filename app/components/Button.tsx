@@ -1,58 +1,83 @@
-import { ButtonHTMLAttributes, ReactNode, useRef, MouseEvent } from 'react'
+'use client'
+
+import { ButtonHTMLAttributes, ReactNode, useRef, MouseEvent, forwardRef } from 'react'
 import { Loader2 } from 'lucide-react'
+import { motion, HTMLMotionProps } from 'framer-motion'
 import { useTranslation } from '../contexts/LanguageContext'
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+type MotionButtonProps = HTMLMotionProps<'button'> & ButtonHTMLAttributes<HTMLButtonElement>
+
+interface ButtonProps extends Omit<MotionButtonProps, 'onDrag' | 'onDragEnd' | 'onDragStart' | 'ref'> {
   children: ReactNode
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'gradient' | 'outline' | 'subtle' | 'success'
   size?: 'sm' | 'md' | 'lg' | 'xs' | 'xl'
   isLoading?: boolean
+  loading?: boolean // Alias para compatibilidade com PremiumButton
   icon?: ReactNode
   iconPosition?: 'left' | 'right'
   fullWidth?: boolean
   rounded?: 'sm' | 'md' | 'lg' | 'full'
   pulse?: boolean
   glow?: boolean
+  enableMotion?: boolean
+  ripple?: boolean
 }
 
-export default function Button({
-  children,
-  variant = 'primary',
-  size = 'md',
-  isLoading = false,
-  icon,
-  iconPosition = 'left',
-  fullWidth = false,
-  rounded = 'lg',
-  pulse = false,
-  glow = false,
-  className = '',
-  disabled,
-  ...props
-}: ButtonProps) {
+const Button = forwardRef<HTMLButtonElement, ButtonProps>((
+  {
+    children,
+    variant = 'primary',
+    size = 'md',
+    isLoading = false,
+    loading = false, // Alias para compatibilidade
+    icon,
+    iconPosition = 'left',
+    fullWidth = false,
+    rounded = 'lg',
+    pulse = false,
+    glow = false,
+    enableMotion = false,
+    ripple = true,
+    className = '',
+    disabled,
+    onClick,
+    ...props
+  },
+  ref
+) => {
   const { t } = useTranslation()
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const actualLoading = isLoading || loading
   
   const handleRipple = (e: MouseEvent<HTMLButtonElement>) => {
-    const button = buttonRef.current
+    if (!ripple) return
+    
+    const button = buttonRef.current || (ref as any)?.current
     if (!button) return
 
     const rect = button.getBoundingClientRect()
-    const ripple = document.createElement('span')
+    const rippleElement = document.createElement('span')
     const size = Math.max(rect.width, rect.height)
     const x = e.clientX - rect.left - size / 2
     const y = e.clientY - rect.top - size / 2
 
-    ripple.style.width = ripple.style.height = size + 'px'
-    ripple.style.left = x + 'px'
-    ripple.style.top = y + 'px'
-    ripple.classList.add('ripple')
+    rippleElement.style.width = rippleElement.style.height = size + 'px'
+    rippleElement.style.left = x + 'px'
+    rippleElement.style.top = y + 'px'
+    rippleElement.classList.add('ripple')
 
-    button.appendChild(ripple)
+    button.appendChild(rippleElement)
 
     setTimeout(() => {
-      ripple.remove()
+      rippleElement.remove()
     }, 600)
+  }
+
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    if (!disabled && !actualLoading) {
+      handleRipple(e)
+    }
+    onClick?.(e)
   }
 
   const roundedStyles = {
@@ -68,7 +93,7 @@ export default function Button({
     focus:outline-none focus:ring-2 focus:ring-offset-2 
     disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
     flex items-center justify-center gap-2
-    transform hover:transform active:scale-[0.98]
+    transform active:scale-[0.98]
     ${fullWidth ? 'w-full' : ''}
     ${pulse ? 'animate-pulse' : ''}
     ${glow ? 'shadow-glow hover:shadow-glow-lg' : ''}
@@ -82,7 +107,7 @@ export default function Button({
       hover:from-gold-600 hover:to-gold-700 
       text-navy-900 
       focus:ring-gold-400 focus:ring-offset-navy-800 
-      hover:-translate-y-0.5 hover:shadow-xl
+      hover:shadow-xl
       shadow-lg shadow-gold-500/20
       before:bg-gradient-to-r before:from-gold-400/20 before:to-transparent
       group
@@ -101,7 +126,6 @@ export default function Button({
       text-white 
       focus:ring-red-400 focus:ring-offset-navy-800
       hover:shadow-lg shadow-red-500/20
-      hover:-translate-y-0.5
       before:bg-gradient-to-r before:from-red-400/20 before:to-transparent
     `,
     ghost: `
@@ -112,9 +136,9 @@ export default function Button({
       before:bg-gold-500/5
     `,
     gradient: `
-      bg-gradient-to-r from-purple-500 via-gold-500 to-orange-500
+      bg-gradient-to-r from-purple-500 via-gold-500 to-gold-600
       text-white font-bold
-      hover:shadow-2xl hover:-translate-y-0.5
+      hover:shadow-2xl
       focus:ring-gold-400 focus:ring-offset-navy-800
       bg-[length:200%_100%] bg-[position:0%_0%]
       hover:bg-[position:100%_0%]
@@ -143,7 +167,7 @@ export default function Button({
       hover:from-green-600 hover:to-green-700
       text-white
       focus:ring-green-400 focus:ring-offset-navy-800
-      hover:-translate-y-0.5 hover:shadow-lg
+      hover:shadow-lg
       shadow-md shadow-green-500/20
       before:bg-gradient-to-r before:from-green-400/20 before:to-transparent
     `
@@ -165,20 +189,9 @@ export default function Button({
     xl: 'w-6 h-6'
   }
 
-  return (
-    <button
-      ref={buttonRef}
-      className={`group ${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
-      disabled={disabled || isLoading}
-      onClick={(e) => {
-        if (!disabled && !isLoading) {
-          handleRipple(e)
-        }
-        props.onClick?.(e)
-      }}
-      {...props}
-    >
-      {isLoading ? (
+  const buttonContent = (
+    <>
+      {actualLoading ? (
         <>
           <Loader2 className={`${iconSizes[size]} animate-spin`} aria-hidden="true" />
           <span className="sr-only">{t('common.loading')}</span>
@@ -209,6 +222,43 @@ export default function Button({
       <span className="absolute inset-0 rounded-inherit overflow-hidden pointer-events-none">
         <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></span>
       </span>
+    </>
+  )
+
+  // Remove props conflitantes com framer-motion
+  const { onAnimationStart, ...restProps } = props as any
+
+  if (enableMotion) {
+    return (
+      <motion.button
+        ref={ref || buttonRef}
+        whileHover={{ scale: 1.02, y: -2 }}
+        whileTap={{ scale: 0.98 }}
+        className={`group ${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+        disabled={disabled || actualLoading}
+        onClick={handleClick}
+        data-theme-variant={variant}
+        {...restProps}
+      >
+        {buttonContent}
+      </motion.button>
+    )
+  }
+
+  return (
+    <button
+      ref={ref || buttonRef}
+      className={`group ${baseStyles} ${variants[variant]} ${sizes[size]} hover:-translate-y-0.5 ${className}`}
+      disabled={disabled || actualLoading}
+      onClick={handleClick}
+      data-theme-variant={variant}
+      {...restProps}
+    >
+      {buttonContent}
     </button>
   )
-}
+})
+
+Button.displayName = 'Button'
+
+export default Button

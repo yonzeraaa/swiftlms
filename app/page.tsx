@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Loader2, AlertCircle, Globe } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Logo from './components/Logo'
+import Button from './components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from './contexts/LanguageContext'
 
@@ -180,22 +181,19 @@ export default function LoginPage() {
                 </div>
 
                 {/* Botão de Login */}
-                <button
+                <Button
                   type="submit"
-                  className="relative w-full py-3 px-4 bg-gradient-to-r from-gold-500 to-gold-600 hover:from-gold-600 hover:to-gold-700 text-navy-900 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold-400 focus:ring-offset-2 focus:ring-offset-navy-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none group overflow-hidden"
-                  disabled={isLoading}
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  loading={isLoading}
+                  icon={!isLoading && <ArrowRight className="w-5 h-5" />}
+                  iconPosition="right"
                   aria-label={t('login.loginAriaLabel')}
+                  enableMotion
                 >
-                  <span className={`flex items-center justify-center gap-2 transition-all duration-300 ${isLoading ? 'opacity-0' : ''}`}>
-                    {t('login.enter')}
-                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                  {isLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    </div>
-                  )}
-                </button>
+                  {t('login.enter')}
+                </Button>
               </form>
 
               {/* Error message */}

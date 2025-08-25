@@ -142,7 +142,7 @@ export default function EmptyState({
     error: 'text-red-400',
     success: 'text-green-400',
     'no-data': 'text-gold-300',
-    'no-access': 'text-orange-400',
+    'no-access': 'text-gold-400',
     'coming-soon': 'text-purple-400'
   }
 

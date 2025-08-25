@@ -34,7 +34,7 @@ export default function Badge({
     warning: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
     error: 'bg-red-500/20 text-red-400 border border-red-500/30',
     info: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
-    gradient: 'bg-gradient-to-r from-purple-500/20 via-gold-500/20 to-orange-500/20 text-gold-300 border border-gold-500/30'
+    gradient: 'bg-gradient-to-r from-purple-500/20 via-gold-500/20 to-gold-600/20 text-gold-300 border border-gold-500/30'
   }
 
   return (

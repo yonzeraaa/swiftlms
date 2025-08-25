@@ -38,17 +38,17 @@ export default function LogoSwiftEDU({
               cy="0" 
               rx="25" 
               ry="12" 
-              fill="#EA6D2C"
+              fill="#FFD700"
               transform="rotate(-10)"
             />
             
             {/* Cabeça */}
-            <ellipse cx="5" cy="-3" r="10" fill="#EA6D2C" />
+            <ellipse cx="5" cy="-3" r="10" fill="#FFD700" />
             
             {/* Bico */}
             <path 
               d="M-5 -3 L-20 -4 L-20 -2 Z"
-              fill="#EA6D2C"
+              fill="#FFD700"
             />
             
             {/* Olho */}
@@ -58,28 +58,28 @@ export default function LogoSwiftEDU({
             {/* Asa superior */}
             <path 
               d="M15 -5 Q5 -20 -15 -25 Q-5 -22 5 -15 Q10 -10 15 -5"
-              fill="#EA6D2C"
+              fill="#FFD700"
               opacity="0.9"
             />
             
             {/* Asa do meio */}
             <path 
               d="M15 0 Q0 -12 -20 -10 Q-10 -10 0 -8 Q10 -5 15 0"
-              fill="#EA6D2C"
+              fill="#FFD700"
               opacity="0.8"
             />
             
             {/* Asa inferior */}
             <path 
               d="M15 5 Q5 10 -10 15 Q0 10 10 5 Q12 3 15 5"
-              fill="#EA6D2C"
+              fill="#FFD700"
               opacity="0.7"
             />
             
             {/* Cauda */}
             <path 
               d="M40 0 L50 -8 L48 -3 L45 0 L48 3 L50 8 L40 0"
-              fill="#EA6D2C"
+              fill="#FFD700"
             />
           </g>
           
@@ -92,7 +92,7 @@ export default function LogoSwiftEDU({
               width="80" 
               height="50" 
               rx="5" 
-              fill="#EA6D2C"
+              fill="#FFD700"
             />
             
             {/* Tela */}
@@ -110,28 +110,28 @@ export default function LogoSwiftEDU({
               {/* Página esquerda */}
               <path 
                 d="M-15 -10 L-15 10 L0 10 L0 -10 Z" 
-                fill="#EA6D2C"
+                fill="#FFD700"
               />
               {/* Página direita */}
               <path 
                 d="M0 -10 L15 -10 L15 10 L0 10 Z" 
-                fill="#EA6D2C"
+                fill="#FFD700"
                 opacity="0.8"
               />
               {/* Lombada */}
-              <rect x="-1" y="-10" width="2" height="20" fill="#D55A1C" />
+              <rect x="-1" y="-10" width="2" height="20" fill="#FFD700" />
             </g>
             
             {/* Base do monitor */}
-            <rect x="35" y="50" width="10" height="8" fill="#EA6D2C" />
+            <rect x="35" y="50" width="10" height="8" fill="#FFD700" />
             {/* Suporte do monitor */}
-            <path d="M25 58 L55 58 L50 62 L30 62 Z" fill="#EA6D2C" />
+            <path d="M25 58 L55 58 L50 62 L30 62 Z" fill="#FFD700" />
           </g>
         </svg>
       </div>
       
       {showText && (
-        <span className={`font-bold ${textSizes[size]} text-[#EA6D2C] tracking-wider`}>
+        <span className={`font-bold ${textSizes[size]} text-gold-500 tracking-wider`}>
           SWIFTEDU
         </span>
       )}
