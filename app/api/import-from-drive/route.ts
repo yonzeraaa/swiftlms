@@ -1114,7 +1114,6 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           }
         }
       }
-    }
     
     return results
   } catch (error) {
