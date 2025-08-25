@@ -801,7 +801,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
   }
   
   try {
-    updateDatabaseProgress('Salvando no banco de dados', 'Preparando importação...')
+    await updateDatabaseProgress('Salvando no banco de dados', 'Preparando importação...')
     
     // Buscar o maior order_index existente para módulos
     const { data: existingModules } = await supabase
@@ -819,7 +819,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
     for (let moduleIdx = 0; moduleIdx < structure.modules.length; moduleIdx++) {
       const moduleData = structure.modules[moduleIdx]
       
-      updateDatabaseProgress(
+      await updateDatabaseProgress(
         `Salvando módulo ${moduleIdx + 1}/${structure.modules.length}`,
         `Módulo: ${moduleData.name}`
       )
@@ -846,7 +846,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
       for (let subjectIdx = 0; subjectIdx < moduleData.subjects.length; subjectIdx++) {
         const subjectData = moduleData.subjects[subjectIdx]
         
-        updateDatabaseProgress(
+        await updateDatabaseProgress(
           `Salvando disciplina ${subjectIdx + 1}/${moduleData.subjects.length} do módulo ${moduleIdx + 1}`,
           `Disciplina: ${subjectData.name}`
         )
@@ -916,12 +916,16 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           ? (existingLessons[0].order_index + 1) 
           : 0
         
-        // Importar aulas da disciplina
-        for (let lessonIdx = 0; lessonIdx < subjectData.lessons.length; lessonIdx++) {
-          const lessonData = subjectData.lessons[lessonIdx]
+        // Separar aulas normais de testes
+        const regularLessons = subjectData.lessons.filter(l => l.contentType !== 'quiz')
+        const testLessons = subjectData.lessons.filter(l => l.contentType === 'quiz')
+        
+        // Processar aulas normais primeiro
+        for (let lessonIdx = 0; lessonIdx < regularLessons.length; lessonIdx++) {
+          const lessonData = regularLessons[lessonIdx]
           
           await updateDatabaseProgress(
-            `Salvando aula ${lessonIdx + 1}/${subjectData.lessons.length}`,
+            `Salvando aula ${lessonIdx + 1}/${regularLessons.length}`,
             `Aula: ${lessonData.name}`
           )
           
@@ -941,7 +945,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
             continue
           }
           
-          // Criar a aula na tabela lessons com order_index único
+          // Criar a aula na tabela lessons
           const { data: newLesson, error: lessonError } = await supabase
             .from('lessons')
             .insert({
@@ -961,7 +965,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
             continue
           }
           
-          // Depois associar a aula à disciplina na tabela subject_lessons
+          // Associar a aula à disciplina
           if (newLesson) {
             const { error: linkError } = await supabase
               .from('subject_lessons')
@@ -977,9 +981,30 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
               continue
             }
             
-            // Se for quiz e tem questões, salvar no banco de questões
-            if (lessonData.contentType === 'quiz' && lessonData.questions && lessonData.questions.length > 0) {
-              console.log(`Salvando ${lessonData.questions.length} questões para a disciplina ${subjectName}`)
+            results.lessons++
+          }
+        }
+        
+        // Agora processar testes (arquivos tipo quiz)
+        if (testLessons.length > 0) {
+          console.log(`Processando ${testLessons.length} testes para a disciplina ${subjectName}`)
+          
+          await updateDatabaseProgress(
+            `Processando testes da disciplina`,
+            `Disciplina: ${subjectName}`
+          )
+          
+          // Coletar todas as questões de todos os arquivos de teste
+          let allQuestions: any[] = []
+          for (const testLesson of testLessons) {
+            if (testLesson.questions && testLesson.questions.length > 0) {
+              console.log(`Adicionando ${testLesson.questions.length} questões do arquivo ${testLesson.name}`)
+              allQuestions = [...allQuestions, ...testLesson.questions]
+            }
+          }
+          
+          if (allQuestions.length > 0) {
+            console.log(`Total de ${allQuestions.length} questões para criar teste da disciplina ${subjectName}`)
               
               // Primeiro, verificar se já existe um teste para esta disciplina no curso
               const { data: existingTest } = await supabase
@@ -1003,10 +1028,10 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
                     subject_id: subjectId,
                     test_type: 'exam', // Sempre 'exam' (prova)
                     duration_minutes: 90, // 90 minutos padrão
-                    total_points: lessonData.questions.length * 1, // 1 ponto por questão por padrão
+                    total_points: allQuestions.length * 1, // 1 ponto por questão por padrão
                     passing_score: 60, // 60% padrão
-                    instructions: `Esta prova contém ${lessonData.questions.length} questões. Leia atentamente cada questão antes de responder.`,
-                    is_published: false, // Não publicar automaticamente
+                    instructions: `Esta prova contém ${allQuestions.length} questões. Leia atentamente cada questão antes de responder.`,
+                    is_published: true, // PUBLICAR automaticamente para os alunos
                     show_results: true,
                     show_answers: false,
                     randomize_questions: false,
@@ -1029,8 +1054,9 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
                 }
               }
               
-              // Agora salvar as questões
-              for (const questionData of lessonData.questions) {
+              // Agora salvar todas as questões coletadas
+              let questionIndex = 0
+              for (const questionData of allQuestions) {
                 try {
                   // Criar a questão no banco
                   const { data: question, error: questionError } = await supabase
@@ -1064,7 +1090,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
                         .insert({
                           test_id: testId,
                           question_id: question.id,
-                          order_index: questionData.order_index || 0,
+                          order_index: questionData.order_index || questionIndex,
                           points_override: questionData.points || null
                         })
                       
@@ -1076,19 +1102,20 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
                       }
                     }
                   }
+                  questionIndex++ // Incrementar índice da questão
                 } catch (err) {
                   console.error('Erro ao processar questão:', err)
                   results.errors.push(`Erro ao processar questão: ${err}`)
                 }
               }
+              
+              console.log(`Teste da disciplina ${subjectName} criado com ${questionIndex} questões e publicado para os alunos`)
             }
-            
-            results.lessons++
           }
         }
       }
     }
-
+    
     return results
   } catch (error) {
     console.error('Erro ao importar para o banco de dados:', error)
