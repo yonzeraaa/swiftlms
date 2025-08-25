@@ -52,7 +52,7 @@ export default function TestForm({ isOpen, onClose, testId, onSuccess }: TestFor
     description: '',
     course_id: '',
     subject_id: '',
-    test_type: 'quiz' as 'quiz' | 'exam' | 'practice',
+    test_type: 'exam' as 'exam',
     duration_minutes: 60,
     passing_score: 60,
     instructions: '',
@@ -150,7 +150,7 @@ export default function TestForm({ isOpen, onClose, testId, onSuccess }: TestFor
         description: testData.description || '',
         course_id: testData.course_id || '',
         subject_id: testData.subject_id || '',
-        test_type: testData.test_type,
+        test_type: 'exam' as 'exam', // Sempre 'exam' agora
         duration_minutes: testData.duration_minutes || 60,
         passing_score: testData.passing_score,
         instructions: testData.instructions || '',
@@ -303,7 +303,7 @@ export default function TestForm({ isOpen, onClose, testId, onSuccess }: TestFor
       description: '',
       course_id: '',
       subject_id: '',
-      test_type: 'quiz',
+      test_type: 'exam',
       duration_minutes: 60,
       passing_score: 60,
       instructions: '',
@@ -455,16 +455,13 @@ export default function TestForm({ isOpen, onClose, testId, onSuccess }: TestFor
               <label className="block text-sm font-medium text-gold-300 mb-2">
                 Tipo de Teste *
               </label>
-              <select
-                value={formData.test_type}
-                onChange={(e) => setFormData({ ...formData, test_type: e.target.value as any })}
+              <input
+                type="text"
+                value="Prova"
                 className="w-full px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-                required
-              >
-                <option value="quiz">Quiz</option>
-                <option value="exam">Prova</option>
-                <option value="practice">Prática</option>
-              </select>
+                disabled
+              />
+              <input type="hidden" value="exam" />
             </div>
 
             <div>

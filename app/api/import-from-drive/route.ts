@@ -653,77 +653,133 @@ async function extractQuestionsFromContent(content: string): Promise<any[]> {
   
   let currentQuestion: any = null
   let questionNumber = 0
+  let capturingQuestion = false
+  let questionBuffer = []
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
     
-    // Detectar início de nova questão (formato: "1." ou "Questão 1" ou "Q1")
-    const questionMatch = line.match(/^(\d+[\.)\s]|Questão\s+\d+|Q\d+)/i)
+    // Detectar início de nova questão - formatos mais amplos
+    const questionMatch = line.match(/^(\d+[\.\)\-\s]|Questão\s+\d+|Q\d+|Pergunta\s+\d+)/i)
     
     if (questionMatch) {
       // Salvar questão anterior se existir
-      if (currentQuestion && currentQuestion.question) {
+      if (currentQuestion && currentQuestion.question_text) {
         questions.push(currentQuestion)
       }
       
       questionNumber++
+      capturingQuestion = true
+      questionBuffer = []
       
-      // Extrair o texto da questão
+      // Extrair o texto da questão (pode continuar em múltiplas linhas)
       const questionText = line.replace(questionMatch[0], '').trim()
       
       // Detectar tipo de questão
       let questionType = 'multiple_choice' // padrão
       
-      if (line.toLowerCase().includes('verdadeiro') || 
-          line.toLowerCase().includes('falso') || 
-          line.toLowerCase().includes('v ou f')) {
+      const fullText = line.toLowerCase()
+      if (fullText.includes('verdadeiro') && fullText.includes('falso') || 
+          fullText.includes('v ou f') ||
+          fullText.includes('v/f') ||
+          fullText.includes('true') && fullText.includes('false')) {
         questionType = 'true_false'
       }
       
       currentQuestion = {
-        question: questionText,
-        type: questionType,
+        question_text: questionText,
+        question_type: questionType,
         options: [],
         correct_answer: null,
         points: 1,
-        order: questionNumber
+        difficulty: 'medium',
+        order_index: questionNumber
+      }
+      
+      if (questionText) {
+        questionBuffer.push(questionText)
       }
     }
-    // Detectar opções de resposta (formato: "a)" ou "A." ou "(a)")
-    else if (currentQuestion && line.match(/^[a-e][\.)\s\)]|^\([a-e]\)/i)) {
-      const optionText = line.replace(/^[a-e][\.)\s\)]|^\([a-e]\)/i, '').trim()
+    // Continuar capturando texto da questão até encontrar opções
+    else if (capturingQuestion && currentQuestion && !line.match(/^[a-e][\.\)\-\s]|^\([a-e]\)/i)) {
+      if (line && !line.match(/^(resposta|gabarito|answer|correct)/i)) {
+        questionBuffer.push(line)
+      }
+    }
+    // Detectar opções de resposta
+    else if (currentQuestion && line.match(/^[a-e][\.\)\-\s]|^\([a-e]\)/i)) {
+      // Finalizar captura da questão
+      if (capturingQuestion && questionBuffer.length > 0) {
+        currentQuestion.question_text = questionBuffer.join(' ').trim()
+        capturingQuestion = false
+      }
       
-      // Verificar se é a resposta correta (marcada com * ou CORRETA ou similar)
+      const optionLetter = line.match(/^([a-e])/i)?.[1]?.toLowerCase()
+      const optionText = line.replace(/^[a-e][\.\)\-\s]|^\([a-e]\)/i, '').trim()
+      
+      // Verificar se é a resposta correta
       const isCorrect = line.includes('*') || 
-                       line.toLowerCase().includes('correta') || 
-                       line.toLowerCase().includes('correct') ||
-                       line.toLowerCase().includes('✓')
+                       line.includes('✓') ||
+                       line.includes('✔') ||
+                       line.toLowerCase().includes('(correta)') || 
+                       line.toLowerCase().includes('(correto)') ||
+                       line.toLowerCase().includes('[x]')
       
-      currentQuestion.options.push(optionText.replace(/[*✓]|\(correta\)|\(correct\)/gi, '').trim())
+      // Limpar o texto da opção
+      const cleanOption = optionText
+        .replace(/[*✓✔]|\(corret[ao]\)|\[x\]/gi, '')
+        .trim()
+      
+      currentQuestion.options.push(cleanOption)
       
       if (isCorrect) {
+        // Armazenar índice da resposta correta
         currentQuestion.correct_answer = currentQuestion.options.length - 1
       }
     }
-    // Detectar resposta para questões verdadeiro/falso
-    else if (currentQuestion && currentQuestion.type === 'true_false') {
-      if (line.toLowerCase().includes('resposta:') || 
-          line.toLowerCase().includes('gabarito:')) {
-        if (line.toLowerCase().includes('verdadeiro') || line.toLowerCase().includes('v')) {
-          currentQuestion.correct_answer = true
-        } else if (line.toLowerCase().includes('falso') || line.toLowerCase().includes('f')) {
-          currentQuestion.correct_answer = false
+    // Detectar gabarito/resposta explícita
+    else if (currentQuestion && line.match(/^(resposta|gabarito|answer|correct):/i)) {
+      const answer = line.replace(/^(resposta|gabarito|answer|correct):/i, '').trim()
+      
+      if (currentQuestion.question_type === 'true_false') {
+        // Para V/F
+        if (answer.match(/^(v|verdadeiro|true)/i)) {
+          currentQuestion.correct_answer = 'true'
+        } else if (answer.match(/^(f|falso|false)/i)) {
+          currentQuestion.correct_answer = 'false'
+        }
+      } else {
+        // Para múltipla escolha - tentar mapear letra para índice
+        const letterMatch = answer.match(/^([a-e])/i)
+        if (letterMatch) {
+          const letter = letterMatch[1].toLowerCase()
+          const index = letter.charCodeAt(0) - 'a'.charCodeAt(0)
+          if (index >= 0 && index < currentQuestion.options.length) {
+            currentQuestion.correct_answer = index
+          }
         }
       }
     }
   }
   
   // Adicionar última questão se existir
-  if (currentQuestion && currentQuestion.question) {
+  if (currentQuestion && currentQuestion.question_text) {
+    if (capturingQuestion && questionBuffer.length > 0) {
+      currentQuestion.question_text = questionBuffer.join(' ').trim()
+    }
     questions.push(currentQuestion)
   }
   
-  return questions
+  // Validar questões extraídas
+  return questions.filter(q => {
+    // Questão deve ter texto
+    if (!q.question_text || q.question_text.length < 5) return false
+    
+    // Múltipla escolha deve ter pelo menos 2 opções
+    if (q.question_type === 'multiple_choice' && q.options.length < 2) return false
+    
+    return true
+  })
 }
 
 async function importToDatabase(structure: CourseStructure, courseId: string, supabase: any, importId?: string, userId?: string, user?: any) {
@@ -923,21 +979,71 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
             
             // Se for quiz e tem questões, salvar no banco de questões
             if (lessonData.contentType === 'quiz' && lessonData.questions && lessonData.questions.length > 0) {
-              console.log(`Salvando ${lessonData.questions.length} questões para a aula ${lessonData.name}`)
+              console.log(`Salvando ${lessonData.questions.length} questões para a disciplina ${subjectName}`)
               
+              // Primeiro, verificar se já existe um teste para esta disciplina no curso
+              const { data: existingTest } = await supabase
+                .from('tests')
+                .select('id')
+                .eq('course_id', courseId)
+                .eq('subject_id', subjectId)
+                .eq('test_type', 'exam')
+                .single()
+              
+              let testId = existingTest?.id
+              
+              // Se não existir teste, criar um novo
+              if (!testId) {
+                const { data: newTest, error: testError } = await supabase
+                  .from('tests')
+                  .insert({
+                    title: `Prova - ${subjectName}`,
+                    description: `Prova da disciplina ${subjectName}`,
+                    course_id: courseId,
+                    subject_id: subjectId,
+                    test_type: 'exam', // Sempre 'exam' (prova)
+                    duration_minutes: 90, // 90 minutos padrão
+                    total_points: lessonData.questions.length * 1, // 1 ponto por questão por padrão
+                    passing_score: 60, // 60% padrão
+                    instructions: `Esta prova contém ${lessonData.questions.length} questões. Leia atentamente cada questão antes de responder.`,
+                    is_published: false, // Não publicar automaticamente
+                    show_results: true,
+                    show_answers: false,
+                    randomize_questions: false,
+                    randomize_options: false,
+                    max_attempts: 2,
+                    created_by: user?.id,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                  })
+                  .select()
+                  .single()
+                
+                if (testError) {
+                  console.error(`Erro ao criar teste: ${testError.message}`)
+                  results.errors.push(`Erro ao criar teste para ${subjectName}: ${testError.message}`)
+                  continue // Pular para próxima aula
+                } else {
+                  testId = newTest.id
+                  console.log(`Teste criado com sucesso: ${testId}`)
+                }
+              }
+              
+              // Agora salvar as questões
               for (const questionData of lessonData.questions) {
                 try {
                   // Criar a questão no banco
                   const { data: question, error: questionError } = await supabase
                     .from('questions')
                     .insert({
-                      question: questionData.question,
-                      type: questionData.type,
+                      question_text: questionData.question_text,
+                      question_type: questionData.question_type,
                       options: questionData.options || [],
                       correct_answer: questionData.correct_answer,
                       points: questionData.points || 1,
-                      difficulty: 'medium', // Padrão
+                      difficulty: questionData.difficulty || 'medium',
                       subject_id: subjectId,
+                      is_active: true,
                       created_by: user?.id,
                       created_at: new Date().toISOString(),
                       updated_at: new Date().toISOString()
@@ -947,44 +1053,9 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
                   
                   if (questionError) {
                     console.error(`Erro ao criar questão: ${questionError.message}`)
-                    results.errors.push(`Erro ao criar questão para ${lessonData.name}: ${questionError.message}`)
+                    results.errors.push(`Erro ao criar questão: ${questionError.message}`)
                   } else {
                     console.log(`Questão criada com sucesso: ${question.id}`)
-                    
-                    // Criar teste se ainda não existir
-                    const { data: existingTest } = await supabase
-                      .from('tests')
-                      .select('id')
-                      .eq('lesson_id', newLesson.id)
-                      .single()
-                    
-                    let testId = existingTest?.id
-                    
-                    if (!testId) {
-                      const { data: newTest, error: testError } = await supabase
-                        .from('tests')
-                        .insert({
-                          title: `Teste - ${fullTitle}`,
-                          description: `Teste da aula ${lessonData.name}`,
-                          lesson_id: newLesson.id,
-                          duration: 60, // 60 minutos padrão
-                          passing_score: 70, // 70% padrão
-                          max_attempts: 3,
-                          is_active: true,
-                          created_by: user?.id,
-                          created_at: new Date().toISOString(),
-                          updated_at: new Date().toISOString()
-                        })
-                        .select()
-                        .single()
-                      
-                      if (testError) {
-                        console.error(`Erro ao criar teste: ${testError.message}`)
-                        results.errors.push(`Erro ao criar teste para ${lessonData.name}: ${testError.message}`)
-                      } else {
-                        testId = newTest.id
-                      }
-                    }
                     
                     // Associar questão ao teste
                     if (testId && question) {
@@ -993,12 +1064,15 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
                         .insert({
                           test_id: testId,
                           question_id: question.id,
-                          order_index: questionData.order || 0,
-                          points: questionData.points || 1
+                          order_index: questionData.order_index || 0,
+                          points_override: questionData.points || null
                         })
                       
                       if (testQuestionError) {
                         console.error(`Erro ao associar questão ao teste: ${testQuestionError.message}`)
+                        results.errors.push(`Erro ao associar questão ao teste: ${testQuestionError.message}`)
+                      } else {
+                        console.log(`Questão associada ao teste com sucesso`)
                       }
                     }
                   }
