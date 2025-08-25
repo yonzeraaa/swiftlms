@@ -16,13 +16,19 @@ function formatNumber(value: number, decimals: number = 2): number {
 }
 
 // Verificar se é número e converter se necessário
-function parseNumericValue(value: any): number | string {
+function parseNumericValue(value: any, isPercentage: boolean = false): number | string {
   if (typeof value === 'number') {
+    // Se for porcentagem, manter como está (já em formato decimal ou inteiro)
+    if (isPercentage && value <= 1) {
+      // Se menor que 1, assumir que já está em decimal, converter para porcentagem
+      return formatNumber(value * 100);
+    }
     return formatNumber(value);
   }
   
   if (typeof value === 'string') {
     // Remover símbolos de porcentagem
+    const hasPercent = value.includes('%');
     const cleanValue = value.replace('%', '').trim();
     
     // Tentar converter para número
@@ -31,9 +37,10 @@ function parseNumericValue(value: any): number | string {
     const numericValue = parseFloat(normalizedValue);
     
     if (!isNaN(numericValue)) {
-      // Se o valor original tinha %, retornar como decimal
-      if (value.includes('%')) {
-        return formatNumber(numericValue / 100, 4);
+      // Se o valor original tinha % ou é identificado como porcentagem
+      // retornar o valor numérico direto (não dividir por 100)
+      if (hasPercent || isPercentage) {
+        return formatNumber(numericValue);
       }
       return formatNumber(numericValue);
     }
@@ -51,6 +58,7 @@ export interface ExportData {
     period?: string;
     user?: string;
     filters?: Record<string, any>;
+    locale?: string;
   };
 }
 
@@ -117,7 +125,13 @@ export class ExcelExporter {
     
     // Adicionar dados (converter valores numéricos)
     const processedData = exportData.data.map(row => 
-      row.map(cell => parseNumericValue(cell))
+      row.map((cell, index) => {
+        // Verificar se o cabeçalho contém indicação de porcentagem
+        const header = exportData.headers[index]?.toLowerCase() || '';
+        const isPercentage = header.includes('taxa') || header.includes('porcentagem') || 
+                             header.includes('%') || header.includes('percentual');
+        return parseNumericValue(cell, isPercentage);
+      })
     );
     XLSX.utils.sheet_add_aoa(worksheet, processedData, { origin: `A${currentRow + 1}` });
     
@@ -177,7 +191,11 @@ export class ExcelExporter {
     const processedPivotData = pivotData.map(row => {
       const processedRow: any = {};
       Object.keys(row).forEach(key => {
-        processedRow[key] = parseNumericValue(row[key]);
+        const keyLower = key.toLowerCase();
+        const isPercentage = keyLower.includes('taxa') || keyLower.includes('porcentagem') || 
+                             keyLower.includes('%') || keyLower.includes('percentual') ||
+                             keyLower.includes('conclusão') || keyLower.includes('aprovação');
+        processedRow[key] = parseNumericValue(row[key], isPercentage);
       });
       return processedRow;
     });
@@ -375,10 +393,20 @@ export class ExcelExporter {
       
       // Métricas (processar valores numéricos)
       section.metrics.forEach(metric => {
-        const processedValue = parseNumericValue(metric.value);
+        const labelLower = metric.label.toLowerCase();
+        const isPercentage = labelLower.includes('taxa') || labelLower.includes('porcentagem') || 
+                             labelLower.includes('%') || labelLower.includes('percentual');
+        const processedValue = parseNumericValue(metric.value, isPercentage);
+        
+        // Se for porcentagem e o valor é numérico, adicionar formato de porcentagem
+        let displayValue = processedValue;
+        if (isPercentage && typeof processedValue === 'number') {
+          displayValue = `${processedValue}%`;
+        }
+        
         XLSX.utils.sheet_add_aoa(
           worksheet, 
-          [[metric.label, processedValue]], 
+          [[metric.label, displayValue]], 
           { origin: `A${currentRow + 1}` }
         );
         currentRow++;
@@ -471,7 +499,8 @@ export function exportToExcel(
     })),
     metadata: {
       date: new Date().toLocaleDateString('pt-BR'),
-      user: 'Sistema SwiftEDU'
+      user: 'Sistema SwiftEDU',
+      locale: 'pt-BR'
     }
   };
   
@@ -505,7 +534,8 @@ export function exportReportToExcel(
     ),
     metadata: {
       date: new Date().toLocaleDateString('pt-BR'),
-      user: 'Sistema SwiftEDU'
+      user: 'Sistema SwiftEDU',
+      locale: 'pt-BR'
     }
   };
   

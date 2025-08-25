@@ -202,6 +202,7 @@ interface CourseStructure {
         contentType: string
         contentUrl?: string
         description?: string
+        questions?: any[]
       }[]
     }[]
   }[]
@@ -440,13 +441,34 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
                 errors: []
               })
               
-              // Determinar tipo de conteúdo baseado no mimeType
+              // Determinar tipo de conteúdo baseado no mimeType e nome do arquivo
               // IMPORTANTE: O banco só aceita 'video', 'text', 'quiz' ou 'assignment'
               let contentType = 'text' // Padrão para a maioria dos arquivos
               const mimeType = lessonItem.mimeType.toLowerCase()
+              const fileName = lessonItem.name.toLowerCase()
               
+              // Detectar testes/quizzes pelo nome do arquivo
+              const isTest = fileName.includes('teste') || 
+                            fileName.includes('test') || 
+                            fileName.includes('quiz') || 
+                            fileName.includes('prova') || 
+                            fileName.includes('avaliação') || 
+                            fileName.includes('avaliacao') || 
+                            fileName.includes('simulado') || 
+                            fileName.includes('exercício') || 
+                            fileName.includes('exercicio') || 
+                            fileName.includes('questões') || 
+                            fileName.includes('questoes') || 
+                            fileName.includes('multipla escolha') || 
+                            fileName.includes('verdadeiro falso') || 
+                            fileName.includes('v ou f')
+              
+              if (isTest) {
+                contentType = 'quiz'
+                console.log(`        ✓ Detectado como TESTE/QUIZ: ${lessonItem.name}`)
+              }
               // Arquivos de vídeo
-              if (mimeType.includes('video') || 
+              else if (mimeType.includes('video') || 
                   mimeType === 'video/mp4' || 
                   mimeType === 'video/mpeg' || 
                   mimeType === 'video/quicktime' || 
@@ -481,14 +503,17 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
                 lessonName = lessonFileName
               }
               
-              const lesson = {
+              const lesson: any = {
                 name: lessonName,
                 code: lessonCode,
                 order: actualLessonIndex + 1,
                 content: undefined as string | undefined,
                 contentType: contentType,
                 contentUrl: driveLink,
-                description: `Aula ${lessonCode}: ${lessonName}`
+                description: `Aula ${lessonCode}: ${lessonName}`,
+                // Se for quiz, marcar para processar questões depois
+                needsQuestionProcessing: contentType === 'quiz',
+                questions: undefined as any[] | undefined
               }
               actualLessonIndex++
 
@@ -514,6 +539,13 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
                     mimeType: 'text/plain'
                   })
                   lesson.content = content.data as string
+                  
+                  // Se for quiz, processar questões do conteúdo
+                  if (contentType === 'quiz' && lesson.content) {
+                    console.log(`        Processando questões do teste: ${lessonItem.name}`)
+                    lesson.questions = await extractQuestionsFromContent(lesson.content)
+                    console.log(`        Questões encontradas: ${lesson.questions?.length || 0}`)
+                  }
                 } else if (lessonItem.mimeType === 'application/vnd.google-apps.presentation') {
                   // Google Slides - exportar como texto
                   const content = await drive.files.export({
@@ -614,7 +646,87 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
   }
 }
 
-async function importToDatabase(structure: CourseStructure, courseId: string, supabase: any, importId?: string, userId?: string) {
+// Função para extrair questões de um conteúdo de texto
+async function extractQuestionsFromContent(content: string): Promise<any[]> {
+  const questions = []
+  const lines = content.split('\n')
+  
+  let currentQuestion: any = null
+  let questionNumber = 0
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    
+    // Detectar início de nova questão (formato: "1." ou "Questão 1" ou "Q1")
+    const questionMatch = line.match(/^(\d+[\.)\s]|Questão\s+\d+|Q\d+)/i)
+    
+    if (questionMatch) {
+      // Salvar questão anterior se existir
+      if (currentQuestion && currentQuestion.question) {
+        questions.push(currentQuestion)
+      }
+      
+      questionNumber++
+      
+      // Extrair o texto da questão
+      const questionText = line.replace(questionMatch[0], '').trim()
+      
+      // Detectar tipo de questão
+      let questionType = 'multiple_choice' // padrão
+      
+      if (line.toLowerCase().includes('verdadeiro') || 
+          line.toLowerCase().includes('falso') || 
+          line.toLowerCase().includes('v ou f')) {
+        questionType = 'true_false'
+      }
+      
+      currentQuestion = {
+        question: questionText,
+        type: questionType,
+        options: [],
+        correct_answer: null,
+        points: 1,
+        order: questionNumber
+      }
+    }
+    // Detectar opções de resposta (formato: "a)" ou "A." ou "(a)")
+    else if (currentQuestion && line.match(/^[a-e][\.)\s\)]|^\([a-e]\)/i)) {
+      const optionText = line.replace(/^[a-e][\.)\s\)]|^\([a-e]\)/i, '').trim()
+      
+      // Verificar se é a resposta correta (marcada com * ou CORRETA ou similar)
+      const isCorrect = line.includes('*') || 
+                       line.toLowerCase().includes('correta') || 
+                       line.toLowerCase().includes('correct') ||
+                       line.toLowerCase().includes('✓')
+      
+      currentQuestion.options.push(optionText.replace(/[*✓]|\(correta\)|\(correct\)/gi, '').trim())
+      
+      if (isCorrect) {
+        currentQuestion.correct_answer = currentQuestion.options.length - 1
+      }
+    }
+    // Detectar resposta para questões verdadeiro/falso
+    else if (currentQuestion && currentQuestion.type === 'true_false') {
+      if (line.toLowerCase().includes('resposta:') || 
+          line.toLowerCase().includes('gabarito:')) {
+        if (line.toLowerCase().includes('verdadeiro') || line.toLowerCase().includes('v')) {
+          currentQuestion.correct_answer = true
+        } else if (line.toLowerCase().includes('falso') || line.toLowerCase().includes('f')) {
+          currentQuestion.correct_answer = false
+        }
+      }
+    }
+  }
+  
+  // Adicionar última questão se existir
+  if (currentQuestion && currentQuestion.question) {
+    questions.push(currentQuestion)
+  }
+  
+  return questions
+}
+
+async function importToDatabase(structure: CourseStructure, courseId: string, supabase: any, importId?: string, userId?: string, user?: any) {
   const results = {
     modules: 0,
     subjects: 0,
@@ -809,6 +921,94 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
               continue
             }
             
+            // Se for quiz e tem questões, salvar no banco de questões
+            if (lessonData.contentType === 'quiz' && lessonData.questions && lessonData.questions.length > 0) {
+              console.log(`Salvando ${lessonData.questions.length} questões para a aula ${lessonData.name}`)
+              
+              for (const questionData of lessonData.questions) {
+                try {
+                  // Criar a questão no banco
+                  const { data: question, error: questionError } = await supabase
+                    .from('questions')
+                    .insert({
+                      question: questionData.question,
+                      type: questionData.type,
+                      options: questionData.options || [],
+                      correct_answer: questionData.correct_answer,
+                      points: questionData.points || 1,
+                      difficulty: 'medium', // Padrão
+                      subject_id: subjectId,
+                      created_by: user?.id,
+                      created_at: new Date().toISOString(),
+                      updated_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single()
+                  
+                  if (questionError) {
+                    console.error(`Erro ao criar questão: ${questionError.message}`)
+                    results.errors.push(`Erro ao criar questão para ${lessonData.name}: ${questionError.message}`)
+                  } else {
+                    console.log(`Questão criada com sucesso: ${question.id}`)
+                    
+                    // Criar teste se ainda não existir
+                    const { data: existingTest } = await supabase
+                      .from('tests')
+                      .select('id')
+                      .eq('lesson_id', newLesson.id)
+                      .single()
+                    
+                    let testId = existingTest?.id
+                    
+                    if (!testId) {
+                      const { data: newTest, error: testError } = await supabase
+                        .from('tests')
+                        .insert({
+                          title: `Teste - ${fullTitle}`,
+                          description: `Teste da aula ${lessonData.name}`,
+                          lesson_id: newLesson.id,
+                          duration: 60, // 60 minutos padrão
+                          passing_score: 70, // 70% padrão
+                          max_attempts: 3,
+                          is_active: true,
+                          created_by: user?.id,
+                          created_at: new Date().toISOString(),
+                          updated_at: new Date().toISOString()
+                        })
+                        .select()
+                        .single()
+                      
+                      if (testError) {
+                        console.error(`Erro ao criar teste: ${testError.message}`)
+                        results.errors.push(`Erro ao criar teste para ${lessonData.name}: ${testError.message}`)
+                      } else {
+                        testId = newTest.id
+                      }
+                    }
+                    
+                    // Associar questão ao teste
+                    if (testId && question) {
+                      const { error: testQuestionError } = await supabase
+                        .from('test_questions')
+                        .insert({
+                          test_id: testId,
+                          question_id: question.id,
+                          order_index: questionData.order || 0,
+                          points: questionData.points || 1
+                        })
+                      
+                      if (testQuestionError) {
+                        console.error(`Erro ao associar questão ao teste: ${testQuestionError.message}`)
+                      }
+                    }
+                  }
+                } catch (err) {
+                  console.error('Erro ao processar questão:', err)
+                  results.errors.push(`Erro ao processar questão: ${err}`)
+                }
+              }
+            }
+            
             results.lessons++
           }
         }
@@ -906,7 +1106,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Importar para o banco de dados
-    const results = await importToDatabase(structure, courseId, supabase, importId, user.id)
+    const results = await importToDatabase(structure, courseId, supabase, importId, user.id, user)
 
     // Atualizar progresso final
     await updateImportProgress(supabase, importId, user.id, courseId, {

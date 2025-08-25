@@ -161,114 +161,170 @@ export default function ReportsPage() {
     setGeneratingReport(null)
   }
 
-  const generateGradesHistoryReport = () => {
-    // Dados simulados para o relatório
-    const gradesData = [
-      {
-        student: 'João Silva',
-        email: 'joao.silva@email.com',
-        course: 'Fundamentos de Engenharia Naval',
-        subject: 'Engenharia Naval Básica',
-        test: 'Avaliação de Hidrostática',
-        type: 'Quiz',
-        date: '2024-02-15',
-        grade: 85,
-        status: 'Aprovado'
-      },
-      {
-        student: 'Maria Santos',
-        email: 'maria.santos@email.com',
-        course: 'Fundamentos de Engenharia Naval',
-        subject: 'Engenharia Naval Básica',
-        test: 'Avaliação de Hidrostática',
-        type: 'Quiz',
-        date: '2024-02-15',
-        grade: 92,
-        status: 'Aprovado'
-      },
-      {
-        student: 'Pedro Oliveira',
-        email: 'pedro.oliveira@email.com',
-        course: 'Propulsão Naval',
-        subject: 'Sistemas de Propulsão Marítima',
-        test: 'Prova Final - Propulsão Naval',
-        type: 'Prova',
-        date: '2024-02-20',
-        grade: 78,
-        status: 'Aprovado'
-      },
-      {
-        student: 'Ana Costa',
-        email: 'ana.costa@email.com',
-        course: 'Normas de Segurança',
-        subject: 'Segurança Marítima e SOLAS',
-        test: 'Teste de SOLAS - Módulo 1',
-        type: 'Quiz',
-        date: '2024-02-25',
-        grade: 95,
-        status: 'Aprovado'
-      },
-      {
-        student: 'Carlos Ferreira',
-        email: 'carlos.ferreira@email.com',
-        course: 'Fundamentos de Engenharia Naval',
-        subject: 'Engenharia Naval Básica',
-        test: 'Simulado de Estabilidade',
-        type: 'Simulado',
-        date: '2024-03-01',
-        grade: 68,
-        status: 'Aprovado'
+  const generateGradesHistoryReport = async () => {
+    setGeneratingReport('grades')
+    
+    try {
+      // Buscar dados reais do banco
+      const { data: testAttempts, error: resultsError } = await supabase
+        .from('test_attempts')
+        .select(`
+          *,
+          test:tests!inner(
+            title,
+            course_id,
+            subject_id
+          ),
+          user:profiles!test_attempts_user_id_fkey(
+            full_name,
+            email
+          )
+        `)
+        .gte('started_at', dateRange.start)
+        .lte('started_at', dateRange.end)
+        .order('started_at', { ascending: false })
+      
+      if (resultsError) {
+        console.error('Erro ao buscar resultados de testes:', resultsError)
+        alert('Erro ao buscar dados de notas')
+        setGeneratingReport(null)
+        return
       }
-    ]
+      
+      if (!testAttempts || testAttempts.length === 0) {
+        alert('Nenhum resultado de teste encontrado no período selecionado')
+        setGeneratingReport(null)
+        return
+      }
+      
+      // Buscar dados dos cursos e disciplinas
+      const courseIds = [...new Set(testAttempts.map(r => r.test?.course_id).filter((id): id is string => Boolean(id)))]
+      const subjectIds = [...new Set(testAttempts.map(r => r.test?.subject_id).filter((id): id is string => Boolean(id)))]
+      
+      const { data: courses } = await supabase
+        .from('courses')
+        .select('id, title')
+        .in('id', courseIds)
+      
+      const { data: subjects } = await supabase
+        .from('subjects')
+        .select('id, name')
+        .in('id', subjectIds)
+      
+      // Mapear cursos e disciplinas por ID
+      const courseMap = new Map()
+      courses?.forEach(course => {
+        courseMap.set(course.id, course.title)
+      })
+      
+      const subjectMap = new Map()
+      subjects?.forEach(subject => {
+        subjectMap.set(subject.id, subject.name)
+      })
+      
+      // Processar dados para o relatório
+      const gradesData = testAttempts.map(attempt => {
+        return {
+          student: attempt.user?.full_name || 'Aluno desconhecido',
+          email: attempt.user?.email || '',
+          course: courseMap.get(attempt.test?.course_id) || 'Curso não definido',
+          subject: subjectMap.get(attempt.test?.subject_id) || 'Disciplina não definida',
+          test: attempt.test?.title || 'Teste sem título',
+          type: 'Quiz',
+          date: attempt.started_at ? new Date(attempt.started_at).toLocaleDateString('pt-BR') : '',
+          grade: Number(attempt.score) || 0,
+          status: (Number(attempt.score) || 0) >= 70 ? 'Aprovado' : 'Reprovado'
+        }
+      })
+      
+      // Calcular estatísticas
+      const totalTests = gradesData.length
+      const avgGrade = totalTests > 0 
+        ? gradesData.reduce((sum, g) => sum + g.grade, 0) / totalTests 
+        : 0
+      const approvalRate = totalTests > 0
+        ? (gradesData.filter(g => g.status === 'Aprovado').length / totalTests) * 100
+        : 0
+      const maxGrade = totalTests > 0 ? Math.max(...gradesData.map(g => g.grade)) : 0
+      const minGrade = totalTests > 0 ? Math.min(...gradesData.map(g => g.grade)) : 0
+      
+      // Agrupar por tipo de teste
+      const testTypes = new Map()
+      gradesData.forEach(g => {
+        if (!testTypes.has(g.type)) {
+          testTypes.set(g.type, { count: 0, total: 0 })
+        }
+        const typeData = testTypes.get(g.type)
+        typeData.count++
+        typeData.total += g.grade
+      })
 
     // Configuração da tabela dinâmica
     const pivotConfig: PivotTableConfig = {
-      rows: ['course', 'subject'],
-      columns: ['type'],
+      rows: ['Curso', 'Disciplina'],
+      columns: ['Tipo'],
       values: [
-        { field: 'grade', aggregation: 'average' },
-        { field: 'grade', aggregation: 'count' }
+        { field: 'Nota', aggregation: 'average' },
+        { field: 'Nota', aggregation: 'count' }
       ],
-      filters: ['status']
+      filters: ['Status']
     }
 
-    // Dados de resumo
-    const summary = {
-      title: 'Resumo do Histórico de Notas',
-      sections: [
+      // Dados de resumo
+      const summary = {
+        title: 'Resumo do Histórico de Notas',
+        sections: [
+          {
+            sectionTitle: 'Estatísticas Gerais',
+            metrics: [
+              { label: 'Total de Avaliações', value: totalTests },
+              { label: 'Média Geral', value: avgGrade.toFixed(1) },
+              { label: 'Taxa de Aprovação (%)', value: approvalRate.toFixed(1) },
+              { label: 'Maior Nota', value: maxGrade },
+              { label: 'Menor Nota', value: minGrade }
+            ]
+          },
+          {
+            sectionTitle: 'Por Tipo de Avaliação',
+            metrics: Array.from(testTypes.entries()).map(([type, data]) => ({
+              label: type,
+              value: `${data.count} avaliações (média: ${(data.total / data.count).toFixed(1)})`
+            }))
+          }
+        ]
+      }
+
+      // Preparar dados para exportação com campos em português
+      const gradesDataPT = gradesData.map(g => ({
+        'Aluno': g.student,
+        'Email': g.email,
+        'Curso': g.course,
+        'Disciplina': g.subject,
+        'Teste': g.test,
+        'Tipo': g.type,
+        'Data': g.date,
+        'Nota': g.grade,
+        'Status': g.status
+      }))
+      
+      // Exportar para Excel com múltiplas abas
+      exportReportToExcel(
         {
-          sectionTitle: 'Estatísticas Gerais',
-          metrics: [
-            { label: 'Total de Avaliações', value: gradesData.length },
-            { label: 'Média Geral', value: '83.6' },
-            { label: 'Taxa de Aprovação', value: '100%' },
-            { label: 'Maior Nota', value: 95 },
-            { label: 'Menor Nota', value: 68 }
-          ]
+          mainData: gradesDataPT,
+          headers: ['Aluno', 'Email', 'Curso', 'Disciplina', 'Teste', 'Tipo', 'Data', 'Nota', 'Status'],
+          pivotConfig,
+          summary
         },
-        {
-          sectionTitle: 'Por Tipo de Avaliação',
-          metrics: [
-            { label: 'Quiz', value: '3 avaliações (média: 90.7)' },
-            { label: 'Prova', value: '1 avaliação (média: 78.0)' },
-            { label: 'Simulado', value: '1 avaliação (média: 68.0)' }
-          ]
-        }
-      ]
+        `historico_notas_${new Date().toISOString().split('T')[0]}.xlsx`
+      )
+
+      alert(t('reports.gradesReportGenerated'))
+    } catch (error) {
+      console.error('Erro ao gerar relatório de notas:', error)
+      alert('Erro ao gerar relatório de notas')
+    } finally {
+      setGeneratingReport(null)
     }
-
-    // Exportar para Excel com múltiplas abas
-    exportReportToExcel(
-      {
-        mainData: gradesData,
-        headers: ['student', 'email', 'course', 'subject', 'test', 'type', 'date', 'grade', 'status'],
-        pivotConfig,
-        summary
-      },
-      `historico_notas_${new Date().toISOString().split('T')[0]}.xlsx`
-    )
-
-    alert(t('reports.gradesReportGenerated'))
   }
 
   const generateGradesHistoryReportCSV = () => {
@@ -363,21 +419,95 @@ export default function ReportsPage() {
     alert(t('reports.gradesReportGenerated'))
   }
 
-  const generateEnrollmentAndCompletionReport = () => {
-    // Dados simulados
-    const enrollmentData = [
-      { student: 'João Silva', email: 'joao.silva@email.com', course: 'Fundamentos de Engenharia Naval', date: '2024-02-01', status: 'Ativo', progress: 72, lessons_completed: 15, total_lessons: 20 },
-      { student: 'Maria Santos', email: 'maria.santos@email.com', course: 'Propulsão Naval', date: '2024-02-05', status: 'Ativo', progress: 85, lessons_completed: 17, total_lessons: 20 },
-      { student: 'Pedro Oliveira', email: 'pedro.oliveira@email.com', course: 'Normas de Segurança', date: '2024-02-10', status: 'Ativo', progress: 60, lessons_completed: 12, total_lessons: 20 },
-      { student: 'Ana Costa', email: 'ana.costa@email.com', course: 'Fundamentos de Engenharia Naval', date: '2024-02-15', status: 'Ativo', progress: 92, lessons_completed: 18, total_lessons: 20 },
-      { student: 'Carlos Ferreira', email: 'carlos.ferreira@email.com', course: 'Propulsão Naval', date: '2024-02-20', status: 'Ativo', progress: 45, lessons_completed: 9, total_lessons: 20 }
-    ]
-
-    const completionData = [
-      { student: 'Lucas Mendes', email: 'lucas.mendes@email.com', course: 'Fundamentos de Engenharia Naval', enrollment_date: '2024-01-15', completion_date: '2024-02-28', final_grade: 87, certificate: 'SIM', total_hours: 40 },
-      { student: 'Juliana Rocha', email: 'juliana.rocha@email.com', course: 'Normas de Segurança', enrollment_date: '2024-01-20', completion_date: '2024-03-01', final_grade: 92, certificate: 'SIM', total_hours: 35 },
-      { student: 'Roberto Lima', email: 'roberto.lima@email.com', course: 'Propulsão Naval', enrollment_date: '2024-01-25', completion_date: '2024-03-05', final_grade: 78, certificate: 'SIM', total_hours: 45 }
-    ]
+  const generateEnrollmentAndCompletionReport = async () => {
+    setGeneratingReport('enrollments')
+    
+    try {
+      // Buscar matrículas reais do período
+      const { data: enrollments, error: enrollError } = await supabase
+        .from('enrollments')
+        .select(`
+          *,
+          course:courses!inner(title),
+          user:profiles!enrollments_user_id_fkey(full_name, email)
+        `)
+        .gte('enrolled_at', dateRange.start)
+        .lte('enrolled_at', dateRange.end)
+        .order('enrolled_at', { ascending: false })
+      
+      // Buscar progresso das lições
+      const enrollmentIds = enrollments?.map(e => e.id) || []
+      const { data: lessonProgress } = await supabase
+        .from('lesson_progress')
+        .select('*')
+        .in('enrollment_id', enrollmentIds)
+      
+      if (enrollError) {
+        console.error('Erro ao buscar matrículas:', enrollError)
+        alert('Erro ao buscar dados de matrículas')
+        setGeneratingReport(null)
+        return
+      }
+      
+      // Buscar conclusões do período
+      const { data: completedEnrollments, error: completedError } = await supabase
+        .from('enrollments')
+        .select(`
+          *,
+          course:courses!inner(title),
+          user:profiles!enrollments_user_id_fkey(full_name, email),
+          certificates(*)
+        `)
+        .eq('status', 'completed')
+        .not('completed_at', 'is', null)
+        .gte('completed_at', dateRange.start)
+        .lte('completed_at', dateRange.end)
+        .order('completed_at', { ascending: false })
+      
+      if (completedError) {
+        console.error('Erro ao buscar conclusões:', completedError)
+      }
+      
+      // Processar dados de matrículas
+      const enrollmentData = (enrollments || []).map(e => {
+        // Calcular progresso baseado em lesson_progress
+        const enrollmentProgress = lessonProgress?.filter(lp => lp.enrollment_id === e.id) || []
+        const completedLessons = enrollmentProgress.filter(lp => lp.is_completed).length
+        const totalLessons = enrollmentProgress.length
+        const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
+        
+        return {
+          student: e.user?.full_name || 'Aluno desconhecido',
+          email: e.user?.email || '',
+          course: e.course?.title || 'Curso não definido',
+          date: e.enrolled_at ? new Date(e.enrolled_at).toLocaleDateString('pt-BR') : '',
+          status: e.status === 'active' ? 'Ativo' : e.status === 'completed' ? 'Concluído' : 'Inativo',
+          progress: progressPercentage,
+          lessons_completed: completedLessons,
+          total_lessons: totalLessons
+        }
+      })
+      
+      // Processar dados de conclusões
+      const completionData = (completedEnrollments || []).map(e => {
+        const hasCertificate = e.certificates && e.certificates.length > 0
+        return {
+          student: e.user?.full_name || 'Aluno desconhecido',
+          email: e.user?.email || '',
+          course: e.course?.title || 'Curso não definido',
+          enrollment_date: e.enrolled_at ? new Date(e.enrolled_at).toLocaleDateString('pt-BR') : '',
+          completion_date: e.completed_at ? new Date(e.completed_at).toLocaleDateString('pt-BR') : '',
+          final_grade: e.progress_percentage || 0,
+          certificate: hasCertificate ? 'SIM' : 'NÃO',
+          total_hours: 40 // Valor padrão, pode ser calculado baseado em dados reais
+        }
+      })
+      
+      if (enrollmentData.length === 0 && completionData.length === 0) {
+        alert('Nenhum dado de matrícula ou conclusão encontrado no período')
+        setGeneratingReport(null)
+        return
+      }
 
     // Criar exportador Excel
     const exporter = new ExcelExporter()
@@ -464,8 +594,14 @@ export default function ReportsPage() {
       ]
     })
 
-    exporter.download(`relatorio_matriculas_conclusoes_${new Date().toISOString().split('T')[0]}.xlsx`)
-    alert('Relatório de Matrículas e Conclusões gerado com sucesso!')
+      exporter.download(`relatorio_matriculas_conclusoes_${new Date().toISOString().split('T')[0]}.xlsx`)
+      alert('Relatório de Matrículas e Conclusões gerado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error)
+      alert('Erro ao gerar relatório de matrículas')
+    } finally {
+      setGeneratingReport(null)
+    }
   }
 
   const generateEnrollmentAndCompletionReportCSV = () => {
@@ -530,32 +666,169 @@ export default function ReportsPage() {
     alert('Relatório de Matrículas e Conclusões gerado com sucesso!')
   }
 
-  const generateAccessReport = () => {
-    // Dados simulados
-    const studentAccessData = [
-      { name: 'João Silva', email: 'joao.silva@email.com', lastAccess: '2024-03-15 14:30', totalAccess: 156, totalHours: 48.5, avgSession: 18.6, coursesAccessed: 3, avgCompletion: 72, device: 'Desktop', browser: 'Chrome' },
-      { name: 'Maria Santos', email: 'maria.santos@email.com', lastAccess: '2024-03-15 09:15', totalAccess: 234, totalHours: 67.2, avgSession: 17.2, coursesAccessed: 4, avgCompletion: 85, device: 'Mobile', browser: 'Safari' },
-      { name: 'Pedro Oliveira', email: 'pedro.oliveira@email.com', lastAccess: '2024-03-14 20:45', totalAccess: 98, totalHours: 32.1, avgSession: 19.6, coursesAccessed: 2, avgCompletion: 60, device: 'Desktop', browser: 'Firefox' },
-      { name: 'Ana Costa', email: 'ana.costa@email.com', lastAccess: '2024-03-15 16:20', totalAccess: 312, totalHours: 89.7, avgSession: 17.2, coursesAccessed: 5, avgCompletion: 92, device: 'Tablet', browser: 'Chrome' },
-      { name: 'Carlos Ferreira', email: 'carlos.ferreira@email.com', lastAccess: '2024-03-13 11:00', totalAccess: 87, totalHours: 21.3, avgSession: 14.7, coursesAccessed: 2, avgCompletion: 45, device: 'Mobile', browser: 'Chrome' }
-    ]
-
-    const dailyPattern = [
-      { day: 'Segunda-feira', accesses: 542, peakUsers: 123, peakTime: '19:00-20:00', avgDuration: 25.3 },
-      { day: 'Terça-feira', accesses: 498, peakUsers: 115, peakTime: '20:00-21:00', avgDuration: 23.7 },
-      { day: 'Quarta-feira', accesses: 523, peakUsers: 118, peakTime: '19:00-20:00', avgDuration: 24.1 },
-      { day: 'Quinta-feira', accesses: 467, peakUsers: 102, peakTime: '21:00-22:00', avgDuration: 22.5 },
-      { day: 'Sexta-feira', accesses: 321, peakUsers: 78, peakTime: '18:00-19:00', avgDuration: 19.8 },
-      { day: 'Sábado', accesses: 234, peakUsers: 56, peakTime: '10:00-11:00', avgDuration: 28.4 },
-      { day: 'Domingo', accesses: 198, peakUsers: 43, peakTime: '20:00-21:00', avgDuration: 30.2 }
-    ]
-
-    const courseEngagement = [
-      { course: 'Fundamentos de Engenharia Naval', activeStudents: 145, avgTime: 24.3, completionRate: 78, avgRating: 4.5, totalViews: 3456, totalDownloads: 234 },
-      { course: 'Propulsão Naval', activeStudents: 98, avgTime: 18.7, completionRate: 65, avgRating: 4.2, totalViews: 2134, totalDownloads: 156 },
-      { course: 'Normas de Segurança', activeStudents: 234, avgTime: 15.2, completionRate: 89, avgRating: 4.7, totalViews: 5678, totalDownloads: 456 },
-      { course: 'Manutenção Naval', activeStudents: 76, avgTime: 21.5, completionRate: 71, avgRating: 4.3, totalViews: 1567, totalDownloads: 98 }
-    ]
+  const generateAccessReport = async () => {
+    setGeneratingReport('access')
+    
+    try {
+      // Buscar dados de atividade dos alunos
+      const { data: activityLogs, error: activityError } = await supabase
+        .from('activity_logs')
+        .select(`
+          *,
+          user:profiles!activity_logs_user_id_fkey(full_name, email)
+        `)
+        .gte('created_at', dateRange.start)
+        .lte('created_at', dateRange.end)
+        .order('created_at', { ascending: false })
+      
+      if (activityError) {
+        console.error('Erro ao buscar atividades:', activityError)
+      }
+      
+      // Buscar progresso das lições dos alunos
+      const { data: lessonProgressData, error: progressError } = await supabase
+        .from('lesson_progress')
+        .select(`
+          *,
+          enrollment:enrollments!inner(
+            user_id,
+            course:courses(title),
+            user:profiles!enrollments_user_id_fkey(full_name, email)
+          ),
+          lesson:lessons(title)
+        `)
+        .gte('last_accessed_at', dateRange.start)
+        .lte('last_accessed_at', dateRange.end)
+      
+      if (progressError) {
+        console.error('Erro ao buscar progresso:', progressError)
+      }
+      
+      // Agrupar dados por usuário
+      const userAccessMap: Map<string, any> = new Map()
+      
+      (activityLogs || []).forEach((activity: any) => {
+        const userId = activity.user_id
+        if (!userId) return
+        
+        if (!userAccessMap.has(userId)) {
+          userAccessMap.set(userId, {
+            name: activity.user?.full_name || 'Usuário desconhecido',
+            email: activity.user?.email || '',
+            activities: [],
+            lastAccess: null,
+            totalActions: 0
+          })
+        }
+        
+        const userData = userAccessMap.get(userId)
+        userData.activities.push(activity)
+        userData.totalActions++
+        
+        // Atualizar último acesso
+        const activityDate = new Date(activity.created_at)
+        if (!userData.lastAccess || activityDate > userData.lastAccess) {
+          userData.lastAccess = activityDate
+        }
+      })
+      
+      // Processar dados para o relatório
+      const studentAccessData = Array.from(userAccessMap.values()).map((user: any) => {
+        const coursesSet = new Set()
+        let totalProgress = 0
+        let progressCount = 0
+        
+        (lessonProgressData || []).forEach((progress: any) => {
+          if (progress.enrollment?.user?.email === user.email) {
+            coursesSet.add(progress.enrollment.course?.title)
+            if (progress.is_completed) {
+              totalProgress += 100
+            } else if (progress.progress_percentage) {
+              totalProgress += progress.progress_percentage
+            }
+            progressCount++
+          }
+        })
+        
+        return {
+          name: user.name,
+          email: user.email,
+          lastAccess: user.lastAccess ? user.lastAccess.toLocaleString('pt-BR') : 'Nunca',
+          totalAccess: user.totalActions,
+          totalHours: Math.round(user.totalActions * 0.5), // Estimativa
+          avgSession: 15, // Média estimada em minutos
+          coursesAccessed: coursesSet.size,
+          avgCompletion: progressCount > 0 ? Math.round(totalProgress / progressCount) : 0,
+          device: 'Desktop',
+          browser: 'Chrome'
+        }
+      }).filter((user: any) => user.totalAccess > 0)
+      
+      // Calcular padrão de acesso diário
+      const dayAccessMap: Map<string, any> = new Map()
+      const daysOfWeek = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
+      
+      daysOfWeek.forEach(day => {
+        dayAccessMap.set(day, { accesses: 0, users: new Set() })
+      })
+      
+      (activityLogs || []).forEach((activity: any) => {
+        const date = new Date(activity.created_at)
+        const dayName = daysOfWeek[date.getDay()]
+        const dayData = dayAccessMap.get(dayName)
+        
+        if (dayData) {
+          dayData.accesses++
+          dayData.users.add(activity.user_id)
+        }
+      })
+      
+      const dailyPattern = Array.from(dayAccessMap.entries()).map(([day, data]: [string, any]) => ({
+        day,
+        accesses: data.accesses,
+        peakUsers: data.users.size,
+        peakTime: '19:00-20:00',
+        avgDuration: 20 // Média estimada
+      }))
+      
+      // Engajamento por curso
+      const courseEngagementMap: Map<string, any> = new Map()
+      
+      (lessonProgressData || []).forEach((progress: any) => {
+        const courseTitle = progress.enrollment?.course?.title
+        if (courseTitle) {
+          if (!courseEngagementMap.has(courseTitle)) {
+            courseEngagementMap.set(courseTitle, {
+              students: new Set(),
+              completedLessons: 0,
+              totalLessons: 0
+            })
+          }
+          
+          const courseData = courseEngagementMap.get(courseTitle)
+          courseData.students.add(progress.enrollment.user_id)
+          courseData.totalLessons++
+          if (progress.is_completed) {
+            courseData.completedLessons++
+          }
+        }
+      })
+      
+      const courseEngagement = Array.from(courseEngagementMap.entries()).map(([course, data]: [string, any]) => ({
+        course,
+        activeStudents: data.students.size,
+        avgTime: 20, // Horas estimadas
+        completionRate: data.totalLessons > 0 ? Math.round((data.completedLessons / data.totalLessons) * 100) : 0,
+        avgRating: 4.5,
+        totalViews: data.totalLessons,
+        totalDownloads: 0
+      }))
+      
+      if (studentAccessData.length === 0 && courseEngagement.length === 0) {
+        alert('Nenhum dado de acesso encontrado no período')
+        setGeneratingReport(null)
+        return
+      }
 
     // Criar exportador Excel
     const exporter = new ExcelExporter()
@@ -663,8 +936,14 @@ export default function ReportsPage() {
       ]
     })
 
-    exporter.download(`relatorio_acesso_alunos_${new Date().toISOString().split('T')[0]}.xlsx`)
-    alert('Relatório de Estatísticas de Acesso dos Alunos gerado com sucesso!')
+      exporter.download(`relatorio_acesso_alunos_${new Date().toISOString().split('T')[0]}.xlsx`)
+      alert('Relatório de Estatísticas de Acesso dos Alunos gerado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao gerar relatório de acesso:', error)
+      alert('Erro ao gerar relatório de acesso')
+    } finally {
+      setGeneratingReport(null)
+    }
   }
 
   const generateAccessReportCSV = () => {
