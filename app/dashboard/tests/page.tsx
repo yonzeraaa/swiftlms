@@ -192,7 +192,7 @@ export default function TestsPage() {
     if (!testToDelete) return
 
     try {
-      // Check if test has attempts
+      // Primeiro verificar se há tentativas
       const { data: attempts, error: attemptsError } = await supabase
         .from('test_attempts')
         .select('id')
@@ -201,34 +201,42 @@ export default function TestsPage() {
 
       if (attemptsError) throw attemptsError
 
+      // Se houver tentativas, primeiro deletá-las
       if (attempts && attempts.length > 0) {
-        // Has attempts, soft delete only
-        const { error } = await supabase
-          .from('tests')
-          .update({ is_published: false })
-          .eq('id', testToDelete.id)
-
-        if (error) throw error
-        showToast({ type: 'info', title: 'Teste despublicado (possui tentativas)' })
-      } else {
-        // No attempts, can delete
-        // First delete test questions
-        const { error: questionsError } = await supabase
-          .from('test_questions')
+        const { error: deleteAttemptsError } = await supabase
+          .from('test_attempts')
           .delete()
           .eq('test_id', testToDelete.id)
 
-        if (questionsError) throw questionsError
-
-        // Then delete test
-        const { error } = await supabase
-          .from('tests')
-          .delete()
-          .eq('id', testToDelete.id)
-
-        if (error) throw error
-        showToast({ type: 'success', title: 'Teste excluído com sucesso!' })
+        if (deleteAttemptsError) {
+          // Se não conseguir deletar tentativas, avisar o usuário
+          showToast({ 
+            type: 'error', 
+            title: 'Não foi possível excluir o teste pois existem tentativas de alunos associadas' 
+          })
+          setShowDeleteModal(false)
+          setTestToDelete(null)
+          return
+        }
       }
+
+      // Deletar associações de questões
+      const { error: questionsError } = await supabase
+        .from('test_questions')
+        .delete()
+        .eq('test_id', testToDelete.id)
+
+      if (questionsError) throw questionsError
+
+      // Finalmente deletar o teste
+      const { error } = await supabase
+        .from('tests')
+        .delete()
+        .eq('id', testToDelete.id)
+
+      if (error) throw error
+      
+      showToast({ type: 'success', title: 'Teste excluído permanentemente!' })
 
       setShowDeleteModal(false)
       setTestToDelete(null)
@@ -651,7 +659,7 @@ export default function TestsPage() {
                         <button 
                           className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
                           onClick={() => handleTogglePublish(test)}
-                          title={test.is_published ? 'Despublicar' : 'Publicar'}
+                          title={test.is_published ? 'Despublicar - Ocultar dos alunos sem excluir' : 'Publicar - Tornar disponível para alunos'}
                         >
                           {test.is_published ? (
                             <ToggleRight className="w-4 h-4" />
@@ -667,12 +675,12 @@ export default function TestsPage() {
                           <Copy className="w-4 h-4" />
                         </button>
                         <button 
-                          className="p-2 text-red-400 hover:text-red-200 hover:bg-navy-700/50 rounded-lg transition-colors"
+                          className="p-2 text-red-400 hover:text-red-200 hover:bg-red-900/20 rounded-lg transition-colors"
                           onClick={() => {
                             setTestToDelete(test)
                             setShowDeleteModal(true)
                           }}
-                          title="Excluir"
+                          title="Excluir permanentemente - Remove teste e todas as tentativas"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -690,10 +698,34 @@ export default function TestsPage() {
       {showDeleteModal && testToDelete && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
           <div className="bg-navy-800 border border-gold-500/20 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold text-gold mb-4">Confirmar Exclusão</h3>
-            <p className="text-gold-200 mb-6">
-              Tem certeza que deseja excluir o teste &quot;{testToDelete.title}&quot;? Esta ação não pode ser desfeita.
-            </p>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-500/20 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-xl font-bold text-gold">Confirmar Exclusão Permanente</h3>
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              <p className="text-gold-200">
+                Você está prestes a excluir permanentemente o teste:
+              </p>
+              <p className="text-gold font-semibold bg-navy-900/50 p-2 rounded">
+                &quot;{testToDelete.title}&quot;
+              </p>
+              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                <p className="text-red-300 text-sm font-medium mb-2">⚠️ ATENÇÃO:</p>
+                <ul className="text-red-200 text-sm space-y-1 list-disc list-inside">
+                  <li>Esta ação é <strong>IRREVERSÍVEL</strong></li>
+                  <li>Todas as questões associadas serão desvinculadas</li>
+                  <li>Tentativas de alunos serão removidas</li>
+                  <li>Histórico de notas será perdido</li>
+                </ul>
+              </div>
+              <p className="text-gold-300 text-sm">
+                Se deseja apenas ocultar o teste dos alunos, use a opção de <strong>Despublicar</strong> ao invés de excluir.
+              </p>
+            </div>
+            
             <div className="flex gap-3 justify-end">
               <Button
                 variant="secondary"
@@ -708,7 +740,7 @@ export default function TestsPage() {
                 variant="danger"
                 onClick={() => confirmDelete()}
               >
-                Excluir
+                Excluir Permanentemente
               </Button>
             </div>
           </div>
