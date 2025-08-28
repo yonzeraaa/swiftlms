@@ -36,10 +36,10 @@ interface StudentStats {
 
 interface RecentActivity {
   id: string
-  type: 'lesson_completed' | 'course_started' | 'achievement' | 'test_completed'
+  type: 'lesson_completed' | 'course_started' | 'achievement'
   description: string
   timestamp: string
-  icon: 'lesson' | 'course' | 'achievement' | 'test'
+  icon: 'lesson' | 'course' | 'achievement'
 }
 
 export default function StudentDashboard() {
@@ -253,8 +253,6 @@ export default function StudentDashboard() {
         return 'course_started'
       case 'completed_course':
         return 'achievement'
-      case 'test_completed':
-        return 'test_completed'
       default:
         return 'course_started'
     }
@@ -268,8 +266,6 @@ export default function StudentDashboard() {
         return 'course'
       case 'completed_course':
         return 'achievement'
-      case 'test_completed':
-        return 'test'
       default:
         return 'course'
     }
@@ -283,8 +279,6 @@ export default function StudentDashboard() {
         return `Matriculou-se em "${activity.entity_name}"`
       case 'completed_course':
         return `Concluiu o curso "${activity.entity_name}"`
-      case 'test_completed':
-        return `Completou o teste em "${activity.entity_name}"`
       default:
         return activity.entity_name || activity.action
     }
@@ -533,7 +527,6 @@ export default function StudentDashboard() {
                   {activity.icon === 'lesson' && <CheckCircle className="w-5 h-5" />}
                   {activity.icon === 'course' && <BookPlus className="w-5 h-5" />}
                   {activity.icon === 'achievement' && <Award className="w-5 h-5" />}
-                  {activity.icon === 'test' && <Activity className="w-5 h-5" />}
                 </div>
                 <div className="flex-1">
                   <p className="text-gold-200">{activity.description}</p>

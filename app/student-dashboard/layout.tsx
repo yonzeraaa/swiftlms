@@ -86,9 +86,9 @@ export default function StudentDashboardLayout({
     { name: 'Painel Geral', href: '/student-dashboard', icon: LayoutDashboard },
     { name: 'Explorar Cursos', href: '/student-dashboard/courses', icon: Search },
     { name: 'Meus Cursos', href: '/student-dashboard/my-courses', icon: BookOpen },
-    { name: 'Avaliações', href: '/student-dashboard/assessments', icon: FileCheck },
     { name: 'Progresso', href: '/student-dashboard/progress', icon: GraduationCap },
     { name: 'Calendário', href: '/student-dashboard/calendar', icon: Calendar },
+    { name: 'Testes', href: '/student-dashboard/tests', icon: FileCheck },
     { name: 'Certificados', href: '/student-dashboard/certificates', icon: Trophy },
     { name: 'Configurações', href: '/student-dashboard/settings', icon: Settings },
   ]

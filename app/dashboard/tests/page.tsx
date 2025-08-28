@@ -3,773 +3,608 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Edit, Trash2, FileCheck, Clock, Users, MoreVertical, AlertCircle, CheckCircle2, Eye, Copy, Download, BookOpen, ToggleLeft, ToggleRight, LayoutGrid, List } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles } from 'lucide-react'
+import { Tables } from '@/lib/database.types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
+import Modal from '../../components/Modal'
 import { useTranslation } from '../../contexts/LanguageContext'
-import { useRouter } from 'next/navigation'
-import TestForm from '../../components/TestForm'
-import TestPreview from '../../components/TestPreview'
 import { useToast } from '../../components/Toast'
-import TestCard from '../../components/TestCard'
-import ViewToggle from '../../components/ViewToggle'
-import { Chip } from '../../components/Badge'
-import { SkeletonCard } from '../../components/Skeleton'
+import EmptyState from '../../components/EmptyState'
+import LoadingState from '../../components/LoadingState'
 
-interface Test {
-  id: string
-  title: string
-  description?: string
-  test_type: 'quiz' | 'exam' | 'practice'
-  duration_minutes?: number
-  total_points: number
-  passing_score: number
-  is_published: boolean
-  max_attempts?: number
-  created_at: string
-  course?: { title: string }
-  subject?: { name: string }
-  questions?: Array<{ id: string }>
-  attempts?: Array<{ 
-    id: string
-    score?: number
-    status: string
-  }>
-}
+type Test = Tables<'tests'>
+type Course = Tables<'courses'>
+type Subject = Tables<'subjects'>
+type Module = Tables<'course_modules'>
 
-export default function TestsPage() {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [loading, setLoading] = useState(true)
+export default function TestsManagementPage() {
   const [tests, setTests] = useState<Test[]>([])
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [testToDelete, setTestToDelete] = useState<Test | null>(null)
-  const [showFilters, setShowFilters] = useState(false)
-  const [filterType, setFilterType] = useState('all')
-  const [filterStatus, setFilterStatus] = useState('all')
-  const [filterCourse, setFilterCourse] = useState('all')
-  const [courses, setCourses] = useState<Array<{ id: string; title: string }>>([])  
-  const [showTestForm, setShowTestForm] = useState(false)
-  const [editingTestId, setEditingTestId] = useState<string | undefined>()
-  const [previewTestId, setPreviewTestId] = useState<string | undefined>()
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [courses, setCourses] = useState<Course[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [modules, setModules] = useState<Module[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [editingTest, setEditingTest] = useState<Test | null>(null)
+  const [extractingGabarito, setExtractingGabarito] = useState(false)
+  const [gabaritoData, setGabaritoData] = useState<Array<{ questionNumber: number; correctAnswer: string; points?: number }>>([])
+  
+  const supabase = createClient()
   const { t } = useTranslation()
   const { showToast } = useToast()
-  const supabase = createClient()
-  const router = useRouter()
 
-  useEffect(() => {
-    fetchTests()
-    fetchCourses()
-  }, [])
-
-  const fetchTests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('tests')
-        .select(`
-          *,
-          course:courses(title),
-          subject:subjects(name),
-          questions:test_questions(id),
-          attempts:test_attempts(id, score, status)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      setTests((data || []) as Test[])
-      setLoading(false)
-    } catch (error) {
-      console.error('Error fetching tests:', error)
-      showToast({ type: 'error', title: 'Erro ao carregar testes' })
-      setLoading(false)
-    }
-  }
-
-  const fetchCourses = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('id, title')
-        .order('title')
-
-      if (error) throw error
-      setCourses(data || [])
-    } catch (error) {
-      console.error('Error fetching courses:', error)
-    }
-  }
-
-  const handleTogglePublish = async (test: Test) => {
-    try {
-      const { error } = await supabase
-        .from('tests')
-        .update({ is_published: !test.is_published })
-        .eq('id', test.id)
-
-      if (error) throw error
-
-      showToast({ 
-        type: 'success', 
-        title: test.is_published ? 'Teste despublicado' : 'Teste publicado' 
-      })
-      fetchTests()
-    } catch (error) {
-      console.error('Error toggling publish:', error)
-      showToast({ type: 'error', title: 'Erro ao alterar status do teste' })
-    }
-  }
-
-  const handleDuplicateTest = async (test: Test) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Usuário não autenticado')
-
-      // Fetch full test data with questions
-      const { data: fullTest, error: fetchError } = await supabase
-        .from('tests')
-        .select(`
-          *,
-          questions:test_questions(*)
-        `)
-        .eq('id', test.id)
-        .single()
-
-      if (fetchError) throw fetchError
-
-      // Create duplicate test
-      const { data: newTest, error: createError } = await supabase
-        .from('tests')
-        .insert({
-          title: `${test.title} (Cópia)`,
-          description: fullTest.description,
-          test_type: fullTest.test_type,
-          duration_minutes: fullTest.duration_minutes,
-          total_points: fullTest.total_points,
-          passing_score: fullTest.passing_score,
-          instructions: fullTest.instructions,
-          is_published: false,
-          show_results: fullTest.show_results,
-          show_answers: fullTest.show_answers,
-          randomize_questions: fullTest.randomize_questions,
-          randomize_options: fullTest.randomize_options,
-          max_attempts: fullTest.max_attempts,
-          course_id: fullTest.course_id,
-          subject_id: fullTest.subject_id,
-          created_by: user.id
-        })
-        .select()
-        .single()
-
-      if (createError) throw createError
-
-      // Duplicate test questions
-      if (fullTest.questions && fullTest.questions.length > 0) {
-        const questionsToInsert = fullTest.questions.map((q: any) => ({
-          test_id: newTest.id,
-          question_id: q.question_id,
-          order_index: q.order_index,
-          points_override: q.points_override
-        }))
-
-        const { error: questionsError } = await supabase
-          .from('test_questions')
-          .insert(questionsToInsert)
-
-        if (questionsError) throw questionsError
-      }
-
-      showToast({ type: 'success', title: 'Teste duplicado com sucesso!' })
-      fetchTests()
-    } catch (error) {
-      console.error('Error duplicating test:', error)
-      showToast({ type: 'error', title: 'Erro ao duplicar teste' })
-    }
-  }
-
-  const confirmDelete = async () => {
-    if (!testToDelete) return
-
-    try {
-      // Primeiro verificar se há tentativas
-      const { data: attempts, error: attemptsError } = await supabase
-        .from('test_attempts')
-        .select('id')
-        .eq('test_id', testToDelete.id)
-        .limit(1)
-
-      if (attemptsError) throw attemptsError
-
-      // Se houver tentativas, primeiro deletá-las
-      if (attempts && attempts.length > 0) {
-        const { error: deleteAttemptsError } = await supabase
-          .from('test_attempts')
-          .delete()
-          .eq('test_id', testToDelete.id)
-
-        if (deleteAttemptsError) {
-          // Se não conseguir deletar tentativas, avisar o usuário
-          showToast({ 
-            type: 'error', 
-            title: 'Não foi possível excluir o teste pois existem tentativas de alunos associadas' 
-          })
-          setShowDeleteModal(false)
-          setTestToDelete(null)
-          return
-        }
-      }
-
-      // Deletar associações de questões
-      const { error: questionsError } = await supabase
-        .from('test_questions')
-        .delete()
-        .eq('test_id', testToDelete.id)
-
-      if (questionsError) throw questionsError
-
-      // Finalmente deletar o teste
-      const { error } = await supabase
-        .from('tests')
-        .delete()
-        .eq('id', testToDelete.id)
-
-      if (error) throw error
-      
-      showToast({ type: 'success', title: 'Teste excluído permanentemente!' })
-
-      setShowDeleteModal(false)
-      setTestToDelete(null)
-      fetchTests()
-    } catch (error) {
-      console.error('Error deleting test:', error)
-      showToast({ type: 'error', title: 'Erro ao excluir teste' })
-    }
-  }
-
-  const filteredTests = tests.filter(test => {
-    const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (test.subject?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (test.course?.title || '').toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesType = filterType === 'all' || test.test_type === filterType
-    const matchesStatus = filterStatus === 'all' || 
-      (filterStatus === 'published' ? test.is_published : !test.is_published)
-    const matchesCourse = filterCourse === 'all' || test.course?.title === filterCourse
-    
-    return matchesSearch && matchesType && matchesStatus && matchesCourse
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    google_drive_url: '',
+    course_id: '',
+    module_id: '',
+    subject_id: '',
+    duration_minutes: 60,
+    passing_score: 70,
+    max_attempts: 3,
+    is_active: true
   })
 
-  const calculateAverageScore = (attempts: Test['attempts']) => {
-    if (!attempts || attempts.length === 0) return 0
-    const completedAttempts = attempts.filter(a => a.status === 'completed' && a.score)
-    if (completedAttempts.length === 0) return 0
-    const sum = completedAttempts.reduce((acc, a) => acc + (a.score || 0), 0)
-    return Math.round(sum / completedAttempts.length)
-  }
+  useEffect(() => {
+    loadData()
+  }, [])
 
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'quiz':
-        return 'Quiz'
-      case 'exam':
-        return 'Prova'
-      case 'practice':
-        return 'Prática'
-      default:
-        return type
+  const loadData = async () => {
+    try {
+      // Carregar testes
+      const { data: testsData } = await supabase
+        .from('tests')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      // Carregar cursos
+      const { data: coursesData } = await supabase
+        .from('courses')
+        .select('*')
+        .order('title')
+      
+      // Carregar disciplinas
+      const { data: subjectsData } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('name')
+      
+      // Carregar módulos
+      const { data: modulesData } = await supabase
+        .from('course_modules')
+        .select('*')
+        .order('title')
+
+      if (testsData) setTests(testsData)
+      if (coursesData) setCourses(coursesData)
+      if (subjectsData) setSubjects(subjectsData)
+      if (modulesData) setModules(modulesData)
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'quiz':
-        return 'bg-blue-500/20 text-blue-400'
-      case 'exam':
-        return 'bg-purple-500/20 text-purple-400'
-      case 'practice':
-        return 'bg-orange-500/20 text-orange-400'
-      default:
-        return 'bg-gray-500/20 text-gray-400'
+  const extractGabarito = async () => {
+    if (!formData.google_drive_url) {
+      showToast('Por favor, insira a URL do Google Drive primeiro', 'error')
+      return
+    }
+
+    setExtractingGabarito(true)
+    try {
+      const response = await fetch('/api/tests/extract-answer-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ googleDriveUrl: formData.google_drive_url })
+      })
+
+      const data = await response.json()
+      
+      if (data.success) {
+        setGabaritoData(data.answerKey)
+        showToast(`Gabarito extraído com sucesso! ${data.questionCount} questões encontradas.`, 'success')
+      } else {
+        showToast(data.error || 'Erro ao extrair gabarito', 'error')
+      }
+    } catch (error) {
+      console.error('Erro ao extrair gabarito:', error)
+      showToast('Erro ao processar documento', 'error')
+    } finally {
+      setExtractingGabarito(false)
     }
   }
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-400'
-    if (score >= 60) return 'text-yellow-400'
-    return 'text-red-400'
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Preparar dados limpos para envio
+    const cleanedData: any = {
+      title: formData.title,
+      description: formData.description || null,
+      google_drive_url: formData.google_drive_url,
+      duration_minutes: formData.duration_minutes || 60,
+      passing_score: formData.passing_score || 70,
+      max_attempts: formData.max_attempts || 3,
+      is_active: formData.is_active
+    }
+    
+    // Adicionar campos opcionais apenas se tiverem valor
+    if (formData.course_id) cleanedData.course_id = formData.course_id
+    if (formData.module_id) cleanedData.module_id = formData.module_id
+    if (formData.subject_id) cleanedData.subject_id = formData.subject_id
+    
+    try {
+      if (editingTest) {
+        // Atualizar teste existente
+        const { error } = await supabase
+          .from('tests')
+          .update(cleanedData)
+          .eq('id', editingTest.id)
+        
+        if (error) {
+          console.error('Erro ao atualizar teste:', error)
+          showToast(`Erro ao atualizar teste: ${error.message}`, 'error')
+          return
+        }
+        
+        // Se houver gabarito, atualizar
+        if (gabaritoData.length > 0) {
+          await updateAnswerKeys(editingTest.id)
+        }
+        showToast('Teste atualizado com sucesso!', 'success')
+      } else {
+        // Criar novo teste
+        const { data: newTest, error } = await supabase
+          .from('tests')
+          .insert(cleanedData)
+          .select()
+          .single()
+        
+        if (error) {
+          console.error('Erro ao criar teste:', error)
+          showToast(`Erro ao criar teste: ${error.message}`, 'error')
+          return
+        }
+        
+        if (newTest) {
+          // Salvar gabarito
+          if (gabaritoData.length > 0) {
+            await updateAnswerKeys(newTest.id)
+          }
+          showToast('Teste criado com sucesso!', 'success')
+        }
+      }
+      
+      resetForm()
+      loadData()
+    } catch (error) {
+      console.error('Erro ao salvar teste:', error)
+      showToast('Erro ao salvar teste', 'error')
+    }
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex justify-between items-center">
-          <div>
-            <div className="h-8 w-32 bg-navy-700/50 rounded-lg animate-pulse mb-2"></div>
-            <div className="h-4 w-48 bg-navy-700/30 rounded animate-pulse"></div>
-          </div>
-          <div className="h-10 w-32 bg-navy-700/50 rounded-lg animate-pulse"></div>
-        </div>
-
-        {/* Filters Skeleton */}
-        <div className="flex gap-4">
-          <div className="flex-1 h-10 bg-navy-700/50 rounded-lg animate-pulse"></div>
-          <div className="h-10 w-24 bg-navy-700/50 rounded-lg animate-pulse"></div>
-        </div>
-
-        {/* Cards Grid Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
-      </div>
-    )
+  const updateAnswerKeys = async (testId: string) => {
+    // Deletar gabarito existente
+    await supabase
+      .from('test_answer_keys')
+      .delete()
+      .eq('test_id', testId)
+    
+    // Inserir novo gabarito
+    const answerKeys = gabaritoData.map(item => ({
+      test_id: testId,
+      question_number: item.questionNumber,
+      correct_answer: item.correctAnswer,
+      points: item.points || 10
+    }))
+    
+    await supabase
+      .from('test_answer_keys')
+      .insert(answerKeys)
   }
+
+  const deleteTest = async (id: string) => {
+    if (!confirm('Tem certeza que deseja excluir este teste?')) return
+    
+    const { error } = await supabase
+      .from('tests')
+      .delete()
+      .eq('id', id)
+    
+    if (!error) {
+      showToast('Teste excluído com sucesso!', 'success')
+      loadData()
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      google_drive_url: '',
+      course_id: '',
+      module_id: '',
+      subject_id: '',
+      duration_minutes: 60,
+      passing_score: 70,
+      max_attempts: 3,
+      is_active: true
+    })
+    setEditingTest(null)
+    setGabaritoData([])
+    setShowModal(false)
+  }
+
+  const editTest = (test: Test) => {
+    setFormData({
+      title: test.title,
+      description: test.description || '',
+      google_drive_url: test.google_drive_url,
+      course_id: test.course_id || '',
+      module_id: test.module_id || '',
+      subject_id: test.subject_id || '',
+      duration_minutes: test.duration_minutes || 60,
+      passing_score: test.passing_score || 70,
+      max_attempts: test.max_attempts || 3,
+      is_active: test.is_active ?? true
+    })
+    setEditingTest(test)
+    setShowModal(true)
+  }
+
+  if (loading) return <LoadingState isLoading={loading}>{null}</LoadingState>
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gold">Testes</h1>
-          <p className="text-gold-300 mt-1">Gerencie as avaliações e testes</p>
+      {/* Header consistente com outras páginas */}
+      <Card variant="gradient" className="mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+              <Sparkles className="w-8 h-8 text-gold-400 animate-pulse" />
+              {t('tests.title')}
+            </h1>
+            <p className="text-gold-300 mt-1">{t('tests.subtitle')}</p>
+          </div>
+          <Button
+            variant="primary"
+            size="lg"
+            onClick={() => setShowModal(true)}
+            icon={<Plus className="w-5 h-5" />}
+          >
+            {t('tests.newTest')}
+          </Button>
         </div>
-        <Button 
-          icon={<Plus className="w-5 h-5" />}
-          onClick={() => {
-            setEditingTestId(undefined)
-            setShowTestForm(true)
-          }}
-        >
-          Novo Teste
-        </Button>
-      </div>
+      </Card>
 
-      {/* Search, Filters and View Toggle */}
-      <div className="flex gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
-          <input
-            type="text"
-            placeholder="Buscar testes..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
-          />
-        </div>
-        <ViewToggle view={viewMode} onViewChange={setViewMode} />
-        <Button 
-          variant="secondary" 
-          icon={<Filter className="w-5 h-5" />}
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          Filtros
-        </Button>
-      </div>
+      {/* Lista de Testes */}
+      <div className="grid gap-4">
+        {tests.map((test) => {
+          const course = courses.find(c => c.id === test.course_id)
+          const subject = subjects.find(s => s.id === test.subject_id)
+          
+          return (
+            <Card
+              key={test.id}
+              variant="elevated"
+              className="hover:shadow-xl transition-all"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-gold-100 rounded-lg border border-gold-500/20">
+                      <FileCheck className="w-5 h-5 text-gold-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gold">
+                      {test.title}
+                    </h3>
+                  </div>
+                  
+                  {test.description && (
+                    <p className="text-gold-300 mb-4 leading-relaxed">{test.description}</p>
+                  )}
+                  
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {course && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
+                        <BookOpen className="w-4 h-4 text-gold-400" />
+                        <span className="text-sm font-medium text-gold-200">{course.title}</span>
+                      </div>
+                    )}
+                    {subject && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
+                        <FileText className="w-4 h-4 text-gold-400" />
+                        <span className="text-sm font-medium text-gold-200">{subject.name}</span>
+                      </div>
+                    )}
+                  </div>
 
-      {/* Filters Panel with Chips */}
-      {showFilters && (
-        <Card variant="outlined">
-          <div className="space-y-4">
-            {/* Type Filters */}
-            <div>
-              <p className="text-sm font-medium text-gold-300 mb-3">Tipo de Teste</p>
-              <div className="flex flex-wrap gap-2">
-                <Chip
-                  label="Todos"
-                  selected={filterType === 'all'}
-                  onClick={() => setFilterType('all')}
-                  count={tests.length}
-                />
-                <Chip
-                  label="Quiz"
-                  selected={filterType === 'quiz'}
-                  onClick={() => setFilterType('quiz')}
-                  count={tests.filter(t => t.test_type === 'quiz').length}
-                  color="blue"
-                />
-                <Chip
-                  label="Prova"
-                  selected={filterType === 'exam'}
-                  onClick={() => setFilterType('exam')}
-                  count={tests.filter(t => t.test_type === 'exam').length}
-                  color="purple"
-                />
-                <Chip
-                  label="Prática"
-                  selected={filterType === 'practice'}
-                  onClick={() => setFilterType('practice')}
-                  count={tests.filter(t => t.test_type === 'practice').length}
-                  color="green"
-                />
-              </div>
-            </div>
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
+                    <div className="flex items-center gap-1.5 text-gold-300">
+                      <Clock className="w-4 h-4 text-gold-400" />
+                      <span className="font-medium">{test.duration_minutes} {t('tests.minutes')}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-gold-300">
+                      <Target className="w-4 h-4 text-gold-400" />
+                      <span className="font-medium">{t('tests.minimum')}: {test.passing_score}%</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-gold-300">
+                      <RotateCcw className="w-4 h-4 text-gold-400" />
+                      <span className="font-medium">{test.max_attempts} {t('tests.attempts')}</span>
+                    </div>
+                  </div>
 
-            {/* Status Filters */}
-            <div>
-              <p className="text-sm font-medium text-gold-300 mb-3">Status</p>
-              <div className="flex flex-wrap gap-2">
-                <Chip
-                  label="Todos"
-                  selected={filterStatus === 'all'}
-                  onClick={() => setFilterStatus('all')}
-                />
-                <Chip
-                  label="Publicado"
-                  selected={filterStatus === 'published'}
-                  onClick={() => setFilterStatus('published')}
-                  icon={<CheckCircle2 className="w-4 h-4" />}
-                  count={tests.filter(t => t.is_published).length}
-                  color="green"
-                />
-                <Chip
-                  label="Rascunho"
-                  selected={filterStatus === 'draft'}
-                  onClick={() => setFilterStatus('draft')}
-                  icon={<AlertCircle className="w-4 h-4" />}
-                  count={tests.filter(t => !t.is_published).length}
-                  color="gold"
-                />
-              </div>
-            </div>
+                  <div className="mt-4 flex items-center gap-3">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                      test.is_active 
+                        ? 'bg-green-900/30 text-green-400 border-green-500/30' 
+                        : 'bg-navy-700/50 text-gold-500 border-gold-500/20'
+                    }`}>
+                      <div className={`w-2 h-2 rounded-full ${
+                        test.is_active ? 'bg-green-400 animate-pulse' : 'bg-gold-500'
+                      }`} />
+                      {test.is_active ? t('tests.active') : t('tests.inactive')}
+                    </span>
+                  </div>
+                </div>
 
-            {/* Course Filters */}
-            {courses.length > 0 && (
-              <div>
-                <p className="text-sm font-medium text-gold-300 mb-3">Curso</p>
-                <div className="flex flex-wrap gap-2">
-                  <Chip
-                    label="Todos os Cursos"
-                    selected={filterCourse === 'all'}
-                    onClick={() => setFilterCourse('all')}
-                  />
-                  {courses.map(course => (
-                    <Chip
-                      key={course.id}
-                      label={course.title}
-                      selected={filterCourse === course.title}
-                      onClick={() => setFilterCourse(course.title)}
-                      count={tests.filter(t => t.course?.title === course.title).length}
-                    />
-                  ))}
+                <div className="flex gap-2 ml-4">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => window.open(test.google_drive_url, '_blank')}
+                    icon={<ExternalLink className="w-4 h-4" />}
+                    aria-label={t('tests.viewDocument')}
+                  >
+                    <span className="sr-only">{t('tests.viewDocument')}</span>
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => editTest(test)}
+                    icon={<Edit className="w-4 h-4" />}
+                    aria-label={t('tests.edit')}
+                  >
+                    <span className="sr-only">{t('tests.edit')}</span>
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => deleteTest(test.id)}
+                    icon={<Trash2 className="w-4 h-4" />}
+                    aria-label={t('tests.delete')}
+                  >
+                    <span className="sr-only">{t('tests.delete')}</span>
+                  </Button>
                 </div>
               </div>
-            )}
-
-            {/* Clear Filters */}
-            {(filterType !== 'all' || filterStatus !== 'all' || filterCourse !== 'all') && (
-              <div className="flex justify-end pt-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setFilterType('all')
-                    setFilterStatus('all')
-                    setFilterCourse('all')
-                  }}
-                >
-                  Limpar Filtros
-                </Button>
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Total de Testes</p>
-              <p className="text-2xl font-bold text-gold mt-1">{tests.length}</p>
-            </div>
-            <FileCheck className="w-8 h-8 text-gold-500/30" />
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Testes Publicados</p>
-              <p className="text-2xl font-bold text-gold mt-1">
-                {tests.filter(t => t.is_published).length}
-              </p>
-            </div>
-            <CheckCircle2 className="w-8 h-8 text-gold-500/30" />
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Total de Questões</p>
-              <p className="text-2xl font-bold text-gold mt-1">
-                {tests.reduce((acc, t) => acc + (t.questions?.length || 0), 0)}
-              </p>
-            </div>
-            <AlertCircle className="w-8 h-8 text-gold-500/30" />
-          </div>
-        </Card>
-        
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Total de Tentativas</p>
-              <p className="text-2xl font-bold text-gold mt-1">
-                {tests.reduce((acc, t) => acc + (t.attempts?.length || 0), 0)}
-              </p>
-            </div>
-            <Users className="w-8 h-8 text-gold-500/30" />
-          </div>
-        </Card>
+            </Card>
+          )
+        })}
       </div>
 
-      {/* Tests List or Grid */}
-      {viewMode === 'grid' ? (
-        <>
-          {/* Results Count */}
-          {filteredTests.length > 0 && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gold-400">
-                {filteredTests.length} {filteredTests.length === 1 ? 'teste encontrado' : 'testes encontrados'}
-              </p>
-            </div>
-          )}
-
-          {/* Grid View */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTests.map((test) => (
-              <TestCard
-                key={test.id}
-                test={test}
-                onView={() => setPreviewTestId(test.id)}
-                onEdit={() => {
-                  setEditingTestId(test.id)
-                  setShowTestForm(true)
-                }}
-                onTogglePublish={() => handleTogglePublish(test)}
-                onDuplicate={() => handleDuplicateTest(test)}
-                onDelete={() => {
-                  setTestToDelete(test)
-                  setShowDeleteModal(true)
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Empty State */}
-          {filteredTests.length === 0 && (
-            <Card className="text-center py-12">
-              <FileCheck className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gold mb-2">Nenhum teste encontrado</h3>
-              <p className="text-gold-400">
-                {searchTerm || filterType !== 'all' || filterStatus !== 'all' || filterCourse !== 'all'
-                  ? 'Tente ajustar os filtros ou termo de busca'
-                  : 'Comece criando seu primeiro teste usando o botão "+ Novo Teste" acima'}
-              </p>
-            </Card>
-          )}
-        </>
-      ) : (
-        /* List View - Keeping the table */
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gold-500/20">
-                  <th className="text-left py-3 px-4 text-gold-300 font-medium">Teste</th>
-                  <th className="text-left py-3 px-4 text-gold-300 font-medium">Curso / Disciplina</th>
-                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Tipo</th>
-                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Questões</th>
-                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Duração</th>
-                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Tentativas</th>
-                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Média</th>
-                  <th className="text-center py-3 px-4 text-gold-300 font-medium">Status</th>
-                  <th className="text-right py-3 px-4 text-gold-300 font-medium">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTests.map((test) => (
-                  <tr key={test.id} className="border-b border-gold-500/10 hover:bg-navy-800/30 transition-colors">
-                    <td className="py-4 px-4">
-                      <p className="text-gold-100 font-medium">{test.title}</p>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div>
-                        <p className="text-gold-200 text-sm">{test.course?.title || '-'}</p>
-                        <p className="text-gold-400 text-xs mt-1">{test.subject?.name || '-'}</p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(test.test_type)}`}>
-                        {getTypeLabel(test.test_type)}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="text-gold-200">{test.questions?.length || 0}</span>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="text-gold-200">
-                        {test.duration_minutes ? `${test.duration_minutes} min` : '-'}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="text-gold-200">{test.attempts?.length || 0}</span>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      {test.attempts && test.attempts.length > 0 ? (
-                        <span className={`font-medium ${getScoreColor(calculateAverageScore(test.attempts))}`}>
-                          {calculateAverageScore(test.attempts)}%
-                        </span>
-                      ) : (
-                        <span className="text-gold-500">-</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        test.is_published 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-yellow-500/20 text-yellow-400'
-                      }`}>
-                        {test.is_published ? 'Publicado' : 'Rascunho'}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                          onClick={() => setPreviewTestId(test.id)}
-                          title="Visualizar"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button 
-                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                          onClick={() => {
-                            setEditingTestId(test.id)
-                            setShowTestForm(true)
-                          }}
-                          title="Editar"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button 
-                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                          onClick={() => handleTogglePublish(test)}
-                          title={test.is_published ? 'Despublicar - Ocultar dos alunos sem excluir' : 'Publicar - Tornar disponível para alunos'}
-                        >
-                          {test.is_published ? (
-                            <ToggleRight className="w-4 h-4" />
-                          ) : (
-                            <ToggleLeft className="w-4 h-4" />
-                          )}
-                        </button>
-                        <button 
-                          className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700/50 rounded-lg transition-colors"
-                          onClick={() => handleDuplicateTest(test)}
-                          title="Duplicar"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                        <button 
-                          className="p-2 text-red-400 hover:text-red-200 hover:bg-red-900/20 rounded-lg transition-colors"
-                          onClick={() => {
-                            setTestToDelete(test)
-                            setShowDeleteModal(true)
-                          }}
-                          title="Excluir permanentemente - Remove teste e todas as tentativas"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && testToDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
-          <div className="bg-navy-800 border border-gold-500/20 rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-red-500/20 rounded-lg">
-                <AlertCircle className="w-6 h-6 text-red-400" />
-              </div>
-              <h3 className="text-xl font-bold text-gold">Confirmar Exclusão Permanente</h3>
-            </div>
-            
-            <div className="space-y-3 mb-6">
-              <p className="text-gold-200">
-                Você está prestes a excluir permanentemente o teste:
-              </p>
-              <p className="text-gold font-semibold bg-navy-900/50 p-2 rounded">
-                &quot;{testToDelete.title}&quot;
-              </p>
-              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
-                <p className="text-red-300 text-sm font-medium mb-2">⚠️ ATENÇÃO:</p>
-                <ul className="text-red-200 text-sm space-y-1 list-disc list-inside">
-                  <li>Esta ação é <strong>IRREVERSÍVEL</strong></li>
-                  <li>Todas as questões associadas serão desvinculadas</li>
-                  <li>Tentativas de alunos serão removidas</li>
-                  <li>Histórico de notas será perdido</li>
-                </ul>
-              </div>
-              <p className="text-gold-300 text-sm">
-                Se deseja apenas ocultar o teste dos alunos, use a opção de <strong>Despublicar</strong> ao invés de excluir.
-              </p>
-            </div>
-            
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowDeleteModal(false)
-                  setTestToDelete(null)
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button
-                variant="danger"
-                onClick={() => confirmDelete()}
-              >
-                Excluir Permanentemente
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Test Form Modal */}
-      <TestForm
-        isOpen={showTestForm}
-        onClose={() => {
-          setShowTestForm(false)
-          setEditingTestId(undefined)
-        }}
-        testId={editingTestId}
-        onSuccess={() => {
-          setShowTestForm(false)
-          setEditingTestId(undefined)
-          fetchTests()
-        }}
-      />
-
-      {/* Test Preview Modal */}
-      {previewTestId && (
-        <TestPreview
-          isOpen={!!previewTestId}
-          onClose={() => setPreviewTestId(undefined)}
-          testId={previewTestId}
+      {tests.length === 0 && (
+        <EmptyState
+          icon={<FileCheck className="w-12 h-12" />}
+          title={t('tests.noTests')}
+          description={t('tests.noTestsDescription')}
+          action={{
+            label: t('tests.createFirstTest'),
+            onClick: () => setShowModal(true),
+            variant: 'primary'
+          }}
         />
       )}
+
+      {/* Modal de Criação/Edição */}
+      <Modal
+        isOpen={showModal}
+        onClose={resetForm}
+        title={editingTest ? t('tests.editTest') : t('tests.newTest')}
+        size="lg"
+      >
+
+                <form onSubmit={handleSubmit}>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gold-200 mb-2">
+                        {t('tests.testTitle')} *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        className="w-full px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                        placeholder={t('tests.titlePlaceholder')}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gold-200 mb-2">
+                        {t('tests.description')}
+                      </label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        rows={3}
+                        className="w-full px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                        placeholder={t('tests.descriptionPlaceholder')}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-gold-200 mb-2">
+                        {t('tests.googleDriveUrl')} *
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="url"
+                          required
+                          value={formData.google_drive_url}
+                          onChange={(e) => setFormData({ ...formData, google_drive_url: e.target.value })}
+                          placeholder="https://docs.google.com/document/d/..."
+                          className="flex-1 px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                        />
+                        <Button
+                          type="button"
+                          variant="primary"
+                          onClick={extractGabarito}
+                          loading={extractingGabarito}
+                        >
+                          {extractingGabarito ? t('tests.extracting') : t('tests.extractAnswerKey')}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {gabaritoData.length > 0 && (
+                      <div className="p-4 bg-green-900/30 border border-green-500/30 rounded-xl">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="p-1 bg-green-500 rounded-full">
+                            <Check className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="font-semibold text-green-400">
+                            {t('tests.answerKeyExtracted')}
+                          </span>
+                          <span className="text-green-300 font-medium">
+                            {gabaritoData.length} {t('tests.questions')}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-10 gap-2 text-sm">
+                          {gabaritoData.map((item, index) => (
+                            <div key={`gabarito-${index}-${item.questionNumber}`} className="flex items-center justify-center p-2 bg-navy-800 rounded-lg border border-gold-500/20">
+                              <span className="text-gold-300 font-medium">{item.questionNumber}.</span>
+                              <span className="ml-1 font-bold text-gold">{item.correctAnswer}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gold-200 mb-2">
+                          {t('tests.course')}
+                        </label>
+                        <select
+                          value={formData.course_id}
+                          onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
+                          className="w-full px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                        >
+                          <option value="">{t('tests.select')}</option>
+                          {courses.map(course => (
+                            <option key={course.id} value={course.id}>
+                              {course.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gold-200 mb-2">
+                          {t('tests.subject')}
+                        </label>
+                        <select
+                          value={formData.subject_id}
+                          onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}
+                          className="w-full px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                        >
+                          <option value="">{t('tests.select')}</option>
+                          {subjects.map(subject => (
+                            <option key={subject.id} value={subject.id}>
+                              {subject.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gold-200 mb-2">
+                          {t('tests.duration')}
+                        </label>
+                        <div className="relative">
+                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+                          <input
+                            type="number"
+                            value={formData.duration_minutes || ''}
+                            onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 60 })}
+                            min="1"
+                            className="w-full pl-11 pr-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gold-200 mb-2">
+                          {t('tests.passingScore')}
+                        </label>
+                        <div className="relative">
+                          <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+                          <input
+                            type="number"
+                            value={formData.passing_score || ''}
+                            onChange={(e) => setFormData({ ...formData, passing_score: parseInt(e.target.value) || 70 })}
+                            min="0"
+                            max="100"
+                            className="w-full pl-11 pr-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gold-200 mb-2">
+                          {t('tests.maxAttempts')}
+                        </label>
+                        <div className="relative">
+                          <RotateCcw className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+                          <input
+                            type="number"
+                            value={formData.max_attempts || ''}
+                            onChange={(e) => setFormData({ ...formData, max_attempts: parseInt(e.target.value) || 3 })}
+                            min="1"
+                            className="w-full pl-11 pr-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-4 bg-navy-700 rounded-xl border border-gold-500/20">
+                      <input
+                        type="checkbox"
+                        id="is_active"
+                        checked={formData.is_active}
+                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                        className="w-5 h-5 text-gold-600 focus:ring-gold-500 border-2 border-gold-500/30 rounded bg-navy-900/50"
+                      />
+                      <label htmlFor="is_active" className="text-sm font-semibold text-gold-200 cursor-pointer">
+                        {t('tests.testActive')}
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gold-500/20">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={resetForm}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                    >
+                      {editingTest ? t('tests.updateTest') : t('tests.createTest')}
+                    </Button>
+                  </div>
+                </form>
+      </Modal>
     </div>
   )
 }

@@ -23,7 +23,6 @@ interface CertificateRequest {
   enrollment_id: string
   user_id: string
   course_id: string
-  highest_test_score?: number | null
   total_lessons?: number | null
   completed_lessons?: number | null
   request_date: string | null
@@ -397,7 +396,6 @@ export default function CertificatesPage() {
                 <tr className="border-b border-gold-500/20">
                   <th className="text-left py-4 px-4 text-gold-200 font-medium">Aluno</th>
                   <th className="text-left py-4 px-4 text-gold-200 font-medium">Curso</th>
-                  <th className="text-center py-4 px-4 text-gold-200 font-medium">Nota</th>
                   <th className="text-center py-4 px-4 text-gold-200 font-medium">Lições</th>
                   <th className="text-center py-4 px-4 text-gold-200 font-medium">Solicitado em</th>
                   <th className="text-center py-4 px-4 text-gold-200 font-medium">Status</th>
@@ -420,9 +418,6 @@ export default function CertificatesPage() {
                       <td className="py-4 px-4">
                         <p className="text-gold-200">{request.course?.title}</p>
                         <p className="text-gold-400 text-sm">{request.course?.duration_hours}h</p>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="text-gold-200">{request.highest_test_score || 0}%</span>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <span className="text-gold-200">

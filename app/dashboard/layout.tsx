@@ -96,8 +96,7 @@ export default function DashboardLayout({
     { name: 'Estrutura', href: '/dashboard/structure', icon: Layers },
     { name: t('nav.subjects'), href: '/dashboard/subjects', icon: GraduationCap },
     { name: t('nav.lessons'), href: '/dashboard/lessons', icon: PlayCircle },
-    { name: t('nav.tests'), href: '/dashboard/tests', icon: FileCheck },
-    { name: t('nav.questionBank'), href: '/dashboard/question-bank', icon: Database },
+    { name: 'Testes', href: '/dashboard/tests', icon: FileCheck },
     { name: t('nav.reports'), href: '/dashboard/reports', icon: BarChart3 },
     { name: t('nav.settings'), href: '/dashboard/settings', icon: Settings },
   ]

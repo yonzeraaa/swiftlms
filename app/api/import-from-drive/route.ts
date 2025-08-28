@@ -442,33 +442,13 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               })
               
               // Determinar tipo de conteúdo baseado no mimeType e nome do arquivo
-              // IMPORTANTE: O banco só aceita 'video', 'text', 'quiz' ou 'assignment'
+              // IMPORTANTE: O banco só aceita 'video', 'text' ou 'assignment'
               let contentType = 'text' // Padrão para a maioria dos arquivos
               const mimeType = lessonItem.mimeType.toLowerCase()
               const fileName = lessonItem.name.toLowerCase()
               
-              // Detectar testes/quizzes pelo nome do arquivo
-              const isTest = fileName.includes('teste') || 
-                            fileName.includes('test') || 
-                            fileName.includes('quiz') || 
-                            fileName.includes('prova') || 
-                            fileName.includes('avaliação') || 
-                            fileName.includes('avaliacao') || 
-                            fileName.includes('simulado') || 
-                            fileName.includes('exercício') || 
-                            fileName.includes('exercicio') || 
-                            fileName.includes('questões') || 
-                            fileName.includes('questoes') || 
-                            fileName.includes('multipla escolha') || 
-                            fileName.includes('verdadeiro falso') || 
-                            fileName.includes('v ou f')
-              
-              if (isTest) {
-                contentType = 'quiz'
-                console.log(`        ✓ Detectado como TESTE/QUIZ: ${lessonItem.name}`)
-              }
               // Arquivos de vídeo
-              else if (mimeType.includes('video') || 
+              if (mimeType.includes('video') || 
                   mimeType === 'video/mp4' || 
                   mimeType === 'video/mpeg' || 
                   mimeType === 'video/quicktime' || 
@@ -510,10 +490,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
                 content: undefined as string | undefined,
                 contentType: contentType,
                 contentUrl: driveLink,
-                description: `Aula ${lessonCode}: ${lessonName}`,
-                // Se for quiz, marcar para processar questões depois
-                needsQuestionProcessing: contentType === 'quiz',
-                questions: undefined as any[] | undefined
+                description: `Aula ${lessonCode}: ${lessonName}`
               }
               actualLessonIndex++
 
@@ -539,13 +516,6 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
                     mimeType: 'text/plain'
                   })
                   lesson.content = content.data as string
-                  
-                  // Se for quiz, processar questões do conteúdo
-                  if (contentType === 'quiz' && lesson.content) {
-                    console.log(`        Processando questões do teste: ${lessonItem.name}`)
-                    lesson.questions = await extractQuestionsFromContent(lesson.content)
-                    console.log(`        Questões encontradas: ${lesson.questions?.length || 0}`)
-                  }
                 } else if (lessonItem.mimeType === 'application/vnd.google-apps.presentation') {
                   // Google Slides - exportar como texto
                   const content = await drive.files.export({
@@ -644,142 +614,6 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
     console.error('Erro ao processar pasta do Google Drive:', error)
     throw error
   }
-}
-
-// Função para extrair questões de um conteúdo de texto
-async function extractQuestionsFromContent(content: string): Promise<any[]> {
-  const questions = []
-  const lines = content.split('\n')
-  
-  let currentQuestion: any = null
-  let questionNumber = 0
-  let capturingQuestion = false
-  let questionBuffer = []
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
-    
-    // Detectar início de nova questão - formatos mais amplos
-    const questionMatch = line.match(/^(\d+[\.\)\-\s]|Questão\s+\d+|Q\d+|Pergunta\s+\d+)/i)
-    
-    if (questionMatch) {
-      // Salvar questão anterior se existir
-      if (currentQuestion && currentQuestion.question_text) {
-        questions.push(currentQuestion)
-      }
-      
-      questionNumber++
-      capturingQuestion = true
-      questionBuffer = []
-      
-      // Extrair o texto da questão (pode continuar em múltiplas linhas)
-      const questionText = line.replace(questionMatch[0], '').trim()
-      
-      // Detectar tipo de questão
-      let questionType = 'multiple_choice' // padrão
-      
-      const fullText = line.toLowerCase()
-      if (fullText.includes('verdadeiro') && fullText.includes('falso') || 
-          fullText.includes('v ou f') ||
-          fullText.includes('v/f') ||
-          fullText.includes('true') && fullText.includes('false')) {
-        questionType = 'true_false'
-      }
-      
-      currentQuestion = {
-        question_text: questionText,
-        question_type: questionType,
-        options: [],
-        correct_answer: null,
-        points: 1,
-        difficulty: 'medium',
-        order_index: questionNumber
-      }
-      
-      if (questionText) {
-        questionBuffer.push(questionText)
-      }
-    }
-    // Continuar capturando texto da questão até encontrar opções
-    else if (capturingQuestion && currentQuestion && !line.match(/^[a-e][\.\)\-\s]|^\([a-e]\)/i)) {
-      if (line && !line.match(/^(resposta|gabarito|answer|correct)/i)) {
-        questionBuffer.push(line)
-      }
-    }
-    // Detectar opções de resposta
-    else if (currentQuestion && line.match(/^[a-e][\.\)\-\s]|^\([a-e]\)/i)) {
-      // Finalizar captura da questão
-      if (capturingQuestion && questionBuffer.length > 0) {
-        currentQuestion.question_text = questionBuffer.join(' ').trim()
-        capturingQuestion = false
-      }
-      
-      const optionLetter = line.match(/^([a-e])/i)?.[1]?.toLowerCase()
-      const optionText = line.replace(/^[a-e][\.\)\-\s]|^\([a-e]\)/i, '').trim()
-      
-      // Verificar se é a resposta correta
-      const isCorrect = line.includes('*') || 
-                       line.includes('✓') ||
-                       line.includes('✔') ||
-                       line.toLowerCase().includes('(correta)') || 
-                       line.toLowerCase().includes('(correto)') ||
-                       line.toLowerCase().includes('[x]')
-      
-      // Limpar o texto da opção
-      const cleanOption = optionText
-        .replace(/[*✓✔]|\(corret[ao]\)|\[x\]/gi, '')
-        .trim()
-      
-      currentQuestion.options.push(cleanOption)
-      
-      if (isCorrect) {
-        // Armazenar índice da resposta correta
-        currentQuestion.correct_answer = currentQuestion.options.length - 1
-      }
-    }
-    // Detectar gabarito/resposta explícita
-    else if (currentQuestion && line.match(/^(resposta|gabarito|answer|correct):/i)) {
-      const answer = line.replace(/^(resposta|gabarito|answer|correct):/i, '').trim()
-      
-      if (currentQuestion.question_type === 'true_false') {
-        // Para V/F
-        if (answer.match(/^(v|verdadeiro|true)/i)) {
-          currentQuestion.correct_answer = 'true'
-        } else if (answer.match(/^(f|falso|false)/i)) {
-          currentQuestion.correct_answer = 'false'
-        }
-      } else {
-        // Para múltipla escolha - tentar mapear letra para índice
-        const letterMatch = answer.match(/^([a-e])/i)
-        if (letterMatch) {
-          const letter = letterMatch[1].toLowerCase()
-          const index = letter.charCodeAt(0) - 'a'.charCodeAt(0)
-          if (index >= 0 && index < currentQuestion.options.length) {
-            currentQuestion.correct_answer = index
-          }
-        }
-      }
-    }
-  }
-  
-  // Adicionar última questão se existir
-  if (currentQuestion && currentQuestion.question_text) {
-    if (capturingQuestion && questionBuffer.length > 0) {
-      currentQuestion.question_text = questionBuffer.join(' ').trim()
-    }
-    questions.push(currentQuestion)
-  }
-  
-  // Validar questões extraídas
-  return questions.filter(q => {
-    // Questão deve ter texto
-    if (!q.question_text || q.question_text.length < 5) return false
-    
-    // Múltipla escolha deve ter pelo menos 2 opções
-    if (q.question_type === 'multiple_choice' && q.options.length < 2) return false
-    
-    return true
-  })
 }
 
 async function importToDatabase(structure: CourseStructure, courseId: string, supabase: any, importId?: string, userId?: string, user?: any) {
@@ -916,16 +750,12 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           ? (existingLessons[0].order_index + 1) 
           : 0
         
-        // Separar aulas normais de testes
-        const regularLessons = subjectData.lessons.filter(l => l.contentType !== 'quiz')
-        const testLessons = subjectData.lessons.filter(l => l.contentType === 'quiz')
-        
-        // Processar aulas normais primeiro
-        for (let lessonIdx = 0; lessonIdx < regularLessons.length; lessonIdx++) {
-          const lessonData = regularLessons[lessonIdx]
+        // Processar todas as aulas
+        for (let lessonIdx = 0; lessonIdx < subjectData.lessons.length; lessonIdx++) {
+          const lessonData = subjectData.lessons[lessonIdx]
           
           await updateDatabaseProgress(
-            `Salvando aula ${lessonIdx + 1}/${regularLessons.length}`,
+            `Salvando aula ${lessonIdx + 1}/${subjectData.lessons.length}`,
             `Aula: ${lessonData.name}`
           )
           
@@ -984,136 +814,8 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
             results.lessons++
           }
         }
-        
-        // Agora processar testes (arquivos tipo quiz)
-        if (testLessons.length > 0) {
-          console.log(`Processando ${testLessons.length} testes para a disciplina ${subjectName}`)
-          
-          await updateDatabaseProgress(
-            `Processando testes da disciplina`,
-            `Disciplina: ${subjectName}`
-          )
-          
-          // Coletar todas as questões de todos os arquivos de teste
-          let allQuestions: any[] = []
-          for (const testLesson of testLessons) {
-            if (testLesson.questions && testLesson.questions.length > 0) {
-              console.log(`Adicionando ${testLesson.questions.length} questões do arquivo ${testLesson.name}`)
-              allQuestions = [...allQuestions, ...testLesson.questions]
-            }
-          }
-          
-          if (allQuestions.length > 0) {
-            console.log(`Total de ${allQuestions.length} questões para criar teste da disciplina ${subjectName}`)
-              
-              // Primeiro, verificar se já existe um teste para esta disciplina no curso
-              const { data: existingTest } = await supabase
-                .from('tests')
-                .select('id')
-                .eq('course_id', courseId)
-                .eq('subject_id', subjectId)
-                .eq('test_type', 'exam')
-                .single()
-              
-              let testId = existingTest?.id
-              
-              // Se não existir teste, criar um novo
-              if (!testId) {
-                const { data: newTest, error: testError } = await supabase
-                  .from('tests')
-                  .insert({
-                    title: `Prova - ${subjectName}`,
-                    description: `Prova da disciplina ${subjectName}`,
-                    course_id: courseId,
-                    subject_id: subjectId,
-                    test_type: 'exam', // Sempre 'exam' (prova)
-                    duration_minutes: 90, // 90 minutos padrão
-                    total_points: allQuestions.length * 1, // 1 ponto por questão por padrão
-                    passing_score: 60, // 60% padrão
-                    instructions: `Esta prova contém ${allQuestions.length} questões. Leia atentamente cada questão antes de responder.`,
-                    is_published: true, // PUBLICAR automaticamente para os alunos
-                    show_results: true,
-                    show_answers: false,
-                    randomize_questions: false,
-                    randomize_options: false,
-                    max_attempts: 2,
-                    created_by: user?.id,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                  })
-                  .select()
-                  .single()
-                
-                if (testError) {
-                  console.error(`Erro ao criar teste: ${testError.message}`)
-                  results.errors.push(`Erro ao criar teste para ${subjectName}: ${testError.message}`)
-                  continue // Pular para próxima aula
-                } else {
-                  testId = newTest.id
-                  console.log(`Teste criado com sucesso: ${testId}`)
-                }
-              }
-              
-              // Agora salvar todas as questões coletadas
-              let questionIndex = 0
-              for (const questionData of allQuestions) {
-                try {
-                  // Criar a questão no banco
-                  const { data: question, error: questionError } = await supabase
-                    .from('questions')
-                    .insert({
-                      question_text: questionData.question_text,
-                      question_type: questionData.question_type,
-                      options: questionData.options || [],
-                      correct_answer: questionData.correct_answer,
-                      points: questionData.points || 1,
-                      difficulty: questionData.difficulty || 'medium',
-                      subject_id: subjectId,
-                      is_active: true,
-                      created_by: user?.id,
-                      created_at: new Date().toISOString(),
-                      updated_at: new Date().toISOString()
-                    })
-                    .select()
-                    .single()
-                  
-                  if (questionError) {
-                    console.error(`Erro ao criar questão: ${questionError.message}`)
-                    results.errors.push(`Erro ao criar questão: ${questionError.message}`)
-                  } else {
-                    console.log(`Questão criada com sucesso: ${question.id}`)
-                    
-                    // Associar questão ao teste
-                    if (testId && question) {
-                      const { error: testQuestionError } = await supabase
-                        .from('test_questions')
-                        .insert({
-                          test_id: testId,
-                          question_id: question.id,
-                          order_index: questionData.order_index || questionIndex,
-                          points_override: questionData.points || null
-                        })
-                      
-                      if (testQuestionError) {
-                        console.error(`Erro ao associar questão ao teste: ${testQuestionError.message}`)
-                        results.errors.push(`Erro ao associar questão ao teste: ${testQuestionError.message}`)
-                      } else {
-                        console.log(`Questão associada ao teste com sucesso`)
-                      }
-                    }
-                  }
-                  questionIndex++ // Incrementar índice da questão
-                } catch (err) {
-                  console.error('Erro ao processar questão:', err)
-                  results.errors.push(`Erro ao processar questão: ${err}`)
-                }
-              }
-              
-              console.log(`Teste da disciplina ${subjectName} criado com ${questionIndex} questões e publicado para os alunos`)
-            }
-          }
-        }
-      }
+      } // Fim do loop de subjects
+    } // Fim do loop de modules
     
     return results
   } catch (error) {

@@ -34,13 +34,6 @@ export const LazyDocumentViewer = dynamic(
   }
 )
 
-export const LazyQuestionImporter = dynamic(
-  () => import('./QuestionImporter'),
-  { 
-    loading: () => <PremiumLoader />,
-    ssr: false 
-  }
-)
 
 // Lazy load componentes UI pesados - removido por não ter export default
 

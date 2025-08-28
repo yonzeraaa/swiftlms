@@ -75,8 +75,6 @@ export default function CommandPalette() {
     { id: 'courses', label: 'Cursos', icon: <BookOpen className="w-4 h-4" />, href: '/dashboard/courses', group: 'Navegação' },
     { id: 'subjects', label: 'Disciplinas', icon: <GraduationCap className="w-4 h-4" />, href: '/dashboard/subjects', group: 'Navegação' },
     { id: 'lessons', label: 'Aulas', icon: <PlayCircle className="w-4 h-4" />, href: '/dashboard/lessons', group: 'Navegação' },
-    { id: 'tests', label: 'Testes', icon: <FileCheck className="w-4 h-4" />, href: '/dashboard/tests', group: 'Navegação' },
-    { id: 'questions', label: 'Banco de Questões', icon: <Database className="w-4 h-4" />, href: '/dashboard/question-bank', group: 'Navegação' },
     { id: 'reports', label: 'Relatórios', icon: <BarChart3 className="w-4 h-4" />, href: '/dashboard/reports', group: 'Navegação' },
     { id: 'settings', label: 'Configurações', icon: <Settings className="w-4 h-4" />, href: '/dashboard/settings', group: 'Navegação' },
   ] : [
@@ -93,8 +91,6 @@ export default function CommandPalette() {
     ...(isDashboard ? [
       { id: 'new-user', label: 'Novo Usuário', icon: <Plus className="w-4 h-4" />, shortcut: '⌘N', group: 'Ações Rápidas', keywords: ['criar', 'adicionar'] },
       { id: 'new-course', label: 'Novo Curso', icon: <Plus className="w-4 h-4" />, group: 'Ações Rápidas', keywords: ['criar', 'adicionar'] },
-      { id: 'new-test', label: 'Novo Teste', icon: <Plus className="w-4 h-4" />, group: 'Ações Rápidas', keywords: ['criar', 'adicionar', 'prova'] },
-      { id: 'new-question', label: 'Nova Questão', icon: <Plus className="w-4 h-4" />, group: 'Ações Rápidas', keywords: ['criar', 'adicionar', 'pergunta'] },
     ] : []),
     
     // System Actions
