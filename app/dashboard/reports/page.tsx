@@ -490,7 +490,7 @@ export default function ReportsPage() {
       
       // Processar dados de conclusões
       const completionData = (completedEnrollments || []).map(e => {
-        const hasCertificate = e.certificates && e.certificates.length > 0
+        const hasCertificate = !!e.certificates
         return {
           student: e.user?.full_name || 'Aluno desconhecido',
           email: e.user?.email || '',
