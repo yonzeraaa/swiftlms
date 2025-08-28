@@ -705,23 +705,23 @@ export default function ReportsPage() {
       }
       
       // Agrupar dados por usuário
-      const userAccessMap: Map<string, any> = new Map()
+      const userAccessMap = Object.create(null)
       
       (activityLogs || []).forEach((activity: any) => {
         const userId = activity.user_id
         if (!userId) return
         
-        if (!userAccessMap.has(userId)) {
-          userAccessMap.set(userId, {
+        if (!userAccessMap[userId]) {
+          userAccessMap[userId] = {
             name: activity.user?.full_name || 'Usuário desconhecido',
             email: activity.user?.email || '',
             activities: [],
             lastAccess: null,
             totalActions: 0
-          })
+          }
         }
         
-        const userData = userAccessMap.get(userId)
+        const userData = userAccessMap[userId]
         userData.activities.push(activity)
         userData.totalActions++
         
@@ -733,96 +733,124 @@ export default function ReportsPage() {
       })
       
       // Processar dados para o relatório
-      const studentAccessData = Array.from(userAccessMap.values()).map((user: any) => {
-        const coursesSet = new Set()
-        let totalProgress = 0
-        let progressCount = 0
+      const studentAccessData = []
+      for (const userId in userAccessMap) {
+        const user = userAccessMap[userId]
+        const coursesArray: string[] = []
+        let totalProgressValue = 0
+        let progressCountValue = 0
         
-        (lessonProgressData || []).forEach((progress: any) => {
-          if (progress.enrollment?.user?.email === user.email) {
-            coursesSet.add(progress.enrollment.course?.title)
-            if (progress.is_completed) {
-              totalProgress += 100
-            } else if (progress.progress_percentage) {
-              totalProgress += progress.progress_percentage
+        if (lessonProgressData && lessonProgressData.length > 0) {
+          for (const progress of lessonProgressData) {
+            if (progress.enrollment?.user?.email === user.email) {
+              const courseTitle = progress.enrollment.course?.title
+              if (courseTitle && !coursesArray.includes(courseTitle)) {
+                coursesArray.push(courseTitle)
+              }
+              if (progress.is_completed) {
+                totalProgressValue = totalProgressValue + 100
+              } else if (progress.progress_percentage) {
+                totalProgressValue = totalProgressValue + progress.progress_percentage
+              }
+              progressCountValue = progressCountValue + 1
             }
-            progressCount++
           }
-        })
+        }
         
-        return {
+        const userAccessRow = {
           name: user.name,
           email: user.email,
           lastAccess: user.lastAccess ? user.lastAccess.toLocaleString('pt-BR') : 'Nunca',
           totalAccess: user.totalActions,
-          totalHours: Math.round(user.totalActions * 0.5), // Estimativa
-          avgSession: 15, // Média estimada em minutos
-          coursesAccessed: coursesSet.size,
-          avgCompletion: progressCount > 0 ? Math.round(totalProgress / progressCount) : 0,
+          totalHours: Math.round(user.totalActions * 0.5),
+          avgSession: 15,
+          coursesAccessed: coursesArray.length,
+          avgCompletion: progressCountValue > 0 ? Math.round(totalProgressValue / progressCountValue) : 0,
           device: 'Desktop',
           browser: 'Chrome'
         }
-      }).filter((user: any) => user.totalAccess > 0)
+        
+        if (userAccessRow.totalAccess > 0) {
+          studentAccessData.push(userAccessRow)
+        }
+      }
       
       // Calcular padrão de acesso diário
-      const dayAccessMap: Map<string, any> = new Map()
+      const dayAccessData: any = {}
       const daysOfWeek = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
       
-      daysOfWeek.forEach(day => {
-        dayAccessMap.set(day, { accesses: 0, users: new Set() })
-      })
+      for (const day of daysOfWeek) {
+        dayAccessData[day] = { accesses: 0, userIds: [] as string[] }
+      }
       
-      (activityLogs || []).forEach((activity: any) => {
-        const date = new Date(activity.created_at)
-        const dayName = daysOfWeek[date.getDay()]
-        const dayData = dayAccessMap.get(dayName)
-        
-        if (dayData) {
-          dayData.accesses++
-          dayData.users.add(activity.user_id)
+      if (activityLogs && activityLogs.length > 0) {
+        for (const activity of activityLogs) {
+          const date = new Date(activity.created_at)
+          const dayName = daysOfWeek[date.getDay()]
+          const dayInfo = dayAccessData[dayName]
+          
+          if (dayInfo) {
+            dayInfo.accesses = dayInfo.accesses + 1
+            if (!dayInfo.userIds.includes(activity.user_id)) {
+              dayInfo.userIds.push(activity.user_id)
+            }
+          }
         }
-      })
+      }
       
-      const dailyPattern = Array.from(dayAccessMap.entries()).map(([day, data]: [string, any]) => ({
-        day,
-        accesses: data.accesses,
-        peakUsers: data.users.size,
-        peakTime: '19:00-20:00',
-        avgDuration: 20 // Média estimada
-      }))
+      const dailyPattern = []
+      for (const day in dayAccessData) {
+        const data = dayAccessData[day]
+        dailyPattern.push({
+          day,
+          accesses: data.accesses,
+          peakUsers: data.userIds.length,
+          peakTime: '19:00-20:00',
+          avgDuration: 20
+        })
+      }
       
       // Engajamento por curso
-      const courseEngagementMap: Map<string, any> = new Map()
+      const courseEngagementData: any = {}
       
-      (lessonProgressData || []).forEach((progress: any) => {
-        const courseTitle = progress.enrollment?.course?.title
-        if (courseTitle) {
-          if (!courseEngagementMap.has(courseTitle)) {
-            courseEngagementMap.set(courseTitle, {
-              students: new Set(),
-              completedLessons: 0,
-              totalLessons: 0
-            })
-          }
-          
-          const courseData = courseEngagementMap.get(courseTitle)
-          courseData.students.add(progress.enrollment.user_id)
-          courseData.totalLessons++
-          if (progress.is_completed) {
-            courseData.completedLessons++
+      if (lessonProgressData && lessonProgressData.length > 0) {
+        for (const progress of lessonProgressData) {
+          const courseTitle = progress.enrollment?.course?.title
+          if (courseTitle) {
+            if (!courseEngagementData[courseTitle]) {
+              courseEngagementData[courseTitle] = {
+                studentIds: [] as string[],
+                completedLessons: 0,
+                totalLessons: 0
+              }
+            }
+            
+            const courseInfo = courseEngagementData[courseTitle]
+            const studentId = progress.enrollment.user_id
+            if (studentId && !courseInfo.studentIds.includes(studentId)) {
+              courseInfo.studentIds.push(studentId)
+            }
+            courseInfo.totalLessons = courseInfo.totalLessons + 1
+            if (progress.is_completed) {
+              courseInfo.completedLessons = courseInfo.completedLessons + 1
+            }
           }
         }
-      })
+      }
       
-      const courseEngagement = Array.from(courseEngagementMap.entries()).map(([course, data]: [string, any]) => ({
-        course,
-        activeStudents: data.students.size,
-        avgTime: 20, // Horas estimadas
-        completionRate: data.totalLessons > 0 ? Math.round((data.completedLessons / data.totalLessons) * 100) : 0,
-        avgRating: 4.5,
-        totalViews: data.totalLessons,
-        totalDownloads: 0
-      }))
+      const courseEngagement = []
+      for (const courseName in courseEngagementData) {
+        const data = courseEngagementData[courseName]
+        courseEngagement.push({
+          course: courseName,
+          activeStudents: data.studentIds.length,
+          avgTime: 20,
+          completionRate: data.totalLessons > 0 ? Math.round((data.completedLessons / data.totalLessons) * 100) : 0,
+          avgRating: 4.5,
+          totalViews: data.totalLessons,
+          totalDownloads: 0
+        })
+      }
       
       if (studentAccessData.length === 0 && courseEngagement.length === 0) {
         alert('Nenhum dado de acesso encontrado no período')

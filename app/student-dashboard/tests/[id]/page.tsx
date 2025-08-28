@@ -69,7 +69,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
         .from('enrollments')
         .select('id')
         .eq('user_id', user.id)
-        .eq('course_id', testData.course_id)
+        .eq('course_id', testData.course_id || '')
         .single()
 
       if (!enrollment) {

@@ -19,11 +19,6 @@ type Profile = Tables<'profiles'> & {
   courses?: Array<{ id: string; title: string }>
   enrollments?: Array<{ id: string }>
   tests_created?: Array<{ id: string }>
-  test_attempts?: Array<{ 
-    id: string
-    score?: number
-    status: string
-  }>
 }
 
 interface NewUserForm {
@@ -141,21 +136,9 @@ export default function UsersPage() {
             .select('id')
             .eq('user_id', user.id)
 
-          const { data: attempts } = await supabase
-            .from('test_attempts')
-            .select('id, score, status')
-            .eq('user_id', user.id)
-
-          const formattedAttempts = (attempts || []).map(a => ({
-            id: a.id,
-            score: a.score ?? undefined,
-            status: a.status as string
-          }))
-
           return {
             ...user,
-            enrollments: enrollments || [],
-            test_attempts: formattedAttempts
+            enrollments: enrollments || []
           }
         } else if (user.role === 'instructor' || user.role === 'teacher') {
           // Fetch courses and tests created for teachers
@@ -181,7 +164,7 @@ export default function UsersPage() {
       setUsers(enrichedUsers)
     } catch (error) {
       console.error('Error fetching users:', error)
-      showToast({ type: 'error', title: 'Erro ao carregar usuários' })
+      showToast('Erro ao carregar usuários')
     } finally {
       setLoading(false)
     }
@@ -253,14 +236,11 @@ export default function UsersPage() {
         user.id === userId ? { ...user, status } : user
       ))
       
-      showToast({ 
-        type: 'success', 
-        title: status === 'active' ? 'Usuário ativado' : 'Usuário desativado' 
-      })
+      showToast(status === 'active' ? 'Usuário ativado' : 'Usuário desativado')
       setOpenDropdown(null)
     } catch (error) {
       console.error('Error updating user status:', error)
-      showToast({ type: 'error', title: 'Erro ao atualizar status' })
+      showToast('Erro ao atualizar status')
     }
   }
 

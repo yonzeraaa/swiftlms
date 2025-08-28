@@ -83,43 +83,8 @@ export default function CalendarPage() {
 
         const calendarEvents: CalendarEvent[] = []
 
-        // Add test events
-        if (tests) {
-          tests.forEach(test => {
-            const course = coursesWithEnrollment.find(c => c.id === test.course_id)
-            
-            if (test.scheduled_for) {
-              calendarEvents.push({
-                id: `test-${test.id}`,
-                title: test.title,
-                description: test.description || undefined,
-                date: new Date(test.scheduled_for),
-                type: 'test',
-                courseId: test.course_id || undefined,
-                courseName: course?.title,
-                color: 'bg-red-500',
-                icon: <FileText className="w-4 h-4" />,
-                time: new Date(test.scheduled_for).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-                duration: test.duration_minutes || undefined
-              })
-            }
-
-            if (test.available_until) {
-              calendarEvents.push({
-                id: `test-deadline-${test.id}`,
-                title: `Prazo: ${test.title}`,
-                description: `Último dia para realizar o teste`,
-                date: new Date(test.available_until),
-                type: 'deadline',
-                courseId: test.course_id || undefined,
-                courseName: course?.title,
-                color: 'bg-yellow-500',
-                icon: <Clock className="w-4 h-4" />,
-                time: new Date(test.available_until).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-              })
-            }
-          })
-        }
+        // Tests have been removed from the system
+        // Test events are no longer available
 
         // Note: Real lesson scheduling would require adding scheduled_for field to lessons table
         // For now, calendar shows only test events and deadlines

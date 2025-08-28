@@ -90,7 +90,7 @@ export default function TestsManagementPage() {
 
   const extractGabarito = async () => {
     if (!formData.google_drive_url) {
-      showToast('Por favor, insira a URL do Google Drive primeiro', 'error')
+      showToast('Erro: Por favor, insira a URL do Google Drive primeiro')
       return
     }
 
@@ -106,13 +106,13 @@ export default function TestsManagementPage() {
       
       if (data.success) {
         setGabaritoData(data.answerKey)
-        showToast(`Gabarito extraído com sucesso! ${data.questionCount} questões encontradas.`, 'success')
+        showToast(`Sucesso: Gabarito extraído! ${data.questionCount} questões encontradas.`)
       } else {
-        showToast(data.error || 'Erro ao extrair gabarito', 'error')
+        showToast(`Erro: ${data.error || 'Erro ao extrair gabarito'}`)
       }
     } catch (error) {
       console.error('Erro ao extrair gabarito:', error)
-      showToast('Erro ao processar documento', 'error')
+      showToast('Erro: Erro ao processar documento')
     } finally {
       setExtractingGabarito(false)
     }
@@ -147,7 +147,7 @@ export default function TestsManagementPage() {
         
         if (error) {
           console.error('Erro ao atualizar teste:', error)
-          showToast(`Erro ao atualizar teste: ${error.message}`, 'error')
+          showToast(`Erro ao atualizar teste: ${error.message}`)
           return
         }
         
@@ -155,7 +155,7 @@ export default function TestsManagementPage() {
         if (gabaritoData.length > 0) {
           await updateAnswerKeys(editingTest.id)
         }
-        showToast('Teste atualizado com sucesso!', 'success')
+        showToast('Sucesso: Teste atualizado!')
       } else {
         // Criar novo teste
         const { data: newTest, error } = await supabase
@@ -166,7 +166,7 @@ export default function TestsManagementPage() {
         
         if (error) {
           console.error('Erro ao criar teste:', error)
-          showToast(`Erro ao criar teste: ${error.message}`, 'error')
+          showToast(`Erro ao criar teste: ${error.message}`)
           return
         }
         
@@ -175,7 +175,7 @@ export default function TestsManagementPage() {
           if (gabaritoData.length > 0) {
             await updateAnswerKeys(newTest.id)
           }
-          showToast('Teste criado com sucesso!', 'success')
+          showToast('Sucesso: Teste criado!')
         }
       }
       
@@ -183,7 +183,7 @@ export default function TestsManagementPage() {
       loadData()
     } catch (error) {
       console.error('Erro ao salvar teste:', error)
-      showToast('Erro ao salvar teste', 'error')
+      showToast('Erro: Erro ao salvar teste')
     }
   }
 
@@ -216,7 +216,7 @@ export default function TestsManagementPage() {
       .eq('id', id)
     
     if (!error) {
-      showToast('Teste excluído com sucesso!', 'success')
+      showToast('Sucesso: Teste excluído!')
       loadData()
     }
   }
