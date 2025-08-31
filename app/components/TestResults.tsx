@@ -51,7 +51,7 @@ export default function TestResults({
       transition={{ duration: 0.3 }}
       className="max-w-2xl mx-auto"
     >
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+      <div className="bg-navy-900 rounded-2xl shadow-xl overflow-hidden border border-gold-500/20">
         {/* Header com cor baseada no resultado */}
         <div className={`p-8 text-white text-center ${
           passed 
@@ -117,8 +117,8 @@ export default function TestResults({
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div>
-                    <span className="text-5xl font-bold text-navy-900">{score.toFixed(0)}</span>
-                    <span className="text-2xl text-gray-500">%</span>
+                    <span className="text-5xl font-bold text-gold">{score.toFixed(0)}</span>
+                    <span className="text-2xl text-gold-400">%</span>
                   </div>
                 </div>
               </div>
@@ -131,49 +131,49 @@ export default function TestResults({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="text-center p-4 bg-gray-50 rounded-lg"
+              className="text-center p-4 bg-navy-800 rounded-lg border border-gold-500/20"
             >
               <div className="flex justify-center mb-2">
                 <CheckCircle className="w-8 h-8 text-green-500" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{correctCount}</p>
-              <p className="text-sm text-gray-600">Acertos</p>
+              <p className="text-2xl font-bold text-gold">{correctCount}</p>
+              <p className="text-sm text-gold-300">Acertos</p>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="text-center p-4 bg-gray-50 rounded-lg"
+              className="text-center p-4 bg-navy-800 rounded-lg border border-gold-500/20"
             >
               <div className="flex justify-center mb-2">
                 <XCircle className="w-8 h-8 text-red-500" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{incorrectCount}</p>
-              <p className="text-sm text-gray-600">Erros</p>
+              <p className="text-2xl font-bold text-gold">{incorrectCount}</p>
+              <p className="text-sm text-gold-300">Erros</p>
             </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="text-center p-4 bg-gray-50 rounded-lg"
+              className="text-center p-4 bg-navy-800 rounded-lg border border-gold-500/20"
             >
               <div className="flex justify-center mb-2">
-                <TrendingUp className="w-8 h-8 text-blue-500" />
+                <TrendingUp className="w-8 h-8 text-gold-500" />
               </div>
-              <p className="text-2xl font-bold text-gray-900">{percentage}%</p>
-              <p className="text-sm text-gray-600">Aproveitamento</p>
+              <p className="text-2xl font-bold text-gold">{percentage}%</p>
+              <p className="text-sm text-gold-300">Aproveitamento</p>
             </motion.div>
           </div>
 
           {/* Barra de progresso para nota mínima */}
           <div className="mb-8">
-            <div className="flex justify-between text-sm text-gray-600 mb-2">
+            <div className="flex justify-between text-sm text-gold-300 mb-2">
               <span>Nota mínima: {passingScore}%</span>
               <span>Sua nota: {score.toFixed(1)}%</span>
             </div>
-            <div className="relative h-4 bg-gray-200 rounded-full overflow-hidden">
+            <div className="relative h-4 bg-navy-800 rounded-full overflow-hidden border border-gold-500/20">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(100, score)}%` }}
@@ -181,7 +181,7 @@ export default function TestResults({
                 className={`h-full ${passed ? 'bg-green-500' : 'bg-red-500'}`}
               />
               <div
-                className="absolute top-0 h-full w-0.5 bg-navy-900"
+                className="absolute top-0 h-full w-0.5 bg-gold-500"
                 style={{ left: `${passingScore}%` }}
               />
             </div>
@@ -195,7 +195,7 @@ export default function TestResults({
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.8 }}
                 onClick={onRetry}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gold-500 text-white rounded-lg hover:bg-gold-600 transition-colors font-medium"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-gold-500 to-gold-600 text-navy-900 rounded-lg hover:from-gold-600 hover:to-gold-700 transition-all font-semibold shadow-lg shadow-gold-500/20"
               >
                 <RefreshCw className="w-5 h-5" />
                 Tentar Novamente
@@ -207,7 +207,7 @@ export default function TestResults({
               animate={{ opacity: 1 }}
               transition={{ delay: 0.9 }}
               onClick={onExit}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-navy-600 text-white rounded-lg hover:bg-navy-700 transition-colors font-medium"
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-navy-800 text-gold rounded-lg hover:bg-navy-700 transition-all font-medium border border-gold-500/30"
             >
               <Home className="w-5 h-5" />
               Voltar aos Testes
@@ -221,9 +221,9 @@ export default function TestResults({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 1 }}
-        className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+        className="mt-6 p-4 bg-navy-800 border border-gold-500/30 rounded-lg"
       >
-        <p className="text-center text-blue-800">
+        <p className="text-center text-gold-300">
           {passed 
             ? '🎉 Continue estudando e alcance resultados ainda melhores!'
             : '💪 A prática leva à perfeição. Revise o conteúdo e tente novamente!'}

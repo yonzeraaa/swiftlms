@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import TestViewer from '@/app/components/TestViewer'
 import TestResults from '@/app/components/TestResults'
-import PremiumLoader from '@/app/components/ui/PremiumLoader'
+import { SkeletonCard } from '@/app/components/Skeleton'
 import { Tables } from '@/lib/database.types'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
@@ -129,7 +129,15 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
       })
   }
 
-  if (loading) return <PremiumLoader />
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-2xl">
+          <SkeletonCard />
+        </div>
+      </div>
+    )
+  }
   if (!test || !enrollmentId) return null
 
   if (showResults && attemptData) {

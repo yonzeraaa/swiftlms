@@ -5,7 +5,7 @@ import DocumentViewer from './DocumentViewer'
 import TestAnswerPanel from './TestAnswerPanel'
 import { Tables } from '@/lib/database.types'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, AlertCircle, Sparkles, FileText } from 'lucide-react'
+import { Clock, AlertCircle, FileText } from 'lucide-react'
 import Card from './Card'
 import Button from './Button'
 import { useTranslation } from '@/app/contexts/LanguageContext'
@@ -155,9 +155,8 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
               <FileText className="w-6 h-6 text-gold" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gold flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-gold">
                 {test.title}
-                <Sparkles className="w-5 h-5 text-gold-400 animate-pulse" />
               </h1>
               {test.description && (
                 <p className="text-gold-300/80 mt-1">{test.description}</p>
@@ -181,10 +180,10 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
               <Button
                 variant="primary"
                 onClick={() => setShowAnswerPanel(true)}
-                className="flex items-center gap-2"
+                icon={<FileText className="w-4 h-4" />}
+                iconPosition="left"
               >
-                <FileText className="w-4 h-4" />
-                {t('test.startTest')}
+                Responder Teste
               </Button>
             )}
           </div>

@@ -91,16 +91,11 @@ export default function TestAnswerPanel({
                   variant="primary"
                   onClick={onSubmit}
                   disabled={submitting || answeredCount === 0}
-                  className="w-full mt-6 flex items-center justify-center gap-2"
+                  className="w-full mt-6"
+                  icon={!submitting ? <Send className="w-5 h-5" /> : undefined}
+                  iconPosition="left"
                 >
-                  {submitting ? (
-                    <>{t('test.submitting')}</>
-                  ) : (
-                    <>
-                      <Send className="w-5 h-5" />
-                      {t('test.submitAnswers')}
-                    </>
-                  )}
+                  {submitting ? 'Enviando...' : 'Enviar Respostas'}
                 </Button>
               </div>
             </div>
@@ -163,17 +158,12 @@ export default function TestAnswerPanel({
                 variant="primary"
                 onClick={onSubmit}
                 disabled={submitting || answeredCount === 0}
-                className="w-full flex items-center justify-center gap-2"
+                className="w-full"
                 size="lg"
+                icon={!submitting ? <Send className="w-5 h-5" /> : undefined}
+                iconPosition="left"
               >
-                {submitting ? (
-                  <>{t('test.submitting')}</>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5" />
-                    {t('test.submitAnswers')}
-                  </>
-                )}
+                {submitting ? 'Enviando...' : 'Enviar Respostas'}
               </Button>
               
               {answeredCount === 0 && (

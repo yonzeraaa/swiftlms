@@ -2,9 +2,9 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles } from 'lucide-react'
+import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles, MoreVertical, Search, Filter, X } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -12,7 +12,8 @@ import Modal from '../../components/Modal'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { useToast } from '../../components/Toast'
 import EmptyState from '../../components/EmptyState'
-import LoadingState from '../../components/LoadingState'
+import { SkeletonCard } from '../../components/Skeleton'
+import { Chip } from '../../components/Badge'
 
 type Test = Tables<'tests'>
 type Course = Tables<'courses'>
@@ -29,6 +30,16 @@ export default function TestsManagementPage() {
   const [editingTest, setEditingTest] = useState<Test | null>(null)
   const [extractingGabarito, setExtractingGabarito] = useState(false)
   const [gabaritoData, setGabaritoData] = useState<Array<{ questionNumber: number; correctAnswer: string; points?: number }>>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterCourse, setFilterCourse] = useState('all')
+  const [filterSubject, setFilterSubject] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const dropdownRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
+  const [creating, setCreating] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   
   const supabase = createClient()
   const { t } = useTranslation()
@@ -118,8 +129,39 @@ export default function TestsManagementPage() {
     }
   }
 
+  const filteredTests = tests.filter(test => {
+    const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (test.description && test.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    
+    const matchesCourse = filterCourse === 'all' || test.course_id === filterCourse
+    const matchesSubject = filterSubject === 'all' || test.subject_id === filterSubject
+    const matchesStatus = filterStatus === 'all' || 
+      (filterStatus === 'active' && test.is_active) ||
+      (filterStatus === 'inactive' && !test.is_active)
+    
+    return matchesSearch && matchesCourse && matchesSubject && matchesStatus
+  })
+
+  const handleDropdownClick = (e: React.MouseEvent, testId: string) => {
+    e.stopPropagation()
+    setOpenDropdown(openDropdown === testId ? null : testId)
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdown && !Object.values(dropdownRefs.current).some(ref => ref?.contains(event.target as Node))) {
+        setOpenDropdown(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openDropdown])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setCreating(true)
+    setError(null)
     
     // Preparar dados limpos para envio
     const cleanedData: any = {
@@ -139,6 +181,7 @@ export default function TestsManagementPage() {
     
     try {
       if (editingTest) {
+        setUpdating(true)
         // Atualizar teste existente
         const { error } = await supabase
           .from('tests')
@@ -184,6 +227,10 @@ export default function TestsManagementPage() {
     } catch (error) {
       console.error('Erro ao salvar teste:', error)
       showToast('Erro: Erro ao salvar teste')
+      setError('Erro ao salvar teste')
+    } finally {
+      setCreating(false)
+      setUpdating(false)
     }
   }
 
@@ -256,34 +303,105 @@ export default function TestsManagementPage() {
     setShowModal(true)
   }
 
-  if (loading) return <LoadingState isLoading={loading}>{null}</LoadingState>
-
   return (
     <div className="space-y-6">
-      {/* Header consistente com outras páginas */}
-      <Card variant="gradient" className="mb-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
-              <Sparkles className="w-8 h-8 text-gold-400 animate-pulse" />
-              {t('tests.title')}
-            </h1>
-            <p className="text-gold-300 mt-1">{t('tests.subtitle')}</p>
+      {/* Header com busca e filtros */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gold">
+          {t('tests.title')}
+        </h1>
+        <Button
+          variant="primary"
+          onClick={() => setShowModal(true)}
+          icon={<Plus className="w-5 h-5" />}
+        >
+          {t('tests.newTest')}
+        </Button>
+      </div>
+
+      {/* Barra de busca e filtros */}
+      <Card variant="elevated" className="mb-6">
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gold-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Buscar testes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+              />
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => setShowFilters(!showFilters)}
+              icon={<Filter className="w-5 h-5" />}
+            >
+              Filtros ({filteredTests.length})
+            </Button>
           </div>
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => setShowModal(true)}
-            icon={<Plus className="w-5 h-5" />}
-          >
-            {t('tests.newTest')}
-          </Button>
+
+          {/* Filtros expandidos */}
+          {showFilters && (
+            <div className="pt-4 border-t border-gold-500/20">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gold-200 mb-2">Curso</label>
+                  <select
+                    value={filterCourse}
+                    onChange={(e) => setFilterCourse(e.target.value)}
+                    className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  >
+                    <option value="all">Todos os cursos</option>
+                    {courses.map(course => (
+                      <option key={course.id} value={course.id}>{course.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gold-200 mb-2">Disciplina</label>
+                  <select
+                    value={filterSubject}
+                    onChange={(e) => setFilterSubject(e.target.value)}
+                    className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  >
+                    <option value="all">Todas as disciplinas</option>
+                    {subjects.map(subject => (
+                      <option key={subject.id} value={subject.id}>{subject.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gold-200 mb-2">Status</label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="active">Ativos</option>
+                    <option value="inactive">Inativos</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
       {/* Lista de Testes */}
+      {loading ? (
+        <div className="grid gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} style={{ animationDelay: `${i * 100}ms` }}>
+              <SkeletonCard />
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="grid gap-4">
-        {tests.map((test) => {
+        {filteredTests.map((test) => {
           const course = courses.find(c => c.id === test.course_id)
           const subject = subjects.find(s => s.id === test.subject_id)
           
@@ -291,7 +409,7 @@ export default function TestsManagementPage() {
             <Card
               key={test.id}
               variant="elevated"
-              className="hover:shadow-xl transition-all"
+              hoverable
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
@@ -311,13 +429,13 @@ export default function TestsManagementPage() {
                   <div className="flex flex-wrap gap-3 mb-4">
                     {course && (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
-                        <BookOpen className="w-4 h-4 text-gold-400" />
+                        <BookOpen className="w-5 h-5 text-gold-400" />
                         <span className="text-sm font-medium text-gold-200">{course.title}</span>
                       </div>
                     )}
                     {subject && (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
-                        <FileText className="w-4 h-4 text-gold-400" />
+                        <FileText className="w-5 h-5 text-gold-400" />
                         <span className="text-sm font-medium text-gold-200">{subject.name}</span>
                       </div>
                     )}
@@ -325,69 +443,81 @@ export default function TestsManagementPage() {
 
                   <div className="flex flex-wrap items-center gap-4 text-sm">
                     <div className="flex items-center gap-1.5 text-gold-300">
-                      <Clock className="w-4 h-4 text-gold-400" />
+                      <Clock className="w-5 h-5 text-gold-400" />
                       <span className="font-medium">{test.duration_minutes} {t('tests.minutes')}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gold-300">
-                      <Target className="w-4 h-4 text-gold-400" />
+                      <Target className="w-5 h-5 text-gold-400" />
                       <span className="font-medium">{t('tests.minimum')}: {test.passing_score}%</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-gold-300">
-                      <RotateCcw className="w-4 h-4 text-gold-400" />
+                      <RotateCcw className="w-5 h-5 text-gold-400" />
                       <span className="font-medium">{test.max_attempts} {t('tests.attempts')}</span>
                     </div>
                   </div>
 
                   <div className="mt-4 flex items-center gap-3">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-                      test.is_active 
-                        ? 'bg-green-900/30 text-green-400 border-green-500/30' 
-                        : 'bg-navy-700/50 text-gold-500 border-gold-500/20'
-                    }`}>
-                      <div className={`w-2 h-2 rounded-full ${
-                        test.is_active ? 'bg-green-400 animate-pulse' : 'bg-gold-500'
-                      }`} />
-                      {test.is_active ? t('tests.active') : t('tests.inactive')}
-                    </span>
+                    <Chip
+                      label={test.is_active ? t('tests.active') : t('tests.inactive')}
+                      color={test.is_active ? 'green' : 'gold'}
+                    />
                   </div>
                 </div>
 
-                <div className="flex gap-2 ml-4">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => window.open(test.google_drive_url, '_blank')}
-                    icon={<ExternalLink className="w-4 h-4" />}
-                    aria-label={t('tests.viewDocument')}
+                <div className="relative">
+                  <button
+                    ref={el => {
+                      if (el) dropdownRefs.current[test.id] = el
+                    }}
+                    onClick={(e) => handleDropdownClick(e, test.id)}
+                    className="p-2 hover:bg-navy-700 rounded-lg transition-colors border border-transparent hover:border-gold-500/30"
                   >
-                    <span className="sr-only">{t('tests.viewDocument')}</span>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => editTest(test)}
-                    icon={<Edit className="w-4 h-4" />}
-                    aria-label={t('tests.edit')}
-                  >
-                    <span className="sr-only">{t('tests.edit')}</span>
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => deleteTest(test.id)}
-                    icon={<Trash2 className="w-4 h-4" />}
-                    aria-label={t('tests.delete')}
-                  >
-                    <span className="sr-only">{t('tests.delete')}</span>
-                  </Button>
+                    <MoreVertical className="w-5 h-5 text-gold-400" />
+                  </button>
+                  
+                  {openDropdown === test.id && (
+                    <div className="absolute right-0 mt-2 w-48 bg-navy-800 rounded-lg shadow-xl border border-gold-500/20 z-10">
+                      <button
+                        onClick={() => {
+                          window.open(test.google_drive_url, '_blank')
+                          setOpenDropdown(null)
+                        }}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 transition-colors first:rounded-t-lg"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Ver Documento
+                      </button>
+                      <button
+                        onClick={() => {
+                          editTest(test)
+                          setOpenDropdown(null)
+                        }}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 transition-colors"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => {
+                          deleteTest(test.id)
+                          setOpenDropdown(null)
+                        }}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-red-400 hover:bg-navy-700 transition-colors last:rounded-b-lg"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Excluir
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </Card>
           )
         })}
       </div>
+      )}
 
-      {tests.length === 0 && (
+      {!loading && filteredTests.length === 0 && (
         <EmptyState
           icon={<FileCheck className="w-12 h-12" />}
           title={t('tests.noTests')}
@@ -419,7 +549,7 @@ export default function TestsManagementPage() {
                         required
                         value={formData.title}
                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
                         placeholder={t('tests.titlePlaceholder')}
                       />
                     </div>
@@ -432,7 +562,7 @@ export default function TestsManagementPage() {
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                         rows={3}
-                        className="w-full px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                        className="w-full px-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
                         placeholder={t('tests.descriptionPlaceholder')}
                       />
                     </div>
@@ -448,7 +578,7 @@ export default function TestsManagementPage() {
                           value={formData.google_drive_url}
                           onChange={(e) => setFormData({ ...formData, google_drive_url: e.target.value })}
                           placeholder="https://docs.google.com/document/d/..."
-                          className="flex-1 px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                          className="flex-1 px-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
                         />
                         <Button
                           type="button"
@@ -535,7 +665,7 @@ export default function TestsManagementPage() {
                             value={formData.duration_minutes || ''}
                             onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 60 })}
                             min="1"
-                            className="w-full pl-11 pr-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                            className="w-full pl-11 pr-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
                           />
                         </div>
                       </div>
@@ -552,7 +682,7 @@ export default function TestsManagementPage() {
                             onChange={(e) => setFormData({ ...formData, passing_score: parseInt(e.target.value) || 70 })}
                             min="0"
                             max="100"
-                            className="w-full pl-11 pr-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                            className="w-full pl-11 pr-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
                           />
                         </div>
                       </div>
@@ -568,7 +698,7 @@ export default function TestsManagementPage() {
                             value={formData.max_attempts || ''}
                             onChange={(e) => setFormData({ ...formData, max_attempts: parseInt(e.target.value) || 3 })}
                             min="1"
-                            className="w-full pl-11 pr-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                            className="w-full pl-11 pr-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
                           />
                         </div>
                       </div>
@@ -599,6 +729,8 @@ export default function TestsManagementPage() {
                     <Button
                       type="submit"
                       variant="primary"
+                      loading={creating || updating}
+                      disabled={creating || updating}
                     >
                       {editingTest ? t('tests.updateTest') : t('tests.createTest')}
                     </Button>
