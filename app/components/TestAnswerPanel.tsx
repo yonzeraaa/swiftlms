@@ -81,11 +81,19 @@ export default function TestAnswerPanel({
               </div>
                 
               <div className="p-4 overflow-y-auto max-h-[60vh] bg-navy-900">
-                <QuestionGrid
-                  questionCount={questionCount}
-                  answers={answers}
-                  onChange={onAnswerChange}
-                />
+                {questionCount === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 text-gold-300">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500 mb-4"></div>
+                    <p className="text-lg">Carregando questões...</p>
+                    <p className="text-sm text-gold-400/60 mt-2">Por favor, aguarde</p>
+                  </div>
+                ) : (
+                  <QuestionGrid
+                    questionCount={questionCount}
+                    answers={answers}
+                    onChange={onAnswerChange}
+                  />
+                )}
                 
                 <Button
                   variant="primary"
@@ -145,11 +153,19 @@ export default function TestAnswerPanel({
 
             {/* Grid de questões */}
             <div className="flex-1 overflow-y-auto p-4 bg-navy-900">
-              <QuestionGrid
-                questionCount={questionCount}
-                answers={answers}
-                onChange={onAnswerChange}
-              />
+              {questionCount === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-gold-300">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500 mb-4"></div>
+                  <p className="text-lg">Carregando questões...</p>
+                  <p className="text-sm text-gold-400/60 mt-2">Por favor, aguarde</p>
+                </div>
+              ) : (
+                <QuestionGrid
+                  questionCount={questionCount}
+                  answers={answers}
+                  onChange={onAnswerChange}
+                />
+              )}
             </div>
 
             {/* Botão de enviar */}

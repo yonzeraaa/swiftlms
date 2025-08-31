@@ -80,10 +80,18 @@ export default function DashboardLayout({
         schema: 'public', 
         table: 'certificate_requests' 
       }, fetchPendingCertificates)
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Realtime subscription active for certificate_requests')
+        } else if (status === 'CLOSED') {
+          console.log('Realtime subscription closed for certificate_requests')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime subscription error for certificate_requests')
+        }
+      })
 
     return () => {
-      subscription.unsubscribe()
+      supabase.removeChannel(subscription)
     }
   }, [])
 

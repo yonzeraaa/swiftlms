@@ -5,7 +5,7 @@ import DocumentViewer from './DocumentViewer'
 import TestAnswerPanel from './TestAnswerPanel'
 import { Tables } from '@/lib/database.types'
 import { createClient } from '@/lib/supabase/client'
-import { Clock, AlertCircle, FileText } from 'lucide-react'
+import { Clock, AlertCircle, FileText, Settings } from 'lucide-react'
 import Card from './Card'
 import Button from './Button'
 import { useTranslation } from '@/app/contexts/LanguageContext'
@@ -26,6 +26,9 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
   const [startTime] = useState(new Date())
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [loadingQuestions, setLoadingQuestions] = useState(false)
+  const [showQuestionConfig, setShowQuestionConfig] = useState(false)
+  const [manualQuestionCount, setManualQuestionCount] = useState('20')
   
   const supabase = createClient()
   const { t } = useTranslation()
@@ -56,16 +59,52 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
   }, [timeRemaining])
 
   const loadQuestionCount = async () => {
-    const { data } = await supabase
-      .from('test_answer_keys')
-      .select('question_number')
-      .eq('test_id', test.id)
-      .order('question_number', { ascending: false })
-      .limit(1)
-      .single()
-    
-    if (data) {
-      setQuestionCount(data.question_number)
+    setLoadingQuestions(true)
+    try {
+      // Primeiro tenta buscar do gabarito cadastrado
+      const { data, error } = await supabase
+        .from('test_answer_keys')
+        .select('question_number')
+        .eq('test_id', test.id)
+        .order('question_number', { ascending: false })
+        .limit(1)
+        .single()
+      
+      if (data && !error) {
+        setQuestionCount(data.question_number)
+        console.log('Número de questões carregado do gabarito:', data.question_number)
+      } else {
+        // Se não houver gabarito, verifica se há um valor salvo no localStorage
+        const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
+        if (savedCount) {
+          setQuestionCount(parseInt(savedCount))
+        } else {
+          // Se não houver valor salvo, mostra modal para configurar
+          setShowQuestionConfig(true)
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar número de questões:', error)
+      // Em caso de erro, verifica localStorage ou mostra configuração
+      const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
+      if (savedCount) {
+        setQuestionCount(parseInt(savedCount))
+      } else {
+        setShowQuestionConfig(true)
+      }
+    } finally {
+      setLoadingQuestions(false)
+    }
+  }
+
+  const handleSetQuestionCount = () => {
+    const count = parseInt(manualQuestionCount)
+    if (count > 0 && count <= 100) {
+      setQuestionCount(count)
+      localStorage.setItem(`test_question_count_${test.id}`, count.toString())
+      setShowQuestionConfig(false)
+    } else {
+      alert('Por favor, insira um número entre 1 e 100')
     }
   }
 
@@ -97,7 +136,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
     
     const answeredCount = Object.keys(answers).length
     if (answeredCount < questionCount) {
-      if (!confirm(t('test.incompleteWarning').replace('{answered}', answeredCount.toString()).replace('{total}', questionCount.toString()))) {
+      if (!confirm(`Você respondeu apenas ${answeredCount} de ${questionCount} questões. Deseja enviar mesmo assim?`)) {
         return
       }
     }
@@ -124,11 +163,11 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
           onComplete(result.attempt.id, result.attempt.score, result.attempt.passed)
         }
       } else {
-        alert(result.error || t('test.submitError'))
+        alert(result.error || 'Erro ao enviar teste')
       }
     } catch (error) {
       console.error('Erro ao enviar:', error)
-      alert(t('test.submitError'))
+      alert('Erro ao enviar teste')
     } finally {
       setSubmitting(false)
     }
@@ -182,6 +221,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
                 onClick={() => setShowAnswerPanel(true)}
                 icon={<FileText className="w-4 h-4" />}
                 iconPosition="left"
+                disabled={questionCount === 0 && !showQuestionConfig}
               >
                 Responder Teste
               </Button>
@@ -189,6 +229,55 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
           </div>
         </div>
       </div>
+
+      {/* Modal de configuração de questões */}
+      {showQuestionConfig && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-fade-in">
+          <Card variant="elevated" className="max-w-md border-2 border-gold-500 shadow-2xl shadow-gold-500/20">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-br from-gold-500/30 to-gold-600/20 rounded-lg border border-gold-500/30">
+                  <Settings className="w-6 h-6 text-gold" />
+                </div>
+                <h2 className="text-xl font-bold text-gold">Configurar Teste</h2>
+              </div>
+              
+              <p className="text-gold-300 mb-4">
+                O gabarito deste teste ainda não foi cadastrado. Por favor, informe o número de questões do teste:
+              </p>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gold-200 mb-2">
+                  Número de Questões
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={manualQuestionCount}
+                  onChange={(e) => setManualQuestionCount(e.target.value)}
+                  className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  placeholder="Ex: 20"
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <Button
+                  variant="primary"
+                  onClick={handleSetQuestionCount}
+                  className="flex-1"
+                >
+                  Confirmar
+                </Button>
+              </div>
+              
+              <p className="text-xs text-gold-400/60 mt-3 text-center">
+                Esta configuração será salva para próximas tentativas
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {/* Área principal com documento e painel de respostas */}
       <div className="flex-1 flex overflow-hidden bg-navy-900">
@@ -231,9 +320,9 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-gold mb-2">{t('test.submitted')}</h2>
+              <h2 className="text-2xl font-bold text-gold mb-2">Teste Enviado!</h2>
               <p className="text-gold-300">
-                {t('test.submittedMessage')}
+                Suas respostas foram registradas com sucesso.
               </p>
             </div>
           </Card>

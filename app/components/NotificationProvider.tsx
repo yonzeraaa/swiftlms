@@ -43,7 +43,16 @@ export function NotificationProvider({
   useEffect(() => {
     if (!supabaseUrl || !supabaseAnonKey || !userId) return
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey)
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
+      },
+      auth: {
+        persistSession: false
+      }
+    })
 
     // Subscribe to real-time notifications
     const channel = supabase
@@ -67,7 +76,15 @@ export function NotificationProvider({
           })
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Realtime subscription active for notifications')
+        } else if (status === 'CLOSED') {
+          console.log('Realtime subscription closed for notifications')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Realtime subscription error for notifications')
+        }
+      })
 
     // Load existing notifications
     const loadNotifications = async () => {
