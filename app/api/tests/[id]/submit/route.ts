@@ -38,21 +38,62 @@ export async function POST(
     }
     
     // Buscar gabarito separadamente
-    const { data: answerKeys, error: keysError } = await supabase
+    console.log(`Buscando gabarito para teste ${testId}...`)
+    let { data: answerKeys, error: keysError } = await supabase
       .from('test_answer_keys')
       .select('*')
       .eq('test_id', testId)
       .order('question_number')
     
-    console.log(`Gabarito encontrado para teste ${testId}:`, answerKeys?.length || 0, 'questões')
+    if (keysError) {
+      console.error('Erro ao buscar gabarito:', keysError)
+      return NextResponse.json(
+        { error: 'Erro ao buscar gabarito do teste. Por favor, tente novamente.' },
+        { status: 500 }
+      )
+    }
+    
+    console.log(`Gabarito encontrado para teste ${testId}:`, {
+      count: answerKeys?.length || 0,
+      questions: answerKeys?.map(k => k.question_number) || [],
+      firstKey: answerKeys?.[0] || null
+    })
     
     // Verificar se o teste tem gabarito cadastrado
     if (!answerKeys || answerKeys.length === 0) {
-      console.error(`Teste ${testId} não possui gabarito cadastrado`)
-      return NextResponse.json(
-        { error: 'Este teste ainda não possui gabarito cadastrado. Por favor, aguarde o professor configurar o gabarito.' },
-        { status: 400 }
-      )
+      console.error(`Teste ${testId} não possui gabarito cadastrado. Verificando diretamente no banco...`)
+      
+      // Tentar buscar novamente sem filtros complexos
+      const { data: directCheck, error: directError } = await supabase
+        .from('test_answer_keys')
+        .select('id, test_id, question_number, correct_answer')
+        .eq('test_id', testId)
+        .limit(1)
+      
+      console.log('Verificação direta:', { directCheck, directError })
+      
+      if (!directCheck || directCheck.length === 0) {
+        return NextResponse.json(
+          { error: 'Este teste ainda não possui gabarito cadastrado. Por favor, aguarde o professor configurar o gabarito.' },
+          { status: 400 }
+        )
+      }
+      
+      // Se encontrou na verificação direta, tentar buscar todos novamente
+      const { data: retryKeys } = await supabase
+        .from('test_answer_keys')
+        .select('*')
+        .eq('test_id', testId)
+      
+      if (retryKeys && retryKeys.length > 0) {
+        answerKeys = retryKeys
+        console.log(`Gabarito recuperado na segunda tentativa: ${retryKeys.length} questões`)
+      } else {
+        return NextResponse.json(
+          { error: 'Erro ao carregar gabarito completo. Por favor, tente novamente.' },
+          { status: 500 }
+        )
+      }
     }
 
     // Verificar se o teste está ativo
