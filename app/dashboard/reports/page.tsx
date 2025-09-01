@@ -13,7 +13,7 @@ import SkeletonLoader from '../../components/reports/SkeletonLoader'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
-import { ExcelExporter, exportReportToExcel, PivotTableConfig } from '@/lib/excel-export'
+import { ExcelExporter, exportReportToExcel, PivotTableConfig, CellFormatting } from '@/lib/excel-export'
 import { formatNumber, formatPercentage, formatDate, formatCompactNumber } from '@/lib/reports/formatters'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -168,9 +168,22 @@ export default function ReportsPage() {
 
   // Função auxiliar para processar e exportar dados de notas
   const processAndExportGrades = async (testAttempts: any[]) => {
+    // Buscar TODOS os testes ativos do sistema
+    const { data: allTests } = await supabase
+      .from('tests')
+      .select('*')
+      .eq('is_active', true)
+    
+    // Buscar todos os alunos
+    const { data: allStudents } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'student')
+      .eq('status', 'active')
+    
     // Buscar dados dos cursos e disciplinas
-    const courseIds = [...new Set(testAttempts.map(r => r.test?.course_id).filter((id): id is string => Boolean(id)))]
-    const subjectIds = [...new Set(testAttempts.map(r => r.test?.subject_id).filter((id): id is string => Boolean(id)))]
+    const courseIds = [...new Set(allTests?.map(t => t.course_id).filter((id): id is string => Boolean(id)) || [])]
+    const subjectIds = [...new Set(allTests?.map(t => t.subject_id).filter((id): id is string => Boolean(id)) || [])]
     
     const { data: courses } = courseIds.length > 0 ? await supabase
       .from('courses')
@@ -183,126 +196,239 @@ export default function ReportsPage() {
       .in('id', subjectIds) : { data: [] }
     
     // Mapear cursos e disciplinas por ID
-    const courseMap = new Map()
+    const courseMap = new Map<string, string>()
     courses?.forEach(course => {
       courseMap.set(course.id, course.title)
     })
     
-    const subjectMap = new Map()
+    const subjectMap = new Map<string, string>()
     subjects?.forEach(subject => {
       subjectMap.set(subject.id, subject.name)
     })
     
-    // Processar dados para o relatório
-    const gradesData = testAttempts.map(attempt => {
-      // Determinar a data a usar (preferir submitted_at, depois started_at)
-      const attemptDate = attempt.submitted_at || attempt.started_at
+    // Criar mapa de tentativas por aluno e teste
+    const attemptsByUserAndTest = new Map<string, Map<string, any>>()
+    testAttempts.forEach(attempt => {
+      const userId = attempt.user_id || attempt.user?.id
+      const testId = attempt.test_id
       
-      // Formatar data como DD/MM/AAAA
-      let formattedDate = 'Data não registrada'
-      if (attemptDate) {
-        const date = new Date(attemptDate)
-        const day = String(date.getDate()).padStart(2, '0')
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const year = date.getFullYear()
-        formattedDate = `${day}/${month}/${year}`
-      }
-      
-      return {
-        student: attempt.user?.full_name || 'Aluno desconhecido',
-        email: attempt.user?.email || '',
-        course: courseMap.get(attempt.test?.course_id) || 'Curso não definido',
-        subject: subjectMap.get(attempt.test?.subject_id) || 'Disciplina não definida',
-        test: attempt.test?.title || 'Teste sem título',
-        type: 'Quiz',
-        date: formattedDate,
-        grade: Number(attempt.score) || 0,
-        status: (Number(attempt.score) || 0) >= 70 ? 'Aprovado' : 'Reprovado'
+      if (userId && testId) {
+        if (!attemptsByUserAndTest.has(userId)) {
+          attemptsByUserAndTest.set(userId, new Map())
+        }
+        const userAttempts = attemptsByUserAndTest.get(userId)!
+        
+        // Se já existe uma tentativa, pegar a com maior nota
+        const existingAttempt = userAttempts.get(testId)
+        if (!existingAttempt || (attempt.score || 0) > (existingAttempt.score || 0)) {
+          userAttempts.set(testId, attempt)
+        }
       }
     })
     
-    // Calcular estatísticas
-    const totalTests = gradesData.length
-    const avgGrade = totalTests > 0 
-      ? gradesData.reduce((sum, g) => sum + g.grade, 0) / totalTests 
-      : 0
-    const approvalRate = totalTests > 0
-      ? (gradesData.filter(g => g.status === 'Aprovado').length / totalTests) * 100
-      : 0
-    const maxGrade = totalTests > 0 ? Math.max(...gradesData.map(g => g.grade)) : 0
-    const minGrade = totalTests > 0 ? Math.min(...gradesData.map(g => g.grade)) : 0
-    
-    // Agrupar por tipo de teste
-    const testTypes = new Map()
-    gradesData.forEach(g => {
-      if (!testTypes.has(g.type)) {
-        testTypes.set(g.type, { count: 0, total: 0 })
+    // Agrupar testes por disciplina
+    const testsBySubject = new Map<string, any[]>()
+    allTests?.forEach(test => {
+      if (test.subject_id) {
+        if (!testsBySubject.has(test.subject_id)) {
+          testsBySubject.set(test.subject_id, [])
+        }
+        testsBySubject.get(test.subject_id)!.push(test)
       }
-      const typeData = testTypes.get(g.type)
-      typeData.count++
-      typeData.total += g.grade
     })
-
-    // Configuração da tabela dinâmica
-    const pivotConfig: PivotTableConfig = {
-      rows: ['Curso', 'Disciplina'],
-      columns: ['Tipo'],
-      values: [
-        { field: 'Nota', aggregation: 'average' },
-        { field: 'Nota', aggregation: 'count' }
-      ],
-      filters: ['Status']
-    }
-
-    // Dados de resumo
-    const summary = {
-      title: 'Resumo do Histórico de Notas',
+    
+    // Processar dados agrupados por aluno/disciplina
+    const gradesByStudentSubject: any[] = []
+    const detailedGrades: any[] = []
+    
+    allStudents?.forEach(student => {
+      testsBySubject.forEach((subjectTests, subjectId) => {
+        const subjectName = subjectMap.get(subjectId) || 'Disciplina não definida'
+        const userAttempts = attemptsByUserAndTest.get(student.id) || new Map()
+        
+        let totalScore = 0
+        let testsTaken = 0
+        let testsNotTaken = 0
+        let maxScore = 0
+        let minScore = 100
+        const scores: number[] = []
+        
+        // Para cada teste da disciplina
+        subjectTests.forEach(test => {
+          const attempt = userAttempts.get(test.id)
+          const score = attempt ? (Number(attempt.score) || 0) : 0
+          
+          scores.push(score)
+          totalScore += score
+          
+          if (attempt) {
+            testsTaken++
+            if (score > maxScore) maxScore = score
+            if (score < minScore) minScore = score
+          } else {
+            testsNotTaken++
+            minScore = 0 // Se tem teste não realizado, mínimo é 0
+          }
+          
+          // Adicionar ao detalhamento
+          detailedGrades.push({
+            'Aluno': student.full_name || 'Nome não informado',
+            'Email': student.email,
+            'Curso': courseMap.get(test.course_id || '') || 'Sem curso',
+            'Disciplina': subjectName,
+            'Teste': test.title,
+            'Nota': score,
+            'Status': attempt ? 'Realizado' : 'Não Realizado',
+            'Data': attempt?.submitted_at ? 
+              new Date(attempt.submitted_at).toLocaleDateString('pt-BR') : 
+              '-'
+          })
+        })
+        
+        // Calcular média considerando TODOS os testes
+        const average = subjectTests.length > 0 ? totalScore / subjectTests.length : 0
+        
+        // Adicionar linha de resumo por aluno/disciplina
+        gradesByStudentSubject.push({
+          'Aluno': student.full_name || 'Nome não informado',
+          'Email': student.email,
+          'Curso': Array.from(new Set(subjectTests.map(t => courseMap.get(t.course_id || '') || 'Sem curso'))).join(', '),
+          'Disciplina': subjectName,
+          'Total de Testes': subjectTests.length,
+          'Testes Realizados': testsTaken,
+          'Testes Não Realizados': testsNotTaken,
+          'Média na Disciplina': Number(average.toFixed(1)),
+          'Maior Nota': testsTaken > 0 ? maxScore : 0,
+          'Menor Nota': subjectTests.length > 0 ? minScore : 0
+        })
+      })
+    })
+    
+    // Calcular estatísticas gerais
+    const totalAverages = gradesByStudentSubject.map(g => g['Média na Disciplina'])
+    const overallAverage = totalAverages.length > 0 
+      ? totalAverages.reduce((sum, avg) => sum + avg, 0) / totalAverages.length 
+      : 0
+    
+    const passing = gradesByStudentSubject.filter(g => g['Média na Disciplina'] >= 70).length
+    const passingRate = gradesByStudentSubject.length > 0 
+      ? (passing / gradesByStudentSubject.length) * 100 
+      : 0
+    
+    // Criar exportador com formatação condicional
+    const exporter = new ExcelExporter()
+    
+    // Aba 1: Médias por Disciplina (com formatação condicional)
+    exporter.addDataSheet('Médias por Disciplina', {
+      title: 'Relatório de Médias por Disciplina',
+      headers: Object.keys(gradesByStudentSubject[0] || {}),
+      data: gradesByStudentSubject.map(row => Object.values(row)),
+      metadata: {
+        date: new Date().toLocaleDateString('pt-BR'),
+        user: 'Sistema SwiftEDU'
+      },
+      formatting: {
+        conditionalFormatting: [
+          {
+            condition: (value) => typeof value === 'number' && value < 70,
+            font: { bold: true, color: '#FF0000' }
+          }
+        ],
+        columns: {
+          7: { // Coluna de Média na Disciplina (índice 7)
+            condition: (value) => typeof value === 'number' && value < 70,
+            font: { bold: true, color: '#FF0000' }
+          },
+          8: { // Coluna de Maior Nota
+            condition: (value) => typeof value === 'number' && value >= 90,
+            font: { color: '#008000' }
+          }
+        }
+      }
+    })
+    
+    // Aba 2: Detalhamento de Testes
+    exporter.addDataSheet('Detalhamento de Testes', {
+      title: 'Detalhamento de Todos os Testes',
+      headers: Object.keys(detailedGrades[0] || {}),
+      data: detailedGrades.map(row => Object.values(row)),
+      formatting: {
+        conditionalFormatting: [
+          {
+            condition: (value) => typeof value === 'number' && value < 70,
+            font: { bold: true, color: '#FF0000' }
+          },
+          {
+            condition: (value) => value === 'Não Realizado',
+            font: { color: '#808080' },
+            fill: { color: '#F0F0F0' }
+          }
+        ]
+      }
+    })
+    
+    // Aba 3: Resumo por Aluno
+    const studentSummary = new Map<string, { total: number, count: number, disciplines: string[] }>()
+    gradesByStudentSubject.forEach(row => {
+      const studentName = row['Aluno']
+      if (!studentSummary.has(studentName)) {
+        studentSummary.set(studentName, { total: 0, count: 0, disciplines: [] })
+      }
+      const summary = studentSummary.get(studentName)!
+      summary.total += row['Média na Disciplina']
+      summary.count++
+      summary.disciplines.push(`${row['Disciplina']}: ${row['Média na Disciplina']}`)
+    })
+    
+    const studentSummaryData = Array.from(studentSummary.entries()).map(([name, data]) => ({
+      'Aluno': name,
+      'Número de Disciplinas': data.count,
+      'Média Geral': Number((data.total / data.count).toFixed(1)),
+      'Disciplinas': data.disciplines.join(' | ')
+    }))
+    
+    exporter.addDataSheet('Resumo por Aluno', {
+      title: 'Resumo Geral por Aluno',
+      headers: ['Aluno', 'Número de Disciplinas', 'Média Geral', 'Disciplinas'],
+      data: studentSummaryData.map(row => Object.values(row)),
+      formatting: {
+        columns: {
+          2: { // Coluna de Média Geral
+            condition: (value) => typeof value === 'number' && value < 70,
+            font: { bold: true, color: '#FF0000' }
+          }
+        }
+      }
+    })
+    
+    // Aba 4: Estatísticas
+    exporter.addSummarySheet('Estatísticas', {
+      title: 'Estatísticas Gerais do Relatório',
       sections: [
         {
-          sectionTitle: 'Estatísticas Gerais',
+          sectionTitle: 'Resumo Geral',
           metrics: [
-            { label: 'Total de Avaliações', value: totalTests },
-            { label: 'Média Geral', value: avgGrade.toFixed(1) },
-            { label: 'Taxa de Aprovação (%)', value: approvalRate.toFixed(1) },
-            { label: 'Maior Nota', value: maxGrade },
-            { label: 'Menor Nota', value: minGrade }
+            { label: 'Total de Alunos', value: allStudents?.length || 0 },
+            { label: 'Total de Disciplinas', value: testsBySubject.size },
+            { label: 'Total de Testes no Sistema', value: allTests?.length || 0 },
+            { label: 'Média Geral da Turma', value: overallAverage.toFixed(1) },
+            { label: 'Taxa de Aprovação (média ≥ 70)', value: `${passingRate.toFixed(1)}%` }
           ]
         },
         {
-          sectionTitle: 'Por Tipo de Avaliação',
-          metrics: Array.from(testTypes.entries()).map(([type, data]) => ({
-            label: type,
-            value: `${data.count} avaliações (média: ${(data.total / data.count).toFixed(1)})`
+          sectionTitle: 'Análise por Disciplina',
+          metrics: Array.from(testsBySubject.entries()).map(([subjectId, tests]) => ({
+            label: subjectMap.get(subjectId) || 'Sem nome',
+            value: `${tests.length} testes`
           }))
         }
       ]
-    }
-
-    // Preparar dados para exportação com campos em português
-    const gradesDataPT = gradesData.map(g => ({
-      'Aluno': g.student,
-      'Email': g.email,
-      'Curso': g.course,
-      'Disciplina': g.subject,
-      'Teste': g.test,
-      'Tipo': g.type,
-      'Data': g.date,
-      'Nota': g.grade,
-      'Status': g.status
-    }))
+    })
     
-    // Exportar para Excel com múltiplas abas
-    exportReportToExcel(
-      {
-        mainData: gradesDataPT,
-        headers: ['Aluno', 'Email', 'Curso', 'Disciplina', 'Teste', 'Tipo', 'Data', 'Nota', 'Status'],
-        pivotConfig,
-        summary
-      },
-      `historico_notas_${new Date().toISOString().split('T')[0]}.xlsx`
-    )
-
-    alert('Relatório de Histórico de Notas gerado com sucesso!')
+    // Baixar o arquivo
+    exporter.download(`historico_notas_por_disciplina_${new Date().toISOString().split('T')[0]}.xlsx`)
+    
+    alert('Relatório de Histórico de Notas por Disciplina gerado com sucesso!')
   }
 
   const generateGradesHistoryReport = async () => {

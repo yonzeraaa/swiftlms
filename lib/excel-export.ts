@@ -49,6 +49,19 @@ function parseNumericValue(value: any, isPercentage: boolean = false): number | 
   return value;
 }
 
+export interface CellFormatting {
+  condition?: (value: any) => boolean;
+  font?: {
+    bold?: boolean;
+    color?: string;
+    size?: number;
+  };
+  fill?: {
+    color?: string;
+  };
+  numberFormat?: string;
+}
+
 export interface ExportData {
   title: string;
   headers: string[];
@@ -59,6 +72,18 @@ export interface ExportData {
     user?: string;
     filters?: Record<string, any>;
     locale?: string;
+  };
+  formatting?: {
+    columns?: {
+      [columnIndex: number]: CellFormatting;
+    };
+    rows?: {
+      [rowIndex: number]: CellFormatting;
+    };
+    cells?: {
+      [cellKey: string]: CellFormatting; // formato "R2C3" para linha 2, coluna 3
+    };
+    conditionalFormatting?: CellFormatting[];
   };
 }
 
@@ -77,6 +102,43 @@ export class ExcelExporter {
   
   constructor() {
     this.workbook = XLSX.utils.book_new();
+  }
+
+  private applyConditionalFormatting(
+    worksheet: XLSX.WorkSheet,
+    value: any,
+    cellAddress: string,
+    formatting?: CellFormatting[]
+  ) {
+    if (!formatting || formatting.length === 0) return;
+    
+    for (const format of formatting) {
+      if (format.condition && format.condition(value)) {
+        if (!worksheet[cellAddress].s) {
+          worksheet[cellAddress].s = {};
+        }
+        
+        if (format.font) {
+          worksheet[cellAddress].s.font = {
+            bold: format.font.bold,
+            color: format.font.color ? { rgb: format.font.color.replace('#', '') } : undefined,
+            sz: format.font.size
+          };
+        }
+        
+        if (format.fill) {
+          worksheet[cellAddress].s.fill = {
+            fgColor: { rgb: format.fill.color?.replace('#', '') }
+          };
+        }
+        
+        if (format.numberFormat) {
+          worksheet[cellAddress].s.numFmt = format.numberFormat;
+        }
+        
+        break; // Aplicar apenas a primeira formatação que corresponder
+      }
+    }
   }
 
   addDataSheet(sheetName: string, exportData: ExportData) {
@@ -134,6 +196,51 @@ export class ExcelExporter {
       })
     );
     XLSX.utils.sheet_add_aoa(worksheet, processedData, { origin: `A${currentRow + 1}` });
+    
+    // Aplicar formatação condicional aos dados
+    if (exportData.formatting) {
+      for (let rowIdx = 0; rowIdx < processedData.length; rowIdx++) {
+        for (let colIdx = 0; colIdx < processedData[rowIdx].length; colIdx++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: currentRow + rowIdx, c: colIdx });
+          const cellValue = processedData[rowIdx][colIdx];
+          
+          if (worksheet[cellAddress]) {
+            // Aplicar formatação condicional
+            this.applyConditionalFormatting(
+              worksheet,
+              cellValue,
+              cellAddress,
+              exportData.formatting.conditionalFormatting
+            );
+            
+            // Aplicar formatação específica da coluna
+            if (exportData.formatting.columns && exportData.formatting.columns[colIdx]) {
+              const colFormat = exportData.formatting.columns[colIdx];
+              if (!colFormat.condition || colFormat.condition(cellValue)) {
+                this.applyConditionalFormatting(worksheet, cellValue, cellAddress, [colFormat]);
+              }
+            }
+            
+            // Aplicar formatação específica da linha
+            if (exportData.formatting.rows && exportData.formatting.rows[rowIdx]) {
+              const rowFormat = exportData.formatting.rows[rowIdx];
+              if (!rowFormat.condition || rowFormat.condition(cellValue)) {
+                this.applyConditionalFormatting(worksheet, cellValue, cellAddress, [rowFormat]);
+              }
+            }
+            
+            // Aplicar formatação específica da célula
+            const cellKey = `R${rowIdx}C${colIdx}`;
+            if (exportData.formatting.cells && exportData.formatting.cells[cellKey]) {
+              const cellFormat = exportData.formatting.cells[cellKey];
+              if (!cellFormat.condition || cellFormat.condition(cellValue)) {
+                this.applyConditionalFormatting(worksheet, cellValue, cellAddress, [cellFormat]);
+              }
+            }
+          }
+        }
+      }
+    }
     
     // Aplicar estilos aos cabeçalhos
     const headerRow = currentRow - 1;
