@@ -215,6 +215,87 @@ export async function POST(
         .lt('best_score', score)
     }
 
+    // Se passou no teste, verificar se pode solicitar certificado
+    if (passed && enrollment) {
+      try {
+        // Verificar se completou todas as lições do curso
+        const { data: modules } = await supabase
+          .from('course_modules')
+          .select('id')
+          .eq('course_id', test.course_id)
+        
+        const moduleIds = modules?.map(m => m.id) || []
+        
+        const { count: totalLessonsCount } = await supabase
+          .from('lessons')
+          .select('*', { count: 'exact', head: true })
+          .in('module_id', moduleIds)
+
+        const { count: completedLessonsCount } = await supabase
+          .from('lesson_progress')
+          .select('*', { count: 'exact', head: true })
+          .eq('enrollment_id', enrollment.id)
+          .eq('is_completed', true)
+
+        const totalCount = totalLessonsCount || 0
+        const completedCount = completedLessonsCount || 0
+        const progressPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+
+        console.log(`Verificando elegibilidade para certificado: ${progressPercentage}% progresso, nota: ${score}%`)
+
+        // Se completou 100% do curso e passou no teste
+        if (progressPercentage >= 100) {
+          // Verificar se já existe solicitação
+          const { data: existingRequest } = await supabase
+            .from('certificate_requests')
+            .select('*')
+            .eq('enrollment_id', enrollment.id)
+            .single()
+
+          if (!existingRequest) {
+            // Criar solicitação automática de certificado
+            const { data: newRequest, error: requestError } = await supabase
+              .from('certificate_requests')
+              .insert({
+                enrollment_id: enrollment.id,
+                user_id: user.id,
+                course_id: test.course_id,
+                total_lessons: totalCount,
+                completed_lessons: completedCount,
+                status: 'pending',
+                request_date: new Date().toISOString(),
+                notes: `Solicitação automática após aprovação no teste com ${score}%`
+              })
+              .select()
+              .single()
+
+            if (newRequest && !requestError) {
+              console.log('Solicitação de certificado criada automaticamente:', newRequest.id)
+              
+              // Registrar atividade
+              await supabase
+                .from('activity_logs')
+                .insert({
+                  user_id: user.id,
+                  action: 'certificate_auto_requested',
+                  entity_type: 'certificate_request',
+                  entity_id: newRequest.id,
+                  entity_name: `Certificado automático após teste`,
+                  metadata: {
+                    test_id: testId,
+                    test_score: score,
+                    progress: progressPercentage
+                  }
+                })
+            }
+          }
+        }
+      } catch (certError) {
+        console.error('Erro ao verificar/criar solicitação de certificado:', certError)
+        // Não falhar a submissão do teste por causa disso
+      }
+    }
+
     // Retornar resultado
     return NextResponse.json({
       success: true,

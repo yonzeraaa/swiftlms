@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
-import { Award, Download, Eye, Check, X, Calendar, Clock, Medal, Shield } from 'lucide-react'
+import { Award, Download, Eye, Check, X, Calendar, Clock, Medal, Shield, AlertCircle, Loader2 } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -20,12 +20,25 @@ interface CertificateWithDetails extends Certificate {
   user: Profile
 }
 
+interface CertificateRequest {
+  id: string
+  enrollment_id: string
+  course_id: string
+  status: 'pending' | 'approved' | 'rejected'
+  request_date: string
+  processed_at?: string
+  notes?: string
+  course?: Course
+}
+
 export default function CertificatesPage() {
   const [loading, setLoading] = useState(true)
   const [certificates, setCertificates] = useState<CertificateWithDetails[]>([])
+  const [certificateRequests, setCertificateRequests] = useState<CertificateRequest[]>([])
   const [selectedCertificate, setSelectedCertificate] = useState<CertificateWithDetails | null>(null)
   const [showCertificateModal, setShowCertificateModal] = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
+  const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('approved')
   const certificateRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
@@ -42,7 +55,7 @@ export default function CertificatesPage() {
         return
       }
 
-      // Fetch only approved certificates with course details
+      // Fetch approved certificates with course details
       const { data: certificatesData, error } = await supabase
         .from('certificates')
         .select(`
@@ -56,11 +69,23 @@ export default function CertificatesPage() {
 
       if (error) {
         console.error('Error fetching certificates:', error)
-        return
+      } else if (certificatesData) {
+        setCertificates(certificatesData as any as CertificateWithDetails[])
       }
 
-      if (certificatesData) {
-        setCertificates(certificatesData as any as CertificateWithDetails[])
+      // Fetch pending certificate requests
+      const { data: requestsData } = await supabase
+        .from('certificate_requests')
+        .select(`
+          *,
+          course:courses(*)
+        `)
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'rejected'])
+        .order('request_date', { ascending: false })
+
+      if (requestsData) {
+        setCertificateRequests(requestsData as any as CertificateRequest[])
       }
     } catch (error) {
       console.error('Error fetching certificates:', error)
@@ -119,14 +144,26 @@ export default function CertificatesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Total de Certificados</p>
+              <p className="text-gold-300 text-sm">Certificados Aprovados</p>
               <p className="text-3xl font-bold text-gold">{certificates.length}</p>
             </div>
             <Award className="w-10 h-10 text-gold-500/30" />
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Aguardando Aprovação</p>
+              <p className="text-3xl font-bold text-gold">
+                {certificateRequests.filter(r => r.status === 'pending').length}
+              </p>
+            </div>
+            <Clock className="w-10 h-10 text-yellow-500/30" />
           </div>
         </Card>
 
@@ -138,7 +175,7 @@ export default function CertificatesPage() {
                 {certificates.reduce((sum, cert) => sum + (cert.course_hours || 0), 0)}h
               </p>
             </div>
-            <Clock className="w-10 h-10 text-blue-500/30" />
+            <Medal className="w-10 h-10 text-blue-500/30" />
           </div>
         </Card>
 
@@ -155,9 +192,28 @@ export default function CertificatesPage() {
         </Card>
       </div>
 
-      {/* Certificates Grid */}
-      <Card title="Certificados Conquistados">
-        {certificates.length > 0 ? (
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <Button
+          variant={activeTab === 'approved' ? 'primary' : 'secondary'}
+          onClick={() => setActiveTab('approved')}
+          icon={<Award className="w-4 h-4" />}
+        >
+          Certificados Aprovados ({certificates.length})
+        </Button>
+        <Button
+          variant={activeTab === 'pending' ? 'primary' : 'secondary'}
+          onClick={() => setActiveTab('pending')}
+          icon={<Clock className="w-4 h-4" />}
+        >
+          Aguardando Aprovação ({certificateRequests.filter(r => r.status === 'pending').length})
+        </Button>
+      </div>
+
+      {/* Certificates Grid or Pending Requests */}
+      {activeTab === 'approved' ? (
+        <Card title="Certificados Aprovados">
+          {certificates.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {certificates.map((certificate) => (
               <div
@@ -249,7 +305,77 @@ export default function CertificatesPage() {
             <p className="text-gold-400 text-sm">Complete seus cursos para receber certificados de conclusão</p>
           </div>
         )}
-      </Card>
+        </Card>
+      ) : (
+        <Card title="Solicitações de Certificado">
+          {certificateRequests.length > 0 ? (
+            <div className="space-y-4">
+              {certificateRequests.map((request) => (
+                <div
+                  key={request.id}
+                  className="p-4 bg-navy-900/50 rounded-xl border border-gold-500/20"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gold mb-1">
+                        {request.course?.title || 'Curso'}
+                      </h3>
+                      <p className="text-sm text-gold-400 mb-3">
+                        Solicitado em {formatDate(request.request_date)}
+                      </p>
+                      
+                      {/* Status */}
+                      <div className="flex items-center gap-2">
+                        {request.status === 'pending' ? (
+                          <>
+                            <Loader2 className="w-5 h-5 text-yellow-500 animate-spin" />
+                            <span className="text-yellow-400">Aguardando aprovação do administrador</span>
+                          </>
+                        ) : request.status === 'rejected' ? (
+                          <>
+                            <X className="w-5 h-5 text-red-500" />
+                            <span className="text-red-400">Solicitação rejeitada</span>
+                          </>
+                        ) : null}
+                      </div>
+                      
+                      {/* Rejection reason if exists */}
+                      {request.status === 'rejected' && request.notes && (
+                        <div className="mt-3 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                          <p className="text-sm text-red-400">
+                            <strong>Motivo:</strong> {request.notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Status Badge */}
+                    <div>
+                      {request.status === 'pending' ? (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">
+                          Pendente
+                        </span>
+                      ) : (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
+                          Rejeitado
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <AlertCircle className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+              <p className="text-gold-300 text-lg mb-2">Nenhuma solicitação pendente</p>
+              <p className="text-gold-400 text-sm">
+                Complete um curso e atinja a nota mínima para solicitar o certificado
+              </p>
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* Certificate Modal */}
       {showCertificateModal && selectedCertificate && (
