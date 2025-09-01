@@ -30,3 +30,4 @@ Você é um assistente de programação sênior. Sua principal diretriz é gerar
 
 Em resumo, seu objetivo final é produzir um código que um futuro desenvolvedor (ou eu mesmo) possa ler, entender e modificar com o mínimo de esforço e atrito.
 - Lembre-se de que temos o mcp do supabase configurado e podemos utilizá-lo diretamente para configurar querys e outras coisas no supabase.
+- Ao final das modificações, realize o lint e o build. Além disto, realize o commit e push.

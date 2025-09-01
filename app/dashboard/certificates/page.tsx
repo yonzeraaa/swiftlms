@@ -412,10 +412,10 @@ export default function CertificatesPage() {
                             <User className="w-4 h-4 text-gold-400" />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-gold-100 font-medium text-sm truncate" title={request.user?.full_name}>
+                            <p className="text-gold-100 font-medium text-sm truncate" title={request.user?.full_name || undefined}>
                               {request.user?.full_name || 'Sem nome'}
                             </p>
-                            <p className="text-gold-500 text-xs truncate" title={request.user?.email}>
+                            <p className="text-gold-500 text-xs truncate" title={request.user?.email || undefined}>
                               {request.user?.email}
                             </p>
                           </div>
@@ -423,7 +423,7 @@ export default function CertificatesPage() {
                       </td>
                       <td className="py-5 px-6 align-middle">
                         <div className="space-y-1">
-                          <p className="text-gold-100 text-sm leading-tight line-clamp-2" title={request.course?.title}>
+                          <p className="text-gold-100 text-sm leading-tight line-clamp-2" title={request.course?.title || undefined}>
                             {request.course?.title}
                           </p>
                           <p className="text-gold-500 text-xs">{request.course?.duration_hours}h</p>
