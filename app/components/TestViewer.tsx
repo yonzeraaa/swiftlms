@@ -74,24 +74,17 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
         setQuestionCount(data.question_number)
         console.log('Número de questões carregado do gabarito:', data.question_number)
       } else {
-        // Se não houver gabarito, verifica se há um valor salvo no localStorage
-        const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
-        if (savedCount) {
-          setQuestionCount(parseInt(savedCount))
-        } else {
-          // Se não houver valor salvo, mostra modal para configurar
-          setShowQuestionConfig(true)
-        }
+        // Se não houver gabarito, usa um padrão ou valor do teste
+        // O aluno nunca deve ver mensagem sobre gabarito não cadastrado
+        const defaultCount = test.question_count || 20
+        setQuestionCount(defaultCount)
+        console.log('Usando número padrão de questões:', defaultCount)
       }
     } catch (error) {
       console.error('Erro ao carregar número de questões:', error)
-      // Em caso de erro, verifica localStorage ou mostra configuração
-      const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
-      if (savedCount) {
-        setQuestionCount(parseInt(savedCount))
-      } else {
-        setShowQuestionConfig(true)
-      }
+      // Em caso de erro, usa um valor padrão
+      const defaultCount = test.question_count || 20
+      setQuestionCount(defaultCount)
     } finally {
       setLoadingQuestions(false)
     }
@@ -243,7 +236,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
               </div>
               
               <p className="text-gold-300 mb-4">
-                O gabarito deste teste ainda não foi cadastrado. Por favor, informe o número de questões do teste:
+                Por favor, confirme o número de questões do teste:
               </p>
               
               <div className="mb-4">
