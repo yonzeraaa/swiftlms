@@ -729,13 +729,10 @@ export default function ReportsPage() {
     setGeneratingReport('access')
     
     try {
-      // Buscar dados de atividade dos alunos
+      // Buscar dados de atividade dos alunos - sem join direto, buscaremos profiles separadamente
       const { data: activityLogs, error: activityError } = await supabase
         .from('activity_logs')
-        .select(`
-          *,
-          user:profiles!activity_logs_user_id_fkey(full_name, email)
-        `)
+        .select('*')
         .gte('created_at', dateRange.start)
         .lte('created_at', dateRange.end)
         .order('created_at', { ascending: false })
@@ -744,6 +741,16 @@ export default function ReportsPage() {
         console.error('Erro ao buscar atividades:', activityError)
       }
       
+      // Buscar todos os profiles para mapear user_ids
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+      
+      const profilesMap = new Map()
+      profiles?.forEach(profile => {
+        profilesMap.set(profile.id, profile)
+      })
+      
       // Buscar progresso das lições dos alunos
       const { data: lessonProgressData, error: progressError } = await supabase
         .from('lesson_progress')
@@ -751,8 +758,8 @@ export default function ReportsPage() {
           *,
           enrollment:enrollments!inner(
             user_id,
-            course:courses(title),
-            user:profiles!enrollments_user_id_fkey(full_name, email)
+            course_id,
+            user:profiles(full_name, email)
           ),
           lesson:lessons(title)
         `)
@@ -763,24 +770,36 @@ export default function ReportsPage() {
         console.error('Erro ao buscar progresso:', progressError)
       }
       
-      // Agrupar dados por usuário
-      const userAccessMap = Object.create(null)
+      // Buscar cursos para mapear course_ids
+      const { data: courses } = await supabase
+        .from('courses')
+        .select('id, title')
+      
+      const coursesMap = new Map()
+      courses?.forEach(course => {
+        coursesMap.set(course.id, course.title)
+      })
+      
+      // Agrupar dados por usuário - usando um Map em vez de Object.create(null)
+      const userAccessMap = new Map()
       
       (activityLogs || []).forEach((activity: any) => {
         const userId = activity.user_id
         if (!userId) return
         
-        if (!userAccessMap[userId]) {
-          userAccessMap[userId] = {
-            name: activity.user?.full_name || 'Usuário desconhecido',
-            email: activity.user?.email || '',
+        const profile = profilesMap.get(userId)
+        
+        if (!userAccessMap.has(userId)) {
+          userAccessMap.set(userId, {
+            name: profile?.full_name || 'Usuário desconhecido',
+            email: profile?.email || '',
             activities: [],
             lastAccess: null,
             totalActions: 0
-          }
+          })
         }
         
-        const userData = userAccessMap[userId]
+        const userData = userAccessMap.get(userId)
         userData.activities.push(activity)
         userData.totalActions++
         
@@ -793,16 +812,16 @@ export default function ReportsPage() {
       
       // Processar dados para o relatório
       const studentAccessData = []
-      for (const userId in userAccessMap) {
-        const user = userAccessMap[userId]
+      for (const [userId, user] of userAccessMap) {
         const coursesArray: string[] = []
         let totalProgressValue = 0
         let progressCountValue = 0
         
         if (lessonProgressData && lessonProgressData.length > 0) {
           for (const progress of lessonProgressData) {
-            if (progress.enrollment?.user?.email === user.email) {
-              const courseTitle = progress.enrollment.course?.title
+            if (progress.enrollment?.user_id === userId) {
+              const courseId = progress.enrollment.course_id
+              const courseTitle = coursesMap.get(courseId)
               if (courseTitle && !coursesArray.includes(courseTitle)) {
                 coursesArray.push(courseTitle)
               }
@@ -835,18 +854,18 @@ export default function ReportsPage() {
       }
       
       // Calcular padrão de acesso diário
-      const dayAccessData: any = {}
+      const dayAccessData = new Map()
       const daysOfWeek = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
       
       for (const day of daysOfWeek) {
-        dayAccessData[day] = { accesses: 0, userIds: [] as string[] }
+        dayAccessData.set(day, { accesses: 0, userIds: [] as string[] })
       }
       
       if (activityLogs && activityLogs.length > 0) {
         for (const activity of activityLogs) {
           const date = new Date(activity.created_at)
           const dayName = daysOfWeek[date.getDay()]
-          const dayInfo = dayAccessData[dayName]
+          const dayInfo = dayAccessData.get(dayName)
           
           if (dayInfo) {
             dayInfo.accesses = dayInfo.accesses + 1
@@ -858,8 +877,7 @@ export default function ReportsPage() {
       }
       
       const dailyPattern = []
-      for (const day in dayAccessData) {
-        const data = dayAccessData[day]
+      for (const [day, data] of dayAccessData) {
         dailyPattern.push({
           day,
           accesses: data.accesses,
@@ -870,21 +888,22 @@ export default function ReportsPage() {
       }
       
       // Engajamento por curso
-      const courseEngagementData: any = {}
+      const courseEngagementData = new Map()
       
       if (lessonProgressData && lessonProgressData.length > 0) {
         for (const progress of lessonProgressData) {
-          const courseTitle = progress.enrollment?.course?.title
+          const courseId = progress.enrollment?.course_id
+          const courseTitle = coursesMap.get(courseId)
           if (courseTitle) {
-            if (!courseEngagementData[courseTitle]) {
-              courseEngagementData[courseTitle] = {
+            if (!courseEngagementData.has(courseTitle)) {
+              courseEngagementData.set(courseTitle, {
                 studentIds: [] as string[],
                 completedLessons: 0,
                 totalLessons: 0
-              }
+              })
             }
             
-            const courseInfo = courseEngagementData[courseTitle]
+            const courseInfo = courseEngagementData.get(courseTitle)
             const studentId = progress.enrollment.user_id
             if (studentId && !courseInfo.studentIds.includes(studentId)) {
               courseInfo.studentIds.push(studentId)
@@ -898,8 +917,7 @@ export default function ReportsPage() {
       }
       
       const courseEngagement = []
-      for (const courseName in courseEngagementData) {
-        const data = courseEngagementData[courseName]
+      for (const [courseName, data] of courseEngagementData) {
         courseEngagement.push({
           course: courseName,
           activeStudents: data.studentIds.length,
