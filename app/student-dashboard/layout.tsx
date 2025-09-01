@@ -104,10 +104,21 @@ export default function StudentDashboardLayout({
   const handleLogout = async () => {
     try {
       setLoggingOut(true)
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
       
-      router.push('/')
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      
+      if (!response.ok) {
+        throw new Error('Logout failed')
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      window.location.href = '/'
     } catch (error) {
       console.error('Error logging out:', error)
       setLoggingOut(false)
