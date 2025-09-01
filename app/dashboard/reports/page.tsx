@@ -198,6 +198,16 @@ export default function ReportsPage() {
       // Determinar a data a usar (preferir submitted_at, depois started_at)
       const attemptDate = attempt.submitted_at || attempt.started_at
       
+      // Formatar data como DD/MM/AAAA
+      let formattedDate = 'Data não registrada'
+      if (attemptDate) {
+        const date = new Date(attemptDate)
+        const day = String(date.getDate()).padStart(2, '0')
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const year = date.getFullYear()
+        formattedDate = `${day}/${month}/${year}`
+      }
+      
       return {
         student: attempt.user?.full_name || 'Aluno desconhecido',
         email: attempt.user?.email || '',
@@ -205,7 +215,7 @@ export default function ReportsPage() {
         subject: subjectMap.get(attempt.test?.subject_id) || 'Disciplina não definida',
         test: attempt.test?.title || 'Teste sem título',
         type: 'Quiz',
-        date: attemptDate ? new Date(attemptDate).toLocaleDateString('pt-BR') : 'Data não registrada',
+        date: formattedDate,
         grade: Number(attempt.score) || 0,
         status: (Number(attempt.score) || 0) >= 70 ? 'Aprovado' : 'Reprovado'
       }
