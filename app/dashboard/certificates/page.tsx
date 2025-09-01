@@ -391,52 +391,64 @@ export default function CertificatesPage() {
       {activeTab === 'requests' && (
         <Card>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[1100px]">
               <thead>
                 <tr className="border-b border-gold-500/20">
-                  <th className="text-left py-4 px-4 text-gold-200 font-medium">Aluno</th>
-                  <th className="text-left py-4 px-4 text-gold-200 font-medium">Curso</th>
-                  <th className="text-center py-4 px-4 text-gold-200 font-medium">Lições</th>
-                  <th className="text-center py-4 px-4 text-gold-200 font-medium">Solicitado em</th>
-                  <th className="text-center py-4 px-4 text-gold-200 font-medium">Status</th>
-                  <th className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
+                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[300px]">Aluno</th>
+                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[280px]">Curso</th>
+                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Lições</th>
+                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[140px]">Solicitado em</th>
+                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Status</th>
+                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[200px]">Ações</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gold-500/10">
                 {certificateRequests.filter(r => r.status === 'pending').length > 0 ? (
                   certificateRequests.filter(r => r.status === 'pending').map((request) => (
-                    <tr key={request.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-gold-400" />
-                          <div>
-                            <p className="text-gold-100 font-medium">{request.user?.full_name || 'Sem nome'}</p>
-                            <p className="text-gold-400 text-sm">{request.user?.email}</p>
+                    <tr key={request.id} className="hover:bg-navy-800/30 transition-colors">
+                      <td className="py-5 px-6 align-middle">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            <User className="w-4 h-4 text-gold-400" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-gold-100 font-medium text-sm truncate" title={request.user?.full_name}>
+                              {request.user?.full_name || 'Sem nome'}
+                            </p>
+                            <p className="text-gold-500 text-xs truncate" title={request.user?.email}>
+                              {request.user?.email}
+                            </p>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-4">
-                        <p className="text-gold-200">{request.course?.title}</p>
-                        <p className="text-gold-400 text-sm">{request.course?.duration_hours}h</p>
+                      <td className="py-5 px-6 align-middle">
+                        <div className="space-y-1">
+                          <p className="text-gold-100 text-sm leading-tight line-clamp-2" title={request.course?.title}>
+                            {request.course?.title}
+                          </p>
+                          <p className="text-gold-500 text-xs">{request.course?.duration_hours}h</p>
+                        </div>
                       </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="text-gold-200">
+                      <td className="py-5 px-6 text-center align-middle">
+                        <span className="text-gold-100 font-semibold text-sm">
                           {request.completed_lessons}/{request.total_lessons}
                         </span>
                       </td>
-                      <td className="py-4 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1 text-gold-300 text-sm">
-                          <Calendar className="w-3 h-3" />
-                          {request.request_date ? new Date(request.request_date).toLocaleDateString('pt-BR') : '-'}
+                      <td className="py-5 px-6 text-center align-middle">
+                        <div className="flex items-center justify-center gap-1.5 text-gold-300">
+                          <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="text-xs whitespace-nowrap">
+                            {request.request_date ? new Date(request.request_date).toLocaleDateString('pt-BR') : '-'}
+                          </span>
                         </div>
                       </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400">
+                      <td className="py-5 px-6 text-center align-middle">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 whitespace-nowrap">
                           Pendente
                         </span>
                       </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="py-5 px-6 align-middle">
+                        <div className="flex items-center justify-center gap-1">
                           <Button 
                             variant="primary" 
                             size="sm"
@@ -447,6 +459,7 @@ export default function CertificatesPage() {
                               : <CheckCheck className="w-4 h-4" />
                             }
                             title="Aprovar"
+                            className="!px-3 !py-1.5"
                           >
                             Aprovar
                           </Button>
@@ -457,6 +470,7 @@ export default function CertificatesPage() {
                             disabled={processingRequest === request.id}
                             icon={<X className="w-4 h-4" />}
                             title="Rejeitar"
+                            className="!px-3 !py-1.5"
                           >
                             Rejeitar
                           </Button>
@@ -516,73 +530,92 @@ export default function CertificatesPage() {
             </Button>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[1200px]">
               <thead>
                 <tr className="border-b border-gold-500/20">
-                  <th className="text-left py-4 px-4 text-gold-200 font-medium">Número</th>
-                  <th className="text-left py-4 px-4 text-gold-200 font-medium">Aluno</th>
-                  <th className="text-left py-4 px-4 text-gold-200 font-medium">Curso</th>
-                  <th className="text-center py-4 px-4 text-gold-200 font-medium">Nota</th>
-                  <th className="text-center py-4 px-4 text-gold-200 font-medium">Emitido em</th>
-                  <th className="text-center py-4 px-4 text-gold-200 font-medium">Status</th>
-                  <th className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
+                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[220px]">Número</th>
+                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[280px]">Aluno</th>
+                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[250px]">Curso</th>
+                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[80px]">Nota</th>
+                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[140px]">Emitido em</th>
+                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Status</th>
+                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[150px]">Ações</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gold-500/10">
               {filteredCertificates.length > 0 ? (
                 filteredCertificates.map((certificate: any) => (
-                  <tr key={certificate.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">
-                    <td className="py-4 px-4">
-                      <p className="text-gold-200 text-sm font-mono">{certificate.certificate_number}</p>
-                      <p className="text-gold-400 text-xs">Código: {certificate.verification_code}</p>
+                  <tr key={certificate.id} className="hover:bg-navy-800/30 transition-colors">
+                    <td className="py-5 px-6 align-middle">
+                      <div className="space-y-1">
+                        <p className="text-gold-100 text-xs font-mono truncate" title={certificate.certificate_number}>
+                          {certificate.certificate_number}
+                        </p>
+                        <p className="text-gold-500 text-[10px] font-mono truncate" title={certificate.verification_code}>
+                          Código: {certificate.verification_code}
+                        </p>
+                      </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gold-400" />
-                        <div>
-                          <p className="text-gold-100 font-medium">{certificate.user?.full_name || 'Sem nome'}</p>
-                          <p className="text-gold-400 text-sm">{certificate.user?.email}</p>
+                    <td className="py-5 px-6 align-middle">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <User className="w-4 h-4 text-gold-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-gold-100 font-medium text-sm truncate" title={certificate.user?.full_name}>
+                            {certificate.user?.full_name || 'Sem nome'}
+                          </p>
+                          <p className="text-gold-500 text-xs truncate" title={certificate.user?.email}>
+                            {certificate.user?.email}
+                          </p>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <p className="text-gold-200">{certificate.course?.title}</p>
-                      <p className="text-gold-400 text-sm">{certificate.course_hours}h</p>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="text-gold-200">{certificate.grade || 0}%</span>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <div className="flex items-center justify-center gap-1 text-gold-300 text-sm">
-                        <Calendar className="w-3 h-3" />
-                        {certificate.issued_at 
-                          ? new Date(certificate.issued_at).toLocaleDateString('pt-BR')
-                          : '-'
-                        }
+                    <td className="py-5 px-6 align-middle">
+                      <div className="space-y-1">
+                        <p className="text-gold-100 text-sm leading-tight line-clamp-2" title={certificate.course?.title}>
+                          {certificate.course?.title}
+                        </p>
+                        <p className="text-gold-500 text-xs">{certificate.course_hours}h</p>
                       </div>
                     </td>
-                    <td className="py-4 px-4 text-center">
+                    <td className="py-5 px-6 text-center align-middle">
+                      <span className="text-gold-100 font-semibold text-sm">{certificate.grade || 0}%</span>
+                    </td>
+                    <td className="py-5 px-6 text-center align-middle">
+                      <div className="flex items-center justify-center gap-1.5 text-gold-300">
+                        <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span className="text-xs whitespace-nowrap">
+                          {certificate.issued_at 
+                            ? new Date(certificate.issued_at).toLocaleDateString('pt-BR')
+                            : '-'
+                          }
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-5 px-6 text-center align-middle">
                       {certificate.approval_status === 'approved' ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 whitespace-nowrap">
                           Aprovado
                         </span>
                       ) : certificate.approval_status === 'rejected' ? (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/20 text-red-400 whitespace-nowrap">
                           Rejeitado
                         </span>
                       ) : (
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-500/20 text-yellow-400 whitespace-nowrap">
                           Pendente
                         </span>
                       )}
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="py-5 px-6 align-middle">
+                      <div className="flex items-center justify-center gap-1">
                         <Button 
                           variant="secondary" 
                           size="sm"
                           onClick={() => handleViewCertificate(certificate)}
                           title="Visualizar"
+                          className="!p-2"
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
@@ -592,6 +625,7 @@ export default function CertificatesPage() {
                           onClick={() => handleDownloadCertificate(certificate)}
                           title="Baixar"
                           disabled={generatingPDF}
+                          className="!p-2"
                         >
                           <Download className="w-4 h-4" />
                         </Button>
@@ -600,6 +634,7 @@ export default function CertificatesPage() {
                           size="sm"
                           onClick={() => deleteCertificate(certificate.id)}
                           title="Excluir"
+                          className="!p-2"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
