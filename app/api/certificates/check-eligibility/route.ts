@@ -61,15 +61,16 @@ export async function POST(request: Request) {
       .eq('is_completed', true)
 
     const lessonsCompleted = completedLessonsCount || 0
-    const progressPercentage = totalLessonsCount > 0 
-      ? Math.round((lessonsCompleted / totalLessonsCount) * 100)
+    const totalLessons = totalLessonsCount || 0
+    const progressPercentage = totalLessons > 0 
+      ? Math.round((lessonsCompleted / totalLessons) * 100)
       : 0
 
     console.log('Verificação de elegibilidade:', {
       courseId,
       enrollmentId,
       moduleIds,
-      totalLessonsCount,
+      totalLessons,
       lessonsCompleted,
       progressPercentage
     })
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
       eligible: requirementsMet,
       progressPercentage,
       bestTestScore,
-      totalLessons: totalLessonsCount || 0,
+      totalLessons: totalLessons,
       completedLessons: lessonsCompleted,
       requirementsMet,
       hasExistingRequest: !!existingRequest,
