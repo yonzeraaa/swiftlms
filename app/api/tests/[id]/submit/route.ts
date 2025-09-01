@@ -25,19 +25,29 @@ export async function POST(
     // Buscar dados do teste
     const { data: test, error: testError } = await supabase
       .from('tests')
-      .select('*, test_answer_keys(*)')
+      .select('*')
       .eq('id', testId)
       .single()
 
     if (testError || !test) {
+      console.error('Erro ao buscar teste:', testError)
       return NextResponse.json(
         { error: 'Teste não encontrado' },
         { status: 404 }
       )
     }
     
+    // Buscar gabarito separadamente
+    const { data: answerKeys, error: keysError } = await supabase
+      .from('test_answer_keys')
+      .select('*')
+      .eq('test_id', testId)
+      .order('question_number')
+    
+    console.log(`Gabarito encontrado para teste ${testId}:`, answerKeys?.length || 0, 'questões')
+    
     // Verificar se o teste tem gabarito cadastrado
-    if (!test.test_answer_keys || test.test_answer_keys.length === 0) {
+    if (!answerKeys || answerKeys.length === 0) {
       console.error(`Teste ${testId} não possui gabarito cadastrado`)
       return NextResponse.json(
         { error: 'Este teste ainda não possui gabarito cadastrado. Por favor, aguarde o professor configurar o gabarito.' },
@@ -94,7 +104,7 @@ export async function POST(
     }
 
     // Calcular nota
-    const answerKeyFormatted = test.test_answer_keys.map(key => ({
+    const answerKeyFormatted = answerKeys.map(key => ({
       question_number: key.question_number,
       correct_answer: key.correct_answer,
       points: key.points || 10
