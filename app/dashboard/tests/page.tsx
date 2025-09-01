@@ -581,13 +581,14 @@ export default function TestsManagementPage() {
                         Editar
                       </button>
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation()
-                          console.log('Excluindo teste:', test.id)
                           setOpenDropdown(null)
-                          deleteTest(test.id)
+                          // Chamar a função deleteTest diretamente
+                          await deleteTest(test.id)
                         }}
                         className="flex items-center gap-2 w-full px-4 py-2 text-left text-red-400 hover:bg-navy-700 transition-colors last:rounded-b-lg"
+                        type="button"
                       >
                         <Trash2 className="w-4 h-4" />
                         Excluir
