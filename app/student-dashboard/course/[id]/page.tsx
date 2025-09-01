@@ -16,7 +16,9 @@ import {
   BarChart3,
   FileImage,
   Link,
-  Eye
+  Eye,
+  Send,
+  AlertCircle
 } from 'lucide-react'
 import Card from '../../../components/Card'
 import Button from '../../../components/Button'
@@ -60,6 +62,9 @@ export default function CoursePage() {
   const [totalLessons, setTotalLessons] = useState(0)
   const [completedLessons, setCompletedLessons] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
+  const [certificateStatus, setCertificateStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none')
+  const [canRequestCertificate, setCanRequestCertificate] = useState(false)
+  const [requestingCertificate, setRequestingCertificate] = useState(false)
 
   useEffect(() => {
     if (courseId) {
@@ -216,6 +221,50 @@ export default function CoursePage() {
       setTotalLessons(totalLessonCount)
       setCompletedLessons(completedLessonCount)
       
+      // Verificar status do certificado e elegibilidade
+      if (enrollmentData) {
+        // Verificar se já existe certificado ou solicitação
+        const { data: certificateRequest } = await supabase
+          .from('certificate_requests')
+          .select('status')
+          .eq('enrollment_id', enrollmentData.id)
+          .single()
+        
+        const { data: certificate } = await supabase
+          .from('certificates')
+          .select('approval_status')
+          .eq('enrollment_id', enrollmentData.id)
+          .single()
+        
+        if (certificate?.approval_status === 'approved') {
+          setCertificateStatus('approved')
+        } else if (certificateRequest?.status === 'pending') {
+          setCertificateStatus('pending')
+        } else if (certificateRequest?.status === 'rejected') {
+          setCertificateStatus('rejected')
+        }
+        
+        // Verificar elegibilidade para solicitar certificado
+        const progressPercentage = totalLessonCount > 0 
+          ? (completedLessonCount / totalLessonCount) * 100 
+          : 0
+        
+        // Verificar nota no teste
+        const { data: testGrades } = await supabase
+          .from('test_grades')
+          .select('best_score')
+          .eq('user_id', user.id)
+          .eq('course_id', courseId)
+        
+        const bestScore = testGrades && testGrades.length > 0 
+          ? Math.max(...testGrades.map(g => g.best_score || 0))
+          : 0
+        
+        // Pode solicitar se completou 100% e tem nota >= 70
+        const eligible = progressPercentage >= 100 && bestScore >= 70
+        setCanRequestCertificate(eligible && certificateStatus === 'none')
+      }
+      
       // If there's a lesson ID in the URL, select that lesson
       if (lessonId) {
         const lessonToSelect = modulesWithProgress
@@ -286,6 +335,38 @@ export default function CoursePage() {
     } catch (error) {
       console.error('Error marking all lessons complete:', error)
       alert('Erro ao marcar todas as aulas como concluídas')
+    }
+  }
+
+  const requestCertificate = async () => {
+    if (!course?.enrollment || !canRequestCertificate) return
+    
+    setRequestingCertificate(true)
+    
+    try {
+      const response = await fetch('/api/certificates/check-eligibility', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId: course.id,
+          enrollmentId: course.enrollment.id
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
+        setCertificateStatus('pending')
+        setCanRequestCertificate(false)
+        alert('✅ Certificado solicitado com sucesso!\n\nAguarde a aprovação do administrador.')
+      } else {
+        alert(`❌ Erro ao solicitar certificado:\n\n${result.error || 'Erro desconhecido'}`)
+      }
+    } catch (error) {
+      console.error('Erro ao solicitar certificado:', error)
+      alert('❌ Erro ao solicitar certificado. Tente novamente.')
+    } finally {
+      setRequestingCertificate(false)
     }
   }
 
@@ -478,6 +559,53 @@ export default function CoursePage() {
                 >
                   Marcar todas as aulas como concluídas
                 </Button>
+              </div>
+            )}
+            
+            {/* Certificate Status and Request Button */}
+            {!isAdmin && (
+              <div className="mt-4 space-y-3">
+                {certificateStatus === 'approved' && (
+                  <div className="flex items-center gap-2 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
+                    <Award className="w-5 h-5 text-green-400" />
+                    <span className="text-green-400">Certificado aprovado! Acesse em "Meus Certificados"</span>
+                  </div>
+                )}
+                
+                {certificateStatus === 'pending' && (
+                  <div className="flex items-center gap-2 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+                    <Clock className="w-5 h-5 text-yellow-400" />
+                    <span className="text-yellow-400">Certificado solicitado - Aguardando aprovação</span>
+                  </div>
+                )}
+                
+                {certificateStatus === 'rejected' && (
+                  <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                    <span className="text-red-400">Certificado rejeitado - Verifique em "Meus Certificados"</span>
+                  </div>
+                )}
+                
+                {canRequestCertificate && (
+                  <Button
+                    variant="primary"
+                    onClick={requestCertificate}
+                    loading={requestingCertificate}
+                    icon={<Send className="w-4 h-4" />}
+                    className="w-full"
+                  >
+                    Solicitar Certificado de Conclusão
+                  </Button>
+                )}
+                
+                {!canRequestCertificate && certificateStatus === 'none' && progressPercentage === 100 && (
+                  <div className="flex items-center gap-2 p-3 bg-navy-900/50 border border-gold-500/20 rounded-lg">
+                    <AlertCircle className="w-5 h-5 text-gold-400" />
+                    <span className="text-gold-400 text-sm">
+                      Você precisa atingir nota mínima de 70% no teste para solicitar o certificado
+                    </span>
+                  </div>
+                )}
               </div>
             )}
             {course.instructor && (
