@@ -35,6 +35,15 @@ export async function POST(
         { status: 404 }
       )
     }
+    
+    // Verificar se o teste tem gabarito cadastrado
+    if (!test.test_answer_keys || test.test_answer_keys.length === 0) {
+      console.error(`Teste ${testId} não possui gabarito cadastrado`)
+      return NextResponse.json(
+        { error: 'Este teste ainda não possui gabarito cadastrado. Por favor, aguarde o professor configurar o gabarito.' },
+        { status: 400 }
+      )
+    }
 
     // Verificar se o teste está ativo
     if (!test.is_active) {
@@ -90,8 +99,15 @@ export async function POST(
       correct_answer: key.correct_answer,
       points: key.points || 10
     }))
+    
+    console.log(`Calculando nota para teste ${testId}:`)
+    console.log(`- Gabarito: ${answerKeyFormatted.length} questões`)
+    console.log(`- Respostas do aluno:`, answers)
+    
     const { score, correctCount, totalQuestions } = calculateScore(answers, answerKeyFormatted)
     const passed = score >= (test.passing_score || 70)
+    
+    console.log(`- Resultado: ${correctCount}/${totalQuestions} corretas, nota: ${score}%, ${passed ? 'APROVADO' : 'REPROVADO'}`)
 
     // Salvar tentativa
     const { data: attempt, error: attemptError } = await supabase

@@ -137,6 +137,48 @@ function extractQuestionsWithAnswers(content: string): Array<{ questionNumber: n
       }
       continue
     }
+    
+    // Padrão adicional: "Alternativa correta: X" ou "Correta: X"
+    const alternativaMatch = line.match(/(?:Alternativa\s+)?correta:\s*([A-Ea-e])/i)
+    if (alternativaMatch && currentQuestion > 0) {
+      const existingAnswer = answers.find(a => a.questionNumber === currentQuestion)
+      if (!existingAnswer) {
+        answers.push({
+          questionNumber: currentQuestion,
+          correctAnswer: alternativaMatch[1].toUpperCase(),
+          points: 10
+        })
+      }
+      continue
+    }
+    
+    // Padrão com parênteses: "(X)" ou "[X]" após "correta", "resposta", etc.
+    const parenthesesMatch = line.match(/(?:correta|resposta|gabarito).*?[\[\(]([A-Ea-e])[\]\)]/i)
+    if (parenthesesMatch && currentQuestion > 0) {
+      const existingAnswer = answers.find(a => a.questionNumber === currentQuestion)
+      if (!existingAnswer) {
+        answers.push({
+          questionNumber: currentQuestion,
+          correctAnswer: parenthesesMatch[1].toUpperCase(),
+          points: 10
+        })
+      }
+      continue
+    }
+    
+    // Procurar por alternativas marcadas com asterisco ou negrito
+    const markedMatch = line.match(/^\s*\*?\s*([A-Ea-e])[\)\.\-\s:].*\*|^\s*\*\s*([A-Ea-e])[\)\.\-\s:]/)
+    if (markedMatch && currentQuestion > 0) {
+      const existingAnswer = answers.find(a => a.questionNumber === currentQuestion)
+      if (!existingAnswer) {
+        answers.push({
+          questionNumber: currentQuestion,
+          correctAnswer: (markedMatch[1] || markedMatch[2]).toUpperCase(),
+          points: 10
+        })
+      }
+      continue
+    }
   }
   
   // Não completar com respostas aleatórias - apenas retornar o que foi encontrado

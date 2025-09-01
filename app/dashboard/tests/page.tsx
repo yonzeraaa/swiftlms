@@ -15,7 +15,7 @@ import EmptyState from '../../components/EmptyState'
 import { SkeletonCard } from '../../components/Skeleton'
 import { Chip } from '../../components/Badge'
 
-type Test = Tables<'tests'>
+type Test = Tables<'tests'> & { answer_key_count?: number }
 type Course = Tables<'courses'>
 type Subject = Tables<'subjects'>
 type Module = Tables<'course_modules'>
@@ -70,6 +70,21 @@ export default function TestsManagementPage() {
         .select('*')
         .order('created_at', { ascending: false })
       
+      // Carregar contagem de gabaritos para cada teste
+      if (testsData) {
+        const testsWithAnswerKeys = await Promise.all(
+          testsData.map(async (test) => {
+            const { count } = await supabase
+              .from('test_answer_keys')
+              .select('*', { count: 'exact', head: true })
+              .eq('test_id', test.id)
+            
+            return { ...test, answer_key_count: count || 0 }
+          })
+        )
+        setTests(testsWithAnswerKeys)
+      }
+      
       // Carregar cursos
       const { data: coursesData } = await supabase
         .from('courses')
@@ -88,7 +103,6 @@ export default function TestsManagementPage() {
         .select('*')
         .order('title')
 
-      if (testsData) setTests(testsData)
       if (coursesData) setCourses(coursesData)
       if (subjectsData) setSubjects(subjectsData)
       if (modulesData) setModules(modulesData)
@@ -170,6 +184,32 @@ export default function TestsManagementPage() {
     setCreating(true)
     setError(null)
     
+    // Validar gabarito
+    if (gabaritoData.length === 0) {
+      showToast('Aviso: Nenhum gabarito foi extraído. Por favor, extraia o gabarito do documento.')
+      setCreating(false)
+      return
+    }
+    
+    // Verificar se o gabarito está completo
+    const questionNumbers = gabaritoData.map(item => item.questionNumber).sort((a, b) => a - b)
+    const maxQuestion = Math.max(...questionNumbers)
+    const missingQuestions = []
+    
+    for (let i = 1; i <= maxQuestion; i++) {
+      if (!questionNumbers.includes(i)) {
+        missingQuestions.push(i)
+      }
+    }
+    
+    if (missingQuestions.length > 0) {
+      const confirm = window.confirm(`Atenção: Gabarito incompleto! Faltam as questões: ${missingQuestions.join(', ')}. Deseja continuar mesmo assim?`)
+      if (!confirm) {
+        setCreating(false)
+        return
+      }
+    }
+    
     // Preparar dados limpos para envio
     const cleanedData: any = {
       title: formData.title,
@@ -201,11 +241,10 @@ export default function TestsManagementPage() {
           return
         }
         
-        // Se houver gabarito, atualizar
-        if (gabaritoData.length > 0) {
-          await updateAnswerKeys(editingTest.id)
-        }
-        showToast('Sucesso: Teste atualizado!')
+        // Sempre atualizar o gabarito
+        await updateAnswerKeys(editingTest.id)
+        console.log(`Gabarito atualizado: ${gabaritoData.length} questões salvas`)
+        showToast(`Sucesso: Teste e gabarito atualizados! (${gabaritoData.length} questões)`)
       } else {
         // Criar novo teste
         const { data: newTest, error } = await supabase
@@ -222,10 +261,9 @@ export default function TestsManagementPage() {
         
         if (newTest) {
           // Salvar gabarito
-          if (gabaritoData.length > 0) {
-            await updateAnswerKeys(newTest.id)
-          }
-          showToast('Sucesso: Teste criado!')
+          await updateAnswerKeys(newTest.id)
+          console.log(`Gabarito salvo: ${gabaritoData.length} questões`)
+          showToast(`Sucesso: Teste criado com gabarito! (${gabaritoData.length} questões)`)
         }
       }
       
@@ -362,7 +400,7 @@ export default function TestsManagementPage() {
     setShowModal(false)
   }
 
-  const editTest = (test: Test) => {
+  const editTest = async (test: Test) => {
     console.log('Abrindo modal de edição para teste:', test.id)
     setFormData({
       title: test.title,
@@ -376,6 +414,27 @@ export default function TestsManagementPage() {
       max_attempts: test.max_attempts || 3,
       is_active: test.is_active ?? true
     })
+    
+    // Carregar gabarito existente
+    const { data: answerKeys } = await supabase
+      .from('test_answer_keys')
+      .select('*')
+      .eq('test_id', test.id)
+      .order('question_number')
+    
+    if (answerKeys && answerKeys.length > 0) {
+      const formattedGabarito = answerKeys.map(key => ({
+        questionNumber: key.question_number,
+        correctAnswer: key.correct_answer,
+        points: key.points || 10
+      }))
+      setGabaritoData(formattedGabarito)
+      console.log(`Gabarito carregado: ${answerKeys.length} questões`)
+    } else {
+      setGabaritoData([])
+      console.log('Nenhum gabarito encontrado para este teste')
+    }
+    
     setEditingTest(test)
     setShowModal(true)
     console.log('Modal deve estar visível:', true)
@@ -540,6 +599,29 @@ export default function TestsManagementPage() {
                       label={test.is_active ? t('tests.active') : t('tests.inactive')}
                       color={test.is_active ? 'green' : 'gold'}
                     />
+                    {test.answer_key_count !== undefined && (
+                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
+                        test.answer_key_count > 0 
+                          ? 'bg-green-900/30 border-green-500/30' 
+                          : 'bg-red-900/30 border-red-500/30'
+                      }`}>
+                        {test.answer_key_count > 0 ? (
+                          <>
+                            <Check className="w-4 h-4 text-green-400" />
+                            <span className="text-sm font-medium text-green-400">
+                              Gabarito: {test.answer_key_count} questões
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-4 h-4 text-red-400" />
+                            <span className="text-sm font-medium text-red-400">
+                              Sem gabarito
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
