@@ -202,6 +202,16 @@ export async function PUT(request: Request) {
     }
 
     // Criar solicitação de certificado
+    console.log('Tentando criar solicitação com dados:', {
+      enrollment_id: enrollmentId,
+      user_id: user.id,
+      course_id: courseId,
+      total_lessons: eligibility.totalLessons,
+      completed_lessons: eligibility.completedLessons,
+      status: 'pending',
+      request_date: new Date().toISOString()
+    })
+
     const { data: newRequest, error } = await supabase
       .from('certificate_requests')
       .insert({
@@ -218,8 +228,12 @@ export async function PUT(request: Request) {
 
     if (error) {
       console.error('Erro ao criar solicitação:', error)
+      console.error('Detalhes do erro:', JSON.stringify(error, null, 2))
       return NextResponse.json(
-        { error: 'Erro ao criar solicitação de certificado' },
+        { 
+          error: 'Erro ao criar solicitação de certificado',
+          details: error.message || 'Erro desconhecido'
+        },
         { status: 500 }
       )
     }
