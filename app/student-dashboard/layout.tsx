@@ -89,6 +89,7 @@ export default function StudentDashboardLayout({
     { name: 'Progresso', href: '/student-dashboard/progress', icon: GraduationCap },
     { name: 'Calendário', href: '/student-dashboard/calendar', icon: Calendar },
     { name: 'Testes', href: '/student-dashboard/tests', icon: FileCheck },
+    { name: 'Minhas Notas', href: '/student-dashboard/grades', icon: FileText },
     { name: 'Certificados', href: '/student-dashboard/certificates', icon: Trophy },
     { name: 'Configurações', href: '/student-dashboard/settings', icon: Settings },
   ]

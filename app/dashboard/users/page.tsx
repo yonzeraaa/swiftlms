@@ -3,7 +3,8 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Edit, Key, X, Check, Trash2, AlertCircle, Phone, Users, Shield, GraduationCap, BookOpen, LayoutGrid, List, Lock, Unlock } from 'lucide-react'
+import Link from 'next/link'
+import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Edit, Key, X, Check, Trash2, AlertCircle, Phone, Users, Shield, GraduationCap, BookOpen, LayoutGrid, List, Lock, Unlock, FileText } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
@@ -711,6 +712,16 @@ export default function UsersPage() {
                               <Edit className="w-4 h-4" />
                               {t('users.edit')}
                             </button>
+                            {user.role === 'student' && (
+                              <Link 
+                                href={`/dashboard/users/${user.id}/grades`}
+                                onClick={() => setOpenDropdown(null)}
+                                className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 block"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Ver Notas
+                              </Link>
+                            )}
                             <button 
                               onClick={() => openResetPasswordModal(user)}
                               className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2"
