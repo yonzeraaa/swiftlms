@@ -72,7 +72,9 @@ export default function DashboardLayout({
 
     fetchPendingCertificates()
     
-    // Set up real-time subscription
+    // Comentando temporariamente o realtime que está causando erros
+    // TODO: Reativar quando o problema de conexão for resolvido
+    /*
     const subscription = supabase
       .channel('certificate_requests')
       .on('postgres_changes', { 
@@ -93,6 +95,7 @@ export default function DashboardLayout({
     return () => {
       supabase.removeChannel(subscription)
     }
+    */
   }, [])
 
   const menuItems = [
