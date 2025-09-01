@@ -6,14 +6,21 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      realtime: {
-        params: {
-          eventsPerSecond: 10
-        }
-      },
       auth: {
         persistSession: true,
         detectSessionInUrl: true
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 2
+        },
+        heartbeatIntervalMs: 30000,
+        timeout: 10000
+      },
+      global: {
+        headers: {
+          'X-Client-Info': 'swiftedu-app'
+        }
       }
     }
   )

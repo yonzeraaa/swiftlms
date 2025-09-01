@@ -257,14 +257,42 @@ export default function TestsManagementPage() {
   const deleteTest = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este teste?')) return
     
-    const { error } = await supabase
-      .from('tests')
-      .delete()
-      .eq('id', id)
-    
-    if (!error) {
-      showToast('Sucesso: Teste excluído!')
-      loadData()
+    try {
+      // Primeiro deletar registros relacionados
+      // Deletar answer keys
+      await supabase
+        .from('test_answer_keys')
+        .delete()
+        .eq('test_id', id)
+      
+      // Deletar attempts
+      await supabase
+        .from('test_attempts')
+        .delete()
+        .eq('test_id', id)
+      
+      // Deletar grades
+      await supabase
+        .from('test_grades')
+        .delete()
+        .eq('test_id', id)
+      
+      // Por último, deletar o teste
+      const { error } = await supabase
+        .from('tests')
+        .delete()
+        .eq('id', id)
+      
+      if (!error) {
+        showToast('Sucesso: Teste excluído!')
+        loadData()
+      } else {
+        console.error('Erro ao excluir teste:', error)
+        showToast('Erro ao excluir teste: ' + error.message)
+      }
+    } catch (err) {
+      console.error('Erro ao excluir teste:', err)
+      showToast('Erro ao excluir teste!')
     }
   }
 

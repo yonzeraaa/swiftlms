@@ -74,16 +74,16 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
         setQuestionCount(data.question_number)
         console.log('Número de questões carregado do gabarito:', data.question_number)
       } else {
-        // Se não houver gabarito, usa um padrão ou valor do teste
+        // Se não houver gabarito, usa um padrão
         // O aluno nunca deve ver mensagem sobre gabarito não cadastrado
-        const defaultCount = test.question_count || 20
+        const defaultCount = 20
         setQuestionCount(defaultCount)
         console.log('Usando número padrão de questões:', defaultCount)
       }
     } catch (error) {
       console.error('Erro ao carregar número de questões:', error)
       // Em caso de erro, usa um valor padrão
-      const defaultCount = test.question_count || 20
+      const defaultCount = 20
       setQuestionCount(defaultCount)
     } finally {
       setLoadingQuestions(false)

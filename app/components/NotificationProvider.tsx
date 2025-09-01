@@ -44,13 +44,15 @@ export function NotificationProvider({
     if (!supabaseUrl || !supabaseAnonKey || !userId) return
 
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      realtime: {
-        params: {
-          eventsPerSecond: 10
-        }
-      },
       auth: {
         persistSession: false
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 2
+        },
+        heartbeatIntervalMs: 30000,
+        timeout: 10000
       }
     })
 
