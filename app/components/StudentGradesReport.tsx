@@ -76,26 +76,23 @@ export default function StudentGradesReport({
         studentName = profile?.full_name || profile?.email || 'Aluno'
       }
       
-      // Buscar TODOS os testes ativos
-      const { data: allTests } = await supabase
+      // Buscar TODOS os testes (removendo filtro is_active temporariamente para debug)
+      const { data: allTests, error: testsError } = await supabase
         .from('tests')
         .select('*, subjects(name), courses(title)')
-        .eq('is_active', true)
       
-      // Buscar tentativas do aluno
-      let attemptsQuery = supabase
+      console.log('Tests Error:', testsError)
+      
+      // Buscar TODAS as tentativas do aluno (sem filtro de data)
+      const { data: attempts, error: attemptsError } = await supabase
         .from('test_attempts')
         .select('*')
         .eq('user_id', userId)
       
-      // Aplicar filtro de data se fornecido
-      if (dateRange) {
-        attemptsQuery = attemptsQuery
-          .gte('submitted_at', dateRange.start)
-          .lte('submitted_at', dateRange.end)
-      }
-      
-      const { data: attempts } = await attemptsQuery
+      console.log('User ID:', userId)
+      console.log('All Tests:', allTests?.length)
+      console.log('Attempts:', attempts?.length)
+      console.log('Attempts Error:', attemptsError)
       
       // Criar mapa de tentativas por teste
       const attemptsByTest = new Map<string, any>()
@@ -110,18 +107,31 @@ export default function StudentGradesReport({
       // Agrupar testes por disciplina
       const subjectsMap = new Map<string, GradeBySubject>()
       
+      console.log('Processing tests by subject...')
+      
+      // Contar testes sem subject_id
+      const testsWithoutSubject = allTests?.filter(t => !t.subject_id) || []
+      if (testsWithoutSubject.length > 0) {
+        console.warn(`⚠️ ${testsWithoutSubject.length} testes sem subject_id:`, testsWithoutSubject)
+      }
+      
       allTests?.forEach(test => {
-        if (!test.subject_id) return
+        console.log('Test:', test.id, test.title, 'Subject:', test.subject_id)
         
-        const subjectKey = test.subject_id
+        // Se não tem subject_id, criar uma categoria "Sem Disciplina"
+        const subjectKey = test.subject_id || 'no-subject'
         const attempt = attemptsByTest.get(test.id)
         const score = attempt ? (Number(attempt.score) || 0) : 0
         const completed = !!attempt
         
         if (!subjectsMap.has(subjectKey)) {
+          const subjectName = test.subject_id 
+            ? (test.subjects?.name || 'Disciplina não encontrada') 
+            : 'Sem Disciplina Definida'
+          
           subjectsMap.set(subjectKey, {
-            subjectId: test.subject_id,
-            subjectName: test.subjects?.name || 'Sem nome',
+            subjectId: subjectKey,
+            subjectName: subjectName,
             courseName: test.courses?.title || 'Sem curso',
             totalTests: 0,
             testsCompleted: 0,
@@ -307,17 +317,34 @@ export default function StudentGradesReport({
               <p className="text-gold-300 mt-1">Aluno: {userName}</p>
             )}
           </div>
-          
-          {allowExport && (
-            <Button
-              variant="primary"
-              size="sm"
-              icon={<Download className="w-4 h-4" />}
-              onClick={exportToExcel}
-            >
-              Exportar Excel
-            </Button>
-          )}
+        </div>
+      )}
+      
+      {/* Botão de Exportar - sempre visível se allowExport for true */}
+      {allowExport && !showHeader && (
+        <div className="flex justify-end">
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<Download className="w-4 h-4" />}
+            onClick={exportToExcel}
+          >
+            Exportar Excel
+          </Button>
+        </div>
+      )}
+      
+      {/* Se showHeader e allowExport, mostrar botão junto com header */}
+      {showHeader && allowExport && (
+        <div className="flex justify-end -mt-12">
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<Download className="w-4 h-4" />}
+            onClick={exportToExcel}
+          >
+            Exportar Excel
+          </Button>
         </div>
       )}
       
