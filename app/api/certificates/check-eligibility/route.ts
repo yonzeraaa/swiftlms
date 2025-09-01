@@ -40,23 +40,39 @@ export async function POST(request: Request) {
       )
     }
 
+    // Buscar módulos do curso
+    const { data: modules } = await supabase
+      .from('course_modules')
+      .select('id')
+      .eq('course_id', courseId)
+    
+    const moduleIds = modules?.map(m => m.id) || []
+    
     // Verificar progresso das lições
-    const { data: totalLessons } = await supabase
+    const { count: totalLessonsCount } = await supabase
       .from('lessons')
-      .select('id', { count: 'exact' })
-      .eq('module_id', enrollment.course.id)
+      .select('*', { count: 'exact', head: true })
+      .in('module_id', moduleIds)
 
-    const { data: completedLessons } = await supabase
+    const { count: completedLessonsCount } = await supabase
       .from('lesson_progress')
-      .select('id', { count: 'exact' })
+      .select('*', { count: 'exact', head: true })
       .eq('enrollment_id', enrollmentId)
       .eq('is_completed', true)
 
-    const lessonsCompleted = completedLessons?.length || 0
-    const totalLessonsCount = totalLessons?.length || 0
+    const lessonsCompleted = completedLessonsCount || 0
     const progressPercentage = totalLessonsCount > 0 
       ? Math.round((lessonsCompleted / totalLessonsCount) * 100)
       : 0
+
+    console.log('Verificação de elegibilidade:', {
+      courseId,
+      enrollmentId,
+      moduleIds,
+      totalLessonsCount,
+      lessonsCompleted,
+      progressPercentage
+    })
 
     // Verificar nota nos testes
     const { data: testGrades } = await supabase
@@ -69,6 +85,13 @@ export async function POST(request: Request) {
       ? Math.max(...testGrades.map(g => g.best_score || 0))
       : 0
 
+    console.log('Notas dos testes:', {
+      testGrades,
+      bestTestScore,
+      userId: user.id,
+      courseId
+    })
+
     // Verificar requisitos
     const minimumProgress = 100 // 100% das lições
     const minimumTestScore = 70 // 70% no teste
@@ -76,6 +99,12 @@ export async function POST(request: Request) {
     const requirementsMet = 
       progressPercentage >= minimumProgress && 
       bestTestScore >= minimumTestScore
+
+    console.log('Requisitos:', {
+      requirementsMet,
+      progressCheck: `${progressPercentage}% >= ${minimumProgress}%`,
+      scoreCheck: `${bestTestScore}% >= ${minimumTestScore}%`
+    })
 
     // Verificar se já existe solicitação
     const { data: existingRequest } = await supabase
@@ -96,7 +125,7 @@ export async function POST(request: Request) {
       eligible: requirementsMet,
       progressPercentage,
       bestTestScore,
-      totalLessons: totalLessonsCount,
+      totalLessons: totalLessonsCount || 0,
       completedLessons: lessonsCompleted,
       requirementsMet,
       hasExistingRequest: !!existingRequest,
@@ -136,7 +165,12 @@ export async function PUT(request: Request) {
     }
 
     // Verificar elegibilidade primeiro
-    const eligibilityResponse = await POST(request)
+    const eligibilityRequest = new Request(request.url, {
+      method: 'POST',
+      headers: request.headers,
+      body: JSON.stringify({ courseId, enrollmentId })
+    })
+    const eligibilityResponse = await POST(eligibilityRequest)
     const eligibility = await eligibilityResponse.json()
 
     if (!eligibility.eligible) {
