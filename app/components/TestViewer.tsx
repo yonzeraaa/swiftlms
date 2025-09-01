@@ -28,7 +28,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
   const [submitted, setSubmitted] = useState(false)
   const [loadingQuestions, setLoadingQuestions] = useState(false)
   const [showQuestionConfig, setShowQuestionConfig] = useState(false)
-  const [manualQuestionCount, setManualQuestionCount] = useState('20')
+  const [manualQuestionCount, setManualQuestionCount] = useState('10')
   
   const supabase = createClient()
   const { t } = useTranslation()
@@ -61,29 +61,30 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
   const loadQuestionCount = async () => {
     setLoadingQuestions(true)
     try {
-      // Primeiro tenta buscar do gabarito cadastrado
-      const { data, error } = await supabase
+      // Buscar todas as questões do gabarito para contar corretamente
+      const { data, error, count } = await supabase
         .from('test_answer_keys')
-        .select('question_number')
+        .select('question_number', { count: 'exact' })
         .eq('test_id', test.id)
         .order('question_number', { ascending: false })
-        .limit(1)
-        .single()
       
-      if (data && !error) {
-        setQuestionCount(data.question_number)
-        console.log('Número de questões carregado do gabarito:', data.question_number)
+      if (data && data.length > 0 && !error) {
+        // Usar o maior número de questão encontrado
+        const maxQuestionNumber = data[0].question_number
+        setQuestionCount(maxQuestionNumber)
+        console.log(`Número de questões do gabarito: ${maxQuestionNumber} (total de ${count} respostas cadastradas)`)
       } else {
-        // Se não houver gabarito, usa um padrão
-        // O aluno nunca deve ver mensagem sobre gabarito não cadastrado
-        const defaultCount = 20
+        // Se não houver gabarito, buscar o número de questões do localStorage ou usar 10 como padrão
+        const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
+        const defaultCount = savedCount ? parseInt(savedCount) : 10
         setQuestionCount(defaultCount)
-        console.log('Usando número padrão de questões:', defaultCount)
+        console.log('Gabarito não encontrado, usando número de questões:', defaultCount)
       }
     } catch (error) {
       console.error('Erro ao carregar número de questões:', error)
-      // Em caso de erro, usa um valor padrão
-      const defaultCount = 20
+      // Em caso de erro, tentar recuperar do localStorage ou usar 10
+      const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
+      const defaultCount = savedCount ? parseInt(savedCount) : 10
       setQuestionCount(defaultCount)
     } finally {
       setLoadingQuestions(false)
