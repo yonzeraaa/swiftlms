@@ -201,11 +201,19 @@ export default function CertificatesPage() {
       const verificationCode = Math.random().toString(36).substr(2, 16).toUpperCase()
       
       // Get instructor name
-      const { data: instructor } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', enrollment.course.instructor_id!)
-        .single()
+      let instructorName = 'SwiftEDU Team'
+      
+      if (enrollment.course.instructor_id) {
+        const { data: instructor } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', enrollment.course.instructor_id)
+          .single()
+        
+        if (instructor?.full_name) {
+          instructorName = instructor.full_name
+        }
+      }
       
       const { error } = await supabase
         .from('certificates')
@@ -218,7 +226,7 @@ export default function CertificatesPage() {
           course_hours: enrollment.course.duration_hours || 0,
           grade: enrollment.progress_percentage || 100,
           issued_at: new Date().toISOString(),
-          instructor_name: instructor?.full_name || 'SwiftEDU',
+          instructor_name: instructorName,
           approval_status: 'approved',
           approved_at: new Date().toISOString(),
           approved_by: user.id
