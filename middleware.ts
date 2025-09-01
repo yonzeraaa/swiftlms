@@ -78,14 +78,21 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Only apply security settings to our own cookies, not third-party ones
+          // Apply security settings to our cookies
           const isSupabaseCookie = name.startsWith('sb-')
+          const isProduction = process.env.NODE_ENV === 'production'
+          
           const secureOptions = isSupabaseCookie ? {
             ...options,
-            sameSite: (options.sameSite || 'lax') as 'lax' | 'strict' | 'none',
-            secure: options.secure !== undefined ? options.secure : process.env.NODE_ENV === 'production',
-            httpOnly: options.httpOnly !== undefined ? options.httpOnly : true
-          } : options
+            sameSite: 'lax' as const,
+            secure: isProduction,
+            httpOnly: true,
+            path: '/'
+          } : {
+            ...options,
+            sameSite: 'lax' as const,
+            secure: isProduction
+          }
           
           request.cookies.set({
             name,
