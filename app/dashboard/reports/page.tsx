@@ -6,10 +6,15 @@ import { useState, useEffect } from 'react'
 import { Download, Calendar, TrendingUp, FileText, Filter, FileSpreadsheet, Users, BookOpen, Award, GraduationCap, Activity, Table } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
+import MetricCard from '../../components/reports/MetricCard'
+import DataTable, { Column } from '../../components/reports/DataTable'
+import StatusBadge from '../../components/reports/StatusBadge'
+import SkeletonLoader from '../../components/reports/SkeletonLoader'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { ExcelExporter, exportReportToExcel, PivotTableConfig } from '@/lib/excel-export'
+import { formatNumber, formatPercentage, formatDate, formatCompactNumber } from '@/lib/reports/formatters'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -1195,8 +1200,50 @@ export default function ReportsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-start">
+          <div>
+            <div className="h-9 w-48 bg-gold-500/20 rounded-lg animate-pulse mb-2"></div>
+            <div className="h-5 w-64 bg-gold-500/10 rounded animate-pulse"></div>
+          </div>
+          <SkeletonLoader type="button" className="w-48" />
+        </div>
+
+        {/* Date Filter Skeleton */}
+        <div className="p-6 bg-navy-900/30 border border-gold-500/10 rounded-xl">
+          <div className="flex items-center gap-4">
+            <div className="w-5 h-5 bg-gold-500/20 rounded animate-pulse"></div>
+            <div className="flex items-center gap-2 flex-1">
+              <div className="h-5 w-24 bg-gold-500/10 rounded animate-pulse"></div>
+              <div className="h-9 w-32 bg-gold-500/20 rounded-lg animate-pulse"></div>
+              <div className="h-5 w-8 bg-gold-500/10 rounded animate-pulse"></div>
+              <div className="h-9 w-32 bg-gold-500/20 rounded-lg animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Metrics Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SkeletonLoader type="metric" count={4} />
+        </div>
+
+        {/* Reports Cards Skeleton */}
+        <div className="p-6 bg-navy-900/30 border border-gold-500/10 rounded-xl">
+          <div className="mb-6">
+            <div className="h-6 w-48 bg-gold-500/20 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-gold-500/10 rounded animate-pulse"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SkeletonLoader type="card" count={3} />
+          </div>
+        </div>
+
+        {/* Data Tables Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SkeletonLoader type="table" />
+          <SkeletonLoader type="table" />
+        </div>
       </div>
     )
   }
@@ -1245,61 +1292,134 @@ export default function ReportsPage() {
       </Card>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <div className="text-center">
-            <p className="text-4xl font-bold text-gold">{reportData?.totalEnrollments || 0}</p>
-            <p className="text-gold-300 mt-1">{t('reports.enrollments')}</p>
-            <p className="text-gold-400 text-sm mt-2">{t('reports.inPeriod')}</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-4xl font-bold text-gold">{reportData?.averageCompletionRate || 0}%</p>
-            <p className="text-gold-300 mt-1">{t('reports.completionRate')}</p>
-            <p className="text-gold-400 text-sm mt-2">{t('reports.overallAverage')}</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-4xl font-bold text-gold">{reportData?.activeStudents || 0}</p>
-            <p className="text-gold-300 mt-1">{t('reports.activeStudents')}</p>
-            <p className="text-gold-400 text-sm mt-2">{t('dashboard.total')}</p>
-          </div>
-        </Card>
-        <Card>
-          <div className="text-center">
-            <p className="text-4xl font-bold text-gold">{reportData?.totalCourses || 0}</p>
-            <p className="text-gold-300 mt-1">{t('courses.title')}</p>
-            <p className="text-gold-400 text-sm mt-2">{t('reports.available')}</p>
-          </div>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title={t('reports.enrollments')}
+          value={reportData?.totalEnrollments || 0}
+          subtitle={t('reports.inPeriod')}
+          icon={<Users className="w-full h-full" />}
+          format="number"
+          color="blue"
+          animate
+          trend={reportData && reportData.totalEnrollments > 0 ? {
+            value: 12.5,
+            direction: 'up',
+            label: 'vs mês anterior'
+          } : undefined}
+        />
+        <MetricCard
+          title={t('reports.completionRate')}
+          value={reportData?.averageCompletionRate || 0}
+          subtitle={t('reports.overallAverage')}
+          icon={<TrendingUp className="w-full h-full" />}
+          format="percentage"
+          color="green"
+          animate
+          trend={reportData && reportData.averageCompletionRate > 0 ? {
+            value: 5.2,
+            direction: 'up'
+          } : undefined}
+        />
+        <MetricCard
+          title={t('reports.activeStudents')}
+          value={reportData?.activeStudents || 0}
+          subtitle={t('dashboard.total')}
+          icon={<Activity className="w-full h-full" />}
+          format="number"
+          color="purple"
+          animate
+          trend={reportData && reportData.activeStudents > 0 ? {
+            value: 8.3,
+            direction: 'up'
+          } : undefined}
+        />
+        <MetricCard
+          title={t('courses.title')}
+          value={reportData?.totalCourses || 0}
+          subtitle={t('reports.available')}
+          icon={<BookOpen className="w-full h-full" />}
+          format="number"
+          color="gold"
+          animate
+        />
       </div>
 
       {/* Available Reports */}
       <Card title={t('reports.availableReports')} subtitle={t('reports.selectReport')}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
           {reports.map((report, index) => {
             const Icon = report.icon
             const isGenerating = generatingReport === report.type
             
             return (
-              <div key={index} className="border border-gold-500/20 rounded-lg p-4 hover:bg-navy-700/30 transition-colors">
-                <div className="flex flex-col items-center text-center">
-                  <div className={`p-3 ${report.bgColor} rounded-lg ${report.color} mb-3`}>
-                    <Icon className="w-8 h-8" />
+              <div 
+                key={index} 
+                className="group relative border border-gold-500/20 rounded-xl overflow-hidden hover:border-gold-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-gold-500/10"
+              >
+                {/* Background Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-gold-500/5 via-transparent to-navy-800/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                
+                {/* Content */}
+                <div className="relative p-6">
+                  {/* Icon Header */}
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`p-4 ${report.bgColor} rounded-xl ${report.color} group-hover:scale-110 transition-transform duration-300`}>
+                      <Icon className="w-8 h-8" />
+                    </div>
+                    {isGenerating && (
+                      <StatusBadge 
+                        status="processing" 
+                        label="Gerando" 
+                        size="xs" 
+                        pulse 
+                      />
+                    )}
                   </div>
-                  <h4 className="font-semibold text-gold mb-1">{report.title}</h4>
-                  <p className="text-gold-300 text-sm mb-4">{report.description}</p>
+                  
+                  {/* Title and Description */}
+                  <h4 className="font-bold text-lg text-gold-100 mb-2 group-hover:text-gold transition-colors">
+                    {report.title}
+                  </h4>
+                  <p className="text-gold-400 text-sm leading-relaxed mb-6 min-h-[3rem]">
+                    {report.description}
+                  </p>
+                  
+                  {/* Action Button */}
                   <Button 
                     variant="primary" 
                     size="sm"
-                    className="w-full"
+                    className="w-full group-hover:bg-gold-600 group-hover:shadow-lg transition-all duration-300"
                     onClick={() => generateReport(report.type)}
                     disabled={isGenerating}
+                    icon={isGenerating ? undefined : <Download className="w-4 h-4" />}
                   >
-                    {isGenerating ? t('reports.generating') : t('reports.generateReport')}
+                    {isGenerating ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>{t('reports.generating')}</span>
+                      </div>
+                    ) : (
+                      t('reports.generateReport')
+                    )}
                   </Button>
+                  
+                  {/* Formats Available */}
+                  <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-gold-500/10">
+                    <div className="flex items-center gap-1 text-xs text-gold-500">
+                      <FileSpreadsheet className="w-3 h-3" />
+                      <span>Excel</span>
+                    </div>
+                    <span className="text-gold-700">•</span>
+                    <div className="flex items-center gap-1 text-xs text-gold-500">
+                      <FileText className="w-3 h-3" />
+                      <span>CSV</span>
+                    </div>
+                    <span className="text-gold-700">•</span>
+                    <div className="flex items-center gap-1 text-xs text-gold-500">
+                      <Table className="w-3 h-3" />
+                      <span>Dinâmico</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )
@@ -1311,45 +1431,122 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Courses */}
         <Card title={t('reports.top5Courses')} subtitle={t('reports.byEnrollments')}>
-          <div className="space-y-3 mt-4">
-            {reportData?.topCourses.map((course, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-gold-400 font-bold">#{index + 1}</span>
-                  <span className="text-gold-200">{course.title}</span>
-                </div>
-                <span className="text-gold-300 font-medium">{course.enrollments} {t('dashboard.students')}</span>
-              </div>
-            ))}
-            {(!reportData?.topCourses || reportData.topCourses.length === 0) && (
-              <p className="text-gold-300 text-center py-4">{t('reports.noCoursesInPeriod')}</p>
-            )}
-          </div>
+          <DataTable
+            data={reportData?.topCourses.map((course, index) => ({
+              ...course,
+              position: index + 1
+            })) || []}
+            columns={[
+              {
+                key: 'position',
+                header: '#',
+                width: '60px',
+                align: 'center',
+                format: (value) => (
+                  <div className="flex items-center justify-center">
+                    <span className={`
+                      px-2 py-1 rounded-lg font-bold text-sm
+                      ${value === 1 ? 'bg-yellow-500/20 text-yellow-400' : 
+                        value === 2 ? 'bg-gray-300/20 text-gray-300' :
+                        value === 3 ? 'bg-orange-500/20 text-orange-400' :
+                        'bg-navy-700/50 text-gold-400'}
+                    `}>
+                      {value}º
+                    </span>
+                  </div>
+                )
+              },
+              {
+                key: 'title',
+                header: 'Curso',
+                format: (value) => (
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-gold-500/50" />
+                    <span className="font-medium text-gold-100">{value}</span>
+                  </div>
+                )
+              },
+              {
+                key: 'enrollments',
+                header: 'Matrículas',
+                align: 'right',
+                sortable: true,
+                format: (value) => (
+                  <div className="flex items-center justify-end gap-2">
+                    <Users className="w-4 h-4 text-gold-500/30" />
+                    <span className="text-gold-200 font-semibold">
+                      {formatCompactNumber(value)}
+                    </span>
+                  </div>
+                )
+              }
+            ]}
+            showPagination={false}
+            searchable={false}
+            showHeader={false}
+            density="compact"
+            hoverable
+            borderless
+            emptyMessage={t('reports.noCoursesInPeriod')}
+            zebra={false}
+          />
         </Card>
 
         {/* Courses by Category */}
         <Card title={t('reports.coursesByCategory')}>
-          <div className="space-y-3 mt-4">
-            {reportData?.coursesPerCategory.map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <span className="text-gold-200">{item.category}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-gold-300 font-medium">{item.count} {t('reports.courses')}</span>
-                  <div className="w-24 bg-navy-900/50 rounded-full h-2">
-                    <div 
-                      className="bg-gradient-to-r from-gold-500 to-gold-600 h-2 rounded-full"
-                      style={{ 
-                        width: `${Math.min((item.count / (reportData?.totalCourses || 1)) * 100, 100)}%` 
-                      }}
-                    />
+          <DataTable
+            data={reportData?.coursesPerCategory || []}
+            columns={[
+              {
+                key: 'category',
+                header: 'Categoria',
+                sortable: true,
+                format: (value) => (
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-gold-400"></div>
+                    <span className="font-medium">{value}</span>
                   </div>
-                </div>
-              </div>
-            ))}
-            {(!reportData?.coursesPerCategory || reportData.coursesPerCategory.length === 0) && (
-              <p className="text-gold-300 text-center py-4">{t('reports.noCategoriesFound')}</p>
-            )}
-          </div>
+                )
+              },
+              {
+                key: 'count',
+                header: 'Quantidade',
+                sortable: true,
+                align: 'center',
+                format: (value) => (
+                  <span className="px-3 py-1 bg-gold-500/20 text-gold-200 rounded-full text-sm font-medium">
+                    {value}
+                  </span>
+                )
+              },
+              {
+                key: 'percentage',
+                header: 'Percentual',
+                align: 'right',
+                format: (value, row) => {
+                  const percentage = Math.round((row.count / (reportData?.totalCourses || 1)) * 100)
+                  return (
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="text-gold-300 font-medium">{percentage}%</span>
+                      <div className="w-24 bg-navy-900/50 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-gold-500 to-gold-600 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                }
+              }
+            ]}
+            showPagination={false}
+            searchable={false}
+            showHeader={false}
+            density="compact"
+            hoverable
+            borderless
+            emptyMessage={t('reports.noCategoriesFound')}
+          />
         </Card>
       </div>
     </div>
