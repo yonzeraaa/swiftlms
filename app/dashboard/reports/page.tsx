@@ -195,8 +195,8 @@ export default function ReportsPage() {
     
     // Processar dados para o relatório
     const gradesData = testAttempts.map(attempt => {
-      // Determinar a data a usar (preferir created_at que sempre existe)
-      const attemptDate = attempt.created_at || attempt.started_at || attempt.completed_at
+      // Determinar a data a usar (preferir submitted_at, depois started_at)
+      const attemptDate = attempt.submitted_at || attempt.started_at
       
       return {
         student: attempt.user?.full_name || 'Aluno desconhecido',
@@ -205,7 +205,7 @@ export default function ReportsPage() {
         subject: subjectMap.get(attempt.test?.subject_id) || 'Disciplina não definida',
         test: attempt.test?.title || 'Teste sem título',
         type: 'Quiz',
-        date: attemptDate ? new Date(attemptDate).toLocaleDateString('pt-BR') : '',
+        date: attemptDate ? new Date(attemptDate).toLocaleDateString('pt-BR') : 'Data não registrada',
         grade: Number(attempt.score) || 0,
         status: (Number(attempt.score) || 0) >= 70 ? 'Aprovado' : 'Reprovado'
       }
@@ -301,7 +301,7 @@ export default function ReportsPage() {
     try {
       console.log('Buscando test_attempts...')
       
-      // Buscar TODOS os test_attempts primeiro (sem filtro de data)
+      // Buscar test_attempts - usando campos corretos (submitted_at ou started_at)
       const { data: testAttempts, error: resultsError } = await supabase
         .from('test_attempts')
         .select(`
@@ -316,7 +316,8 @@ export default function ReportsPage() {
             email
           )
         `)
-        .order('created_at', { ascending: false })
+        .or(`submitted_at.not.is.null,started_at.not.is.null`)  // Pelo menos uma data deve existir
+        .order('submitted_at', { ascending: false, nullsFirst: false })
         .limit(100) // Limitar a 100 registros mais recentes
       
       console.log('Test attempts encontrados:', testAttempts?.length || 0)
@@ -329,8 +330,39 @@ export default function ReportsPage() {
       }
       
       if (!testAttempts || testAttempts.length === 0) {
-        alert('Nenhum resultado de teste encontrado no banco de dados')
-        setGeneratingReport(null)
+        // Se não encontrou com filtro, tentar sem filtro algum
+        console.log('Tentando buscar sem filtros...')
+        const { data: allTestAttempts, error: allError } = await supabase
+          .from('test_attempts')
+          .select(`
+            *,
+            test:tests!inner(
+              title,
+              course_id,
+              subject_id
+            ),
+            user:profiles!test_attempts_user_id_fkey(
+              full_name,
+              email
+            )
+          `)
+          .limit(100)
+        
+        if (allError) {
+          console.error('Erro ao buscar todos os test_attempts:', allError)
+          alert('Erro ao buscar dados: ' + allError.message)
+          setGeneratingReport(null)
+          return
+        }
+        
+        if (!allTestAttempts || allTestAttempts.length === 0) {
+          alert('Nenhum resultado de teste encontrado no banco de dados')
+          setGeneratingReport(null)
+          return
+        }
+        
+        console.log('Usando todos os test_attempts encontrados:', allTestAttempts.length)
+        await processAndExportGrades(allTestAttempts)
         return
       }
       
