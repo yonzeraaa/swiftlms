@@ -812,7 +812,7 @@ export default function ReportsPage() {
       
       // Processar dados para o relatório
       const studentAccessData = []
-      for (const [userId, user] of userAccessMap) {
+      userAccessMap.forEach((user, userId) => {
         const coursesArray: string[] = []
         let totalProgressValue = 0
         let progressCountValue = 0
@@ -851,7 +851,7 @@ export default function ReportsPage() {
         if (userAccessRow.totalAccess > 0) {
           studentAccessData.push(userAccessRow)
         }
-      }
+      })
       
       // Calcular padrão de acesso diário
       const dayAccessData = new Map()
@@ -877,7 +877,7 @@ export default function ReportsPage() {
       }
       
       const dailyPattern = []
-      for (const [day, data] of dayAccessData) {
+      dayAccessData.forEach((data, day) => {
         dailyPattern.push({
           day,
           accesses: data.accesses,
@@ -885,7 +885,7 @@ export default function ReportsPage() {
           peakTime: '19:00-20:00',
           avgDuration: 20
         })
-      }
+      })
       
       // Engajamento por curso
       const courseEngagementData = new Map()
@@ -917,7 +917,7 @@ export default function ReportsPage() {
       }
       
       const courseEngagement = []
-      for (const [courseName, data] of courseEngagementData) {
+      courseEngagementData.forEach((data, courseName) => {
         courseEngagement.push({
           course: courseName,
           activeStudents: data.studentIds.length,
@@ -927,7 +927,7 @@ export default function ReportsPage() {
           totalViews: data.totalLessons,
           totalDownloads: 0
         })
-      }
+      })
       
       if (studentAccessData.length === 0 && courseEngagement.length === 0) {
         alert('Nenhum dado de acesso encontrado no período')
