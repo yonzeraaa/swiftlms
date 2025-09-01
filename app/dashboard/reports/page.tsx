@@ -271,6 +271,19 @@ export default function ReportsPage() {
           }
           
           // Adicionar ao detalhamento
+          let dataFormatada = '-'
+          if (attempt?.submitted_at) {
+            try {
+              const date = new Date(attempt.submitted_at)
+              const day = String(date.getDate()).padStart(2, '0')
+              const month = String(date.getMonth() + 1).padStart(2, '0')
+              const year = date.getFullYear()
+              dataFormatada = `${day}/${month}/${year}`
+            } catch (e) {
+              dataFormatada = '-'
+            }
+          }
+          
           detailedGrades.push({
             'Aluno': student.full_name || 'Nome não informado',
             'Email': student.email,
@@ -279,9 +292,7 @@ export default function ReportsPage() {
             'Teste': test.title,
             'Nota': score,
             'Status': attempt ? 'Realizado' : 'Não Realizado',
-            'Data': attempt?.submitted_at ? 
-              new Date(attempt.submitted_at).toLocaleDateString('pt-BR') : 
-              '-'
+            'Data': dataFormatada
           })
         })
         
