@@ -76,10 +76,11 @@ export default function StudentGradesReport({
         studentName = profile?.full_name || profile?.email || 'Aluno'
       }
       
-      // Buscar TODOS os testes (removendo filtro is_active temporariamente para debug)
+      // Buscar todos os testes ativos
       const { data: allTests, error: testsError } = await supabase
         .from('tests')
         .select('*, subjects(name), courses(title)')
+        .eq('is_active', true)
       
       console.log('Tests Error:', testsError)
       
