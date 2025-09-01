@@ -228,11 +228,40 @@ export async function PUT(request: Request) {
 
     if (error) {
       console.error('Erro ao criar solicitação:', error)
-      console.error('Detalhes do erro:', JSON.stringify(error, null, 2))
+      console.error('Detalhes do erro:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      })
+      
+      // Verificar se é erro de constraint única
+      if (error.code === '23505') {
+        return NextResponse.json(
+          { 
+            error: 'Já existe uma solicitação de certificado para esta matrícula',
+            details: 'Uma solicitação já foi criada anteriormente'
+          },
+          { status: 400 }
+        )
+      }
+      
+      // Verificar se é erro de foreign key
+      if (error.code === '23503') {
+        return NextResponse.json(
+          { 
+            error: 'Erro de referência: verifique se o enrollment, user ou course existem',
+            details: error.message
+          },
+          { status: 400 }
+        )
+      }
+      
       return NextResponse.json(
         { 
           error: 'Erro ao criar solicitação de certificado',
-          details: error.message || 'Erro desconhecido'
+          details: error.message || 'Erro desconhecido',
+          code: error.code
         },
         { status: 500 }
       )
