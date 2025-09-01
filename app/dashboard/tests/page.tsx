@@ -149,13 +149,20 @@ export default function TestsManagementPage() {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (openDropdown && !Object.values(dropdownRefs.current).some(ref => ref?.contains(event.target as Node))) {
+      // Verifica se o clique foi fora de todos os dropdowns
+      const target = event.target as Node
+      const isInsideDropdown = Object.values(dropdownRefs.current).some(ref => {
+        return ref && (ref.contains(target) || ref.parentElement?.contains(target))
+      })
+      
+      if (openDropdown && !isInsideDropdown) {
         setOpenDropdown(null)
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    // Usar 'click' ao invés de 'mousedown' para melhor compatibilidade
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
   }, [openDropdown])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -315,6 +322,7 @@ export default function TestsManagementPage() {
   }
 
   const editTest = (test: Test) => {
+    console.log('Abrindo modal de edição para teste:', test.id)
     setFormData({
       title: test.title,
       description: test.description || '',
@@ -329,6 +337,7 @@ export default function TestsManagementPage() {
     })
     setEditingTest(test)
     setShowModal(true)
+    console.log('Modal deve estar visível:', true)
   }
 
   return (
@@ -438,6 +447,7 @@ export default function TestsManagementPage() {
               key={test.id}
               variant="elevated"
               hoverable
+              className="relative"
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
@@ -492,21 +502,23 @@ export default function TestsManagementPage() {
                   </div>
                 </div>
 
-                <div className="relative">
+                <div className="relative z-20">
                   <button
                     ref={el => {
                       if (el) dropdownRefs.current[test.id] = el
                     }}
                     onClick={(e) => handleDropdownClick(e, test.id)}
                     className="p-2 hover:bg-navy-700 rounded-lg transition-colors border border-transparent hover:border-gold-500/30"
+                    type="button"
                   >
                     <MoreVertical className="w-5 h-5 text-gold-400" />
                   </button>
                   
                   {openDropdown === test.id && (
-                    <div className="absolute right-0 mt-2 w-48 bg-navy-800 rounded-lg shadow-xl border border-gold-500/20 z-10">
+                    <div className="absolute right-0 mt-2 w-48 bg-navy-800 rounded-lg shadow-xl border border-gold-500/20 z-50 pointer-events-auto">
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           window.open(test.google_drive_url, '_blank')
                           setOpenDropdown(null)
                         }}
@@ -516,9 +528,11 @@ export default function TestsManagementPage() {
                         Ver Documento
                       </button>
                       <button
-                        onClick={() => {
-                          editTest(test)
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          console.log('Editando teste:', test.id)
                           setOpenDropdown(null)
+                          editTest(test)
                         }}
                         className="flex items-center gap-2 w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 transition-colors"
                       >
@@ -526,9 +540,11 @@ export default function TestsManagementPage() {
                         Editar
                       </button>
                       <button
-                        onClick={() => {
-                          deleteTest(test.id)
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          console.log('Excluindo teste:', test.id)
                           setOpenDropdown(null)
+                          deleteTest(test.id)
                         }}
                         className="flex items-center gap-2 w-full px-4 py-2 text-left text-red-400 hover:bg-navy-700 transition-colors last:rounded-b-lg"
                       >
