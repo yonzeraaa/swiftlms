@@ -264,42 +264,66 @@ export default function TestsManagementPage() {
   const deleteTest = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este teste?')) return
     
+    console.log('Iniciando exclusão do teste:', id)
+    
     try {
       // Primeiro deletar registros relacionados
       // Deletar answer keys
-      await supabase
+      const { error: answerKeysError } = await supabase
         .from('test_answer_keys')
         .delete()
         .eq('test_id', id)
       
+      if (answerKeysError) {
+        console.error('Erro ao deletar answer keys:', answerKeysError)
+      }
+      
       // Deletar attempts
-      await supabase
+      const { error: attemptsError } = await supabase
         .from('test_attempts')
         .delete()
         .eq('test_id', id)
       
+      if (attemptsError) {
+        console.error('Erro ao deletar attempts:', attemptsError)
+      }
+      
       // Deletar grades
-      await supabase
+      const { error: gradesError } = await supabase
         .from('test_grades')
         .delete()
         .eq('test_id', id)
       
+      if (gradesError) {
+        console.error('Erro ao deletar grades:', gradesError)
+      }
+      
       // Por último, deletar o teste
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('tests')
         .delete()
         .eq('id', id)
+        .select()
+      
+      console.log('Resultado da exclusão:', { data, error })
       
       if (!error) {
+        // Atualizar estado local removendo o teste excluído
+        setTests(prevTests => prevTests.filter(test => test.id !== id))
         showToast('Sucesso: Teste excluído!')
-        loadData()
+        // Recarregar dados para garantir sincronização
+        setTimeout(() => loadData(), 500)
       } else {
         console.error('Erro ao excluir teste:', error)
         showToast('Erro ao excluir teste: ' + error.message)
+        // Recarregar dados em caso de erro
+        loadData()
       }
     } catch (err) {
       console.error('Erro ao excluir teste:', err)
       showToast('Erro ao excluir teste!')
+      // Recarregar dados em caso de erro
+      loadData()
     }
   }
 
