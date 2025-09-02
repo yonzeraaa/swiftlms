@@ -70,7 +70,7 @@ export default function StudentGradesReport({
         const { data: profile } = await supabase
           .from('profiles')
           .select('full_name, email')
-          .eq('id', userId)
+          .eq('id', userId as any)
           .single()
         
         studentName = profile?.full_name || profile?.email || 'Aluno'

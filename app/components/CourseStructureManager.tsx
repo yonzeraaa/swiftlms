@@ -154,34 +154,34 @@ export default function CourseStructureManager({
       const { data: modulesData, error: modulesError } = await supabase
         .from('course_modules')
         .select('*')
-        .eq('course_id', courseId)
+        .eq('course_id', courseId as any)
         .order('order_index');
 
       if (modulesError) throw modulesError;
-      setModules(modulesData || []);
+      setModules((modulesData as unknown as Module[]) || []);
 
       // Para cada módulo, carregar suas disciplinas e aulas
       const moduleSubjectsMap: Record<string, ModuleSubject[]> = {};
       const lessonsMap: Record<string, Lesson[]> = {};
 
-      for (const module of (modulesData || [])) {
+      for (const module of ((modulesData as unknown as Module[]) || [])) {
         // Carregar disciplinas do módulo
         const { data: subjectsData } = await supabase
           .from('module_subjects')
           .select('*, subjects(*)')
-          .eq('module_id', module.id)
+          .eq('module_id', module.id as any)
           .order('order_index');
 
-        moduleSubjectsMap[module.id] = subjectsData || [];
+        moduleSubjectsMap[module.id] = (subjectsData as unknown as ModuleSubject[]) || [];
 
         // Carregar aulas do módulo
         const { data: lessonsData } = await supabase
           .from('lessons')
           .select('*')
-          .eq('module_id', module.id)
+          .eq('module_id', module.id as any)
           .order('order_index');
 
-        lessonsMap[module.id] = lessonsData || [];
+        lessonsMap[module.id] = (lessonsData as unknown as Lesson[]) || [];
       }
 
       setModuleSubjects(moduleSubjectsMap);

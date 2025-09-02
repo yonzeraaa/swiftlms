@@ -82,6 +82,7 @@ export async function middleware(request: NextRequest) {
           const isSupabaseCookie = name.startsWith('sb-')
           const isProduction = process.env.NODE_ENV === 'production'
           
+          // In production, ensure cookies work properly on Vercel
           const secureOptions = isSupabaseCookie ? {
             ...options,
             sameSite: 'lax' as const,
