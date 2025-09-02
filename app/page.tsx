@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Loader2, AlertCircle, Globe } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Logo from './components/Logo'
@@ -12,6 +12,32 @@ import { useTranslation } from './contexts/LanguageContext'
 
 export default function LoginPage() {
   const { t, language, setLanguage } = useTranslation()
+  
+  // Clean up any stale auth data on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Clear any stale Supabase auth tokens from localStorage
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.includes('sb-') || key.includes('supabase') || key.includes('auth-token'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => {
+        console.log('Removing stale auth key:', key)
+        localStorage.removeItem(key)
+      })
+      
+      // Also clear sessionStorage
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && (key.includes('sb-') || key.includes('supabase') || key.includes('auth'))) {
+          sessionStorage.removeItem(key)
+        }
+      }
+    }
+  }, [])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -27,6 +53,18 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+    
+    // Clear any existing auth data before attempting login
+    if (typeof window !== 'undefined') {
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.includes('sb-') || key.includes('supabase') || key.includes('auth'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+    }
     
     console.log('Attempting login with email:', email)
     

@@ -105,19 +105,44 @@ export default function StudentDashboardLayout({
     try {
       setLoggingOut(true)
       
+      // Clear all localStorage items related to auth
+      if (typeof window !== 'undefined') {
+        const keysToRemove = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i)
+          if (key && (key.includes('sb-') || key.includes('supabase') || key.includes('auth'))) {
+            keysToRemove.push(key)
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key))
+      }
+      
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include'
       })
+      
+      const data = await response.json()
       
       if (!response.ok) {
         throw new Error('Logout failed')
       }
       
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Clear storage if instructed by server
+      if (data.clearStorage && typeof window !== 'undefined') {
+        // Clear all auth-related items from localStorage
+        localStorage.clear()
+        // Clear sessionStorage too
+        sessionStorage.clear()
+      }
       
+      // Small delay to ensure cleanup
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      // Force hard redirect
       window.location.href = '/'
     } catch (error) {
       console.error('Error logging out:', error)

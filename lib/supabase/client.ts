@@ -10,34 +10,7 @@ export function createClient() {
         persistSession: true,
         detectSessionInUrl: true,
         autoRefreshToken: true,
-        storage: {
-          getItem: (key: string) => {
-            if (typeof window !== 'undefined') {
-              return window.localStorage.getItem(key)
-            }
-            return null
-          },
-          setItem: (key: string, value: string) => {
-            if (typeof window !== 'undefined') {
-              window.localStorage.setItem(key, value)
-            }
-          },
-          removeItem: (key: string) => {
-            if (typeof window !== 'undefined') {
-              window.localStorage.removeItem(key)
-            }
-          },
-        },
-        storageKey: 'sb-auth-token',
         flowType: 'pkce'
-      },
-      cookies: {
-        domain: process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_APP_URL
-          ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname
-          : undefined,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 7 // 7 days
       },
       realtime: {
         params: {
