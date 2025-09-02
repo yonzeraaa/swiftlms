@@ -22,7 +22,7 @@ export async function POST() {
       clearStorage: true // Signal to client to clear localStorage
     })
     
-    // Clear all Supabase-related cookies
+    // Clear all Supabase-related cookies (without specific domain)
     allCookies.forEach(cookie => {
       if (cookie.name.startsWith('sb-') || 
           cookie.name.includes('supabase') ||
@@ -33,7 +33,6 @@ export async function POST() {
           expires: new Date(0),
           maxAge: 0,
           path: '/',
-          domain: process.env.NODE_ENV === 'production' ? '.vercel.app' : undefined,
           sameSite: 'lax',
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production'
@@ -41,9 +40,17 @@ export async function POST() {
       }
     })
     
-    // Also try to clear with different path variations
-    const cookieNames = ['sb-access-token', 'sb-refresh-token', 'sb-auth-token']
-    const paths = ['/', '/dashboard', '/student-dashboard']
+    // Also try to clear cookies with project-specific prefix
+    const projectId = 'mdzgnktlsmkjecdbermo'
+    const cookieNames = [
+      'sb-access-token', 
+      'sb-refresh-token', 
+      'sb-auth-token',
+      `sb-${projectId}-auth-token`,
+      `sb-${projectId}-auth-token.0`,
+      `sb-${projectId}-auth-token.1`
+    ]
+    const paths = ['/']
     
     cookieNames.forEach(name => {
       paths.forEach(path => {

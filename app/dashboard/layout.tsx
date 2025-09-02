@@ -123,16 +123,31 @@ export default function DashboardLayout({
     try {
       setLoggingOut(true)
       
-      // Clear all localStorage items related to auth
+      // Clear only auth-related localStorage items (preserve user preferences)
       if (typeof window !== 'undefined') {
+        const authPrefixes = ['sb-', 'supabase', 'auth-token']
         const keysToRemove = []
-        for (let i = 0; i < localStorage.length; i++) {
+        
+        for (let i = localStorage.length - 1; i >= 0; i--) {
           const key = localStorage.key(i)
-          if (key && (key.includes('sb-') || key.includes('supabase') || key.includes('auth'))) {
+          if (key && authPrefixes.some(prefix => key.includes(prefix))) {
             keysToRemove.push(key)
           }
         }
-        keysToRemove.forEach(key => localStorage.removeItem(key))
+        
+        // Remove auth keys but preserve app settings
+        keysToRemove.forEach(key => {
+          console.log('Removing auth key:', key)
+          localStorage.removeItem(key)
+        })
+        
+        // Clear auth items from sessionStorage too
+        for (let i = sessionStorage.length - 1; i >= 0; i--) {
+          const key = sessionStorage.key(i)
+          if (key && authPrefixes.some(prefix => key.includes(prefix))) {
+            sessionStorage.removeItem(key)
+          }
+        }
       }
       
       const response = await fetch('/api/auth/logout', {
@@ -146,15 +161,8 @@ export default function DashboardLayout({
       const data = await response.json()
       
       if (!response.ok) {
-        throw new Error('Logout failed')
-      }
-      
-      // Clear storage if instructed by server
-      if (data.clearStorage && typeof window !== 'undefined') {
-        // Clear all auth-related items from localStorage
-        localStorage.clear()
-        // Clear sessionStorage too
-        sessionStorage.clear()
+        console.error('Logout API error:', data)
+        throw new Error(data.error || 'Logout failed')
       }
       
       // Small delay to ensure cleanup
@@ -164,6 +172,10 @@ export default function DashboardLayout({
       window.location.href = '/'
     } catch (error) {
       console.error('Error logging out:', error)
+      // Still try to redirect even if there's an error
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 1000)
       setLoggingOut(false)
     }
   }
