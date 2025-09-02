@@ -28,11 +28,15 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
     
+    console.log('Attempting login with email:', email)
+    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
+
+      console.log('Login response:', { data, error })
 
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
@@ -40,25 +44,38 @@ export default function LoginPage() {
         } else if (error.message.includes('Email not confirmed')) {
           setError(t('login.confirmEmail'))
         } else {
-          setError(t('login.loginError'))
+          setError(error.message || t('login.loginError'))
         }
         console.error('Login error:', error)
+        setIsLoading(false)
         return
       }
 
       if (data.user) {
+        console.log('Login successful, user:', data.user.email)
+        
         // Check user role to redirect to appropriate dashboard
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', data.user.id)
           .single()
         
+        console.log('Profile data:', profile, 'Error:', profileError)
+        
+        // Add small delay to ensure session is properly set
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Force page reload to ensure middleware picks up the new session
         if (profile?.role === 'student') {
-          router.push('/student-dashboard')
+          window.location.href = '/student-dashboard'
         } else {
-          router.push('/dashboard')
+          window.location.href = '/dashboard'
         }
+      } else {
+        console.log('No user data returned after login')
+        setError(t('login.loginError'))
+        setIsLoading(false)
       }
     } catch (err) {
       setError(t('login.unexpectedError'))

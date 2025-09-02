@@ -133,8 +133,8 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Authentication check for API routes - must be authenticated
-  if (isAPI && !session) {
+  // Authentication check for API routes - must be authenticated (except auth routes)
+  if (isAPI && !session && !request.nextUrl.pathname.startsWith('/api/auth/')) {
     return NextResponse.json(
       { error: 'Unauthorized - Authentication required' },
       { status: 401 }
