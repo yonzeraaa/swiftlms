@@ -69,7 +69,8 @@ export class CustomStorage {
       const expires = new Date()
       expires.setDate(expires.getDate() + 7) // 7 days
       
-      document.cookie = `${key}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax; Secure=${window.location.protocol === 'https:'}`
+      const isSecure = window.location.protocol === 'https:'
+      document.cookie = `${key}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? '; Secure' : ''}`
       
       console.log(`Saved auth key: ${key}`)
     } catch (error) {
