@@ -81,7 +81,7 @@ export async function middleware(request: NextRequest) {
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
             path: '/',
-            domain: process.env.NODE_ENV === 'production' ? '.swiftedu.com.br' : undefined
+            domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined
           }
           
           request.cookies.set({
@@ -105,7 +105,7 @@ export async function middleware(request: NextRequest) {
         remove(name: string, options: CookieOptions) {
           const removeOptions = {
             ...options,
-            domain: process.env.NODE_ENV === 'production' ? '.swiftedu.com.br' : undefined,
+            domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined,
             path: '/'
           }
           
@@ -177,7 +177,7 @@ export async function middleware(request: NextRequest) {
         httpOnly: false,
         sameSite: 'lax',
         path: '/',
-        domain: process.env.NODE_ENV === 'production' ? '.swiftedu.com.br' : undefined,
+        domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined,
         secure: process.env.NODE_ENV === 'production'
       })
     } else {
