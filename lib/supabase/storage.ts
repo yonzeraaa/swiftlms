@@ -62,19 +62,41 @@ export class CustomStorage {
     this.storageKeys.add(key)
     
     try {
-      // Save to localStorage
-      localStorage.setItem(key, value)
+      console.log(`[STORAGE] Attempting to save ${key} with value length:`, value.length)
       
-      // Also save as httpOnly cookie for SSR
-      const expires = new Date()
-      expires.setDate(expires.getDate() + 7) // 7 days
+      // Save to localStorage with retry
+      try {
+        localStorage.setItem(key, value)
+        console.log(`[STORAGE] ✅ localStorage.setItem successful for ${key}`)
+        
+        // Verify it was saved
+        const saved = localStorage.getItem(key)
+        if (saved === value) {
+          console.log(`[STORAGE] ✅ localStorage verification successful for ${key}`)
+        } else {
+          console.error(`[STORAGE] ❌ localStorage verification failed for ${key}`)
+        }
+      } catch (localError) {
+        console.error(`[STORAGE] ❌ localStorage.setItem failed for ${key}:`, localError)
+      }
       
-      const isSecure = window.location.protocol === 'https:'
-      document.cookie = `${key}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? '; Secure' : ''}`
+      // Also save as cookie for SSR and fallback
+      try {
+        const expires = new Date()
+        expires.setDate(expires.getDate() + 7) // 7 days
+        
+        const isSecure = window.location.protocol === 'https:'
+        const cookieString = `${key}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? '; Secure' : ''}`
+        
+        document.cookie = cookieString
+        console.log(`[STORAGE] ✅ Cookie set for ${key}`)
+      } catch (cookieError) {
+        console.error(`[STORAGE] ❌ Cookie setting failed for ${key}:`, cookieError)
+      }
       
-      console.log(`Saved auth key: ${key}`)
     } catch (error) {
-      console.error(`Error setting item ${key}:`, error)
+      console.error(`[STORAGE] ❌ General error setting item ${key}:`, error)
+      throw error // Re-throw to let Supabase know it failed
     }
   }
 
