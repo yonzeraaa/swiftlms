@@ -315,68 +315,64 @@ export default function TestsManagementPage() {
     try {
       // Primeiro deletar registros relacionados
       console.log('1. Deletando answer keys...')
-      const { data: keysData, error: answerKeysError } = await supabase
+      const { error: answerKeysError } = await supabase
         .from('test_answer_keys')
         .delete()
         .eq('test_id', id)
-        .select()
       
-      console.log('Answer keys deletados:', { keysData, answerKeysError })
+      if (answerKeysError) {
+        console.error('Erro ao deletar answer keys:', answerKeysError)
+        // Continuar mesmo com erro, pois pode não haver answer keys
+      }
       
       console.log('2. Deletando attempts...')
-      const { data: attemptsData, error: attemptsError } = await supabase
+      const { error: attemptsError } = await supabase
         .from('test_attempts')
         .delete()
         .eq('test_id', id)
-        .select()
       
-      console.log('Attempts deletados:', { attemptsData, attemptsError })
+      if (attemptsError) {
+        console.error('Erro ao deletar attempts:', attemptsError)
+        // Continuar mesmo com erro, pois pode não haver attempts
+      }
       
       console.log('3. Deletando grades...')
-      const { data: gradesData, error: gradesError } = await supabase
+      const { error: gradesError } = await supabase
         .from('test_grades')
         .delete()
         .eq('test_id', id)
-        .select()
       
-      console.log('Grades deletados:', { gradesData, gradesError })
+      if (gradesError) {
+        console.error('Erro ao deletar grades:', gradesError)
+        // Continuar mesmo com erro, pois pode não haver grades
+      }
       
       // Por último, deletar o teste
       console.log('4. Deletando o teste principal...')
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('tests')
         .delete()
         .eq('id', id)
-        .select()
       
-      console.log('Resultado da exclusão do teste:', { data, error })
+      console.log('Resultado da exclusão do teste:', error ? 'ERRO' : 'SUCESSO', error)
       
       if (!error) {
-        console.log('Teste excluído com sucesso, atualizando interface...')
+        console.log('Teste excluído com sucesso!')
         // Atualizar estado local removendo o teste excluído
-        setTests(prevTests => {
-          const newTests = prevTests.filter(test => test.id !== id)
-          console.log('Lista anterior:', prevTests.length, 'Nova lista:', newTests.length)
-          return newTests
-        })
+        setTests(prevTests => prevTests.filter(test => test.id !== id))
         showToast('Sucesso: Teste excluído!')
-        // Recarregar dados para garantir sincronização
-        console.log('Recarregando dados em 500ms...')
-        setTimeout(() => {
-          console.log('Recarregando dados...')
-          loadData()
-        }, 500)
+        // NÃO recarregar dados se a exclusão foi bem sucedida
       } else {
-        console.error('Erro ao excluir teste do banco:', error)
-        showToast('Erro ao excluir teste: ' + error.message)
-        // Recarregar dados em caso de erro
-        loadData()
+        console.error('ERRO AO EXCLUIR TESTE:', error)
+        showToast(`Erro ao excluir teste: ${error.message}`)
+        // Recarregar dados apenas em caso de erro
+        await loadData()
       }
     } catch (err) {
       console.error('Erro inesperado ao excluir teste:', err)
       showToast('Erro ao excluir teste!')
       // Recarregar dados em caso de erro
-      loadData()
+      await loadData()
     }
     
     console.log('Função deleteTest finalizada')

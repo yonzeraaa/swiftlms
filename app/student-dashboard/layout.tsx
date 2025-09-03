@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { getCookie } from '../lib/utils/cookies'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { 
   LayoutDashboard, 
@@ -40,6 +41,7 @@ export default function StudentDashboardLayout({
   const [studentName, setStudentName] = useState('')
   const [studentAvatar, setStudentAvatar] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdminViewMode, setIsAdminViewMode] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -59,6 +61,9 @@ export default function StudentDashboardLayout({
 
   useEffect(() => {
     fetchStudentInfo()
+    // Check if in admin view mode
+    const viewMode = getCookie('isAdminViewMode') === 'true'
+    setIsAdminViewMode(viewMode)
   }, [])
 
   const fetchStudentInfo = async () => {
@@ -303,8 +308,30 @@ export default function StudentDashboardLayout({
               })}
             </nav>
 
+            {/* Admin View Mode Banner */}
+            {isAdminViewMode && (
+              <div className="border-t border-gold-500/20 pt-4 mb-4">
+                <div className="bg-purple-500/20 border border-purple-500/30 rounded-lg p-3">
+                  <p className="text-xs text-purple-300 text-center mb-2">
+                    Modo de Visualização Admin
+                  </p>
+                  <button
+                    onClick={() => {
+                      document.cookie = 'viewAsStudent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+                      document.cookie = 'isAdminViewMode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+                      window.location.href = '/dashboard'
+                    }}
+                    className="w-full px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 rounded-lg transition-all text-sm flex items-center justify-center gap-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Voltar ao Admin
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Admin Mode Indicator */}
-            {isAdmin && (
+            {isAdmin && !isAdminViewMode && (
               <div className="border-t border-gold-500/20 pt-4 mb-4">
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}

@@ -168,6 +168,36 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
+  // Check if admin is in "view as student" mode
+  if (session && request.nextUrl.pathname.startsWith('/student-dashboard')) {
+    const viewAsStudent = request.cookies.get('viewAsStudent')?.value === 'true'
+    
+    if (viewAsStudent) {
+      // Admin in view mode - allow access
+      response.cookies.set({
+        name: 'isAdminViewMode',
+        value: 'true',
+        httpOnly: false,
+        sameSite: 'lax',
+        path: '/'
+      })
+    } else {
+      // Regular user - check if they should be redirected
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .single()
+      
+      // If admin without view mode, redirect to admin dashboard
+      if (profile?.role === 'admin' || profile?.role === 'instructor') {
+        const redirectUrl = request.nextUrl.clone()
+        redirectUrl.pathname = '/dashboard'
+        return NextResponse.redirect(redirectUrl)
+      }
+    }
+  }
+
   return response
 }
 

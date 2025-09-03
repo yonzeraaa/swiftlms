@@ -420,9 +420,25 @@ export default function CoursesPage() {
     setError(null)
     
     try {
-      // Get current user to check permissions
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
+      // Refresh session before critical operation
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      // If no session or error, try to refresh
+      if (!session || sessionError) {
+        console.log('Session expired or invalid, attempting refresh...')
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+        
+        if (refreshError || !refreshData.session) {
+          console.error('Failed to refresh session:', refreshError)
+          throw new Error('Sessão expirada. Por favor, faça login novamente.')
+        }
+        
+        session = refreshData.session
+      }
+      
+      // Get current user from session
+      const user = session.user
+      if (!user) throw new Error('Usuário não autenticado')
       
       // Get user profile to check role
       const { data: profile } = await supabase
@@ -431,14 +447,14 @@ export default function CoursesPage() {
         .eq('id', user.id)
         .single()
         
-      if (!profile) throw new Error('User profile not found')
+      if (!profile) throw new Error('Perfil do usuário não encontrado')
       
       // Check if user is admin or the instructor of this course
       const isAdmin = profile.role === 'admin'
       const isInstructor = selectedCourse.instructor_id === user.id
       
       if (!isAdmin && !isInstructor) {
-        throw new Error('Only admins and course instructors can enroll students')
+        throw new Error('Apenas administradores e instrutores do curso podem matricular alunos')
       }
       
       // Create enrollment records for each selected student

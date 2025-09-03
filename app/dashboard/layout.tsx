@@ -292,10 +292,14 @@ export default function DashboardLayout({
                 onMouseEnter={() => setHoveredItem('/student-dashboard')}
                 onMouseLeave={() => setHoveredItem(null)}
               >
-                <Link
-                  href="/student-dashboard"
+                <button
+                  onClick={() => {
+                    // Set view as student mode
+                    document.cookie = 'viewAsStudent=true; path=/; max-age=3600; SameSite=Lax'
+                    window.location.href = '/student-dashboard'
+                  }}
                   className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
+                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
                     text-blue-400 hover:bg-blue-500/20 hover:text-blue-300
                     ${!sidebarOpen && 'justify-center'}
                   `}
@@ -314,7 +318,7 @@ export default function DashboardLayout({
                       </motion.span>
                     )}
                   </AnimatePresence>
-                </Link>
+                </button>
 
                 {/* Tooltip for collapsed sidebar */}
                 <AnimatePresence>
