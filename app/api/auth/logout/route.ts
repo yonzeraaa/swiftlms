@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     
@@ -17,22 +17,27 @@ export async function POST() {
     const cookieStore = await cookies()
     const allCookies = cookieStore.getAll()
     
+    // Create a JSON response with clear storage flag
     const response = NextResponse.json({ 
       success: true,
-      clearStorage: true // Signal to client to clear localStorage
+      clearStorage: true,
+      redirect: '/'
     })
     
-    // Clear all Supabase-related cookies (without specific domain)
+    // Clear all Supabase-related cookies and admin view mode cookies
     allCookies.forEach(cookie => {
       if (cookie.name.startsWith('sb-') || 
           cookie.name.includes('supabase') ||
-          cookie.name.includes('auth-token')) {
+          cookie.name.includes('auth-token') ||
+          cookie.name === 'viewAsStudent' ||
+          cookie.name === 'isAdminViewMode') {
         response.cookies.set({
           name: cookie.name,
           value: '',
           expires: new Date(0),
           maxAge: 0,
           path: '/',
+          domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined,
           sameSite: 'lax',
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production'
@@ -40,7 +45,7 @@ export async function POST() {
       }
     })
     
-    // Also try to clear cookies with project-specific prefix
+    // Also try to clear cookies with project-specific prefix and admin view mode cookies
     const projectId = 'mdzgnktlsmkjecdbermo'
     const cookieNames = [
       'sb-access-token', 
@@ -48,7 +53,9 @@ export async function POST() {
       'sb-auth-token',
       `sb-${projectId}-auth-token`,
       `sb-${projectId}-auth-token.0`,
-      `sb-${projectId}-auth-token.1`
+      `sb-${projectId}-auth-token.1`,
+      'viewAsStudent',
+      'isAdminViewMode'
     ]
     const paths = ['/']
     
@@ -60,6 +67,7 @@ export async function POST() {
           expires: new Date(0),
           maxAge: 0,
           path,
+          domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined,
           sameSite: 'lax',
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production'
