@@ -96,18 +96,25 @@ export class CustomStorage {
   }
 }
 
+// Create singleton storage instance
+const storageInstance = new CustomStorage()
+
 // Create storage adapter for Supabase
 export const customStorageAdapter = {
   getItem: async (key: string) => {
-    const storage = new CustomStorage()
-    return await storage.getItem(key)
+    console.log(`[STORAGE] Getting key: ${key}`)
+    const result = await storageInstance.getItem(key)
+    console.log(`[STORAGE] Got value for ${key}:`, result ? 'EXISTS' : 'NULL')
+    return result
   },
   setItem: async (key: string, value: string) => {
-    const storage = new CustomStorage()
-    await storage.setItem(key, value)
+    console.log(`[STORAGE] Setting key: ${key}`)
+    await storageInstance.setItem(key, value)
+    console.log(`[STORAGE] Successfully set key: ${key}`)
   },
   removeItem: async (key: string) => {
-    const storage = new CustomStorage()
-    await storage.removeItem(key)
+    console.log(`[STORAGE] Removing key: ${key}`)
+    await storageInstance.removeItem(key)
+    console.log(`[STORAGE] Successfully removed key: ${key}`)
   }
 }

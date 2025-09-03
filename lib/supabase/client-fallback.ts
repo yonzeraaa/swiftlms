@@ -1,22 +1,20 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '../database.types'
-// import { customStorageAdapter } from './storage'
 
-export function createClient() {
-  console.log('[SUPABASE] Creating client with URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+export function createClientFallback() {
+  console.log('[SUPABASE FALLBACK] Creating client with default storage')
   
   return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        // Temporarily using default storage to test if custom storage is causing issues
-        // storage: customStorageAdapter,
+        // Using default storage instead of custom
         persistSession: true,
         detectSessionInUrl: true,
         autoRefreshToken: true,
         flowType: 'pkce',
-        debug: true, // Enable debug in production temporarily
+        debug: true
       },
       realtime: {
         params: {
@@ -27,7 +25,7 @@ export function createClient() {
       },
       global: {
         headers: {
-          'X-Client-Info': 'swiftedu-app',
+          'X-Client-Info': 'swiftedu-app-fallback',
           'X-Client-Version': '1.0.0'
         }
       }
