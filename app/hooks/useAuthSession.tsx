@@ -28,25 +28,24 @@ export function useAuthSession() {
     return await refreshSession()
   }, [refreshSession])
 
-  const validateAndExecute = useCallback(async function<T>(
-    operation: () => Promise<T>
-  ) {
-    try {
-      // Ensure session is valid before operation
-      await ensureSession()
-      return await operation()
-    } catch (error) {
-      console.error('Operation failed, attempting session recovery:', error)
-      
-      // Try to refresh session and retry once
-      const refreshedSession = await refreshSession()
-      if (refreshedSession) {
+  const validateAndExecute = useCallback(
+    async (operation: () => Promise<any>) => {
+      try {
+        await ensureSession()
         return await operation()
+      } catch (error) {
+        console.error('Operation failed, attempting session recovery:', error)
+        
+        const refreshedSession = await refreshSession()
+        if (refreshedSession) {
+          return await operation()
+        }
+        
+        throw error
       }
-      
-      throw error
-    }
-  }, [ensureSession, refreshSession]) as <T>(operation: () => Promise<T>) => Promise<T>
+    },
+    [ensureSession, refreshSession]
+  )
 
   return {
     session,
