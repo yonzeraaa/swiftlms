@@ -36,21 +36,36 @@ export class CustomStorage {
       // First try localStorage
       const localStorageValue = localStorage.getItem(key)
       if (localStorageValue) {
+        console.log(`[STORAGE] Found ${key} in localStorage`)
         return localStorageValue
       }
       
-      // Fallback to cookies
+      // Fallback to cookies - check for both plain and base64-encoded values
       const cookies = document.cookie.split(';')
       for (const cookie of cookies) {
         const [name, value] = cookie.trim().split('=')
+        
         if (name === key && value) {
+          console.log(`[STORAGE] Found ${key} in cookies (plain)`)
           return decodeURIComponent(value)
+        }
+        
+        // Check for base64-encoded cookie (used by @supabase/ssr)
+        if (name === key && value?.startsWith('base64-')) {
+          try {
+            const decoded = atob(value.substring(7)) // Remove 'base64-' prefix
+            console.log(`[STORAGE] Found ${key} in cookies (base64)`)
+            return decoded
+          } catch (decodeError) {
+            console.error(`[STORAGE] Failed to decode base64 cookie for ${key}:`, decodeError)
+          }
         }
       }
       
+      console.log(`[STORAGE] Key ${key} not found in localStorage or cookies`)
       return null
     } catch (error) {
-      console.error(`Error getting item ${key}:`, error)
+      console.error(`[STORAGE] Error getting item ${key}:`, error)
       return null
     }
   }
@@ -80,16 +95,23 @@ export class CustomStorage {
         console.error(`[STORAGE] ❌ localStorage.setItem failed for ${key}:`, localError)
       }
       
-      // Also save as cookie for SSR and fallback
+      // Also save as cookie for SSR and fallback (both plain and base64)
       try {
         const expires = new Date()
         expires.setDate(expires.getDate() + 7) // 7 days
         
         const isSecure = window.location.protocol === 'https:'
-        const cookieString = `${key}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? '; Secure' : ''}`
         
-        document.cookie = cookieString
-        console.log(`[STORAGE] ✅ Cookie set for ${key}`)
+        // Save plain cookie
+        const plainCookieString = `${key}=${encodeURIComponent(value)}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? '; Secure' : ''}`
+        document.cookie = plainCookieString
+        
+        // Also save as base64 for compatibility with @supabase/ssr
+        const base64Value = btoa(value)
+        const base64CookieString = `${key}=base64-${base64Value}; expires=${expires.toUTCString()}; path=/; SameSite=Lax${isSecure ? '; Secure' : ''}`
+        document.cookie = base64CookieString
+        
+        console.log(`[STORAGE] ✅ Cookies set for ${key} (plain + base64)`)
       } catch (cookieError) {
         console.error(`[STORAGE] ❌ Cookie setting failed for ${key}:`, cookieError)
       }

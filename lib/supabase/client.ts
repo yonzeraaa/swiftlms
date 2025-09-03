@@ -1,4 +1,4 @@
-import { createBrowserClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { Database } from '../database.types'
 import { customStorageAdapter } from './storage'
 
@@ -6,17 +6,17 @@ export function createClient() {
   console.log('[SUPABASE] Creating client with URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
   console.log('[SUPABASE] Using custom storage adapter:', customStorageAdapter)
   
-  return createBrowserClient<Database>(
+  return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        storage: customStorageAdapter, // Using custom storage - default storage is not persisting
+        storage: customStorageAdapter,
         persistSession: true,
         detectSessionInUrl: true,
         autoRefreshToken: true,
         flowType: 'pkce',
-        debug: true, // Enable debug in production temporarily
+        debug: true,
       },
       realtime: {
         params: {
