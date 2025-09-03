@@ -165,17 +165,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const initializeAuth = async () => {
       try {
+        // Always debug storage first to see what's there
+        console.log('[AUTH] Initializing auth, debugging storage...')
+        debugStorage()
+        
         // Get initial session
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
           console.error('Initial session error:', error)
-          debugStorage() // Debug storage when there's an error
         }
 
         if (!session) {
-          console.log('[AUTH] No initial session found, debugging storage...')
-          debugStorage() // Debug storage when no session is found
+          console.log('[AUTH] No initial session found after getSession()')
         }
 
         if (mounted) {
@@ -189,6 +191,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (session) {
             console.log('[AUTH] Session found, expires at:', session.expires_at)
             scheduleRefresh(session)
+          } else {
+            console.log('[AUTH] No session, checking if we should redirect')
           }
         }
       } catch (error) {
