@@ -167,21 +167,39 @@ export async function middleware(request: NextRequest) {
 
   // Handle "view as student" mode for admins
   if (session && request.nextUrl.pathname.startsWith('/student-dashboard')) {
+    // Double check for view mode cookies
     const viewAsStudent = request.cookies.get('viewAsStudent')?.value === 'true'
+    const isAdminViewMode = request.cookies.get('isAdminViewMode')?.value === 'true'
+    const adminViewId = request.cookies.get('adminViewId')?.value
     
-    if (viewAsStudent) {
-      // Admin in view mode - allow access and set indicator cookie
-      response.cookies.set({
-        name: 'isAdminViewMode',
-        value: 'true',
-        httpOnly: false,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production'
-        // Domain not set - let browser handle it
+    // Log for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[MIDDLEWARE] Student dashboard access check:', {
+        viewAsStudent,
+        isAdminViewMode,
+        adminViewId,
+        userId: session.user.id,
+        path: request.nextUrl.pathname
       })
+    }
+    
+    // Allow access if ANY of these conditions are met (redundancy)
+    const hasViewPermission = viewAsStudent || isAdminViewMode || adminViewId === session.user.id
+    
+    if (hasViewPermission) {
+      // Admin in view mode - ensure indicator cookie is set
+      if (!isAdminViewMode) {
+        response.cookies.set({
+          name: 'isAdminViewMode',
+          value: 'true',
+          httpOnly: false,
+          sameSite: 'lax',
+          path: '/',
+          secure: process.env.NODE_ENV === 'production'
+        })
+      }
     } else {
-      // Check if admin without view mode should be redirected
+      // Check if admin/instructor without view mode should be redirected
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
@@ -189,6 +207,7 @@ export async function middleware(request: NextRequest) {
         .single()
       
       if (profile?.role === 'admin' || profile?.role === 'instructor') {
+        console.log('[MIDDLEWARE] Admin/Instructor redirected - no view mode cookies found')
         const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = '/dashboard'
         return NextResponse.redirect(redirectUrl)

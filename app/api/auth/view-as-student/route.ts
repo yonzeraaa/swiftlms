@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,24 +23,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
     }
     
-    // Create response with redirect
-    const response = NextResponse.json({ 
-      success: true,
-      redirect: '/student-dashboard' 
-    })
+    // Get cookies store
+    const cookieStore = await cookies()
     
-    // Set the viewAsStudent cookie properly
-    response.cookies.set({
-      name: 'viewAsStudent',
-      value: 'true',
+    // Set multiple cookies for redundancy
+    const cookieOptions = {
       maxAge: 3600, // 1 hour
       path: '/',
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       secure: process.env.NODE_ENV === 'production',
-      httpOnly: false // Allow client-side access for UI updates
+      httpOnly: false // Allow client-side access
+    }
+    
+    // Set the main view cookie
+    cookieStore.set('viewAsStudent', 'true', cookieOptions)
+    
+    // Set backup indicator cookie
+    cookieStore.set('isAdminViewMode', 'true', cookieOptions)
+    
+    // Also set admin ID for verification
+    cookieStore.set('adminViewId', user.id, {
+      ...cookieOptions,
+      httpOnly: true // This one should be httpOnly for security
     })
     
-    return response
+    // Log for debugging
+    console.log('[VIEW-AS-STUDENT] Cookies set for user:', user.id)
+    
+    // Return success with delay instruction
+    return NextResponse.json({ 
+      success: true,
+      redirect: '/student-dashboard',
+      delay: 100, // Tell frontend to wait 100ms
+      cookiesSet: ['viewAsStudent', 'isAdminViewMode', 'adminViewId']
+    })
     
   } catch (error) {
     console.error('Error setting view as student mode:', error)
@@ -52,36 +69,33 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Create response
-    const response = NextResponse.json({ 
+    // Get cookies store
+    const cookieStore = await cookies()
+    
+    // Clear all view-related cookies
+    const cookiesToClear = ['viewAsStudent', 'isAdminViewMode', 'adminViewId']
+    
+    cookiesToClear.forEach(cookieName => {
+      cookieStore.set(cookieName, '', {
+        expires: new Date(0),
+        maxAge: 0,
+        path: '/',
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: false
+      })
+    })
+    
+    // Log for debugging
+    console.log('[VIEW-AS-STUDENT] Cookies cleared')
+    
+    // Return success with delay
+    return NextResponse.json({ 
       success: true,
-      redirect: '/dashboard' 
+      redirect: '/dashboard',
+      delay: 100, // Tell frontend to wait
+      cookiesCleared: cookiesToClear
     })
-    
-    // Clear both cookies
-    response.cookies.set({
-      name: 'viewAsStudent',
-      value: '',
-      expires: new Date(0),
-      maxAge: 0,
-      path: '/',
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: false
-    })
-    
-    response.cookies.set({
-      name: 'isAdminViewMode',
-      value: '',
-      expires: new Date(0),
-      maxAge: 0,
-      path: '/',
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: false
-    })
-    
-    return response
     
   } catch (error) {
     console.error('Error clearing view mode:', error)

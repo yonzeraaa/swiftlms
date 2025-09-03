@@ -321,6 +321,11 @@ export default function StudentDashboardLayout({
                   <button
                     onClick={async () => {
                       try {
+                        // First, clear cookies on client side
+                        document.cookie = 'viewAsStudent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+                        document.cookie = 'isAdminViewMode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+                        
+                        // Call API to clear server-side cookies
                         const response = await fetch('/api/auth/view-as-student', {
                           method: 'DELETE',
                           headers: { 'Content-Type': 'application/json' },
@@ -329,13 +334,27 @@ export default function StudentDashboardLayout({
                         
                         if (response.ok) {
                           const data = await response.json()
+                          
+                          // Wait for the specified delay
+                          const delay = data.delay || 100
+                          await new Promise(resolve => setTimeout(resolve, delay))
+                          
+                          // Log for debugging
+                          console.log('[VIEW-MODE] Cookies cleared:', data.cookiesCleared)
+                          console.log('[VIEW-MODE] Returning to:', data.redirect)
+                          
                           window.location.href = data.redirect || '/dashboard'
                         } else {
-                          window.location.href = '/dashboard'
+                          // Still navigate even if API fails
+                          setTimeout(() => {
+                            window.location.href = '/dashboard'
+                          }, 100)
                         }
                       } catch (error) {
                         console.error('Error clearing view mode:', error)
-                        window.location.href = '/dashboard'
+                        setTimeout(() => {
+                          window.location.href = '/dashboard'
+                        }, 100)
                       }
                     }}
                     className="w-full px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 rounded-lg transition-all text-sm flex items-center justify-center gap-2"

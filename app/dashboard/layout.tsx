@@ -297,8 +297,13 @@ export default function DashboardLayout({
               >
                 <button
                   onClick={async () => {
-                    // Set view as student mode via API
+                    // Set view as student mode via API with proper timing
                     try {
+                      // First, set cookie on client side as backup
+                      document.cookie = 'viewAsStudent=true; path=/; max-age=3600; SameSite=Lax'
+                      document.cookie = 'isAdminViewMode=true; path=/; max-age=3600; SameSite=Lax'
+                      
+                      // Call API to set server-side cookies
                       const response = await fetch('/api/auth/view-as-student', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -307,14 +312,30 @@ export default function DashboardLayout({
                       
                       if (response.ok) {
                         const data = await response.json()
+                        
+                        // Wait for the specified delay to ensure cookies are processed
+                        const delay = data.delay || 100
+                        await new Promise(resolve => setTimeout(resolve, delay))
+                        
+                        // Log for debugging
+                        console.log('[VIEW-MODE] Cookies set:', data.cookiesSet)
+                        console.log('[VIEW-MODE] Navigating to:', data.redirect)
+                        
+                        // Navigate to student dashboard
                         window.location.href = data.redirect || '/student-dashboard'
                       } else {
-                        console.error('Failed to set view mode')
+                        console.error('Failed to set view mode - API error')
+                        // Still try to navigate with client-side cookies
+                        setTimeout(() => {
+                          window.location.href = '/student-dashboard'
+                        }, 100)
                       }
                     } catch (error) {
                       console.error('Error setting view mode:', error)
-                      // Fallback to direct navigation
-                      window.location.href = '/student-dashboard'
+                      // Fallback: navigate with client-side cookies
+                      setTimeout(() => {
+                        window.location.href = '/student-dashboard'
+                      }, 100)
                     }
                   }}
                   className={`
