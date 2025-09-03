@@ -64,9 +64,32 @@ export default function StudentDashboardLayout({
 
   useEffect(() => {
     fetchStudentInfo()
-    // Check if in admin view mode
-    const viewMode = getCookie('isAdminViewMode') === 'true'
-    setIsAdminViewMode(viewMode)
+    // Check if in admin view mode with small delay to ensure cookies are set
+    const checkViewMode = () => {
+      // Try multiple cookie checks for redundancy
+      const viewMode1 = getCookie('isAdminViewMode') === 'true'
+      const viewMode2 = getCookie('viewAsStudent') === 'true'
+      const adminViewId = getCookie('adminViewId')
+      
+      const isInViewMode = viewMode1 || viewMode2 || !!adminViewId
+      
+      console.log('[STUDENT-LAYOUT] View mode check:', {
+        isAdminViewMode: viewMode1,
+        viewAsStudent: viewMode2,
+        adminViewId: !!adminViewId,
+        final: isInViewMode
+      })
+      
+      setIsAdminViewMode(isInViewMode)
+    }
+    
+    // Check immediately
+    checkViewMode()
+    
+    // Also check after a small delay to handle cookie propagation
+    const timer = setTimeout(checkViewMode, 100)
+    
+    return () => clearTimeout(timer)
   }, [])
 
   const fetchStudentInfo = async () => {
@@ -366,58 +389,8 @@ export default function StudentDashboardLayout({
               </div>
             )}
 
-            {/* Admin Mode Indicator */}
-            {isAdmin && !isAdminViewMode && (
-              <div className="border-t border-gold-500/20 pt-4 mb-4">
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="relative"
-                  onMouseEnter={() => setHoveredItem('/dashboard')}
-                  onMouseLeave={() => setHoveredItem(null)}
-                >
-                  <Link
-                    href="/dashboard"
-                    className={`
-                      flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
-                      text-purple-400 hover:bg-purple-500/20 hover:text-purple-300
-                      ${!sidebarOpen && 'justify-center'}
-                    `}
-                  >
-                    <Shield className="w-5 h-5 flex-shrink-0" />
-                    <AnimatePresence>
-                      {sidebarOpen && (
-                        <motion.span 
-                          className="font-medium whitespace-nowrap flex-1"
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -10 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          Voltar ao Admin
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                  </Link>
-
-                  {/* Tooltip for collapsed sidebar */}
-                  <AnimatePresence>
-                    {!sidebarOpen && hoveredItem === '/dashboard' && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -10 }}
-                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50"
-                      >
-                        <div className="px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg shadow-xl whitespace-nowrap">
-                          <span className="text-sm text-gold-200">Voltar ao Admin</span>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              </div>
-            )}
+            {/* Admin Mode Indicator - REMOVED because it causes confusion */}
+            {/* The "Voltar ao Admin" button is already shown above when in view mode */}
 
             {/* Footer do Sidebar */}
             <div className="border-t border-gold-500/20 pt-4">

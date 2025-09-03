@@ -167,46 +167,58 @@ export async function middleware(request: NextRequest) {
 
   // Handle "view as student" mode for admins
   if (session && request.nextUrl.pathname.startsWith('/student-dashboard')) {
-    // Double check for view mode cookies
-    const viewAsStudent = request.cookies.get('viewAsStudent')?.value === 'true'
-    const isAdminViewMode = request.cookies.get('isAdminViewMode')?.value === 'true'
-    const adminViewId = request.cookies.get('adminViewId')?.value
+    // Get user role first
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
     
-    // Log for debugging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[MIDDLEWARE] Student dashboard access check:', {
-        viewAsStudent,
-        isAdminViewMode,
-        adminViewId,
-        userId: session.user.id,
-        path: request.nextUrl.pathname
-      })
+    // If user is a regular student, allow access immediately
+    if (profile?.role === 'student') {
+      // Regular student - no special handling needed
+      return response
     }
     
-    // Allow access if ANY of these conditions are met (redundancy)
-    const hasViewPermission = viewAsStudent || isAdminViewMode || adminViewId === session.user.id
-    
-    if (hasViewPermission) {
-      // Admin in view mode - ensure indicator cookie is set
-      if (!isAdminViewMode) {
-        response.cookies.set({
-          name: 'isAdminViewMode',
-          value: 'true',
-          httpOnly: false,
-          sameSite: 'lax',
-          path: '/',
-          secure: process.env.NODE_ENV === 'production'
-        })
-      }
-    } else {
-      // Check if admin/instructor without view mode should be redirected
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', session.user.id)
-        .single()
+    // For admin/instructor, check view mode cookies
+    if (profile?.role === 'admin' || profile?.role === 'instructor') {
+      // Triple check for view mode cookies with multiple methods
+      const viewAsStudent = request.cookies.get('viewAsStudent')?.value === 'true'
+      const isAdminViewMode = request.cookies.get('isAdminViewMode')?.value === 'true'
+      const adminViewId = request.cookies.get('adminViewId')?.value
       
-      if (profile?.role === 'admin' || profile?.role === 'instructor') {
+      // Log for debugging in production too
+      console.log('[MIDDLEWARE] Admin/Instructor accessing student dashboard:', {
+        role: profile.role,
+        userId: session.user.id,
+        cookies: {
+          viewAsStudent,
+          isAdminViewMode,
+          adminViewId
+        },
+        path: request.nextUrl.pathname,
+        timestamp: new Date().toISOString()
+      })
+      
+      // Allow access if ANY of these conditions are met (maximum redundancy)
+      const hasViewPermission = viewAsStudent || isAdminViewMode || adminViewId === session.user.id
+      
+      if (hasViewPermission) {
+        console.log('[MIDDLEWARE] Admin/Instructor allowed - view mode active')
+        // Admin in view mode - ensure indicator cookie is set
+        if (!isAdminViewMode) {
+          response.cookies.set({
+            name: 'isAdminViewMode',
+            value: 'true',
+            httpOnly: false,
+            sameSite: 'lax',
+            path: '/',
+            secure: process.env.NODE_ENV === 'production'
+          })
+        }
+        // IMPORTANT: Allow the request to continue
+        return response
+      } else {
         console.log('[MIDDLEWARE] Admin/Instructor redirected - no view mode cookies found')
         const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = '/dashboard'
