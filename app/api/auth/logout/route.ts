@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
           expires: new Date(0),
           maxAge: 0,
           path: '/',
-          domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined,
+          // Domain not set - let browser handle it
           sameSite: 'lax',
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production'
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           expires: new Date(0),
           maxAge: 0,
           path,
-          domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined,
+          // Domain not set - let browser handle it
           sameSite: 'lax',
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production'

@@ -74,14 +74,14 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Security settings for cookies
+          // Security settings for cookies - don't set domain to avoid conflicts
           const secureOptions = {
             ...options,
             sameSite: 'lax' as const,
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
-            path: '/',
-            domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined
+            path: '/'
+            // Domain not set - let browser handle it
           }
           
           request.cookies.set({
@@ -105,8 +105,8 @@ export async function middleware(request: NextRequest) {
         remove(name: string, options: CookieOptions) {
           const removeOptions = {
             ...options,
-            domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined,
             path: '/'
+            // Domain not set - let browser handle it
           }
           
           request.cookies.set({
@@ -177,8 +177,8 @@ export async function middleware(request: NextRequest) {
         httpOnly: false,
         sameSite: 'lax',
         path: '/',
-        domain: process.env.NODE_ENV === 'production' ? 'swiftedu.com.br' : undefined,
         secure: process.env.NODE_ENV === 'production'
+        // Domain not set - let browser handle it
       })
     } else {
       // Check if admin without view mode should be redirected
