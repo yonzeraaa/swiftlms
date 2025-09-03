@@ -80,7 +80,8 @@ export async function middleware(request: NextRequest) {
             sameSite: 'lax' as const,
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
-            path: '/'
+            path: '/',
+            domain: process.env.NODE_ENV === 'production' ? '.swiftedu.com.br' : undefined
           }
           
           request.cookies.set({
@@ -102,10 +103,16 @@ export async function middleware(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
+          const removeOptions = {
+            ...options,
+            domain: process.env.NODE_ENV === 'production' ? '.swiftedu.com.br' : undefined,
+            path: '/'
+          }
+          
           request.cookies.set({
             name,
             value: '',
-            ...options,
+            ...removeOptions,
           })
           response = NextResponse.next({
             request: {
@@ -115,7 +122,7 @@ export async function middleware(request: NextRequest) {
           response.cookies.set({
             name,
             value: '',
-            ...options,
+            ...removeOptions,
           })
         },
       },
@@ -169,7 +176,9 @@ export async function middleware(request: NextRequest) {
         value: 'true',
         httpOnly: false,
         sameSite: 'lax',
-        path: '/'
+        path: '/',
+        domain: process.env.NODE_ENV === 'production' ? '.swiftedu.com.br' : undefined,
+        secure: process.env.NODE_ENV === 'production'
       })
     } else {
       // Check if admin without view mode should be redirected

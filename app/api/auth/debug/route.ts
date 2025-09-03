@@ -1,8 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies()
     const allCookies = cookieStore.getAll()
@@ -23,7 +23,9 @@ export async function GET() {
         NODE_ENV: process.env.NODE_ENV,
         NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
         SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'missing',
-        ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'configured' : 'missing'
+        ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 'configured' : 'missing',
+        request_domain: request.nextUrl.hostname,
+        request_origin: request.nextUrl.origin
       },
       cookies: {
         total: allCookies.length,
@@ -31,7 +33,11 @@ export async function GET() {
         names: supabaseCookies.map(c => ({
           name: c.name,
           hasValue: !!c.value
-        }))
+        })),
+        special: {
+          viewAsStudent: cookieStore.get('viewAsStudent')?.value,
+          isAdminViewMode: cookieStore.get('isAdminViewMode')?.value
+        }
       },
       auth: {
         user: user ? {
