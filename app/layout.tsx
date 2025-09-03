@@ -25,6 +25,7 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { LanguageProvider } from './contexts/LanguageContext'
 import { ToastProvider } from './components/Toast'
 import PremiumToastProvider from './components/ui/ToastProvider'
+import { AuthProvider } from './providers/AuthProvider'
 
 export default function RootLayout({
   children,
@@ -34,14 +35,16 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`${openSans.variable} font-open-sans`}>
-        <ThemeProvider>
-          <LanguageProvider>
-            <ToastProvider>
-              <PremiumToastProvider />
-              {children}
-            </ToastProvider>
-          </LanguageProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider>
+            <LanguageProvider>
+              <ToastProvider>
+                <PremiumToastProvider />
+                {children}
+              </ToastProvider>
+            </LanguageProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   )
