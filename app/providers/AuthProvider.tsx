@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { createClient } from '@/lib/supabase/client'
 import { Session, User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
+import { debugStorage } from '@/lib/supabase/debug-storage'
 
 interface AuthState {
   session: Session | null
@@ -169,6 +170,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         if (error) {
           console.error('Initial session error:', error)
+          debugStorage() // Debug storage when there's an error
+        }
+
+        if (!session) {
+          console.log('[AUTH] No initial session found, debugging storage...')
+          debugStorage() // Debug storage when no session is found
         }
 
         if (mounted) {
@@ -180,6 +187,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           })
 
           if (session) {
+            console.log('[AUTH] Session found, expires at:', session.expires_at)
             scheduleRefresh(session)
           }
         }
