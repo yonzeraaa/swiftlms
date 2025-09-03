@@ -420,41 +420,68 @@ export default function CoursesPage() {
     setError(null)
     
     try {
-      // Refresh session before critical operation
-      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      // Get current session with automatic refresh
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
-      // If no session or error, try to refresh
       if (!session || sessionError) {
-        console.log('Session expired or invalid, attempting refresh...')
+        // Try to refresh the session
+        console.log('Session missing, attempting refresh...')
         const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
         
         if (refreshError || !refreshData.session) {
           console.error('Failed to refresh session:', refreshError)
+          
+          // Clear stale auth data
+          const authKeys = Object.keys(localStorage).filter(key => 
+            key.includes('sb-') || key.includes('supabase') || key.includes('auth')
+          )
+          authKeys.forEach(key => localStorage.removeItem(key))
+          
           throw new Error('Sessão expirada. Por favor, faça login novamente.')
         }
         
-        session = refreshData.session
-      }
-      
-      // Get current user from session
-      const user = session.user
-      if (!user) throw new Error('Usuário não autenticado')
-      
-      // Get user profile to check role
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
+        // Use the refreshed session
+        const freshSession = refreshData.session
+        const user = freshSession.user
+        if (!user) throw new Error('Usuário não autenticado após refresh')
         
-      if (!profile) throw new Error('Perfil do usuário não encontrado')
-      
-      // Check if user is admin or the instructor of this course
-      const isAdmin = profile.role === 'admin'
-      const isInstructor = selectedCourse.instructor_id === user.id
-      
-      if (!isAdmin && !isInstructor) {
-        throw new Error('Apenas administradores e instrutores do curso podem matricular alunos')
+        // Continue with refreshed user
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        
+        if (!profile) throw new Error('Perfil do usuário não encontrado')
+        
+        // Check if user is admin or the instructor of this course
+        const isAdmin = profile.role === 'admin'
+        const isInstructor = selectedCourse.instructor_id === user.id
+        
+        if (!isAdmin && !isInstructor) {
+          throw new Error('Apenas administradores e instrutores do curso podem matricular alunos')
+        }
+      } else {
+        // Session exists, use it
+        const user = session.user
+        if (!user) throw new Error('Usuário não autenticado')
+        
+        // Get user profile to check role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+          
+        if (!profile) throw new Error('Perfil do usuário não encontrado')
+        
+        // Check if user is admin or the instructor of this course
+        const isAdmin = profile.role === 'admin'
+        const isInstructor = selectedCourse.instructor_id === user.id
+        
+        if (!isAdmin && !isInstructor) {
+          throw new Error('Apenas administradores e instrutores do curso podem matricular alunos')
+        }
       }
       
       // Create enrollment records for each selected student

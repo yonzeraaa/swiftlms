@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import ErrorBoundary from '../components/ErrorBoundary'
+import { useAuthSession } from '../hooks/useAuthSession'
 import { 
   LayoutDashboard, 
   Users, 
@@ -46,6 +47,9 @@ export default function DashboardLayout({
   const router = useRouter()
   const supabase = createClient()
   const { t } = useTranslation()
+  
+  // Auto-refresh session
+  useAuthSession()
 
   // Save sidebar state to localStorage
   useEffect(() => {
