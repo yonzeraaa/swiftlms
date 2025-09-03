@@ -4,6 +4,7 @@ import { customStorageAdapter } from './storage'
 
 export function createClient() {
   console.log('[SUPABASE] Creating client with URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+  console.log('[SUPABASE] Using custom storage adapter:', customStorageAdapter)
   
   return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
