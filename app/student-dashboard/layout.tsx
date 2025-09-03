@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { getCookie } from '../lib/utils/cookies'
 import ErrorBoundary from '../components/ErrorBoundary'
-import { useAuthSession } from '../hooks/useAuthSession'
+import { useAuth } from '../providers/AuthProvider'
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -48,8 +48,7 @@ export default function StudentDashboardLayout({
   const supabase = createClient()
   const { t } = useTranslation()
   
-  // Auto-refresh session
-  useAuthSession()
+  // Auth is handled by AuthProvider automatically
 
   // Save sidebar state to localStorage
   useEffect(() => {

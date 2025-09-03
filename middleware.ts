@@ -35,40 +35,36 @@ export async function middleware(request: NextRequest) {
   
   response.headers.set('Content-Security-Policy', csp)
   
-  // Add HSTS header - always include it
+  // Add HSTS header
   response.headers.set(
     'Strict-Transport-Security',
     'max-age=63072000; includeSubDomains; preload'
   )
   
-  // Strict CORS configuration for API routes
+  // CORS configuration for API routes
   if (isAPI) {
     const origin = request.headers.get('origin')
-    
-    // Only allow CORS for specific production domain
-    // Remove localhost in production for maximum security
     const allowedOrigins = isDevelopment
-      ? ['http://localhost:3000'] // Only localhost in development
+      ? ['http://localhost:3000']
       : process.env.NEXT_PUBLIC_APP_URL 
-        ? [process.env.NEXT_PUBLIC_APP_URL] // Only configured production URL
-        : [] // No CORS if not configured
+        ? [process.env.NEXT_PUBLIC_APP_URL]
+        : []
     
-    // Only set CORS headers if origin is explicitly allowed
     if (origin && allowedOrigins.includes(origin)) {
       response.headers.set('Access-Control-Allow-Origin', origin)
       response.headers.set('Access-Control-Allow-Credentials', 'true')
       response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
       response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-      response.headers.set('Access-Control-Max-Age', '3600') // Reduced from 86400 to 1 hour
+      response.headers.set('Access-Control-Max-Age', '3600')
     }
-    // If origin is not allowed, no CORS headers are set (browser will block the request)
   }
   
-  // Remove timestamp headers to prevent information disclosure
+  // Remove timestamp headers
   response.headers.delete('X-Powered-By')
   response.headers.delete('Server')
   response.headers.delete('Date')
 
+  // Create Supabase server client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -78,21 +74,13 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Apply security settings to our cookies
-          const isSupabaseCookie = name.startsWith('sb-')
-          const isProduction = process.env.NODE_ENV === 'production'
-          
-          // In production, ensure cookies work properly on Vercel
-          const secureOptions = isSupabaseCookie ? {
+          // Security settings for cookies
+          const secureOptions = {
             ...options,
             sameSite: 'lax' as const,
-            secure: isProduction,
+            secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
             path: '/'
-          } : {
-            ...options,
-            sameSite: 'lax' as const,
-            secure: isProduction
           }
           
           request.cookies.set({
@@ -100,11 +88,13 @@ export async function middleware(request: NextRequest) {
             value,
             ...secureOptions,
           })
+          
           response = NextResponse.next({
             request: {
               headers: request.headers,
             },
           })
+          
           response.cookies.set({
             name,
             value,
@@ -134,7 +124,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Authentication check for API routes - must be authenticated (except auth routes)
+  // Authentication check for API routes
   if (isAPI && !session && !request.nextUrl.pathname.startsWith('/api/auth/')) {
     return NextResponse.json(
       { error: 'Unauthorized - Authentication required' },
@@ -142,7 +132,7 @@ export async function middleware(request: NextRequest) {
     )
   }
 
-  // Se não há sessão e a rota é protegida, redireciona para login
+  // Redirect unauthenticated users from protected routes
   if (!session) {
     if (request.nextUrl.pathname.startsWith('/dashboard') || 
         request.nextUrl.pathname.startsWith('/student-dashboard')) {
@@ -153,11 +143,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Se há sessão e está na página de login, redireciona para dashboard
+  // Redirect authenticated users from login page to appropriate dashboard
   if (session && request.nextUrl.pathname === '/') {
     const redirectUrl = request.nextUrl.clone()
     
-    // Verificar o role do usuário
+    // Get user role from profiles table
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
@@ -168,12 +158,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Check if admin is in "view as student" mode
+  // Handle "view as student" mode for admins
   if (session && request.nextUrl.pathname.startsWith('/student-dashboard')) {
     const viewAsStudent = request.cookies.get('viewAsStudent')?.value === 'true'
     
     if (viewAsStudent) {
-      // Admin in view mode - allow access
+      // Admin in view mode - allow access and set indicator cookie
       response.cookies.set({
         name: 'isAdminViewMode',
         value: 'true',
@@ -182,14 +172,13 @@ export async function middleware(request: NextRequest) {
         path: '/'
       })
     } else {
-      // Regular user - check if they should be redirected
+      // Check if admin without view mode should be redirected
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', session.user.id)
         .single()
       
-      // If admin without view mode, redirect to admin dashboard
       if (profile?.role === 'admin' || profile?.role === 'instructor') {
         const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = '/dashboard'

@@ -9,7 +9,7 @@ import { useImportProgress } from '../../hooks/useImportProgress'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
-import { withValidSession } from '@/lib/supabase/with-session'
+// withValidSession removed - auth handled by AuthProvider
 
 interface Course {
   id: string
@@ -421,33 +421,26 @@ export default function CoursesPage() {
     setError(null)
     
     try {
-      // Use the new session manager for reliable operations
-      const result = await withValidSession(async (supabase) => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) throw new Error('Usuário não autenticado')
-        
-        // Get user profile to check role
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-          
-        if (!profile) throw new Error('Perfil do usuário não encontrado')
-        
-        // Check if user is admin or the instructor of this course
-        const isAdmin = profile.role === 'admin'
-        const isInstructor = selectedCourse.instructor_id === user.id
-        
-        if (!isAdmin && !isInstructor) {
-          throw new Error('Apenas administradores e instrutores do curso podem matricular alunos')
-        }
-
-        // Return user and profile for use in enrollment
-        return { user, profile }
-      })
+      // Get current user and validate permissions
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Usuário não autenticado')
       
-      const { user, profile } = result
+      // Get user profile to check role
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+        
+      if (!profile) throw new Error('Perfil do usuário não encontrado')
+      
+      // Check if user is admin or the instructor of this course
+      const isAdmin = profile.role === 'admin'
+      const isInstructor = selectedCourse.instructor_id === user.id
+      
+      if (!isAdmin && !isInstructor) {
+        throw new Error('Apenas administradores e instrutores do curso podem matricular alunos')
+      }
       
       // Create enrollment records for each selected student
       const enrollments = selectedStudents.map(studentId => ({
