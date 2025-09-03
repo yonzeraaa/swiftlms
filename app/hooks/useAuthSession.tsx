@@ -30,7 +30,7 @@ export function useAuthSession() {
 
   const validateAndExecute = useCallback(async function<T>(
     operation: () => Promise<T>
-  ): Promise<T> {
+  ) {
     try {
       // Ensure session is valid before operation
       await ensureSession()
@@ -46,7 +46,7 @@ export function useAuthSession() {
       
       throw error
     }
-  }, [ensureSession, refreshSession])
+  }, [ensureSession, refreshSession]) as <T>(operation: () => Promise<T>) => Promise<T>
 
   return {
     session,
