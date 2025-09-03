@@ -319,10 +319,24 @@ export default function StudentDashboardLayout({
                     Modo de Visualização Admin
                   </p>
                   <button
-                    onClick={() => {
-                      document.cookie = 'viewAsStudent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-                      document.cookie = 'isAdminViewMode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-                      window.location.href = '/dashboard'
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/auth/view-as-student', {
+                          method: 'DELETE',
+                          headers: { 'Content-Type': 'application/json' },
+                          credentials: 'include'
+                        })
+                        
+                        if (response.ok) {
+                          const data = await response.json()
+                          window.location.href = data.redirect || '/dashboard'
+                        } else {
+                          window.location.href = '/dashboard'
+                        }
+                      } catch (error) {
+                        console.error('Error clearing view mode:', error)
+                        window.location.href = '/dashboard'
+                      }
                     }}
                     className="w-full px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 rounded-lg transition-all text-sm flex items-center justify-center gap-2"
                   >

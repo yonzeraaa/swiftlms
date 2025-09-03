@@ -296,10 +296,26 @@ export default function DashboardLayout({
                 onMouseLeave={() => setHoveredItem(null)}
               >
                 <button
-                  onClick={() => {
-                    // Set view as student mode
-                    document.cookie = 'viewAsStudent=true; path=/; max-age=3600; SameSite=Lax'
-                    window.location.href = '/student-dashboard'
+                  onClick={async () => {
+                    // Set view as student mode via API
+                    try {
+                      const response = await fetch('/api/auth/view-as-student', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include'
+                      })
+                      
+                      if (response.ok) {
+                        const data = await response.json()
+                        window.location.href = data.redirect || '/student-dashboard'
+                      } else {
+                        console.error('Failed to set view mode')
+                      }
+                    } catch (error) {
+                      console.error('Error setting view mode:', error)
+                      // Fallback to direct navigation
+                      window.location.href = '/student-dashboard'
+                    }
                   }}
                   className={`
                     w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
