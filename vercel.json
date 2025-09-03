@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    {
+      "source": "/docs/:path*",
+      "destination": "https://docs.google.com/:path*"
+    }
+  ],
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "master": true
+    }
+  }
+}
