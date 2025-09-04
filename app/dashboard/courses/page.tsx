@@ -119,8 +119,8 @@ export default function CoursesPage() {
   })
 
   useEffect(() => {
-    // Check auth status on mount
-    const checkAuthAndFetch = async () => {
+    // Check auth status on mount and set up listener
+    const initializeAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       console.log('[COURSES_PAGE] Initial auth check:', {
         hasSession: !!session,
@@ -129,11 +129,22 @@ export default function CoursesPage() {
       })
       
       if (!session) {
-        console.error('[COURSES_PAGE] No session on mount')
-        // Try to refresh
-        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()
-        if (!refreshedSession) {
-          console.error('[COURSES_PAGE] Failed to refresh session on mount')
+        console.warn('[COURSES_PAGE] No session on mount, checking stored auth...')
+        
+        // Check for stored session in localStorage
+        const keys = Object.keys(localStorage).filter(key => key.startsWith('sb-'))
+        console.log('[COURSES_PAGE] Found Supabase keys in localStorage:', keys.length)
+        
+        // If we have stored auth, try to restore it
+        if (keys.length > 0) {
+          const newClient = createClient(true) // Force new client
+          const { data: { session: restoredSession } } = await newClient.auth.getSession()
+          
+          if (restoredSession) {
+            console.log('[COURSES_PAGE] Session restored from localStorage')
+          } else {
+            console.error('[COURSES_PAGE] Could not restore session')
+          }
         }
       }
       
@@ -143,7 +154,30 @@ export default function CoursesPage() {
       fetchStudents()
     }
     
-    checkAuthAndFetch()
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[COURSES_PAGE] Auth state changed:', event, { hasSession: !!session })
+      
+      if (event === 'SIGNED_OUT') {
+        // User signed out, redirect to login
+        window.location.href = '/'
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log('[COURSES_PAGE] Token refreshed successfully')
+      } else if (event === 'SIGNED_IN' && session) {
+        console.log('[COURSES_PAGE] User signed in, refreshing data')
+        // Refresh data when user signs in
+        fetchCourses()
+        fetchInstructors()
+        fetchStudents()
+      }
+    })
+    
+    initializeAuth()
+    
+    // Cleanup subscription on unmount
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
   
   // Close dropdown when clicking outside
@@ -379,7 +413,7 @@ export default function CoursesPage() {
     console.log('[MANAGE_STUDENTS] Opening modal for course:', course.id, course.title)
     
     // Check authentication status before opening modal
-    const { data: { session } } = await supabase.auth.getSession()
+    let { data: { session } } = await supabase.auth.getSession()
     console.log('[MANAGE_STUDENTS] Current session:', {
       hasSession: !!session,
       userId: session?.user?.id,
@@ -387,10 +421,28 @@ export default function CoursesPage() {
     })
     
     if (!session) {
-      console.error('[MANAGE_STUDENTS] No session found when opening modal')
-      alert('Sessão expirada. Por favor, recarregue a página.')
-      window.location.reload()
-      return
+      console.warn('[MANAGE_STUDENTS] No session found, attempting to restore...')
+      
+      // Try to restore session from localStorage
+      const keys = Object.keys(localStorage).filter(key => key.startsWith('sb-'))
+      if (keys.length > 0) {
+        const newClient = createClient(true)
+        const { data: { session: restoredSession } } = await newClient.auth.getSession()
+        
+        if (restoredSession) {
+          console.log('[MANAGE_STUDENTS] Session restored')
+          session = restoredSession
+          // Update the global supabase client reference
+          Object.assign(supabase, newClient)
+        }
+      }
+      
+      if (!session) {
+        console.error('[MANAGE_STUDENTS] Failed to restore session')
+        alert('Sua sessão expirou. Por favor, faça login novamente.')
+        window.location.href = '/'
+        return
+      }
     }
     
     setSelectedCourse(course)
@@ -461,40 +513,61 @@ export default function CoursesPage() {
     
     try {
       // First, try to get the session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
-      console.log('[ENROLL] Session check:', { 
+      console.log('[ENROLL] Initial session check:', { 
         hasSession: !!session, 
         sessionError,
         userId: session?.user?.id 
       })
       
-      // If no session, try to refresh
+      // If no session, we need to handle this differently
       if (!session) {
-        console.log('[ENROLL] No session found, trying to refresh...')
-        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+        console.log('[ENROLL] No session found, checking for stored auth...')
         
-        if (!refreshedSession) {
-          console.error('[ENROLL] Failed to refresh session:', refreshError)
-          throw new Error('Sessão expirada. Por favor, faça login novamente.')
+        // Check if there's a user in localStorage (Supabase stores auth there)
+        const storedSession = localStorage.getItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('https://', '').replace('.supabase.co', '') + '-auth-token')
+        
+        if (storedSession) {
+          console.log('[ENROLL] Found stored session, attempting to restore...')
+          // Force a new client instance
+          const newSupabase = createClient(true)
+          const { data: { session: restoredSession } } = await newSupabase.auth.getSession()
+          
+          if (restoredSession) {
+            console.log('[ENROLL] Session restored successfully')
+            session = restoredSession
+          } else {
+            console.error('[ENROLL] Failed to restore session from storage')
+            // Try one more time with sign in using stored token
+            try {
+              await newSupabase.auth.setSession(JSON.parse(storedSession))
+              const { data: { session: finalSession } } = await newSupabase.auth.getSession()
+              session = finalSession
+            } catch (e) {
+              console.error('[ENROLL] Failed to set session:', e)
+            }
+          }
         }
         
-        console.log('[ENROLL] Session refreshed successfully')
+        if (!session) {
+          console.error('[ENROLL] No session available, user needs to login')
+          throw new Error('Sua sessão expirou. Por favor, faça login novamente.')
+        }
       }
       
-      // Now get the user
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      // Now get the user from the session
+      const user = session.user
       
-      console.log('[ENROLL] User check:', { 
+      console.log('[ENROLL] User from session:', { 
         hasUser: !!user, 
-        userError,
         userId: user?.id,
         email: user?.email 
       })
       
       if (!user) {
-        console.error('[ENROLL] No user found after session check')
-        throw new Error('Usuário não autenticado. Por favor, recarregue a página.')
+        console.error('[ENROLL] No user in session')
+        throw new Error('Usuário não autenticado. Por favor, faça login novamente.')
       }
       
       // Get user profile to check role
