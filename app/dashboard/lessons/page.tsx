@@ -111,7 +111,7 @@ export default function LessonsPage() {
         if (progressData) {
           const progressStats: { [key: string]: { completed: number, total: number } } = {}
           
-          progressData.forEach(progress => {
+          progressData.forEach((progress: any) => {
             if (!progressStats[progress.lesson_id]) {
               progressStats[progress.lesson_id] = { completed: 0, total: 0 }
             }

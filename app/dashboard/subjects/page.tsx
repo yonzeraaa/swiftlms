@@ -72,7 +72,7 @@ export default function SubjectsPage() {
 
         if (courseSubjects) {
           const counts: { [key: string]: number } = {}
-          courseSubjects.forEach(cs => {
+          courseSubjects.forEach((cs: any) => {
             counts[cs.subject_id] = (counts[cs.subject_id] || 0) + 1
           })
           setCourseCount(counts)
@@ -85,7 +85,7 @@ export default function SubjectsPage() {
 
         if (subjectLessons) {
           const lessonCounts: { [key: string]: number } = {}
-          subjectLessons.forEach(sl => {
+          subjectLessons.forEach((sl: any) => {
             lessonCounts[sl.subject_id] = (lessonCounts[sl.subject_id] || 0) + 1
           })
           setLessonCount(lessonCounts)
@@ -232,14 +232,14 @@ export default function SubjectsPage() {
       setSelectedSubjects([])
       setSelectAll(false)
     } else {
-      setSelectedSubjects(filteredSubjects.map(s => s.id))
+      setSelectedSubjects(filteredSubjects.map((s: any) => s.id))
       setSelectAll(true)
     }
   }
 
   const handleSelectSubject = (subjectId: string) => {
     if (selectedSubjects.includes(subjectId)) {
-      setSelectedSubjects(selectedSubjects.filter(id => id !== subjectId))
+      setSelectedSubjects(selectedSubjects.filter((id: any) => id !== subjectId))
       setSelectAll(false)
     } else {
       setSelectedSubjects([...selectedSubjects, subjectId])
@@ -253,8 +253,8 @@ export default function SubjectsPage() {
     if (selectedSubjects.length === 0) return
     
     const subjectNames = subjects
-      .filter(s => selectedSubjects.includes(s.id))
-      .map(s => s.name)
+      .filter((s: any) => selectedSubjects.includes(s.id))
+      .map((s: any) => s.name)
       .join(', ')
     
     if (!confirm(`Tem certeza que deseja excluir ${selectedSubjects.length} disciplina(s)?\n\nDisciplinas: ${subjectNames}`)) {
@@ -271,14 +271,14 @@ export default function SubjectsPage() {
         .select('subject_id')
         .in('subject_id', selectedSubjects)
 
-      const usedIds = usedSubjects?.map(ms => ms.subject_id) || []
-      const safeToDelete = selectedSubjects.filter(id => !usedIds.includes(id))
-      const cannotDelete = selectedSubjects.filter(id => usedIds.includes(id))
+      const usedIds = usedSubjects?.map((ms: any) => ms.subject_id) || []
+      const safeToDelete = selectedSubjects.filter((id: any) => !usedIds.includes(id))
+      const cannotDelete = selectedSubjects.filter((id: any) => usedIds.includes(id))
 
       if (cannotDelete.length > 0) {
         const cannotDeleteNames = subjects
-          .filter(s => cannotDelete.includes(s.id))
-          .map(s => s.name)
+          .filter((s: any) => cannotDelete.includes(s.id))
+          .map((s: any) => s.name)
           .join(', ')
         
         if (safeToDelete.length === 0) {
@@ -364,7 +364,7 @@ export default function SubjectsPage() {
 
       if (associatedError) throw associatedError
 
-      const associatedIds = associatedData?.map(sl => sl.lesson_id) || []
+      const associatedIds = associatedData?.map((sl: any) => sl.lesson_id) || []
       setAssociatedLessons(associatedIds)
       setSelectedLessons(associatedIds)
     } catch (error) {
@@ -381,8 +381,8 @@ export default function SubjectsPage() {
 
     try {
       // Get lessons to add and remove
-      const toAdd = selectedLessons.filter(id => !associatedLessons.includes(id))
-      const toRemove = associatedLessons.filter(id => !selectedLessons.includes(id))
+      const toAdd = selectedLessons.filter((id: any) => !associatedLessons.includes(id))
+      const toRemove = associatedLessons.filter((id: any) => !selectedLessons.includes(id))
 
       // Remove associations
       if (toRemove.length > 0) {
@@ -400,7 +400,7 @@ export default function SubjectsPage() {
         const { error } = await supabase
           .from('subject_lessons')
           .insert(
-            toAdd.map(lessonId => ({
+            toAdd.map((lessonId: any) => ({
               subject_id: selectedSubjectForLessons.id,
               lesson_id: lessonId
             }))
@@ -420,7 +420,7 @@ export default function SubjectsPage() {
     }
   }
 
-  const filteredSubjects = subjects.filter(subject =>
+  const filteredSubjects = subjects.filter((subject: any) =>
     subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (subject.code && subject.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (subject.description && subject.description.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -828,7 +828,7 @@ export default function SubjectsPage() {
                             if (e.target.checked) {
                               setSelectedLessons([...selectedLessons, lesson.id])
                             } else {
-                              setSelectedLessons(selectedLessons.filter(id => id !== lesson.id))
+                              setSelectedLessons(selectedLessons.filter((id: any) => id !== lesson.id))
                             }
                           }}
                           className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/50 rounded focus:ring-gold-500 focus:ring-2"

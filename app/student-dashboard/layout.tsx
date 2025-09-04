@@ -149,7 +149,7 @@ export default function StudentDashboardLayout({
         }
         
         // Remove auth keys but preserve app settings
-        keysToRemove.forEach(key => {
+        keysToRemove.forEach((key: any) => {
           console.log('Removing auth key:', key)
           localStorage.removeItem(key)
         })

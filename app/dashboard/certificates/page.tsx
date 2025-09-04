@@ -112,9 +112,9 @@ export default function CertificatesPage() {
         .order('issued_at', { ascending: false })
 
       // Map certificates to enrollments
-      const enrollmentsWithCerts = enrollments?.map(enrollment => ({
+      const enrollmentsWithCerts = enrollments?.map((enrollment: any) => ({
         ...enrollment,
-        certificate: certs?.find(cert => 
+        certificate: certs?.find((cert: any) => 
           cert.enrollment_id === enrollment.id
         )
       })) || []

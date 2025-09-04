@@ -257,7 +257,7 @@ export default function CoursePage() {
           .eq('course_id', courseId)
         
         const bestScore = testGrades && testGrades.length > 0 
-          ? Math.max(...testGrades.map(g => g.best_score || 0))
+          ? Math.max(...testGrades.map((g: any) => g.best_score || 0))
           : 0
         
         // Pode solicitar se completou 100% e tem nota >= 70

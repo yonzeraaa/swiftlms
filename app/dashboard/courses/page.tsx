@@ -159,7 +159,7 @@ export default function CoursesPage() {
     }
     
     // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       console.log('[COURSES_PAGE] Auth state changed:', event, { hasSession: !!session })
       
       if (event === 'SIGNED_OUT') {
@@ -240,7 +240,7 @@ export default function CoursesPage() {
       if (coursesError) throw coursesError
 
       // Fetch enrollment counts separately
-      const courseIds = coursesData?.map(course => course.id) || []
+      const courseIds = coursesData?.map((course: any) => course.id) || []
       const { data: enrollmentData, error: enrollmentError } = await supabase
         .from('enrollments')
         .select('course_id, status')
@@ -250,13 +250,13 @@ export default function CoursesPage() {
       if (enrollmentError) throw enrollmentError
 
       // Count enrollments per course
-      const enrollmentCounts = enrollmentData?.reduce((acc, enrollment) => {
+      const enrollmentCounts = enrollmentData?.reduce((acc: any, enrollment: any) => {
         acc[enrollment.course_id] = (acc[enrollment.course_id] || 0) + 1
         return acc
       }, {} as Record<string, number>) || {}
 
       // Transform data to include enrollment count
-      const transformedData = coursesData?.map(course => ({
+      const transformedData = coursesData?.map((course: any) => ({
         ...course,
         _count: {
           enrollments: enrollmentCounts[course.id] || 0

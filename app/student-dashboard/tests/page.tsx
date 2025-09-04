@@ -52,7 +52,7 @@ export default function StudentTestsPage() {
         return
       }
 
-      const courseIds = enrollments.map(e => e.course_id)
+      const courseIds = enrollments.map((e: any) => e.course_id)
 
       // Buscar testes ativos desses cursos
       const { data: testsData } = await supabase
@@ -68,7 +68,7 @@ export default function StudentTestsPage() {
 
       // Buscar notas do aluno nesses testes
       if (testsData) {
-        const testIds = testsData.map(t => t.id)
+        const testIds = testsData.map((t: any) => t.id)
         const { data: grades } = await supabase
           .from('test_grades')
           .select('*')
@@ -76,9 +76,9 @@ export default function StudentTestsPage() {
           .in('test_id', testIds)
 
         // Combinar testes com notas
-        const testsWithGrades = testsData.map(test => ({
+        const testsWithGrades = testsData.map((test: any) => ({
           ...test,
-          grade: grades?.find(g => g.test_id === test.id) || undefined
+          grade: grades?.find((g: any) => g.test_id === test.id) || undefined
         }))
 
         setTests(testsWithGrades)
@@ -96,7 +96,7 @@ export default function StudentTestsPage() {
     // Filtro por status
     switch (filter) {
       case 'pending':
-        filtered = filtered.filter(t => {
+        filtered = filtered.filter((t: any) => {
           if (!t.grade) return true
           const passed = t.grade.best_score && t.grade.best_score >= (t.passing_score || 70)
           const hasAttemptsLeft = (t.grade.total_attempts || 0) < (t.max_attempts || 3)
@@ -104,13 +104,13 @@ export default function StudentTestsPage() {
         })
         break
       case 'completed':
-        filtered = filtered.filter(t => t.grade && t.grade.best_score !== null)
+        filtered = filtered.filter((t: any) => t.grade && t.grade.best_score !== null)
         break
     }
 
     // Filtro por busca
     if (searchTerm) {
-      filtered = filtered.filter(t => 
+      filtered = filtered.filter((t: any) => 
         t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.course?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -182,7 +182,7 @@ export default function StudentTestsPage() {
   // Calcular estatísticas
   const stats = {
     total: tests.length,
-    pending: tests.filter(t => {
+    pending: tests.filter((t: any) => {
       // Um teste é pendente se:
       // 1. Nunca foi feito (sem grade)
       // 2. Foi feito mas não passou E ainda tem tentativas restantes
@@ -191,9 +191,9 @@ export default function StudentTestsPage() {
       const hasAttemptsLeft = (t.grade.total_attempts || 0) < (t.max_attempts || 3)
       return !passed && hasAttemptsLeft
     }).length,
-    completed: tests.filter(t => t.grade && t.grade.best_score !== null).length,
-    averageScore: tests.filter(t => t.grade?.best_score).reduce((acc, t) => acc + (t.grade?.best_score || 0), 0) / 
-                  (tests.filter(t => t.grade?.best_score).length || 1)
+    completed: tests.filter((t: any) => t.grade && t.grade.best_score !== null).length,
+    averageScore: tests.filter((t: any) => t.grade?.best_score).reduce((acc, t) => acc + (t.grade?.best_score || 0), 0) / 
+                  (tests.filter((t: any) => t.grade?.best_score).length || 1)
   }
 
   if (loading) {

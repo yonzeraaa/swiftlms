@@ -160,7 +160,7 @@ export default function CertificatesPage() {
             <div>
               <p className="text-gold-300 text-sm">Aguardando Aprovação</p>
               <p className="text-3xl font-bold text-gold">
-                {certificateRequests.filter(r => r.status === 'pending').length}
+                {certificateRequests.filter((r: any) => r.status === 'pending').length}
               </p>
             </div>
             <Clock className="w-10 h-10 text-yellow-500/30" />
@@ -206,7 +206,7 @@ export default function CertificatesPage() {
           onClick={() => setActiveTab('pending')}
           icon={<Clock className="w-4 h-4" />}
         >
-          Aguardando Aprovação ({certificateRequests.filter(r => r.status === 'pending').length})
+          Aguardando Aprovação ({certificateRequests.filter((r: any) => r.status === 'pending').length})
         </Button>
       </div>
 

@@ -93,7 +93,7 @@ export default function StructurePage() {
       const subjectLessons = subjectLessonsRes.data || []
 
       // Build tree structure: Course -> Modules -> Subjects -> (Lessons & Tests)
-      const tree: TreeNode[] = courses.map(course => {
+      const tree: TreeNode[] = courses.map((course: any) => {
         const courseNode: TreeNode = {
           id: course.id,
           type: 'course',
@@ -103,8 +103,8 @@ export default function StructurePage() {
         }
 
         // Add modules to course
-        const courseModules = modules.filter(m => m.course_id === course.id)
-        courseModules.forEach(module => {
+        const courseModules = modules.filter((m: any) => m.course_id === course.id)
+        courseModules.forEach((module: any) => {
           const moduleNode: TreeNode = {
             id: module.id,
             type: 'module',
@@ -117,11 +117,11 @@ export default function StructurePage() {
 
           // Add subjects to module
           const moduleSubjectIds = moduleSubjects
-            .filter(ms => ms.module_id === module.id)
-            .map(ms => ms.subject_id)
+            .filter((ms: any) => ms.module_id === module.id)
+            .map((ms: any) => ms.subject_id)
           
-          const moduleSubjectsData = subjects.filter(s => moduleSubjectIds.includes(s.id))
-          moduleSubjectsData.forEach(subject => {
+          const moduleSubjectsData = subjects.filter((s: any) => moduleSubjectIds.includes(s.id))
+          moduleSubjectsData.forEach((subject: any) => {
             const subjectNode: TreeNode = {
               id: subject.id,
               type: 'subject',
@@ -133,11 +133,11 @@ export default function StructurePage() {
 
             // Add lessons to subject
             const subjectLessonIds = subjectLessons
-              .filter(sl => sl.subject_id === subject.id)
-              .map(sl => sl.lesson_id)
+              .filter((sl: any) => sl.subject_id === subject.id)
+              .map((sl: any) => sl.lesson_id)
             
-            const subjectLessonsData = lessons.filter(l => subjectLessonIds.includes(l.id))
-            subjectLessonsData.forEach(lesson => {
+            const subjectLessonsData = lessons.filter((l: any) => subjectLessonIds.includes(l.id))
+            subjectLessonsData.forEach((lesson: any) => {
               subjectNode.children!.push({
                 id: lesson.id,
                 type: 'lesson',
@@ -149,8 +149,8 @@ export default function StructurePage() {
             })
 
             // Add tests associated with this subject
-            const subjectTests = tests.filter(t => t.subject_id === subject.id)
-            subjectTests.forEach(test => {
+            const subjectTests = tests.filter((t: any) => t.subject_id === subject.id)
+            subjectTests.forEach((test: any) => {
               subjectNode.children!.push({
                 id: test.id,
                 type: 'test',
@@ -261,8 +261,8 @@ export default function StructurePage() {
           .select('subject_id')
           .eq('module_id', parent.id)
         
-        const associatedIds = moduleSubjects?.map(ms => ms.subject_id) || []
-        data = allSubjects?.filter(s => !associatedIds.includes(s.id)) || []
+        const associatedIds = moduleSubjects?.map((ms: any) => ms.subject_id) || []
+        data = allSubjects?.filter((s: any) => !associatedIds.includes(s.id)) || []
       } 
       else if ((type === 'lesson' || type === 'test') && parent.type === 'subject') {
         if (type === 'lesson') {
@@ -273,12 +273,12 @@ export default function StructurePage() {
             .select('lesson_id')
             .eq('subject_id', parent.id)
           
-          const associatedIds = subjectLessons?.map(sl => sl.lesson_id) || []
-          data = allLessons?.filter(l => !associatedIds.includes(l.id)) || []
+          const associatedIds = subjectLessons?.map((sl: any) => sl.lesson_id) || []
+          data = allLessons?.filter((l: any) => !associatedIds.includes(l.id)) || []
         } else {
           // Get all tests not already associated with this subject
           const { data: allTests } = await supabase.from('tests').select('*').order('title')
-          data = allTests?.filter(t => t.subject_id !== parent.id) || []
+          data = allTests?.filter((t: any) => t.subject_id !== parent.id) || []
         }
       }
       
@@ -309,7 +309,7 @@ export default function StructurePage() {
       } 
       else if (associateType === 'lesson' && parentNode.type === 'subject') {
         // Associate lessons with subject
-        const associations = selectedItems.map(lessonId => ({
+        const associations = selectedItems.map((lessonId: any) => ({
           subject_id: parentNode.id,
           lesson_id: lessonId
         }))
@@ -395,7 +395,7 @@ export default function StructurePage() {
   }
 
   const renderTree = (nodes: TreeNode[], level = 0) => {
-    return nodes.map(node => {
+    return nodes.map((node: any) => {
       const isExpanded = expandedNodes.has(node.id)
       const hasChildren = node.children && node.children.length > 0
       const isSelected = selectedNode?.id === node.id
@@ -727,7 +727,7 @@ export default function StructurePage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {availableItems.map(item => (
+                  {availableItems.map((item: any) => (
                     <label
                       key={item.id}
                       className="flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg hover:bg-navy-900/70 cursor-pointer"
@@ -739,7 +739,7 @@ export default function StructurePage() {
                           if (e.target.checked) {
                             setSelectedItems([...selectedItems, item.id])
                           } else {
-                            setSelectedItems(selectedItems.filter(id => id !== item.id))
+                            setSelectedItems(selectedItems.filter((id: any) => id !== item.id))
                           }
                         }}
                         className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500"

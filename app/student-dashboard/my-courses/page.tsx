@@ -92,7 +92,7 @@ export default function MyCoursesPage() {
 
             if (modules) {
               // Extract lessons from the nested structure
-              modules.forEach(module => {
+              modules.forEach((module: any) => {
                 const moduleSubjects = (module as any).module_subjects || []
                 
                 // Sort module_subjects by order_index
@@ -106,7 +106,7 @@ export default function MyCoursesPage() {
                         allLessons.push(lesson)
                         totalLessons++
                         
-                        const progress = lessonProgress?.find(lp => lp.lesson_id === lesson.id)
+                        const progress = lessonProgress?.find((lp: any) => lp.lesson_id === lesson.id)
                         if (progress?.is_completed) {
                           completedLessons++
                         } else if (!nextLesson) {
@@ -209,7 +209,7 @@ export default function MyCoursesPage() {
     }
   }
 
-  const filteredCourses = courses.filter(course => {
+  const filteredCourses = courses.filter((course: any) => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.category.toLowerCase().includes(searchTerm.toLowerCase())
     
@@ -222,8 +222,8 @@ export default function MyCoursesPage() {
 
   const stats = {
     total: courses.length,
-    active: courses.filter(c => c.enrollment.status === 'active').length,
-    completed: courses.filter(c => c.enrollment.status === 'completed').length,
+    active: courses.filter((c: any) => c.enrollment.status === 'active').length,
+    completed: courses.filter((c: any) => c.enrollment.status === 'completed').length,
     totalHours: courses.reduce((acc, c) => acc + (c.duration_hours || 0), 0)
   }
 

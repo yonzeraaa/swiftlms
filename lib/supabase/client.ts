@@ -2,7 +2,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '../database.types'
 
 // Singleton pattern - only create one instance of the client
-let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null
+let browserClient: any = null
 
 export function createClient(forceNew = false): any {
   // Force new client if requested (useful for auth issues)
@@ -24,20 +24,19 @@ export function createClient(forceNew = false): any {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // Configuração de cookies otimizada para cross-domain
+      cookieOptions: {
+        name: 'sb-auth-token',
+        maxAge: 60 * 60 * 24 * 7, // 7 dias
+        domain: isProduction ? '.swiftedu.com.br' : undefined,
+        path: '/',
+        sameSite: 'lax',
+        secure: isProduction
+      },
       auth: {
         persistSession: true,
         detectSessionInUrl: true,
         autoRefreshToken: true,
-        // Configuração de cookies otimizada para cross-domain
-        cookieOptions: {
-          name: 'sb-auth-token',
-          lifetime: 60 * 60 * 24 * 7, // 7 dias
-          domain: isProduction ? '.swiftedu.com.br' : undefined,
-          path: '/',
-          sameSite: 'lax',
-          secure: isProduction,
-          httpOnly: false // Necessário para client-side
-        },
         // Storage personalizado para melhor compatibilidade
         storage: typeof window !== 'undefined' ? {
           getItem: (key: string) => {

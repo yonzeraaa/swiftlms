@@ -129,7 +129,7 @@ export default function UsersPage() {
       if (error) throw error
 
       // Enrich data based on role
-      const enrichedUsers = await Promise.all((profiles || []).map(async (user) => {
+      const enrichedUsers = await Promise.all((profiles || []).map(async (user: any) => {
         if (user.role === 'student') {
           // Fetch enrollments and test attempts for students
           const { data: enrollments } = await supabase
@@ -233,7 +233,7 @@ export default function UsersPage() {
       if (error) throw error
       
       // Update local state
-      setUsers(users.map(user => 
+      setUsers(users.map((user: any) => 
         user.id === userId ? { ...user, status } : user
       ))
       
@@ -274,7 +274,7 @@ export default function UsersPage() {
       if (error) throw error
 
       // Update local state
-      setUsers(users.map(user => 
+      setUsers(users.map((user: any) => 
         user.id === selectedUser.id 
           ? { ...user, full_name: editForm.full_name, phone: editForm.phone, role: editForm.role }
           : user
@@ -340,7 +340,7 @@ export default function UsersPage() {
       }
 
       // Update local state - remove user from list
-      setUsers(users.filter(user => user.id !== selectedUser.id))
+      setUsers(users.filter((user: any) => user.id !== selectedUser.id))
 
       setShowDeleteModal(false)
       setSelectedUser(null)
@@ -364,7 +364,7 @@ export default function UsersPage() {
     }
   }
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter((user: any) => {
     const matchesSearch = (user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase())
     
@@ -464,7 +464,7 @@ export default function UsersPage() {
                   selected={filterRole === 'admin'}
                   onClick={() => setFilterRole('admin')}
                   icon={<Shield className="w-4 h-4" />}
-                  count={users.filter(u => u.role === 'admin').length}
+                  count={users.filter((u: any) => u.role === 'admin').length}
                   color="purple"
                 />
                 <Chip
@@ -472,7 +472,7 @@ export default function UsersPage() {
                   selected={filterRole === 'instructor' || filterRole === 'teacher'}
                   onClick={() => setFilterRole('instructor')}
                   icon={<GraduationCap className="w-4 h-4" />}
-                  count={users.filter(u => u.role === 'instructor' || u.role === 'teacher').length}
+                  count={users.filter((u: any) => u.role === 'instructor' || u.role === 'teacher').length}
                   color="blue"
                 />
                 <Chip
@@ -480,7 +480,7 @@ export default function UsersPage() {
                   selected={filterRole === 'student'}
                   onClick={() => setFilterRole('student')}
                   icon={<BookOpen className="w-4 h-4" />}
-                  count={users.filter(u => u.role === 'student').length}
+                  count={users.filter((u: any) => u.role === 'student').length}
                   color="green"
                 />
               </div>
@@ -500,7 +500,7 @@ export default function UsersPage() {
                   selected={filterStatus === 'active'}
                   onClick={() => setFilterStatus('active')}
                   icon={<Check className="w-4 h-4" />}
-                  count={users.filter(u => u.status !== 'frozen').length}
+                  count={users.filter((u: any) => u.status !== 'frozen').length}
                   color="green"
                 />
                 <Chip
@@ -508,7 +508,7 @@ export default function UsersPage() {
                   selected={filterStatus === 'frozen'}
                   onClick={() => setFilterStatus('frozen')}
                   icon={<Snowflake className="w-4 h-4" />}
-                  count={users.filter(u => u.status === 'frozen').length}
+                  count={users.filter((u: any) => u.status === 'frozen').length}
                   color="blue"
                 />
               </div>
@@ -550,7 +550,7 @@ export default function UsersPage() {
             <div>
               <p className="text-gold-300 text-sm">Administradores</p>
               <p className="text-2xl font-bold text-gold mt-1">
-                {users.filter(u => u.role === 'admin').length}
+                {users.filter((u: any) => u.role === 'admin').length}
               </p>
             </div>
             <Shield className="w-8 h-8 text-purple-500/30" />
@@ -562,7 +562,7 @@ export default function UsersPage() {
             <div>
               <p className="text-gold-300 text-sm">Professores</p>
               <p className="text-2xl font-bold text-gold mt-1">
-                {users.filter(u => u.role === 'instructor' || u.role === 'teacher').length}
+                {users.filter((u: any) => u.role === 'instructor' || u.role === 'teacher').length}
               </p>
             </div>
             <GraduationCap className="w-8 h-8 text-blue-500/30" />
@@ -574,7 +574,7 @@ export default function UsersPage() {
             <div>
               <p className="text-gold-300 text-sm">Alunos</p>
               <p className="text-2xl font-bold text-gold mt-1">
-                {users.filter(u => u.role === 'student').length}
+                {users.filter((u: any) => u.role === 'student').length}
               </p>
             </div>
             <BookOpen className="w-8 h-8 text-green-500/30" />

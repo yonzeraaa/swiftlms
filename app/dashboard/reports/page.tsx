@@ -57,9 +57,9 @@ export default function ReportsPage() {
         .from('profiles')
         .select('*')
 
-      const students = profiles?.filter(p => p.role === 'student') || []
-      const instructors = profiles?.filter(p => p.role === 'instructor') || []
-      const activeStudents = students.filter(s => s.status === 'active').length
+      const students = profiles?.filter((p: any) => p.role === 'student') || []
+      const instructors = profiles?.filter((p: any) => p.role === 'instructor') || []
+      const activeStudents = students.filter((s: any) => s.status === 'active').length
 
       // Fetch courses
       const { data: courses } = await supabase
@@ -74,7 +74,7 @@ export default function ReportsPage() {
         .lte('enrolled_at', dateRange.end)
         .in('status', ['active', 'completed'])
 
-      const completedCourses = enrollments?.filter(e => e.status === 'completed').length || 0
+      const completedCourses = enrollments?.filter((e: any) => e.status === 'completed').length || 0
       const totalEnrollments = enrollments?.length || 0
       const averageCompletionRate = totalEnrollments > 0 
         ? Math.round((completedCourses / totalEnrollments) * 100)
@@ -82,7 +82,7 @@ export default function ReportsPage() {
 
       // Courses per category
       const categoryMap = new Map<string, number>()
-      courses?.forEach(course => {
+      courses?.forEach((course: any) => {
         const count = categoryMap.get(course.category) || 0
         categoryMap.set(course.category, count + 1)
       })
@@ -93,7 +93,7 @@ export default function ReportsPage() {
 
       // Enrollments by month
       const monthMap = new Map<string, number>()
-      enrollments?.forEach(enrollment => {
+      enrollments?.forEach((enrollment: any) => {
         if (enrollment.enrolled_at) {
           const date = new Date(enrollment.enrolled_at)
           const month = date.toLocaleDateString('pt-BR', { 
@@ -111,8 +111,8 @@ export default function ReportsPage() {
 
       // Top courses
       const courseEnrollmentMap = new Map<string, { title: string; count: number }>()
-      enrollments?.forEach(enrollment => {
-        const course = courses?.find(c => c.id === enrollment.course_id)
+      enrollments?.forEach((enrollment: any) => {
+        const course = courses?.find((c: any) => c.id === enrollment.course_id)
         if (course) {
           const existing = courseEnrollmentMap.get(course.id) || { title: course.title, count: 0 }
           courseEnrollmentMap.set(course.id, { 
@@ -182,8 +182,8 @@ export default function ReportsPage() {
       .eq('status', 'active')
     
     // Buscar dados dos cursos e disciplinas
-    const courseIds = [...new Set(allTests?.map(t => t.course_id).filter((id): id is string => Boolean(id)) || [])]
-    const subjectIds = [...new Set(allTests?.map(t => t.subject_id).filter((id): id is string => Boolean(id)) || [])]
+    const courseIds = [...new Set(allTests?.map((t: any) => t.course_id).filter((id: any): id is string => Boolean(id)) || [])]
+    const subjectIds = [...new Set(allTests?.map((t: any) => t.subject_id).filter((id: any): id is string => Boolean(id)) || [])]
     
     const { data: courses } = courseIds.length > 0 ? await supabase
       .from('courses')
@@ -197,18 +197,18 @@ export default function ReportsPage() {
     
     // Mapear cursos e disciplinas por ID
     const courseMap = new Map<string, string>()
-    courses?.forEach(course => {
+    courses?.forEach((course: any) => {
       courseMap.set(course.id, course.title)
     })
     
     const subjectMap = new Map<string, string>()
-    subjects?.forEach(subject => {
+    subjects?.forEach((subject: any) => {
       subjectMap.set(subject.id, subject.name)
     })
     
     // Criar mapa de tentativas por aluno e teste
     const attemptsByUserAndTest = new Map<string, Map<string, any>>()
-    testAttempts.forEach(attempt => {
+    testAttempts.forEach((attempt: any) => {
       const userId = attempt.user_id || attempt.user?.id
       const testId = attempt.test_id
       
@@ -228,7 +228,7 @@ export default function ReportsPage() {
     
     // Agrupar testes por disciplina
     const testsBySubject = new Map<string, any[]>()
-    allTests?.forEach(test => {
+    allTests?.forEach((test: any) => {
       if (test.subject_id) {
         if (!testsBySubject.has(test.subject_id)) {
           testsBySubject.set(test.subject_id, [])
@@ -241,7 +241,7 @@ export default function ReportsPage() {
     const gradesByStudentSubject: any[] = []
     const detailedGrades: any[] = []
     
-    allStudents?.forEach(student => {
+    allStudents?.forEach((student: any) => {
       testsBySubject.forEach((subjectTests, subjectId) => {
         const subjectName = subjectMap.get(subjectId) || 'Disciplina não definida'
         const userAttempts = attemptsByUserAndTest.get(student.id) || new Map()
@@ -254,7 +254,7 @@ export default function ReportsPage() {
         const scores: number[] = []
         
         // Para cada teste da disciplina
-        subjectTests.forEach(test => {
+        subjectTests.forEach((test: any) => {
           const attempt = userAttempts.get(test.id)
           const score = attempt ? (Number(attempt.score) || 0) : 0
           
@@ -380,7 +380,7 @@ export default function ReportsPage() {
     
     // Aba 3: Resumo por Aluno
     const studentSummary = new Map<string, { total: number, count: number, disciplines: string[] }>()
-    gradesByStudentSubject.forEach(row => {
+    gradesByStudentSubject.forEach((row: any) => {
       const studentName = row['Aluno']
       if (!studentSummary.has(studentName)) {
         studentSummary.set(studentName, { total: 0, count: 0, disciplines: [] })
@@ -591,7 +591,7 @@ export default function ReportsPage() {
     ]
     
     // Add data rows
-    gradesData.forEach(grade => {
+    gradesData.forEach((grade: any) => {
       csvContent += `${grade.student},${grade.email},${grade.course},${grade.subject},${grade.test},${grade.type},${grade.date},${grade.grade},${grade.status}\n`
     })
     
@@ -632,7 +632,7 @@ export default function ReportsPage() {
         .order('enrolled_at', { ascending: false })
       
       // Buscar progresso das lições
-      const enrollmentIds = enrollments?.map(e => e.id) || []
+      const enrollmentIds = enrollments?.map((e: any) => e.id) || []
       const { data: lessonProgress } = await supabase
         .from('lesson_progress')
         .select('*')
@@ -665,10 +665,10 @@ export default function ReportsPage() {
       }
       
       // Processar dados de matrículas
-      const enrollmentData = (enrollments || []).map(e => {
+      const enrollmentData = (enrollments || []).map((e: any) => {
         // Calcular progresso baseado em lesson_progress
-        const enrollmentProgress = lessonProgress?.filter(lp => lp.enrollment_id === e.id) || []
-        const completedLessons = enrollmentProgress.filter(lp => lp.is_completed).length
+        const enrollmentProgress = lessonProgress?.filter((lp: any) => lp.enrollment_id === e.id) || []
+        const completedLessons = enrollmentProgress.filter((lp: any) => lp.is_completed).length
         const totalLessons = enrollmentProgress.length
         const progressPercentage = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
         
@@ -685,7 +685,7 @@ export default function ReportsPage() {
       })
       
       // Processar dados de conclusões
-      const completionData = (completedEnrollments || []).map(e => {
+      const completionData = (completedEnrollments || []).map((e: any) => {
         const hasCertificate = !!e.certificates
         return {
           student: e.user?.full_name || 'Aluno desconhecido',
@@ -712,7 +712,7 @@ export default function ReportsPage() {
     exporter.addDataSheet('Matrículas', {
       title: 'Relatório de Matrículas',
       headers: ['Aluno', 'Email', 'Curso', 'Data de Matrícula', 'Status', 'Progresso (%)', 'Lições Concluídas', 'Total de Lições'],
-      data: enrollmentData.map(e => [
+      data: enrollmentData.map((e: any) => [
         e.student,
         e.email,
         e.course,
@@ -737,7 +737,7 @@ export default function ReportsPage() {
     exporter.addDataSheet('Conclusões', {
       title: 'Relatório de Conclusões',
       headers: ['Aluno', 'Email', 'Curso', 'Data de Matrícula', 'Data de Conclusão', 'Nota Final', 'Certificado', 'Horas Totais'],
-      data: completionData.map(c => [
+      data: completionData.map((c: any) => [
         c.student,
         c.email,
         c.course,
@@ -755,8 +755,8 @@ export default function ReportsPage() {
     })
 
     // Tabela dinâmica de matrículas por curso
-    const allData = [...enrollmentData.map(e => ({ ...e, type: 'matricula' })), 
-                     ...completionData.map(c => ({ ...c, type: 'conclusao', course: c.course, status: 'Concluído' }))]
+    const allData = [...enrollmentData.map((e: any) => ({ ...e, type: 'matricula' })), 
+                     ...completionData.map((c: any) => ({ ...c, type: 'conclusao', course: c.course, status: 'Concluído' }))]
     
     exporter.addPivotTable('Análise por Curso', allData, {
       rows: ['course'],
@@ -774,17 +774,17 @@ export default function ReportsPage() {
           sectionTitle: 'Estatísticas de Matrículas',
           metrics: [
             { label: 'Total de Matrículas no Período', value: enrollmentData.length },
-            { label: 'Progresso Médio', value: `${Math.round(enrollmentData.reduce((acc, e) => acc + e.progress, 0) / enrollmentData.length)}%` },
-            { label: 'Matrículas Ativas', value: enrollmentData.filter(e => e.status === 'Ativo').length }
+            { label: 'Progresso Médio', value: `${Math.round(enrollmentData.reduce((acc: any, e: any) => acc + e.progress, 0) / enrollmentData.length)}%` },
+            { label: 'Matrículas Ativas', value: enrollmentData.filter((e: any) => e.status === 'Ativo').length }
           ]
         },
         {
           sectionTitle: 'Estatísticas de Conclusões',
           metrics: [
             { label: 'Total de Conclusões no Período', value: completionData.length },
-            { label: 'Nota Média dos Concluintes', value: (completionData.reduce((acc, c) => acc + c.final_grade, 0) / completionData.length).toFixed(1) },
+            { label: 'Nota Média dos Concluintes', value: (completionData.reduce((acc: any, c: any) => acc + c.final_grade, 0) / completionData.length).toFixed(1) },
             { label: 'Taxa de Conclusão', value: `${Math.round((completionData.length / (enrollmentData.length + completionData.length)) * 100)}%` },
-            { label: 'Horas Médias de Estudo', value: `${Math.round(completionData.reduce((acc, c) => acc + c.total_hours, 0) / completionData.length)}h` }
+            { label: 'Horas Médias de Estudo', value: `${Math.round(completionData.reduce((acc: any, c: any) => acc + c.total_hours, 0) / completionData.length)}h` }
           ]
         }
       ]
@@ -822,7 +822,7 @@ export default function ReportsPage() {
       { student: 'Carlos Ferreira', email: 'carlos.ferreira@email.com', course: 'Propulsão Naval', date: '2024-02-20', status: 'Ativo' }
     ]
     
-    enrollmentData.forEach(enrollment => {
+    enrollmentData.forEach((enrollment: any) => {
       csvContent += `${enrollment.student},${enrollment.email},${enrollment.course},${enrollment.date},${enrollment.status}\n`
     })
     
@@ -837,7 +837,7 @@ export default function ReportsPage() {
       { student: 'Roberto Lima', email: 'roberto.lima@email.com', course: 'Propulsão Naval', completionDate: '2024-03-05', finalGrade: 78, certificate: 'SIM' }
     ]
     
-    completionData.forEach(completion => {
+    completionData.forEach((completion: any) => {
       csvContent += `${completion.student},${completion.email},${completion.course},${completion.completionDate},${completion.finalGrade},${completion.certificate}\n`
     })
     
@@ -1196,7 +1196,7 @@ export default function ReportsPage() {
       { name: 'Carlos Ferreira', email: 'carlos.ferreira@email.com', lastAccess: '2024-03-13 11:00', totalAccess: 87, totalHours: 21.3, avgSession: 14.7, coursesAccessed: 2, avgCompletion: 45 }
     ]
     
-    studentAccessData.forEach(student => {
+    studentAccessData.forEach((student: any) => {
       csvContent += `${student.name},${student.email},${student.lastAccess},${student.totalAccess},${student.totalHours},${student.avgSession},${student.coursesAccessed},${student.avgCompletion}\n`
     })
     
@@ -1214,7 +1214,7 @@ export default function ReportsPage() {
       { day: 'Domingo', accesses: 198, peakUsers: 43, peakTime: '20:00-21:00' }
     ]
     
-    dailyPattern.forEach(day => {
+    dailyPattern.forEach((day: any) => {
       csvContent += `${day.day},${day.accesses},${day.peakUsers},${day.peakTime}\n`
     })
     
@@ -1229,7 +1229,7 @@ export default function ReportsPage() {
       { course: 'Manutenção Naval', activeStudents: 76, avgTime: 21.5, completionRate: 71, avgRating: 4.3 }
     ]
     
-    courseEngagement.forEach(course => {
+    courseEngagement.forEach((course: any) => {
       csvContent += `${course.course},${course.activeStudents},${course.avgTime},${course.completionRate},${course.avgRating}\n`
     })
     

@@ -69,12 +69,12 @@ export default function CalendarPage() {
 
       if (enrollments) {
         const coursesWithEnrollment = enrollments
-          .filter(e => e.course)
-          .map(e => ({ ...e.course, enrollment: e } as Course & { enrollment: Enrollment }))
+          .filter((e: any) => e.course)
+          .map((e: any) => ({ ...e.course, enrollment: e } as Course & { enrollment: Enrollment }))
         setEnrolledCourses(coursesWithEnrollment)
 
         // Fetch tests for enrolled courses
-        const courseIds = coursesWithEnrollment.map(c => c.id)
+        const courseIds = coursesWithEnrollment.map((c: any) => c.id)
         const { data: tests } = await supabase
           .from('tests')
           .select('*')
@@ -122,7 +122,7 @@ export default function CalendarPage() {
   }
 
   const getEventsForDate = (date: Date) => {
-    return events.filter(event => {
+    return events.filter((event: any) => {
       const eventDate = new Date(event.date)
       return eventDate.getDate() === date.getDate() &&
              eventDate.getMonth() === date.getMonth() &&
@@ -156,10 +156,10 @@ export default function CalendarPage() {
 
   const filteredEvents = filter === 'all' 
     ? events 
-    : events.filter(e => e.type === filter)
+    : events.filter((e: any) => e.type === filter)
 
   const upcomingEvents = filteredEvents
-    .filter(e => new Date(e.date) >= new Date())
+    .filter((e: any) => new Date(e.date) >= new Date())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5)
 
@@ -250,7 +250,7 @@ export default function CalendarPage() {
 
             {/* Weekday Headers */}
             <div className="grid grid-cols-7 gap-2 mb-2">
-              {WEEKDAYS.map(day => (
+              {WEEKDAYS.map((day: any) => (
                 <div key={day} className="text-center text-sm font-semibold text-gold-400 py-2">
                   {day}
                 </div>
@@ -319,7 +319,7 @@ export default function CalendarPage() {
                 </h3>
                 <div className="space-y-2">
                   {getEventsForDate(selectedDate).length > 0 ? (
-                    getEventsForDate(selectedDate).map(event => (
+                    getEventsForDate(selectedDate).map((event: any) => (
                       <div
                         key={event.id}
                         className="flex items-start gap-3 p-3 bg-navy-900/50 rounded-lg hover:bg-navy-900/70 transition-colors cursor-pointer"
@@ -355,7 +355,7 @@ export default function CalendarPage() {
           <Card title="Próximos Eventos" subtitle="Nos próximos 30 dias">
             <div className="space-y-3">
               {upcomingEvents.length > 0 ? (
-                upcomingEvents.map(event => (
+                upcomingEvents.map((event: any) => (
                   <div
                     key={event.id}
                     className="flex items-start gap-3 p-3 bg-navy-900/50 rounded-lg hover:bg-navy-900/70 transition-colors cursor-pointer"
@@ -395,19 +395,19 @@ export default function CalendarPage() {
               <div className="flex justify-between items-center">
                 <span className="text-gold-300">Aulas Agendadas</span>
                 <span className="text-gold font-bold">
-                  {filteredEvents.filter(e => e.type === 'live_class').length}
+                  {filteredEvents.filter((e: any) => e.type === 'live_class').length}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gold-300">Testes</span>
                 <span className="text-gold font-bold">
-                  {filteredEvents.filter(e => e.type === 'test').length}
+                  {filteredEvents.filter((e: any) => e.type === 'test').length}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gold-300">Prazos</span>
                 <span className="text-gold font-bold">
-                  {filteredEvents.filter(e => e.type === 'deadline').length}
+                  {filteredEvents.filter((e: any) => e.type === 'deadline').length}
                 </span>
               </div>
             </div>

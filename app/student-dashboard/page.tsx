@@ -142,7 +142,7 @@ export default function StudentDashboard() {
         for (const enrollment of enrollments) {
           if (enrollment.course) {
             // Find last accessed lesson for this enrollment
-            const lastAccessedLesson = lessonProgress?.find(lp => lp.enrollment_id === enrollment.id)
+            const lastAccessedLesson = lessonProgress?.find((lp: any) => lp.enrollment_id === enrollment.id)
             
             enrolledCoursesData.push({
               ...enrollment.course,
@@ -175,9 +175,9 @@ export default function StudentDashboard() {
 
         setStats({
           enrolledCourses: enrolledCoursesData.length,
-          completedCourses: enrolledCoursesData.filter(c => c.enrollment.status === 'completed').length,
+          completedCourses: enrolledCoursesData.filter((c: any) => c.enrollment.status === 'completed').length,
           hoursLearned: Math.round(enrolledCoursesData.reduce((sum, c) => sum + (c.duration_hours || 0) * (c.progress / 100), 0)),
-          certificates: enrolledCoursesData.filter(c => c.enrollment.status === 'completed').length,
+          certificates: enrolledCoursesData.filter((c: any) => c.enrollment.status === 'completed').length,
           currentStreak: calculateStreak(lessonProgress || []),
           overallProgress
         })
@@ -194,7 +194,7 @@ export default function StudentDashboard() {
         .limit(5)
 
       if (activities) {
-        const formattedActivities: RecentActivity[] = activities.map(activity => ({
+        const formattedActivities: RecentActivity[] = activities.map((activity: any) => ({
           id: activity.id,
           type: mapActivityType(activity.action),
           description: formatActivityDescription(activity, t),
@@ -217,7 +217,7 @@ export default function StudentDashboard() {
     today.setHours(0, 0, 0, 0)
     
     const activityDates = lessonProgress
-      .map(lp => new Date(lp.last_accessed_at || lp.started_at || ''))
+      .map((lp: any) => new Date(lp.last_accessed_at || lp.started_at || ''))
       .sort((a, b) => b.getTime() - a.getTime())
 
     let streak = 0

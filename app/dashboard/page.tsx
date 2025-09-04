@@ -71,9 +71,9 @@ export default function DashboardPage() {
         .from('profiles')
         .select('role, status, created_at')
 
-      const students = profiles?.filter(p => p.role === 'student') || []
-      const instructors = profiles?.filter(p => p.role === 'instructor') || []
-      const activeUsers = profiles?.filter(p => p.status === 'active') || []
+      const students = profiles?.filter((p: any) => p.role === 'student') || []
+      const instructors = profiles?.filter((p: any) => p.role === 'instructor') || []
+      const activeUsers = profiles?.filter((p: any) => p.status === 'active') || []
 
       // Fetch courses
       const { data: courses } = await supabase
@@ -81,7 +81,7 @@ export default function DashboardPage() {
         .select('*')
 
       const totalCourses = courses?.length || 0
-      const publishedCourses = courses?.filter(c => c.is_published === true).length || 0
+      const publishedCourses = courses?.filter((c: any) => c.is_published === true).length || 0
 
       // Fetch enrollments with full data
       const { data: enrollments } = await supabase
@@ -90,14 +90,14 @@ export default function DashboardPage() {
         .in('status', ['active', 'completed'])
 
       const totalEnrollments = enrollments?.length || 0
-      const completedEnrollments = enrollments?.filter(e => e.status === 'completed').length || 0
+      const completedEnrollments = enrollments?.filter((e: any) => e.status === 'completed').length || 0
       const completionRate = totalEnrollments > 0 
         ? Math.round((completedEnrollments / totalEnrollments) * 100) 
         : 0
 
       // Calculate popular courses
       const courseEnrollmentMap = new Map<string, number>()
-      enrollments?.forEach(enrollment => {
+      enrollments?.forEach((enrollment: any) => {
         const count = courseEnrollmentMap.get(enrollment.course_id) || 0
         courseEnrollmentMap.set(enrollment.course_id, count + 1)
       })
@@ -105,7 +105,7 @@ export default function DashboardPage() {
       const popularCoursesData: PopularCourse[] = []
       let maxEnrollments = 0
       
-      courses?.forEach(course => {
+      courses?.forEach((course: any) => {
         const enrollmentCount = courseEnrollmentMap.get(course.id) || 0
         if (enrollmentCount > 0) {
           maxEnrollments = Math.max(maxEnrollments, enrollmentCount)
@@ -119,7 +119,7 @@ export default function DashboardPage() {
       })
 
       // Calculate percentages and sort
-      popularCoursesData.forEach(course => {
+      popularCoursesData.forEach((course: any) => {
         course.percentage = maxEnrollments > 0 
           ? Math.round((course.students / maxEnrollments) * 100)
           : 0
@@ -143,13 +143,13 @@ export default function DashboardPage() {
       
       if (activityLogs && activityLogs.length > 0) {
         // Fetch user profiles for all activities
-        const userIds = [...new Set(activityLogs.map(log => log.user_id).filter((id): id is string => id !== null))]
+        const userIds = [...new Set(activityLogs.map((log: any) => log.user_id).filter((id: any): id is string => id !== null))]
         const { data: userProfiles } = await supabase
           .from('profiles')
           .select('id, full_name, email')
           .in('id', userIds)
         
-        const userMap = new Map(userProfiles?.map(user => [user.id, user]) || [])
+        const userMap = new Map(userProfiles?.map((user: any) => [user.id, user]) || [])
 
         for (const log of activityLogs) {
           const date = new Date(log.created_at)
@@ -166,7 +166,7 @@ export default function DashboardPage() {
           }
 
           // Get user info from the map
-          const user = log.user_id ? userMap.get(log.user_id) : undefined
+          const user: any = log.user_id ? userMap.get(log.user_id) : undefined
           if (!user && log.user_id) {
             console.warn('User not found for activity:', log.user_id)
             // Still show the activity with user_id as fallback

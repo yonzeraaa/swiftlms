@@ -112,7 +112,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
       .select('*')
       .eq('id', attemptId)
       .single()
-      .then(({ data }) => {
+      .then(({ data }: any) => {
         if (data) {
           const answers = data.answers as Record<string, string>
           const totalQuestions = Object.keys(answers).length

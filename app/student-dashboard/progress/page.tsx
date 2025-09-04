@@ -100,7 +100,7 @@ export default function ProgressPage() {
               .select('id')
               .eq('course_id', enrollment.course_id)
 
-            const moduleIds = modules?.map(m => m.id) || []
+            const moduleIds = modules?.map((m: any) => m.id) || []
             
             const { data: lessons } = await supabase
               .from('lessons')
@@ -144,12 +144,12 @@ export default function ProgressPage() {
         const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
         
         // Initialize all days with 0
-        days.forEach(day => {
+        days.forEach((day: any) => {
           progressByDay[day] = 0
         })
 
         // Count lessons per day
-        weeklyData.forEach(lesson => {
+        weeklyData.forEach((lesson: any) => {
           if (lesson.completed_at) {
             const date = new Date(lesson.completed_at)
             const dayName = days[date.getDay()]
@@ -157,7 +157,7 @@ export default function ProgressPage() {
           }
         })
 
-        const weekProgress: WeeklyProgress[] = days.map(day => ({
+        const weekProgress: WeeklyProgress[] = days.map((day: any) => ({
           day,
           lessons: progressByDay[day],
           hours: Math.round(progressByDay[day] * 0.5) // Assuming 30 min per lesson average

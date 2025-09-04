@@ -169,7 +169,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       broadcastChannelRef.current.onmessage = (event) => {
         if (event.data.type === 'SESSION_REFRESHED' && mounted) {
           console.log('[AuthProvider] Sess\u00e3o atualizada em outra aba')
-          supabase.auth.getSession().then(({ data: { session } }) => {
+          supabase.auth.getSession().then(({ data }: any) => {
+            const { session } = data
             if (session) {
               setAuthState({
                 session,
@@ -243,7 +244,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Verificar sess\u00e3o periodicamente
     checkIntervalRef.current = setInterval(() => {
       if (mounted) {
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        supabase.auth.getSession().then(({ data }: any) => {
+          const { session } = data
           if (session && session.expires_at) {
             const expiresAt = new Date(session.expires_at * 1000).getTime()
             const now = Date.now()
@@ -267,7 +269,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event: any, session: any) => {
         console.log('[AuthProvider] Estado de auth mudou:', event)
 
         if (mounted) {

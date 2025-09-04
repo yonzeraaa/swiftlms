@@ -250,8 +250,8 @@ export default function ModulesPage() {
 
         if (moduleSubjects) {
           const stats: { [key: string]: { subjects: number } } = {}
-          modulesData.forEach(module => {
-            const subjectCount = moduleSubjects.filter(ms => ms.module_id === module.id).length
+          modulesData.forEach((module: any) => {
+            const subjectCount = moduleSubjects.filter((ms: any) => ms.module_id === module.id).length
             stats[module.id] = { subjects: subjectCount }
           })
           setModuleStats(stats)

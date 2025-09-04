@@ -73,7 +73,7 @@ export default function TestsManagementPage() {
       // Carregar contagem de gabaritos para cada teste
       if (testsData) {
         const testsWithAnswerKeys = await Promise.all(
-          testsData.map(async (test) => {
+          testsData.map(async (test: any) => {
             const { count } = await supabase
               .from('test_answer_keys')
               .select('*', { count: 'exact', head: true })
@@ -419,7 +419,7 @@ export default function TestsManagementPage() {
       .order('question_number')
     
     if (answerKeys && answerKeys.length > 0) {
-      const formattedGabarito = answerKeys.map(key => ({
+      const formattedGabarito = answerKeys.map((key: any) => ({
         questionNumber: key.question_number,
         correctAnswer: key.correct_answer,
         points: key.points || 10

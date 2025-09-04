@@ -346,7 +346,7 @@ export default function StudentSettingsPage() {
 
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-gold-500/20 pb-2">
-        {tabs.map(tab => {
+        {tabs.map((tab: any) => {
           const Icon = tab.icon
           return (
             <button

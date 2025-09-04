@@ -87,7 +87,7 @@ export default function ExploreCourses() {
       if (coursesError) throw coursesError
 
       // Fetch instructors
-      const instructorIds = [...new Set(coursesData?.map(c => c.instructor_id).filter((id): id is string => id !== null) || [])]
+      const instructorIds = [...new Set(coursesData?.map((c: any) => c.instructor_id).filter((id: any): id is string => id !== null) || [])]
       const { data: instructors } = await supabase
         .from('profiles')
         .select('*')
@@ -111,14 +111,14 @@ export default function ExploreCourses() {
         .select('course_id, rating')
 
       // Process courses with additional data
-      const coursesWithDetails: CourseWithDetails[] = (coursesData || []).map(course => {
-        const instructor = instructors?.find(i => i.id === course.instructor_id)
-        const courseEnrollments = allEnrollments?.filter(e => e.course_id === course.id) || []
-        const courseReviews = reviews?.filter(r => r.course_id === course.id) || []
-        const userEnrollment = userEnrollments?.find(e => e.course_id === course.id)
+      const coursesWithDetails: CourseWithDetails[] = (coursesData || []).map((course: any) => {
+        const instructor = instructors?.find((i: any) => i.id === course.instructor_id)
+        const courseEnrollments = allEnrollments?.filter((e: any) => e.course_id === course.id) || []
+        const courseReviews = reviews?.filter((r: any) => r.course_id === course.id) || []
+        const userEnrollment = userEnrollments?.find((e: any) => e.course_id === course.id)
         
         const averageRating = courseReviews.length > 0
-          ? courseReviews.reduce((sum, r) => sum + r.rating, 0) / courseReviews.length
+          ? courseReviews.reduce((sum: any, r: any) => sum + r.rating, 0) / courseReviews.length
           : 0
 
         return {
@@ -144,7 +144,7 @@ export default function ExploreCourses() {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(course =>
+      filtered = filtered.filter((course: any) =>
         course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         course.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         course.summary?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -153,19 +153,19 @@ export default function ExploreCourses() {
 
     // Category filter
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(course => course.category === selectedCategory)
+      filtered = filtered.filter((course: any) => course.category === selectedCategory)
     }
 
     // Level filter
     if (selectedLevel !== 'all') {
-      filtered = filtered.filter(course => course.difficulty === selectedLevel)
+      filtered = filtered.filter((course: any) => course.difficulty === selectedLevel)
     }
 
     // Price filter
     if (priceFilter === 'free') {
-      filtered = filtered.filter(course => !course.price || course.price === 0)
+      filtered = filtered.filter((course: any) => !course.price || course.price === 0)
     } else if (priceFilter === 'paid') {
-      filtered = filtered.filter(course => course.price && course.price > 0)
+      filtered = filtered.filter((course: any) => course.price && course.price > 0)
     }
 
     // Sort
@@ -348,7 +348,7 @@ export default function ExploreCourses() {
                   <div>
                     <p className="text-gold-300 text-sm">Cursos Gratuitos</p>
                     <p className="text-2xl font-bold text-gold">
-                      {courses.filter(c => !c.price || c.price === 0).length}
+                      {courses.filter((c: any) => !c.price || c.price === 0).length}
                     </p>
                   </div>
                   <Tag className="w-8 h-8 text-green-500/30" />
@@ -423,7 +423,7 @@ export default function ExploreCourses() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
             >
-              {categories.map(cat => (
+              {categories.map((cat: any) => (
                 <option key={cat.value} value={cat.value}>{cat.label}</option>
               ))}
             </select>
@@ -433,7 +433,7 @@ export default function ExploreCourses() {
               onChange={(e) => setSelectedLevel(e.target.value)}
               className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
             >
-              {levels.map(level => (
+              {levels.map((level: any) => (
                 <option key={level.value} value={level.value}>{level.label}</option>
               ))}
             </select>

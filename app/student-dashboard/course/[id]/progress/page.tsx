@@ -103,12 +103,12 @@ export default function CourseProgressPage() {
       const recentActivity: ProgressData['recentActivity'] = []
 
       if (modules) {
-        modules.forEach(module => {
+        modules.forEach((module: any) => {
           const lessons = (module as any).lessons || []
           totalLessons += lessons.length
 
           lessons.forEach((lesson: any) => {
-            const progress = lessonProgress?.find(lp => lp.lesson_id === lesson.id)
+            const progress = lessonProgress?.find((lp: any) => lp.lesson_id === lesson.id)
             if (progress?.is_completed) {
               completedLessons++
               if (progress.completed_at) {
@@ -139,7 +139,7 @@ export default function CourseProgressPage() {
       let actualTimeSpent = 0
       if (lessonProgress && lessonProgress.length > 0) {
         // Estimate based on completed lessons and duration
-        lessonProgress.forEach(lp => {
+        lessonProgress.forEach((lp: any) => {
           if (lp.is_completed && lp.completed_at && lp.started_at) {
             const startTime = new Date(lp.started_at).getTime()
             const endTime = new Date(lp.completed_at).getTime()
