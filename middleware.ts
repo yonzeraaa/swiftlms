@@ -74,17 +74,14 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Security settings for cookies with proper domain
+          // Security settings for cookies - let browser handle domain
           const secureOptions = {
             ...options,
             sameSite: 'lax' as const,
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
-            path: '/',
-            // Set domain to .swiftedu.com.br in production to work with www and non-www
-            ...(process.env.NODE_ENV === 'production' && {
-              domain: '.swiftedu.com.br'
-            })
+            path: '/'
+            // NO domain set - let browser handle it for current domain
           }
           
           request.cookies.set({
@@ -108,11 +105,8 @@ export async function middleware(request: NextRequest) {
         remove(name: string, options: CookieOptions) {
           const removeOptions = {
             ...options,
-            path: '/',
-            // Set domain to .swiftedu.com.br in production
-            ...(process.env.NODE_ENV === 'production' && {
-              domain: '.swiftedu.com.br'
-            })
+            path: '/'
+            // NO domain set - let browser handle it
           }
           
           request.cookies.set({
@@ -226,10 +220,8 @@ export async function middleware(request: NextRequest) {
             sameSite: 'lax',
             path: '/',
             maxAge: 3600,
-            secure: process.env.NODE_ENV === 'production',
-            ...(process.env.NODE_ENV === 'production' && {
-              domain: '.swiftedu.com.br'
-            })
+            secure: process.env.NODE_ENV === 'production'
+            // NO domain - works with current domain
           })
           response.cookies.set({
             name: 'isAdminViewMode',
@@ -238,10 +230,8 @@ export async function middleware(request: NextRequest) {
             sameSite: 'lax',
             path: '/',
             maxAge: 3600,
-            secure: process.env.NODE_ENV === 'production',
-            ...(process.env.NODE_ENV === 'production' && {
-              domain: '.swiftedu.com.br'
-            })
+            secure: process.env.NODE_ENV === 'production'
+            // NO domain - works with current domain
           })
           response.cookies.set({
             name: 'adminViewId',
@@ -250,10 +240,8 @@ export async function middleware(request: NextRequest) {
             sameSite: 'lax',
             path: '/',
             maxAge: 3600,
-            secure: process.env.NODE_ENV === 'production',
-            ...(process.env.NODE_ENV === 'production' && {
-              domain: '.swiftedu.com.br'
-            })
+            secure: process.env.NODE_ENV === 'production'
+            // NO domain - works with current domain
           })
           console.log('[MIDDLEWARE] Setting cookies from query parameter')
         }

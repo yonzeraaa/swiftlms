@@ -26,17 +26,14 @@ export async function POST(request: NextRequest) {
     // Get cookies store
     const cookieStore = await cookies()
     
-    // Set multiple cookies for redundancy with proper domain
+    // Set multiple cookies for redundancy - NO domain specified
     const cookieOptions = {
       maxAge: 3600, // 1 hour
       path: '/',
       sameSite: 'lax' as const,
       secure: process.env.NODE_ENV === 'production',
-      httpOnly: false, // Allow client-side access
-      // Set domain to .swiftedu.com.br to work with www and non-www
-      ...(process.env.NODE_ENV === 'production' && {
-        domain: '.swiftedu.com.br'
-      })
+      httpOnly: false // Allow client-side access
+      // NO domain - let browser handle it for current domain
     }
     
     // Set the main view cookie
@@ -86,11 +83,8 @@ export async function DELETE(request: NextRequest) {
         path: '/',
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
-        httpOnly: false,
-        // Clear cookie for domain too
-        ...(process.env.NODE_ENV === 'production' && {
-          domain: '.swiftedu.com.br'
-        })
+        httpOnly: false
+        // NO domain - let browser handle it
       })
     })
     

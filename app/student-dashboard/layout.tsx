@@ -344,12 +344,9 @@ export default function StudentDashboardLayout({
                   <button
                     onClick={async () => {
                       try {
-                        // First, clear cookies on client side with proper domain
-                        const domain = window.location.hostname.includes('swiftedu.com.br') 
-                          ? '; domain=.swiftedu.com.br' 
-                          : ''
-                        document.cookie = `viewAsStudent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/${domain}`
-                        document.cookie = `isAdminViewMode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/${domain}`
+                        // First, clear cookies on client side - NO domain specified
+                        document.cookie = 'viewAsStudent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+                        document.cookie = 'isAdminViewMode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
                         
                         // Call API to clear server-side cookies
                         const response = await fetch('/api/auth/view-as-student', {
