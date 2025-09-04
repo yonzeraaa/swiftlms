@@ -74,14 +74,17 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Security settings for cookies - let browser handle domain
+          // Security settings for cookies with custom domain support
           const secureOptions = {
             ...options,
             sameSite: 'lax' as const,
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
-            path: '/'
-            // Remove domain for Supabase cookies - let Supabase handle its own cookies
+            path: '/',
+            // Usar domínio customizado apenas para cookies do Supabase
+            ...(process.env.NEXT_PUBLIC_COOKIE_DOMAIN && name.includes('sb-') 
+              ? { domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN }
+              : {})
           }
           
           request.cookies.set({
@@ -105,8 +108,11 @@ export async function middleware(request: NextRequest) {
         remove(name: string, options: CookieOptions) {
           const removeOptions = {
             ...options,
-            path: '/'
-            // NO domain set - let browser handle it
+            path: '/',
+            // Usar domínio customizado apenas para cookies do Supabase
+            ...(process.env.NEXT_PUBLIC_COOKIE_DOMAIN && name.includes('sb-') 
+              ? { domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN }
+              : {})
           }
           
           request.cookies.set({
@@ -182,8 +188,10 @@ export async function middleware(request: NextRequest) {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
           path: '/',
-          maxAge: 60 * 60 * 24 * 30 // 30 dias
-          // Remove domain - let browser handle it
+          maxAge: 60 * 60 * 24 * 30, // 30 dias
+          ...(process.env.NEXT_PUBLIC_COOKIE_DOMAIN 
+            ? { domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN }
+            : {})
         })
       }
     }
