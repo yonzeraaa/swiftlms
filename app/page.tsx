@@ -50,47 +50,53 @@ export default function LoginPage() {
     console.log('Attempting login with email:', email)
     
     try {
-      // Use dedicated login API route for better control
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include', // Important for cookies
+      // Login direto via cliente (como funciona em /test-auth)
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       })
       
-      const result = await response.json()
-      
-      console.log('Login API response:', result)
-      
-      if (!response.ok) {
+      if (error) {
+        console.error('Login error:', error)
         // Handle specific error messages
-        if (result.error?.includes('Invalid login credentials')) {
+        if (error.message?.includes('Invalid login credentials')) {
           setError(t('login.invalidCredentials'))
-        } else if (result.error?.includes('Email not confirmed')) {
+        } else if (error.message?.includes('Email not confirmed')) {
           setError(t('login.confirmEmail'))
         } else {
-          setError(result.error || t('login.loginError'))
+          setError(error.message || t('login.loginError'))
         }
         setIsLoading(false)
         return
       }
       
-      if (result.success) {
-        console.log('Login successful, redirecting to:', result.redirectUrl)
+      if (data.user && data.session) {
+        console.log('Login successful, user:', data.user.email)
         
-        // Small delay to ensure cookies are set
+        // Get user profile to determine redirect
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single()
+        
+        const redirectUrl = profile?.role === 'student' 
+          ? '/student-dashboard' 
+          : '/dashboard'
+        
+        console.log('Redirecting to:', redirectUrl)
+        
+        // Pequeno delay para garantir que cookies sejam definidos
         await new Promise(resolve => setTimeout(resolve, 200))
         
-        // Force full page reload to ensure session is picked up
-        window.location.href = result.redirectUrl
+        // Recarregar a página completamente (como em /test-auth)
+        window.location.href = redirectUrl
       } else {
         setError(t('login.loginError'))
         setIsLoading(false)
       }
     } catch (err) {
-      console.error('Login request failed:', err)
+      console.error('Login failed:', err)
       setError(t('login.unexpectedError'))
       setIsLoading(false)
     }
