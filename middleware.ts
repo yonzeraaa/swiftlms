@@ -80,8 +80,10 @@ export async function middleware(request: NextRequest) {
             sameSite: 'lax' as const,
             secure: process.env.NODE_ENV === 'production',
             httpOnly: true,
-            path: '/'
-            // NO domain set - let browser handle it for current domain
+            path: '/',
+            ...(process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN 
+              ? { domain: process.env.COOKIE_DOMAIN }
+              : {})
           }
           
           request.cookies.set({
@@ -166,7 +168,10 @@ export async function middleware(request: NextRequest) {
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',
           path: '/',
-          maxAge: 60 * 60 * 24 * 30 // 30 dias
+          maxAge: 60 * 60 * 24 * 30, // 30 dias
+          ...(process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN 
+            ? { domain: process.env.COOKIE_DOMAIN }
+            : {})
         })
       }
     }

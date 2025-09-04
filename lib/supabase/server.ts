@@ -21,7 +21,10 @@ export async function createClient() {
                 sameSite: 'lax' as const,
                 secure: process.env.NODE_ENV === 'production',
                 httpOnly: true,
-                path: '/'
+                path: '/',
+                ...(process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN 
+                  ? { domain: process.env.COOKIE_DOMAIN }
+                  : {})
               }
               cookieStore.set(name, value, cookieOptions)
             })

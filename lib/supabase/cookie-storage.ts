@@ -32,11 +32,20 @@ export function createCookieStorage() {
           secure: process.env.NODE_ENV === 'production'
         }
         
+        // Adicionar domain apenas em produção
+        const domain = process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN 
+          ? process.env.COOKIE_DOMAIN 
+          : undefined
+        
         // Construir string do cookie
         let cookieString = `${key}=${encodeURIComponent(value)}`
         cookieString += `; path=${cookieOptions.path}`
         cookieString += `; max-age=${cookieOptions.maxAge}`
         cookieString += `; SameSite=${cookieOptions.sameSite}`
+        
+        if (domain) {
+          cookieString += `; Domain=${domain}`
+        }
         
         if (cookieOptions.secure) {
           cookieString += '; Secure'
@@ -91,7 +100,10 @@ export function setupStorageSync() {
         localStorage.setItem(key, value)
         
         // Atualizar cookie local
-        const cookieString = `${key}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
+        const domain = process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN 
+          ? `; Domain=${process.env.COOKIE_DOMAIN}` 
+          : ''
+        const cookieString = `${key}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${domain}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
         document.cookie = cookieString
       } else if (event.data.type === 'STORAGE_REMOVED') {
         const { key } = event.data

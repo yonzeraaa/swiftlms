@@ -209,8 +209,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
             
             // Se falta menos de 5 minutos, fazer refresh
             if (timeUntilExpiry < REFRESH_BEFORE_EXPIRY) {
+              console.log('[AuthProvider] Heartbeat: Sessão próxima de expirar, fazendo refresh')
               refreshSession()
+            } else {
+              console.log('[AuthProvider] Heartbeat: Sessão válida por mais', Math.round(timeUntilExpiry / 1000 / 60), 'minutos')
             }
+          } else if (!session) {
+            // Se não há sessão, tentar recuperar
+            console.log('[AuthProvider] Heartbeat: Sem sessão, tentando recuperar')
+            refreshSession()
           }
         })
       }
