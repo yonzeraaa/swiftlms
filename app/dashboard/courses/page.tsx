@@ -506,164 +506,64 @@ export default function CoursesPage() {
     setError(null)
     
     try {
-      console.log('[ENROLL] Iniciando processo de matrícula...')
+      console.log('[ENROLL] Iniciando processo de matrícula via API...')
       
-      // Verificação robusta de autenticação com múltiplas tentativas
-      let currentUser = user
-      let currentSession = session
-      
-      // Tentar até 3 vezes obter uma sessão válida
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        console.log(`[ENROLL] Tentativa ${attempt} - Verificando autenticação...`)
-        
-        if (!currentSession || !currentUser) {
-          console.log('[ENROLL] Sessão/usuário não encontrado, tentando refresh...')
-          
-          // Tentar refresh da sessão
-          try {
-            await refreshSession()
-            
-            // Aguardar um pouco mais para o estado atualizar
-            await new Promise(resolve => setTimeout(resolve, 300 * attempt))
-            
-            // Criar um novo cliente se necessário para garantir sessão limpa
-            const freshSupabase = createClient(true)
-            
-            // Obter sessão atualizada
-            const { data: { user: freshUser }, error: userError } = await freshSupabase.auth.getUser()
-            const { data: { session: freshSession }, error: sessionError } = await freshSupabase.auth.getSession()
-            
-            if (userError) {
-              console.error('[ENROLL] Erro ao obter usuário:', userError)
-            }
-            
-            if (sessionError) {
-              console.error('[ENROLL] Erro ao obter sessão:', sessionError)
-            }
-            
-            if (freshSession && freshUser) {
-              currentSession = freshSession
-              currentUser = freshUser
-              console.log('[ENROLL] Sessão recuperada com sucesso:', { 
-                userId: freshUser.id,
-                email: freshUser.email,
-                attempt
-              })
-              break
-            }
-          } catch (refreshError) {
-            console.error(`[ENROLL] Erro no refresh tentativa ${attempt}:`, refreshError)
-          }
-        } else {
-          console.log('[ENROLL] Sessão válida encontrada:', { 
-            userId: currentUser.id,
-            email: currentUser.email 
-          })
-          break
-        }
-        
-        // Se for a última tentativa e ainda não temos sessão
-        if (attempt === 3 && (!currentSession || !currentUser)) {
-          console.error('[ENROLL] Falha em todas as tentativas de autenticação')
-          throw new Error('Sua sessão expirou. Por favor, faça login novamente e tente novamente.')
-        }
-      }
-      
-      if (!currentUser || !currentSession) {
-        throw new Error('Falha na autenticação. Por favor, recarregue a página e tente novamente.')
-      }
-      
-      console.log('[ENROLL] Autenticação confirmada, verificando permissões...')
-      
-      // Verificar perfil do usuário com retry
-      let profile = null
-      for (let profileAttempt = 1; profileAttempt <= 2; profileAttempt++) {
-        try {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', currentUser.id)
-            .single()
-            
-          if (profileError) {
-            console.error(`[ENROLL] Erro ao obter perfil tentativa ${profileAttempt}:`, profileError)
-            if (profileAttempt === 2) throw profileError
-            await new Promise(resolve => setTimeout(resolve, 500))
-            continue
-          }
-          
-          profile = profileData
-          break
-        } catch (err) {
-          if (profileAttempt === 2) throw err
-        }
-      }
-        
-      if (!profile) {
-        throw new Error('Perfil do usuário não encontrado. Verifique se sua conta está ativa.')
-      }
-      
-      // Verificar permissões
-      const isAdmin = profile.role === 'admin'
-      const isInstructor = selectedCourse.instructor_id === currentUser.id
-      
-      console.log('[ENROLL] Verificando permissões:', { 
-        userRole: profile.role, 
-        isAdmin, 
-        isInstructor,
-        courseInstructorId: selectedCourse.instructor_id 
+      // Usar a API route para processar matrícula com autenticação server-side
+      const response = await fetch('/api/courses/enroll', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Importante para enviar cookies
+        body: JSON.stringify({
+          courseId: selectedCourse.id,
+          studentIds: selectedStudents
+        })
       })
       
-      if (!isAdmin && !isInstructor) {
-        throw new Error('Apenas administradores e instrutores do curso podem matricular alunos')
-      }
+      const data = await response.json()
       
-      console.log('[ENROLL] Permissões verificadas, criando matrículas...')
-      
-      // Criar registros de matrícula
-      const enrollments = selectedStudents.map(studentId => ({
-        user_id: studentId,
-        course_id: selectedCourse.id,
-        status: 'active' as const,
-        enrolled_at: new Date().toISOString()
-      }))
-      
-      console.log('[ENROLL] Inserindo matrículas:', enrollments.length, 'alunos')
-      
-      // Inserir matrículas com retry
-      let insertError = null
-      for (let insertAttempt = 1; insertAttempt <= 2; insertAttempt++) {
-        const { error } = await supabase
-          .from('enrollments')
-          .insert(enrollments)
-        
-        if (!error) {
-          insertError = null
-          break
+      if (!response.ok) {
+        // Se for erro de autenticação, tentar fazer refresh e tentar novamente
+        if (response.status === 401) {
+          console.log('[ENROLL] Erro de autenticação, tentando refresh...')
+          await refreshSession()
+          
+          // Tentar novamente após refresh
+          const retryResponse = await fetch('/api/courses/enroll', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              courseId: selectedCourse.id,
+              studentIds: selectedStudents
+            })
+          })
+          
+          const retryData = await retryResponse.json()
+          
+          if (!retryResponse.ok) {
+            throw new Error(retryData.error || 'Erro ao matricular alunos')
+          }
+          
+          // Sucesso na segunda tentativa
+          alert(retryData.message || `Alunos matriculados com sucesso!`)
+        } else {
+          throw new Error(data.error || 'Erro ao matricular alunos')
         }
-        
-        insertError = error
-        console.error(`[ENROLL] Erro na inserção tentativa ${insertAttempt}:`, error)
-        
-        if (insertAttempt === 1) {
-          await new Promise(resolve => setTimeout(resolve, 500))
-        }
+      } else {
+        // Sucesso na primeira tentativa
+        alert(data.message || `Alunos matriculados com sucesso!`)
       }
       
-      if (insertError) {
-        console.error('[ENROLL] Erro final na inserção:', insertError)
-        throw insertError
-      }
-      
-      console.log('[ENROLL] Matrículas criadas com sucesso!')
+      console.log('[ENROLL] Matrículas criadas com sucesso')
       
       // Limpar estado e atualizar interface
       setShowEnrollModal(false)
       setSelectedCourse(null)
       setSelectedStudents([])
-      
-      // Mostrar mensagem de sucesso
-      alert(`${selectedStudents.length} ${t('courses.enrolled')}!`)
       
       // Atualizar lista de cursos
       await fetchCourses()

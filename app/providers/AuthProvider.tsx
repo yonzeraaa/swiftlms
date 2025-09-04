@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Session, User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
 import { setupStorageSync } from '@/lib/supabase/cookie-storage'
+import { syncAuthCookies } from '@/lib/supabase/cookie-sync'
 
 interface AuthState {
   session: Session | null
@@ -187,6 +188,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Get initial session
     const getInitialSession = async () => {
       try {
+        // Sincronizar cookies primeiro
+        syncAuthCookies()
+        
         let { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
