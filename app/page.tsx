@@ -73,6 +73,32 @@ export default function LoginPage() {
       if (data.user && data.session) {
         console.log('Login successful, user:', data.user.email)
         
+        // Sincronizar sessão com o servidor imediatamente após o login
+        console.log('Sincronizando sessão com o servidor...')
+        try {
+          const syncResponse = await fetch('/api/auth/sync-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token
+            })
+          })
+          
+          const syncResult = await syncResponse.json()
+          
+          if (!syncResponse.ok) {
+            console.error('Erro ao sincronizar sessão:', syncResult.error)
+          } else {
+            console.log('Sessão sincronizada com sucesso!')
+          }
+        } catch (syncError) {
+          console.error('Erro ao sincronizar sessão:', syncError)
+        }
+        
         // Get user profile to determine redirect
         const { data: profile } = await supabase
           .from('profiles')
@@ -87,7 +113,7 @@ export default function LoginPage() {
         console.log('Redirecting to:', redirectUrl)
         
         // Pequeno delay para garantir que cookies sejam definidos
-        await new Promise(resolve => setTimeout(resolve, 200))
+        await new Promise(resolve => setTimeout(resolve, 300))
         
         // Recarregar a página completamente (como em /test-auth)
         window.location.href = redirectUrl
