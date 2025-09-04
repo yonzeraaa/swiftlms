@@ -297,7 +297,7 @@ export default function DashboardLayout({
               >
                 <button
                   onClick={async () => {
-                    // Set view as student mode via API with proper timing
+                    // Set view as student mode via API with verification
                     try {
                       // First, set cookie on client side as backup
                       document.cookie = 'viewAsStudent=true; path=/; max-age=3600; SameSite=Lax'
@@ -313,29 +313,44 @@ export default function DashboardLayout({
                       if (response.ok) {
                         const data = await response.json()
                         
-                        // Wait for the specified delay to ensure cookies are processed
-                        const delay = data.delay || 100
+                        // Wait for cookies to be set
+                        const delay = data.delay || 200
                         await new Promise(resolve => setTimeout(resolve, delay))
                         
-                        // Log for debugging
-                        console.log('[VIEW-MODE] Cookies set:', data.cookiesSet)
-                        console.log('[VIEW-MODE] Navigating to:', data.redirect)
+                        // Verify cookies are set before navigating
+                        const verifyResponse = await fetch('/api/auth/verify-view-mode', {
+                          credentials: 'include'
+                        })
                         
-                        // Navigate to student dashboard
-                        window.location.href = data.redirect || '/student-dashboard'
+                        if (verifyResponse.ok) {
+                          const verifyData = await verifyResponse.json()
+                          console.log('[VIEW-MODE] Verification:', verifyData)
+                          
+                          if (verifyData.canAccess) {
+                            // Cookies verified, safe to navigate
+                            console.log('[VIEW-MODE] Access granted, navigating...')
+                            
+                            // Use router.push with query parameter as fallback
+                            window.location.href = '/student-dashboard?viewMode=true'
+                          } else {
+                            console.error('[VIEW-MODE] Access denied after verification')
+                            // Try with query parameter
+                            window.location.href = '/student-dashboard?viewMode=true&force=true'
+                          }
+                        } else {
+                          // Verification failed, try anyway with query
+                          console.error('[VIEW-MODE] Verification failed')
+                          window.location.href = '/student-dashboard?viewMode=true'
+                        }
                       } else {
                         console.error('Failed to set view mode - API error')
-                        // Still try to navigate with client-side cookies
-                        setTimeout(() => {
-                          window.location.href = '/student-dashboard'
-                        }, 100)
+                        // Try with query parameter
+                        window.location.href = '/student-dashboard?viewMode=true'
                       }
                     } catch (error) {
                       console.error('Error setting view mode:', error)
-                      // Fallback: navigate with client-side cookies
-                      setTimeout(() => {
-                        window.location.href = '/student-dashboard'
-                      }, 100)
+                      // Fallback with query parameter
+                      window.location.href = '/student-dashboard?viewMode=true'
                     }
                   }}
                   className={`

@@ -180,9 +180,13 @@ export async function middleware(request: NextRequest) {
       return response
     }
     
-    // For admin/instructor, check view mode cookies
+    // For admin/instructor, check view mode cookies AND query parameters
     if (profile?.role === 'admin' || profile?.role === 'instructor') {
-      // Triple check for view mode cookies with multiple methods
+      // Check query parameters as primary method
+      const hasViewModeQuery = request.nextUrl.searchParams.has('viewMode') || 
+                               request.nextUrl.searchParams.has('force')
+      
+      // Triple check for view mode cookies as secondary method
       const viewAsStudent = request.cookies.get('viewAsStudent')?.value === 'true'
       const isAdminViewMode = request.cookies.get('isAdminViewMode')?.value === 'true'
       const adminViewId = request.cookies.get('adminViewId')?.value
@@ -191,6 +195,7 @@ export async function middleware(request: NextRequest) {
       console.log('[MIDDLEWARE] Admin/Instructor accessing student dashboard:', {
         role: profile.role,
         userId: session.user.id,
+        hasQueryParam: hasViewModeQuery,
         cookies: {
           viewAsStudent,
           isAdminViewMode,
@@ -201,25 +206,47 @@ export async function middleware(request: NextRequest) {
       })
       
       // Allow access if ANY of these conditions are met (maximum redundancy)
-      const hasViewPermission = viewAsStudent || isAdminViewMode || adminViewId === session.user.id
+      const hasViewPermission = hasViewModeQuery || viewAsStudent || isAdminViewMode || adminViewId === session.user.id
       
       if (hasViewPermission) {
         console.log('[MIDDLEWARE] Admin/Instructor allowed - view mode active')
-        // Admin in view mode - ensure indicator cookie is set
-        if (!isAdminViewMode) {
+        
+        // If access is granted via query param, set cookies for future requests
+        if (hasViewModeQuery && (!viewAsStudent || !isAdminViewMode)) {
+          response.cookies.set({
+            name: 'viewAsStudent',
+            value: 'true',
+            httpOnly: false,
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 3600,
+            secure: process.env.NODE_ENV === 'production'
+          })
           response.cookies.set({
             name: 'isAdminViewMode',
             value: 'true',
             httpOnly: false,
             sameSite: 'lax',
             path: '/',
+            maxAge: 3600,
             secure: process.env.NODE_ENV === 'production'
           })
+          response.cookies.set({
+            name: 'adminViewId',
+            value: session.user.id,
+            httpOnly: true,
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 3600,
+            secure: process.env.NODE_ENV === 'production'
+          })
+          console.log('[MIDDLEWARE] Setting cookies from query parameter')
         }
+        
         // IMPORTANT: Allow the request to continue
         return response
       } else {
-        console.log('[MIDDLEWARE] Admin/Instructor redirected - no view mode cookies found')
+        console.log('[MIDDLEWARE] Admin/Instructor redirected - no view mode cookies or query found')
         const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = '/dashboard'
         return NextResponse.redirect(redirectUrl)
