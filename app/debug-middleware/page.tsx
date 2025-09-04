@@ -41,6 +41,50 @@ export default function DebugMiddlewarePage() {
     }
   }
 
+  const syncSession = async () => {
+    try {
+      // Pegar tokens do localStorage
+      const storageKey = `sb-mdzgnktlsmkjecdbermo-auth-token`
+      const storedAuth = localStorage.getItem(storageKey)
+      
+      if (!storedAuth) {
+        alert('Sem sessão no localStorage para sincronizar')
+        return
+      }
+      
+      const authData = JSON.parse(storedAuth)
+      
+      if (!authData.access_token || !authData.refresh_token) {
+        alert('Tokens inválidos no localStorage')
+        return
+      }
+      
+      // Sincronizar com o servidor
+      const response = await fetch('/api/auth/sync-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          access_token: authData.access_token,
+          refresh_token: authData.refresh_token
+        })
+      })
+      
+      const result = await response.json()
+      
+      if (response.ok) {
+        alert('Sessão sincronizada! Recarregando...')
+        window.location.reload()
+      } else {
+        alert(`Erro: ${result.error}`)
+      }
+    } catch (error: any) {
+      alert(`Erro ao sincronizar: ${error.message}`)
+    }
+  }
+
   const clearAndLogin = async () => {
     try {
       // Limpar todos os cookies
@@ -98,6 +142,9 @@ export default function DebugMiddlewarePage() {
         </button>
         <button onClick={forceRefresh} style={{ margin: '5px', padding: '10px' }}>
           🔄 Forçar Refresh
+        </button>
+        <button onClick={syncSession} style={{ margin: '5px', padding: '10px', background: '#4CAF50', color: 'white' }}>
+          🔄 Sincronizar Sessão Cliente→Servidor
         </button>
         <button onClick={clearAndLogin} style={{ margin: '5px', padding: '10px', background: '#ff6b6b', color: 'white' }}>
           🗑️ Limpar Tudo e Relogar
