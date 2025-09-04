@@ -202,14 +202,15 @@ export default function DashboardLayout({
               <Logo width={sidebarOpen ? 120 : 60} height={sidebarOpen ? 120 : 60} />
             </div>
 
-            {/* Sidebar Toggle Button */}
+            {/* Sidebar Toggle Button - Improved positioning and visibility */}
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="absolute -right-3 top-12 w-6 h-6 bg-navy-800 border border-gold-500/30 rounded-full flex items-center justify-center text-gold-400 hover:text-gold-200 hover:bg-navy-700 transition-all z-10 group"
+              className="absolute -right-5 top-12 w-11 h-11 bg-navy-800/95 backdrop-blur-sm border-2 border-gold-500 rounded-full flex items-center justify-center text-gold-400 hover:text-gold-200 hover:bg-navy-700 hover:scale-110 hover:shadow-lg hover:shadow-gold-500/30 transition-all z-50 group"
+              aria-label={sidebarOpen ? "Fechar menu lateral" : "Abrir menu lateral"}
             >
               {sidebarOpen ? 
-                <ChevronLeft className="w-3 h-3 group-hover:scale-110 transition-transform" /> : 
-                <ChevronRight className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" /> : 
+                <ChevronRight className="w-5 h-5 group-hover:scale-110 transition-transform" />
               }
             </button>
 

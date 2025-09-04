@@ -248,6 +248,130 @@ body {
   font-size: 16px;
 }
 
+/* ===== Responsive Typography System ===== */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  h2 {
+    font-size: 1.75rem;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+  }
+  
+  /* Ensure minimum touch targets on mobile */
+  button,
+  a,
+  [role="button"] {
+    min-height: 48px;
+    padding: 12px 16px;
+  }
+  
+  /* Adjust sidebar for mobile */
+  aside {
+    width: 100% !important;
+    max-width: 280px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 768px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1280px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+@media (min-width: 1280px) {
+  html {
+    font-size: 16px;
+  }
+  
+  /* Larger screens can have bigger headings */
+  h1 {
+    font-size: 3rem;
+  }
+  
+  h2 {
+    font-size: 2.25rem;
+  }
+}
+
+/* ===== Responsive Spacing System ===== */
+@media (max-width: 640px) {
+  .p-4 { padding: 0.75rem; }
+  .p-6 { padding: 1rem; }
+  .p-8 { padding: 1.5rem; }
+  .px-4 { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .px-6 { padding-left: 1rem; padding-right: 1rem; }
+  .py-4 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  .py-6 { padding-top: 1rem; padding-bottom: 1rem; }
+  .gap-4 { gap: 0.75rem; }
+  .gap-6 { gap: 1rem; }
+  .space-y-4 > * + * { margin-top: 0.75rem; }
+  .space-y-6 > * + * { margin-top: 1rem; }
+}
+
+/* ===== Container Responsive Widths ===== */
+.container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1536px;
+  }
+}
+
 /* Premium typography adjustments */
 p {
   font-family: var(--font-open-sans), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -462,12 +586,13 @@ nav a, nav button {
     --color-bg-primary: #ffffff;
     --color-bg-secondary: #f8f9fa;
     --color-bg-tertiary: #fff8e8;
-    --color-text-primary: #003366;
-    --color-text-secondary: #002952;
+    --color-text-primary: #001a33; /* Darker for better contrast */
+    --color-text-secondary: #001426; /* Even darker for small text */
     --color-border-primary: #FFD700;
     --color-border-secondary: rgba(255, 215, 0, 0.5);
     --color-accent: #FFD700;
     --color-accent-hover: #E6C200;
+    --color-text-contrast: #000814; /* Maximum contrast for small text */
   }
 
   /* Basic backgrounds */
@@ -514,15 +639,57 @@ nav a, nav button {
     cursor: not-allowed;
   }
 
-  /* Card styles */
+  /* Card styles with consistent spacing */
   .light [class*="rounded"][class*="border"] {
     background-color: var(--color-bg-primary);
     border-color: var(--color-border-secondary);
+  }
+  
+  /* Consistent card spacing */
+  .light .card,
+  .light [class*="stat-card"] {
+    padding: 1.5rem;
+    margin-bottom: 1rem;
   }
 
   /* Remove excessive shadows in light theme */
   .light [class*="shadow"] {
     box-shadow: 0 1px 3px rgba(0, 51, 102, 0.1);
+  }
+  
+  /* Tooltip positioning fix */
+  [data-tooltip],
+  [role="tooltip"] {
+    position: relative;
+    z-index: 9999;
+  }
+  
+  [data-tooltip]::after,
+  [role="tooltip"]::after {
+    position: absolute;
+    z-index: 10000;
+    pointer-events: none;
+    white-space: nowrap;
+    background: var(--navy-900);
+    color: var(--gold-500);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--gold-500);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Ensure tooltips don't overlap content */
+  .tooltip-container {
+    position: relative;
+  }
+  
+  .tooltip-content {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
   }
 
   /* Focus rings */
@@ -543,16 +710,26 @@ nav a, nav button {
     background: linear-gradient(135deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
   }
   
-  /* Stronger golden borders for main cards */
-  .light .border {
+  /* Consistent golden borders for all elements */
+  .light .border,
+  .light [class*="border-"] {
     border-color: #FFD700 !important;
+    border-width: 2px !important;
   }
   
   .light .border-t,
   .light .border-b,
   .light .border-l,
   .light .border-r {
-    border-color: rgba(255, 215, 0, 0.3) !important;
+    border-color: #FFD700 !important;
+    border-width: 2px !important;
+  }
+
+  /* Hover states with subtle glow */
+  .light [class*="border-"]:hover {
+    border-color: #E6C200 !important;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+    transition: all 0.2s ease;
   }
   
   /* Remove any black borders - force golden */
@@ -614,23 +791,87 @@ nav a, nav button {
     border-color: rgba(255, 215, 0, 0.3) !important;
   }
 
-  /* Light theme - ensure darker text for small sizes */
+  /* Light theme - ensure WCAG AA compliant contrast */
   .light .text-gold-300 {
-    color: #002952 !important;
+    color: #001426 !important;
+    font-weight: 600;
   }
 
   .light .text-gold-400 {
-    color: #003366 !important;
+    color: #001a33 !important;
+    font-weight: 600;
   }
 
   .light .text-gold-500 {
-    color: #003d7a !important;
+    color: #000814 !important;
+    font-weight: 600;
   }
 
-  /* Light theme - improve readability for smaller text */
+  /* Light theme - WCAG AA contrast for smaller text */
   .light [class*="text-gold"][class*="text-xs"],
   .light [class*="text-gold"][class*="text-sm"] {
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--color-text-contrast) !important;
+    letter-spacing: 0.01em;
+  }
+
+  /* Accessibility - Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Skip to main content link */
+  .skip-to-main {
+    position: absolute;
+    left: -9999px;
+    z-index: 999;
+    padding: 1rem;
+    background: var(--navy-900);
+    color: var(--gold-500);
+    text-decoration: none;
+    border: 2px solid var(--gold-500);
+  }
+
+  .skip-to-main:focus {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+  }
+
+  /* Focus visible styles for better keyboard navigation */
+  *:focus-visible {
+    outline: 3px solid var(--gold-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Minimum touch target size */
+  button,
+  a,
+  [role="button"],
+  [role="link"] {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Ensure sufficient contrast for placeholders */
+  ::placeholder {
+    opacity: 0.7;
+  }
+
+  .light ::placeholder {
+    color: #003366;
+    opacity: 0.8;
   }
 
   /* Light theme - fix card titles */
