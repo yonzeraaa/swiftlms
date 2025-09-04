@@ -9,7 +9,7 @@ import { useImportProgress } from '../../hooks/useImportProgress'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
-import { useAuthSession } from '../../hooks/useAuthSession'
+import { useAuth } from '../../providers/AuthProvider'
 
 interface Course {
   id: string
@@ -94,8 +94,9 @@ export default function CoursesPage() {
     }
   })
   
-  // Usar o novo hook de autenticação
-  const { session, user, isAuthenticated, refreshSession } = useAuthSession()
+  // Usar o contexto global de autenticação
+  const { session, user, isLoading: authLoading, refreshSession } = useAuth()
+  const isAuthenticated = !!session
   const supabase = createClient()
   const { t } = useTranslation()
   
@@ -415,13 +416,17 @@ export default function CoursesPage() {
   const openManageStudentsModal = async (course: Course) => {
     console.log('[MANAGE_STUDENTS] Opening modal for course:', course.id, course.title)
     
-    // Verificar autenticação usando o hook
-    if (!isAuthenticated) {
+    // Verificar autenticação usando o contexto global
+    if (!session) {
       console.warn('[MANAGE_STUDENTS] Não autenticado, tentando refresh...')
       await refreshSession()
       
-      // Verificar novamente após refresh
-      if (!session) {
+      // Aguardar um momento para o estado atualizar
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Verificar novamente
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (!currentSession) {
         console.error('[MANAGE_STUDENTS] Falha na autenticação')
         alert('Sua sessão expirou. Por favor, faça login novamente.')
         window.location.href = '/'
@@ -501,40 +506,53 @@ export default function CoursesPage() {
     setError(null)
     
     try {
-      // Verificar autenticação usando o hook
-      if (!isAuthenticated) {
+      // Verificar autenticação usando o contexto global
+      if (!session || !user) {
         console.log('[ENROLL] Não autenticado, tentando refresh...')
         await refreshSession()
         
-        // Verificar novamente após refresh
-        if (!isAuthenticated || !user) {
+        // Aguardar um momento para o estado atualizar
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // Obter sessão atualizada diretamente
+        const { data: { user: currentUser } } = await supabase.auth.getUser()
+        const { data: { session: currentSession } } = await supabase.auth.getSession()
+        
+        if (!currentSession || !currentUser) {
           console.error('[ENROLL] Falha na autenticação')
           throw new Error('Sua sessão expirou. Por favor, faça login novamente.')
         }
+        
+        console.log('[ENROLL] Sessão recuperada:', { 
+          userId: currentUser.id,
+          email: currentUser.email 
+        })
+      } else {
+        console.log('[ENROLL] Sessão válida:', { 
+          userId: user.id,
+          email: user.email 
+        })
       }
       
-      console.log('[ENROLL] Sessão válida:', { 
-        userId: user?.id,
-        email: user?.email 
-      })
+      // Get current user if not available
+      const enrollUser = user || (await supabase.auth.getUser()).data.user
       
-      if (!user) {
-        console.error('[ENROLL] Sem usuário na sessão')
-        throw new Error('Usuário não autenticado. Por favor, faça login novamente.')
+      if (!enrollUser) {
+        throw new Error('Usuário não autenticado')
       }
       
       // Get user profile to check role
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', user.id)
+        .eq('id', enrollUser.id)
         .single()
         
       if (!profile) throw new Error('Perfil do usuário não encontrado')
       
       // Check if user is admin or the instructor of this course
       const isAdmin = profile.role === 'admin'
-      const isInstructor = selectedCourse.instructor_id === user.id
+      const isInstructor = selectedCourse.instructor_id === enrollUser.id
       
       if (!isAdmin && !isInstructor) {
         throw new Error('Apenas administradores e instrutores do curso podem matricular alunos')

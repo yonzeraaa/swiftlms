@@ -16,6 +16,7 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   signOut: () => Promise<void>
   refreshSession: () => Promise<void>
+  getSession: () => Promise<Session | null>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -67,9 +68,50 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshSession = async (): Promise<void> => {
     try {
       console.log('[AuthProvider] Fazendo refresh da sess\u00e3o...')
+      
+      // Primeiro tentar refresh normal
       const { data, error } = await supabase.auth.refreshSession()
       
-      if (error) throw error
+      if (error) {
+        console.error('[AuthProvider] Erro no refresh, tentando recuperar do localStorage:', error)
+        
+        // Tentar recuperar do localStorage
+        const storageKey = `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('https://', '').replace('.supabase.co', '')}-auth-token`
+        const storedData = localStorage.getItem(storageKey)
+        
+        if (storedData) {
+          try {
+            const parsed = JSON.parse(storedData)
+            if (parsed.refresh_token) {
+              console.log('[AuthProvider] Tentando refresh com token do localStorage')
+              const { data: retryData, error: retryError } = await supabase.auth.refreshSession({
+                refresh_token: parsed.refresh_token
+              })
+              
+              if (!retryError && retryData.session) {
+                setAuthState({
+                  session: retryData.session,
+                  user: retryData.user,
+                  isLoading: false,
+                  error: null
+                })
+                
+                // Notificar outras abas
+                if (broadcastChannelRef.current) {
+                  broadcastChannelRef.current.postMessage({ type: 'SESSION_REFRESHED' })
+                }
+                
+                scheduleRefresh(retryData.session)
+                return
+              }
+            }
+          } catch (e) {
+            console.error('[AuthProvider] Erro ao processar localStorage:', e)
+          }
+        }
+        
+        throw error
+      }
       
       if (data.session) {
         setAuthState({
@@ -267,10 +309,45 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [supabase, router])
 
+  // Fun\u00e7\u00e3o para obter sess\u00e3o atual com verifica\u00e7\u00e3o robusta
+  const getSession = async (): Promise<Session | null> => {
+    try {
+      // Primeiro verificar o estado atual
+      if (authState.session && authState.session.expires_at) {
+        const expiresAt = new Date(authState.session.expires_at * 1000).getTime()
+        const now = Date.now()
+        
+        // Se a sess\u00e3o ainda \u00e9 v\u00e1lida, retornar
+        if (expiresAt > now + 60000) { // 1 minuto de margem
+          return authState.session
+        }
+      }
+      
+      // Sen\u00e3o, tentar obter sess\u00e3o atualizada
+      console.log('[AuthProvider] Obtendo sess\u00e3o atualizada...')
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error || !session) {
+        // Tentar refresh
+        await refreshSession()
+        
+        // Verificar novamente
+        const { data: { session: newSession } } = await supabase.auth.getSession()
+        return newSession
+      }
+      
+      return session
+    } catch (error) {
+      console.error('[AuthProvider] Erro ao obter sess\u00e3o:', error)
+      return null
+    }
+  }
+
   const contextValue: AuthContextType = {
     ...authState,
     signOut,
-    refreshSession
+    refreshSession,
+    getSession
   }
 
   return (
