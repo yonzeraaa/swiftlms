@@ -16,19 +16,17 @@ export function createClient(forceNew = false): any {
   }
 
   // Determinar se estamos em produção
-  const isProduction = process.env.NODE_ENV === 'production' || 
-                       (typeof window !== 'undefined' && window.location.hostname.includes('swiftedu.com.br'))
+  const isProduction = process.env.NODE_ENV === 'production'
 
   // Create new client with enhanced auth configuration
   browserClient = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      // Configuração de cookies otimizada para cross-domain
+      // Configuração de cookies simplificada para Vercel
       cookieOptions: {
         name: 'sb-auth-token',
         maxAge: 60 * 60 * 24 * 7, // 7 dias
-        domain: isProduction ? '.swiftedu.com.br' : undefined,
         path: '/',
         sameSite: 'lax',
         secure: isProduction
@@ -58,9 +56,9 @@ export function createClient(forceNew = false): any {
             // Salvar em localStorage
             localStorage.setItem(key, value)
             
-            // Também salvar em cookie para cross-domain
+            // Salvar em cookie
             const cookieOptions = isProduction 
-              ? `; Domain=.swiftedu.com.br; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
+              ? `; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
               : `; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
             
             document.cookie = `${key}=${encodeURIComponent(value)}${cookieOptions}`
@@ -69,7 +67,7 @@ export function createClient(forceNew = false): any {
             localStorage.removeItem(key)
             // Remover cookie também
             const cookieOptions = isProduction 
-              ? `; Domain=.swiftedu.com.br; Secure; SameSite=Lax; Path=/; Max-Age=0`
+              ? `; Secure; SameSite=Lax; Path=/; Max-Age=0`
               : `; SameSite=Lax; Path=/; Max-Age=0`
             document.cookie = `${key}=; Expires=Thu, 01 Jan 1970 00:00:00 UTC${cookieOptions}`
           }

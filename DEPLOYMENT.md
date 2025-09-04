@@ -1,43 +1,40 @@
-# SwiftEDU - Guia de Deploy
+# Configuração de Deploy - SwiftEdu
 
-## Variáveis de Ambiente Necessárias
+## Domínio Principal
+- **URL de Produção**: https://swiftedu-rose.vercel.app
+- **Plataforma**: Vercel
 
-Para fazer o deploy desta aplicação, você precisa configurar as seguintes variáveis de ambiente no seu serviço de hospedagem (Vercel, Netlify, etc.):
+## Configurações Necessárias no Supabase
 
+### 1. URL de Redirecionamento
+No painel do Supabase, adicione as seguintes URLs em **Authentication > URL Configuration**:
+
+- Site URL: `https://swiftedu-rose.vercel.app`
+- Redirect URLs:
+  - `https://swiftedu-rose.vercel.app/*`
+  - `https://swiftedu-rose.vercel.app/auth/callback`
+  - `https://swiftedu-rose.vercel.app`
+
+### 2. Variáveis de Ambiente no Vercel
+
+Certifique-se de que as seguintes variáveis estejam configuradas no Vercel:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://mdzgnktlsmkjecdbermo.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1kemdua3Rsc21ramVjZGJlcm1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQwODE3OTcsImV4cCI6MjA2OTY1Nzc5N30.wVS4jMNTenVRSVtiuHFKo9OZ_RfUWiKV8ojN7ch67go
+NEXT_PUBLIC_APP_URL=https://swiftedu-rose.vercel.app
+NODE_ENV=production
 ```
-NEXT_PUBLIC_SUPABASE_URL=sua_url_do_supabase
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anonima_do_supabase
-```
 
-## Como obter as credenciais do Supabase
+## Deploy
 
-1. Acesse seu projeto no [Painel do Supabase](https://supabase.com/dashboard)
-2. Vá para Settings > API
-3. Copie a URL do projeto e a chave anônima (anon public)
+1. **Commit e Push**: Todas as mudanças são automaticamente deployadas ao fazer push para a branch `master`
+2. **Verificação**: Acesse https://swiftedu-rose.vercel.app após o deploy
+3. **Teste de Autenticação**: Faça login e teste a funcionalidade de matrícula
 
-## Configuração no Vercel
+## Domínio Customizado (Futuro)
 
-1. No painel do Vercel, vá para as configurações do projeto
-2. Navegue até "Environment Variables"
-3. Adicione as duas variáveis de ambiente mencionadas acima
-4. Faça o redeploy do projeto
-
-## Configuração no Netlify
-
-1. No painel do Netlify, vá para Site settings > Environment
-2. Adicione as variáveis de ambiente
-3. Faça o redeploy do projeto
-
-## Build Local
-
-Para testar o build localmente:
-
-1. Crie um arquivo `.env.local` na raiz do projeto
-2. Adicione as variáveis de ambiente
-3. Execute `npm run build`
-
-## Importante
-
-- Nunca commite o arquivo `.env.local` com suas credenciais reais
-- As variáveis de ambiente devem ser configuradas diretamente no serviço de hospedagem
-- O arquivo `.env.local.example` serve como template para as variáveis necessárias
+Quando quiser voltar a usar o domínio customizado (www.swiftedu.com.br):
+1. Configure os cookies com domain específico
+2. Ajuste as variáveis de ambiente
+3. Configure CORS no Supabase para aceitar o domínio

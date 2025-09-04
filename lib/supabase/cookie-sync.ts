@@ -28,10 +28,9 @@ export function syncAuthCookies() {
       console.log('[CookieSync] Sincronizando cookies do localStorage')
       
       // Configurar cookies manualmente
-      const isProduction = window.location.hostname.includes('swiftedu.com.br')
-      const domain = isProduction ? '.swiftedu.com.br' : undefined
+      const isProduction = window.location.protocol === 'https:'
       const cookieOptions = isProduction 
-        ? `; Domain=${domain}; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
+        ? `; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
         : `; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
       
       // Criar cookies
