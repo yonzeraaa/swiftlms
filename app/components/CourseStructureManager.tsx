@@ -154,7 +154,7 @@ export default function CourseStructureManager({
       const { data: modulesData, error: modulesError } = await supabase
         .from('course_modules')
         .select('*')
-        .eq('course_id', courseId as any)
+        .eq('course_id', courseId as string)
         .order('order_index');
 
       if (modulesError) throw modulesError;

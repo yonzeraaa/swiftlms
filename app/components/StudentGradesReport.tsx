@@ -97,7 +97,7 @@ export default function StudentGradesReport({
       
       // Criar mapa de tentativas por teste
       const attemptsByTest = new Map<string, any>()
-      attempts?.forEach(attempt => {
+      attempts?.forEach((attempt: any) => {
         if (!attempt.test_id) return
         const existing = attemptsByTest.get(attempt.test_id)
         if (!existing || (attempt.score || 0) > (existing.score || 0)) {
@@ -111,12 +111,12 @@ export default function StudentGradesReport({
       console.log('Processing tests by subject...')
       
       // Contar testes sem subject_id
-      const testsWithoutSubject = allTests?.filter(t => !t.subject_id) || []
+      const testsWithoutSubject = allTests?.filter((t: any) => !t.subject_id) || []
       if (testsWithoutSubject.length > 0) {
         console.warn(`⚠️ ${testsWithoutSubject.length} testes sem subject_id:`, testsWithoutSubject)
       }
       
-      allTests?.forEach(test => {
+      allTests?.forEach((test: any) => {
         console.log('Test:', test.id, test.title, 'Subject:', test.subject_id)
         
         // Se não tem subject_id, criar uma categoria "Sem Disciplina"

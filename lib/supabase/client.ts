@@ -4,22 +4,22 @@ import { Database } from '../database.types'
 // Singleton pattern - only create one instance of the client
 let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null
 
-export function createClient(forceNew = false) {
+export function createClient(forceNew = false): any {
   // Force new client if requested (useful for auth issues)
   if (forceNew) {
     browserClient = null
   }
   
   // Return existing client if it already exists (singleton pattern)
-  if (browserClient) {
+  if (browserClient && !forceNew) {
     return browserClient
   }
 
-  // Determinar se estamos em produ\u00e7\u00e3o
+  // Determinar se estamos em produção
   const isProduction = process.env.NODE_ENV === 'production' || 
                        (typeof window !== 'undefined' && window.location.hostname.includes('swiftedu.com.br'))
 
-  // Create new client with proper cookie configuration
+  // Create new client with enhanced auth configuration
   browserClient = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -28,20 +28,59 @@ export function createClient(forceNew = false) {
         persistSession: true,
         detectSessionInUrl: true,
         autoRefreshToken: true,
-        // Configurar cookies para produ\u00e7\u00e3o
-        ...(isProduction && {
-          cookieOptions: {
-            domain: '.swiftedu.com.br',
-            secure: true,
-            sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7 // 7 dias
+        // Configuração de cookies otimizada para cross-domain
+        cookieOptions: {
+          name: 'sb-auth-token',
+          lifetime: 60 * 60 * 24 * 7, // 7 dias
+          domain: isProduction ? '.swiftedu.com.br' : undefined,
+          path: '/',
+          sameSite: 'lax',
+          secure: isProduction,
+          httpOnly: false // Necessário para client-side
+        },
+        // Storage personalizado para melhor compatibilidade
+        storage: typeof window !== 'undefined' ? {
+          getItem: (key: string) => {
+            // Primeiro tentar localStorage, depois cookies
+            const localValue = localStorage.getItem(key)
+            if (localValue) return localValue
+            
+            // Fallback para cookies se localStorage falhar
+            const cookies = document.cookie.split(';')
+            for (const cookie of cookies) {
+              const [name, value] = cookie.trim().split('=')
+              if (name === key) {
+                return decodeURIComponent(value)
+              }
+            }
+            return null
+          },
+          setItem: (key: string, value: string) => {
+            // Salvar em localStorage
+            localStorage.setItem(key, value)
+            
+            // Também salvar em cookie para cross-domain
+            const cookieOptions = isProduction 
+              ? `; Domain=.swiftedu.com.br; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
+              : `; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
+            
+            document.cookie = `${key}=${encodeURIComponent(value)}${cookieOptions}`
+          },
+          removeItem: (key: string) => {
+            localStorage.removeItem(key)
+            // Remover cookie também
+            const cookieOptions = isProduction 
+              ? `; Domain=.swiftedu.com.br; Secure; SameSite=Lax; Path=/; Max-Age=0`
+              : `; SameSite=Lax; Path=/; Max-Age=0`
+            document.cookie = `${key}=; Expires=Thu, 01 Jan 1970 00:00:00 UTC${cookieOptions}`
           }
-        })
+        } : undefined
       },
-      // Adicionar headers customizados se necess\u00e1rio
+      // Headers para debugging e identificação
       global: {
         headers: {
-          'X-Client-Info': 'swiftedu-web'
+          'X-Client-Info': 'swiftedu-web',
+          'X-Client-Version': '2.0'
         }
       }
     }

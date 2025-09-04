@@ -57,16 +57,16 @@ export default function ActivitiesPage() {
 
       if (activityLogs && activityLogs.length > 0) {
         // Fetch user profiles for all activities
-        const userIds = [...new Set(activityLogs.map(log => log.user_id).filter((id): id is string => id !== null))]
+        const userIds = [...new Set(activityLogs.map((log: any) => log.user_id).filter((id: any): id is string => id !== null))]
         const { data: userProfiles } = await supabase
           .from('profiles')
           .select('*')
           .in('id', userIds)
         
-        const userMap = new Map(userProfiles?.map(user => [user.id, user]) || [])
+        const userMap = new Map(userProfiles?.map((user: any) => [user.id, user]) || [])
 
         // Combine activities with user data
-        const activitiesWithUsers: ActivityWithUser[] = activityLogs.map(log => ({
+        const activitiesWithUsers: ActivityWithUser[] = activityLogs.map((log: any) => ({
           ...log,
           user: userMap.get(log.user_id!)
         }))
