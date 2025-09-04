@@ -129,7 +129,48 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
+  // Tentar obter sessão e fazer refresh se necessário
+  let { data: { session } } = await supabase.auth.getSession()
+  
+  // Se não há sessão mas há refresh token, tentar refresh
+  if (!session) {
+    const refreshToken = request.cookies.get('sb-refresh-token')?.value
+    if (refreshToken) {
+      console.log('[MIDDLEWARE] Tentando refresh com token dos cookies')
+      const { data: refreshData } = await supabase.auth.refreshSession({ refresh_token: refreshToken })
+      if (refreshData.session) {
+        session = refreshData.session
+        console.log('[MIDDLEWARE] Sessão recuperada via refresh')
+      }
+    }
+  }
+  
+  // Se a sessão existe, verificar se está próxima de expirar
+  if (session?.expires_at) {
+    const expiresAt = new Date(session.expires_at * 1000).getTime()
+    const now = Date.now()
+    const timeUntilExpiry = expiresAt - now
+    const fiveMinutes = 5 * 60 * 1000
+    
+    // Se falta menos de 5 minutos para expirar, fazer refresh
+    if (timeUntilExpiry < fiveMinutes) {
+      console.log('[MIDDLEWARE] Sessão próxima de expirar, fazendo refresh')
+      const { data: refreshData } = await supabase.auth.refreshSession()
+      if (refreshData.session) {
+        session = refreshData.session
+        // Salvar refresh token em cookie separado para recuperação futura
+        response.cookies.set({
+          name: 'sb-refresh-token',
+          value: refreshData.session.refresh_token,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 60 * 60 * 24 * 30 // 30 dias
+        })
+      }
+    }
+  }
 
   // Authentication check for API routes
   if (isAPI && !session && !request.nextUrl.pathname.startsWith('/api/auth/')) {

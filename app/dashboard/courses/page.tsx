@@ -9,7 +9,7 @@ import { useImportProgress } from '../../hooks/useImportProgress'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
-// withValidSession removed - auth handled by AuthProvider
+import { useAuthSession } from '../../hooks/useAuthSession'
 
 interface Course {
   id: string
@@ -93,6 +93,9 @@ export default function CoursesPage() {
       setError(error)
     }
   })
+  
+  // Usar o novo hook de autenticação
+  const { session, user, isAuthenticated, refreshSession } = useAuthSession()
   const supabase = createClient()
   const { t } = useTranslation()
   
@@ -412,38 +415,24 @@ export default function CoursesPage() {
   const openManageStudentsModal = async (course: Course) => {
     console.log('[MANAGE_STUDENTS] Opening modal for course:', course.id, course.title)
     
-    // Check authentication status before opening modal
-    let { data: { session } } = await supabase.auth.getSession()
-    console.log('[MANAGE_STUDENTS] Current session:', {
-      hasSession: !!session,
-      userId: session?.user?.id,
-      email: session?.user?.email
-    })
-    
-    if (!session) {
-      console.warn('[MANAGE_STUDENTS] No session found, attempting to restore...')
+    // Verificar autenticação usando o hook
+    if (!isAuthenticated) {
+      console.warn('[MANAGE_STUDENTS] Não autenticado, tentando refresh...')
+      await refreshSession()
       
-      // Try to restore session from localStorage
-      const keys = Object.keys(localStorage).filter(key => key.startsWith('sb-'))
-      if (keys.length > 0) {
-        const newClient = createClient(true)
-        const { data: { session: restoredSession } } = await newClient.auth.getSession()
-        
-        if (restoredSession) {
-          console.log('[MANAGE_STUDENTS] Session restored')
-          session = restoredSession
-          // Update the global supabase client reference
-          Object.assign(supabase, newClient)
-        }
-      }
-      
+      // Verificar novamente após refresh
       if (!session) {
-        console.error('[MANAGE_STUDENTS] Failed to restore session')
+        console.error('[MANAGE_STUDENTS] Falha na autenticação')
         alert('Sua sessão expirou. Por favor, faça login novamente.')
         window.location.href = '/'
         return
       }
     }
+    
+    console.log('[MANAGE_STUDENTS] Sessão válida:', {
+      userId: user?.id,
+      email: user?.email
+    })
     
     setSelectedCourse(course)
     setShowManageStudentsModal(true)
@@ -512,61 +501,25 @@ export default function CoursesPage() {
     setError(null)
     
     try {
-      // First, try to get the session
-      let { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      console.log('[ENROLL] Initial session check:', { 
-        hasSession: !!session, 
-        sessionError,
-        userId: session?.user?.id 
-      })
-      
-      // If no session, we need to handle this differently
-      if (!session) {
-        console.log('[ENROLL] No session found, checking for stored auth...')
+      // Verificar autenticação usando o hook
+      if (!isAuthenticated) {
+        console.log('[ENROLL] Não autenticado, tentando refresh...')
+        await refreshSession()
         
-        // Check if there's a user in localStorage (Supabase stores auth there)
-        const storedSession = localStorage.getItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('https://', '').replace('.supabase.co', '') + '-auth-token')
-        
-        if (storedSession) {
-          console.log('[ENROLL] Found stored session, attempting to restore...')
-          // Force a new client instance
-          const newSupabase = createClient(true)
-          const { data: { session: restoredSession } } = await newSupabase.auth.getSession()
-          
-          if (restoredSession) {
-            console.log('[ENROLL] Session restored successfully')
-            session = restoredSession
-          } else {
-            console.error('[ENROLL] Failed to restore session from storage')
-            // Try one more time with sign in using stored token
-            try {
-              await newSupabase.auth.setSession(JSON.parse(storedSession))
-              const { data: { session: finalSession } } = await newSupabase.auth.getSession()
-              session = finalSession
-            } catch (e) {
-              console.error('[ENROLL] Failed to set session:', e)
-            }
-          }
-        }
-        
-        if (!session) {
-          console.error('[ENROLL] No session available, user needs to login')
+        // Verificar novamente após refresh
+        if (!isAuthenticated || !user) {
+          console.error('[ENROLL] Falha na autenticação')
           throw new Error('Sua sessão expirou. Por favor, faça login novamente.')
         }
       }
       
-      // Now get the user from the session
-      const user = session.user
-      
-      console.log('[ENROLL] User from session:', { 
-        hasUser: !!user, 
+      console.log('[ENROLL] Sessão válida:', { 
         userId: user?.id,
         email: user?.email 
       })
       
       if (!user) {
-        console.error('[ENROLL] No user in session')
+        console.error('[ENROLL] Sem usuário na sessão')
         throw new Error('Usuário não autenticado. Por favor, faça login novamente.')
       }
       
