@@ -32,7 +32,7 @@ export default function TestAuthPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: 'admin@swiftedu.com',
-        password: 'admin123'
+        password: 'admin@123'
       })
       
       if (error) throw error
@@ -100,6 +100,70 @@ export default function TestAuthPage() {
     alert(`Found ${authKeys.length} auth items in localStorage:\n${JSON.stringify(data, null, 2)}`)
   }
 
+  const forceLogin = async () => {
+    try {
+      const response = await fetch('/api/auth/force-login', {
+        method: 'POST',
+        credentials: 'include'
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        alert('Login forçado com sucesso! Recarregando...')
+        window.location.reload()
+      } else {
+        alert(`Erro: ${data.error}`)
+      }
+    } catch (error: any) {
+      alert(`Erro ao forçar login: ${error.message}`)
+    }
+  }
+
+  const fixSession = async () => {
+    try {
+      // Primeiro tentar sem credenciais
+      let response = await fetch('/api/auth/fix-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({})
+      })
+      
+      let data = await response.json()
+      
+      // Se falhar, tentar com credenciais
+      if (!response.ok) {
+        const email = prompt('Digite o email para reautenticar:')
+        const password = prompt('Digite a senha:')
+        
+        if (email && password) {
+          response = await fetch('/api/auth/fix-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ email, password })
+          })
+          
+          data = await response.json()
+        }
+      }
+      
+      if (response.ok) {
+        alert('Sessão corrigida! Recarregando...')
+        window.location.reload()
+      } else {
+        alert(`Erro: ${data.error}`)
+      }
+    } catch (error: any) {
+      alert(`Erro ao corrigir sessão: ${error.message}`)
+    }
+  }
+
   return (
     <div style={{ padding: '20px', fontFamily: 'monospace' }}>
       <h1>🔐 Auth Test Page</h1>
@@ -140,6 +204,12 @@ export default function TestAuthPage() {
         </button>
         <button onClick={testEnrollApi} style={{ margin: '5px', padding: '10px' }}>
           🎓 Test Enroll API
+        </button>
+        <button onClick={forceLogin} style={{ margin: '5px', padding: '10px', background: '#00a652', color: 'white' }}>
+          ⚡ FORCE LOGIN ADMIN
+        </button>
+        <button onClick={fixSession} style={{ margin: '5px', padding: '10px', background: '#ff6b6b', color: 'white' }}>
+          🔧 FIX SESSION (Emergência)
         </button>
       </div>
 
