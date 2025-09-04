@@ -43,12 +43,65 @@ export default function DebugMiddlewarePage() {
 
   const syncSession = async () => {
     try {
-      // Pegar tokens do localStorage
+      // Primeiro tentar pegar a sessão atual do Supabase client
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession()
+      
+      if (currentSession?.access_token && currentSession?.refresh_token) {
+        // Usar a sessão atual do cliente
+        const response = await fetch('/api/auth/sync-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            access_token: currentSession.access_token,
+            refresh_token: currentSession.refresh_token
+          })
+        })
+        
+        const result = await response.json()
+        
+        if (response.ok) {
+          alert('Sessão sincronizada! Recarregando...')
+          window.location.reload()
+        } else {
+          alert(`Erro: ${result.error}`)
+        }
+        return
+      }
+      
+      // Se não houver sessão no cliente, tentar localStorage como fallback
       const storageKey = `sb-mdzgnktlsmkjecdbermo-auth-token`
       const storedAuth = localStorage.getItem(storageKey)
       
       if (!storedAuth) {
-        alert('Sem sessão no localStorage para sincronizar')
+        // Tentar fazer refresh primeiro
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+        if (refreshData?.session) {
+          const response = await fetch('/api/auth/sync-session', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              access_token: refreshData.session.access_token,
+              refresh_token: refreshData.session.refresh_token
+            })
+          })
+          
+          const result = await response.json()
+          
+          if (response.ok) {
+            alert('Sessão recuperada e sincronizada! Recarregando...')
+            window.location.reload()
+          } else {
+            alert(`Erro: ${result.error}`)
+          }
+        } else {
+          alert('Nenhuma sessão disponível para sincronizar. Por favor, faça login novamente.')
+        }
         return
       }
       
@@ -75,7 +128,7 @@ export default function DebugMiddlewarePage() {
       const result = await response.json()
       
       if (response.ok) {
-        alert('Sessão sincronizada! Recarregando...')
+        alert('Sessão sincronizada do localStorage! Recarregando...')
         window.location.reload()
       } else {
         alert(`Erro: ${result.error}`)
