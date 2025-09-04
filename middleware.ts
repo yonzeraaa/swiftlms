@@ -132,13 +132,29 @@ export async function middleware(request: NextRequest) {
   // Tentar obter sessão e fazer refresh se necessário
   let { data: { session } } = await supabase.auth.getSession()
   
+  // Log para debug
+  const path = request.nextUrl.pathname
+  console.log('[MIDDLEWARE]', {
+    path,
+    hasSession: !!session,
+    cookies: request.cookies.getAll().map(c => c.name).filter(n => n.includes('sb-')),
+    timestamp: new Date().toISOString()
+  })
+  
   // Se não há sessão mas há refresh token, tentar refresh
   if (!session) {
     const refreshToken = request.cookies.get('sb-refresh-token')?.value
-    if (refreshToken) {
-      console.log('[MIDDLEWARE] Tentando refresh com token dos cookies')
-      const { data: refreshData } = await supabase.auth.refreshSession({ refresh_token: refreshToken })
-      if (refreshData.session) {
+    const authToken = request.cookies.get('sb-mdzgnktlsmkjecdbermo-auth-token')?.value
+    
+    if (refreshToken || authToken) {
+      console.log('[MIDDLEWARE] Sem sessão mas com tokens, tentando refresh')
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+      
+      if (refreshError) {
+        console.log('[MIDDLEWARE] Erro no refresh:', refreshError.message)
+      }
+      
+      if (refreshData?.session) {
         session = refreshData.session
         console.log('[MIDDLEWARE] Sessão recuperada via refresh')
       }
