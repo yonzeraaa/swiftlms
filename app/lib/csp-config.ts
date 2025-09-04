@@ -88,7 +88,9 @@ export const productionCSP = {
     'https://*.googleapis.com',
     'https://*.gstatic.com',
     'https://vercel.live',
-    'https://vercel.com'
+    'https://vercel.com',
+    'https://*.vercel.app',
+    'wss://*.vercel.app'
   ],
   'frame-src': [
     "'self'",
