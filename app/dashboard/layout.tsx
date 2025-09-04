@@ -299,9 +299,12 @@ export default function DashboardLayout({
                   onClick={async () => {
                     // Set view as student mode via API with verification
                     try {
-                      // First, set cookie on client side as backup
-                      document.cookie = 'viewAsStudent=true; path=/; max-age=3600; SameSite=Lax'
-                      document.cookie = 'isAdminViewMode=true; path=/; max-age=3600; SameSite=Lax'
+                      // First, set cookie on client side with proper domain
+                      const domain = window.location.hostname.includes('swiftedu.com.br') 
+                        ? '; domain=.swiftedu.com.br' 
+                        : ''
+                      document.cookie = `viewAsStudent=true; path=/; max-age=3600; SameSite=Lax${domain}`
+                      document.cookie = `isAdminViewMode=true; path=/; max-age=3600; SameSite=Lax${domain}`
                       
                       // Call API to set server-side cookies
                       const response = await fetch('/api/auth/view-as-student', {
