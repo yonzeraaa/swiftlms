@@ -295,66 +295,10 @@ export default function DashboardLayout({
                 onMouseEnter={() => setHoveredItem('/student-dashboard')}
                 onMouseLeave={() => setHoveredItem(null)}
               >
-                <button
-                  onClick={async () => {
-                    // Set view as student mode via API with verification
-                    try {
-                      // First, set cookie on client side - NO domain specified
-                      document.cookie = 'viewAsStudent=true; path=/; max-age=3600; SameSite=Lax'
-                      document.cookie = 'isAdminViewMode=true; path=/; max-age=3600; SameSite=Lax'
-                      
-                      // Call API to set server-side cookies
-                      const response = await fetch('/api/auth/view-as-student', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include'
-                      })
-                      
-                      if (response.ok) {
-                        const data = await response.json()
-                        
-                        // Wait for cookies to be set
-                        const delay = data.delay || 200
-                        await new Promise(resolve => setTimeout(resolve, delay))
-                        
-                        // Verify cookies are set before navigating
-                        const verifyResponse = await fetch('/api/auth/verify-view-mode', {
-                          credentials: 'include'
-                        })
-                        
-                        if (verifyResponse.ok) {
-                          const verifyData = await verifyResponse.json()
-                          console.log('[VIEW-MODE] Verification:', verifyData)
-                          
-                          if (verifyData.canAccess) {
-                            // Cookies verified, safe to navigate
-                            console.log('[VIEW-MODE] Access granted, navigating...')
-                            
-                            // Use router.push with query parameter as fallback
-                            window.location.href = '/student-dashboard?viewMode=true'
-                          } else {
-                            console.error('[VIEW-MODE] Access denied after verification')
-                            // Try with query parameter
-                            window.location.href = '/student-dashboard?viewMode=true&force=true'
-                          }
-                        } else {
-                          // Verification failed, try anyway with query
-                          console.error('[VIEW-MODE] Verification failed')
-                          window.location.href = '/student-dashboard?viewMode=true'
-                        }
-                      } else {
-                        console.error('Failed to set view mode - API error')
-                        // Try with query parameter
-                        window.location.href = '/student-dashboard?viewMode=true'
-                      }
-                    } catch (error) {
-                      console.error('Error setting view mode:', error)
-                      // Fallback with query parameter
-                      window.location.href = '/student-dashboard?viewMode=true'
-                    }
-                  }}
+                <Link
+                  href="/student-dashboard"
                   className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
+                    flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
                     text-blue-400 hover:bg-blue-500/20 hover:text-blue-300
                     ${!sidebarOpen && 'justify-center'}
                   `}
@@ -369,11 +313,11 @@ export default function DashboardLayout({
                         exit={{ opacity: 0, x: -10 }}
                         transition={{ duration: 0.2 }}
                       >
-                        Visualizar como Aluno
+                        Portal do Aluno
                       </motion.span>
                     )}
                   </AnimatePresence>
-                </button>
+                </Link>
 
                 {/* Tooltip for collapsed sidebar */}
                 <AnimatePresence>
@@ -385,7 +329,7 @@ export default function DashboardLayout({
                       className="absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50"
                     >
                       <div className="px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg shadow-xl whitespace-nowrap">
-                        <span className="text-sm text-gold-200">Visualizar como Aluno</span>
+                        <span className="text-sm text-gold-200">Portal do Aluno</span>
                       </div>
                     </motion.div>
                   )}

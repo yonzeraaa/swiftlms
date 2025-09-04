@@ -72,15 +72,15 @@ export default function StudentDashboard() {
         return
       }
 
-      // Check if user is a student or admin
+      // Check user role - admins and students can access
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single()
 
-      // Allow both students and admins to access
-      if (profile?.role !== 'student' && profile?.role !== 'admin') {
+      // Allow students and admins (instructors need view mode, handled by middleware)
+      if (profile?.role !== 'student' && profile?.role !== 'admin' && profile?.role !== 'instructor') {
         router.push('/')
         return
       }

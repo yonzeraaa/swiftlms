@@ -334,63 +334,63 @@ export default function StudentDashboardLayout({
               })}
             </nav>
 
-            {/* Admin View Mode Banner */}
-            {isAdminViewMode && (
+            {/* Admin Banner - Show for admins whether in view mode or not */}
+            {isAdmin && (
               <div className="border-t border-gold-500/20 pt-4 mb-4">
-                <div className="bg-purple-500/20 border border-purple-500/30 rounded-lg p-3">
-                  <p className="text-xs text-purple-300 text-center mb-2">
-                    Modo de Visualização Admin
+                <div className={`${isAdminViewMode ? 'bg-purple-500/20 border-purple-500/30' : 'bg-blue-500/20 border-blue-500/30'} border rounded-lg p-3`}>
+                  <p className="text-xs text-center mb-2">
+                    <span className={isAdminViewMode ? 'text-purple-300' : 'text-blue-300'}>
+                      {isAdminViewMode ? 'Modo de Visualização Admin' : 'Acesso Administrativo'}
+                    </span>
                   </p>
                   <button
                     onClick={async () => {
-                      try {
-                        // First, clear cookies on client side - NO domain specified
-                        document.cookie = 'viewAsStudent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-                        document.cookie = 'isAdminViewMode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-                        
-                        // Call API to clear server-side cookies
-                        const response = await fetch('/api/auth/view-as-student', {
-                          method: 'DELETE',
-                          headers: { 'Content-Type': 'application/json' },
-                          credentials: 'include'
-                        })
-                        
-                        if (response.ok) {
-                          const data = await response.json()
+                      if (isAdminViewMode) {
+                        // If in view mode, clear cookies and return to admin
+                        try {
+                          document.cookie = 'viewAsStudent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+                          document.cookie = 'isAdminViewMode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
                           
-                          // Wait for the specified delay
-                          const delay = data.delay || 100
-                          await new Promise(resolve => setTimeout(resolve, delay))
+                          const response = await fetch('/api/auth/view-as-student', {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include'
+                          })
                           
-                          // Log for debugging
-                          console.log('[VIEW-MODE] Cookies cleared:', data.cookiesCleared)
-                          console.log('[VIEW-MODE] Returning to:', data.redirect)
-                          
-                          window.location.href = data.redirect || '/dashboard'
-                        } else {
-                          // Still navigate even if API fails
+                          if (response.ok) {
+                            const data = await response.json()
+                            await new Promise(resolve => setTimeout(resolve, data.delay || 100))
+                            window.location.href = data.redirect || '/dashboard'
+                          } else {
+                            setTimeout(() => {
+                              window.location.href = '/dashboard'
+                            }, 100)
+                          }
+                        } catch (error) {
+                          console.error('Error clearing view mode:', error)
                           setTimeout(() => {
                             window.location.href = '/dashboard'
                           }, 100)
                         }
-                      } catch (error) {
-                        console.error('Error clearing view mode:', error)
-                        setTimeout(() => {
-                          window.location.href = '/dashboard'
-                        }, 100)
+                      } else {
+                        // If admin without view mode, just go to dashboard
+                        window.location.href = '/dashboard'
                       }
                     }}
-                    className="w-full px-3 py-2 bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 rounded-lg transition-all text-sm flex items-center justify-center gap-2"
+                    className={`w-full px-3 py-2 rounded-lg transition-all text-sm flex items-center justify-center gap-2 ${
+                      isAdminViewMode 
+                        ? 'bg-purple-600/30 hover:bg-purple-600/50 text-purple-200' 
+                        : 'bg-blue-600/30 hover:bg-blue-600/50 text-blue-200'
+                    }`}
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    Voltar ao Admin
+                    {isAdminViewMode ? 'Sair do Modo Visualização' : 'Voltar ao Dashboard Admin'}
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Admin Mode Indicator - REMOVED because it causes confusion */}
-            {/* The "Voltar ao Admin" button is already shown above when in view mode */}
+            {/* Admin Mode Indicator removed - now integrated in the banner above */}
 
             {/* Footer do Sidebar */}
             <div className="border-t border-gold-500/20 pt-4">

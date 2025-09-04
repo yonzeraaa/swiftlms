@@ -165,7 +165,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Handle "view as student" mode for admins
+  // Handle student dashboard access for different roles
   if (session && request.nextUrl.pathname.startsWith('/student-dashboard')) {
     // Get user role first
     const { data: profile } = await supabase
@@ -174,25 +174,25 @@ export async function middleware(request: NextRequest) {
       .eq('id', session.user.id)
       .single()
     
-    // If user is a regular student, allow access immediately
-    if (profile?.role === 'student') {
-      // Regular student - no special handling needed
+    // Students and Admins can access freely
+    if (profile?.role === 'student' || profile?.role === 'admin') {
+      // Allow access without restrictions
       return response
     }
     
-    // For admin/instructor, check view mode cookies AND query parameters
-    if (profile?.role === 'admin' || profile?.role === 'instructor') {
+    // For instructors only, check view mode
+    if (profile?.role === 'instructor') {
       // Check query parameters as primary method
       const hasViewModeQuery = request.nextUrl.searchParams.has('viewMode') || 
                                request.nextUrl.searchParams.has('force')
       
-      // Triple check for view mode cookies as secondary method
+      // Check for view mode cookies
       const viewAsStudent = request.cookies.get('viewAsStudent')?.value === 'true'
       const isAdminViewMode = request.cookies.get('isAdminViewMode')?.value === 'true'
       const adminViewId = request.cookies.get('adminViewId')?.value
       
-      // Log for debugging in production too
-      console.log('[MIDDLEWARE] Admin/Instructor accessing student dashboard:', {
+      // Log for debugging
+      console.log('[MIDDLEWARE] Instructor accessing student dashboard:', {
         role: profile.role,
         userId: session.user.id,
         hasQueryParam: hasViewModeQuery,
@@ -205,11 +205,11 @@ export async function middleware(request: NextRequest) {
         timestamp: new Date().toISOString()
       })
       
-      // Allow access if ANY of these conditions are met (maximum redundancy)
+      // Allow access if ANY of these conditions are met
       const hasViewPermission = hasViewModeQuery || viewAsStudent || isAdminViewMode || adminViewId === session.user.id
       
       if (hasViewPermission) {
-        console.log('[MIDDLEWARE] Admin/Instructor allowed - view mode active')
+        console.log('[MIDDLEWARE] Instructor allowed - view mode active')
         
         // If access is granted via query param, set cookies for future requests
         if (hasViewModeQuery && (!viewAsStudent || !isAdminViewMode)) {
@@ -221,7 +221,6 @@ export async function middleware(request: NextRequest) {
             path: '/',
             maxAge: 3600,
             secure: process.env.NODE_ENV === 'production'
-            // NO domain - works with current domain
           })
           response.cookies.set({
             name: 'isAdminViewMode',
@@ -231,25 +230,14 @@ export async function middleware(request: NextRequest) {
             path: '/',
             maxAge: 3600,
             secure: process.env.NODE_ENV === 'production'
-            // NO domain - works with current domain
           })
-          response.cookies.set({
-            name: 'adminViewId',
-            value: session.user.id,
-            httpOnly: true,
-            sameSite: 'lax',
-            path: '/',
-            maxAge: 3600,
-            secure: process.env.NODE_ENV === 'production'
-            // NO domain - works with current domain
-          })
-          console.log('[MIDDLEWARE] Setting cookies from query parameter')
+          console.log('[MIDDLEWARE] Setting cookies from query parameter for instructor')
         }
         
-        // IMPORTANT: Allow the request to continue
         return response
       } else {
-        console.log('[MIDDLEWARE] Admin/Instructor redirected - no view mode cookies or query found')
+        // Instructor without view mode - redirect to dashboard
+        console.log('[MIDDLEWARE] Instructor redirected - no view mode')
         const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = '/dashboard'
         return NextResponse.redirect(redirectUrl)
