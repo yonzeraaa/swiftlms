@@ -1,6 +1,5 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { Database } from '../database.types'
-import { createCookieStorage } from './cookie-storage'
 
 // Singleton pattern - only create one instance of the client
 let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null
@@ -16,7 +15,8 @@ export function createClient(forceNew = false) {
     return browserClient
   }
 
-  // Create new client with improved configuration
+  // Create new client with default Supabase configuration
+  // Let Supabase handle its own cookies without interference
   browserClient = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -24,9 +24,9 @@ export function createClient(forceNew = false) {
       auth: {
         persistSession: true,
         detectSessionInUrl: true,
-        autoRefreshToken: true,
-        storage: createCookieStorage(),
-        storageKey: `sb-${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('https://', '').replace('.supabase.co', '')}-auth-token`
+        autoRefreshToken: true
+        // Using default Supabase storage for now
+        // Custom storage was interfering with session persistence
       }
     }
   )

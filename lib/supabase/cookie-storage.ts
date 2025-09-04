@@ -32,9 +32,9 @@ export function createCookieStorage() {
           secure: process.env.NODE_ENV === 'production'
         }
         
-        // Adicionar domain apenas em produção
-        const domain = process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN 
-          ? process.env.COOKIE_DOMAIN 
+        // Adicionar domain apenas em produção (usando NEXT_PUBLIC_ para client-side)
+        const domain = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_COOKIE_DOMAIN 
+          ? process.env.NEXT_PUBLIC_COOKIE_DOMAIN 
           : undefined
         
         // Construir string do cookie
@@ -100,8 +100,8 @@ export function setupStorageSync() {
         localStorage.setItem(key, value)
         
         // Atualizar cookie local
-        const domain = process.env.NODE_ENV === 'production' && process.env.COOKIE_DOMAIN 
-          ? `; Domain=${process.env.COOKIE_DOMAIN}` 
+        const domain = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_COOKIE_DOMAIN 
+          ? `; Domain=${process.env.NEXT_PUBLIC_COOKIE_DOMAIN}` 
           : ''
         const cookieString = `${key}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${domain}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
         document.cookie = cookieString
