@@ -119,9 +119,31 @@ export default function CoursesPage() {
   })
 
   useEffect(() => {
-    fetchCourses()
-    fetchInstructors()
-    fetchStudents()
+    // Check auth status on mount
+    const checkAuthAndFetch = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      console.log('[COURSES_PAGE] Initial auth check:', {
+        hasSession: !!session,
+        userId: session?.user?.id,
+        url: window.location.href
+      })
+      
+      if (!session) {
+        console.error('[COURSES_PAGE] No session on mount')
+        // Try to refresh
+        const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()
+        if (!refreshedSession) {
+          console.error('[COURSES_PAGE] Failed to refresh session on mount')
+        }
+      }
+      
+      // Fetch data regardless (let individual functions handle auth)
+      fetchCourses()
+      fetchInstructors()
+      fetchStudents()
+    }
+    
+    checkAuthAndFetch()
   }, [])
   
   // Close dropdown when clicking outside
@@ -354,6 +376,23 @@ export default function CoursesPage() {
   }
   
   const openManageStudentsModal = async (course: Course) => {
+    console.log('[MANAGE_STUDENTS] Opening modal for course:', course.id, course.title)
+    
+    // Check authentication status before opening modal
+    const { data: { session } } = await supabase.auth.getSession()
+    console.log('[MANAGE_STUDENTS] Current session:', {
+      hasSession: !!session,
+      userId: session?.user?.id,
+      email: session?.user?.email
+    })
+    
+    if (!session) {
+      console.error('[MANAGE_STUDENTS] No session found when opening modal')
+      alert('Sessão expirada. Por favor, recarregue a página.')
+      window.location.reload()
+      return
+    }
+    
     setSelectedCourse(course)
     setShowManageStudentsModal(true)
     setOpenDropdown(null)
@@ -421,9 +460,42 @@ export default function CoursesPage() {
     setError(null)
     
     try {
-      // Get current user and validate permissions
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Usuário não autenticado')
+      // First, try to get the session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      console.log('[ENROLL] Session check:', { 
+        hasSession: !!session, 
+        sessionError,
+        userId: session?.user?.id 
+      })
+      
+      // If no session, try to refresh
+      if (!session) {
+        console.log('[ENROLL] No session found, trying to refresh...')
+        const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+        
+        if (!refreshedSession) {
+          console.error('[ENROLL] Failed to refresh session:', refreshError)
+          throw new Error('Sessão expirada. Por favor, faça login novamente.')
+        }
+        
+        console.log('[ENROLL] Session refreshed successfully')
+      }
+      
+      // Now get the user
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      
+      console.log('[ENROLL] User check:', { 
+        hasUser: !!user, 
+        userError,
+        userId: user?.id,
+        email: user?.email 
+      })
+      
+      if (!user) {
+        console.error('[ENROLL] No user found after session check')
+        throw new Error('Usuário não autenticado. Por favor, recarregue a página.')
+      }
       
       // Get user profile to check role
       const { data: profile } = await supabase

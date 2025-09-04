@@ -4,16 +4,28 @@ import { Database } from '../database.types'
 // Singleton pattern - only create one instance of the client
 let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null
 
-export function createClient() {
+export function createClient(forceNew = false) {
+  // Force new client if requested (useful for auth issues)
+  if (forceNew) {
+    browserClient = null
+  }
+  
   // Return existing client if it already exists (singleton pattern)
   if (browserClient) {
     return browserClient
   }
 
-  // Create new client with simplified configuration
+  // Create new client with improved configuration
   browserClient = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        persistSession: true,
+        detectSessionInUrl: true,
+        autoRefreshToken: true
+      }
+    }
   )
 
   return browserClient
