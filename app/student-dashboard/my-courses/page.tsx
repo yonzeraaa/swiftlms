@@ -11,6 +11,8 @@ import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { StaggerTransition, StaggerItem, FadeTransition } from '../../components/ui/PageTransition'
+import Spinner from '../../components/ui/Spinner'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
@@ -230,25 +232,15 @@ export default function MyCoursesPage() {
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="rounded-full h-12 w-12 border-b-2 border-gold-500"
-        />
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-gold-300 text-sm"
-        >
-          Carregando seus cursos...
-        </motion.p>
+        <Spinner size="xl" />
+        <p className="text-gold-300 text-sm">Carregando seus cursos...</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <FadeTransition>
         <div className="flex justify-between items-start">
@@ -260,7 +252,7 @@ export default function MyCoursesPage() {
               transition={{ duration: 0.5 }}
             >
               Meus Cursos
-              <Sparkles className="w-6 h-6 text-gold-400 animate-pulse" />
+              <Sparkles className="w-6 h-6 text-gold-400" />
             </motion.h1>
             <motion.p 
               className="text-gold-300 mt-1"

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Edit, Key, X, Check, Trash2, AlertCircle, Phone, Users, Shield, GraduationCap, BookOpen, LayoutGrid, List, Lock, Unlock, FileText } from 'lucide-react'
 import Card from '../../components/Card'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/database.types'
@@ -408,10 +409,14 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gold">{t('users.title')}</h1>
+          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+            <Users className="w-8 h-8 text-gold-400" />
+            {t('users.title')}
+          </h1>
           <p className="text-gold-300 mt-1">{t('users.subtitle')}</p>
         </div>
         <Button 
@@ -648,25 +653,36 @@ export default function UsersPage() {
         /* List View - Keeping the table */
         <Card>
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
+            <div className="overflow-x-auto table-sticky">
+              <table className="w-full table-density density-compact">
+                <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
                   <tr className="border-b border-gold-500/20">
-                    <th className="text-left py-3 px-4 text-gold-300 font-medium">{t('users.name')}</th>
-                    <th className="text-left py-3 px-4 text-gold-300 font-medium">{t('users.contact')}</th>
-                    <th className="text-left py-3 px-4 text-gold-300 font-medium">{t('users.role')}</th>
-                    <th className="text-left py-3 px-4 text-gold-300 font-medium">{t('users.status')}</th>
-                    <th className="text-left py-3 px-4 text-gold-300 font-medium">{t('users.createdAt')}</th>
-                    <th className="text-left py-3 px-4 text-gold-300 font-medium">{t('users.actions')}</th>
+                    <th scope="col" className="text-left text-gold-300 font-medium">{t('users.name')}</th>
+                    <th scope="col" className="text-left text-gold-300 font-medium">{t('users.contact')}</th>
+                    <th scope="col" className="text-left text-gold-300 font-medium">{t('users.role')}</th>
+                    <th scope="col" className="text-left text-gold-300 font-medium">{t('users.status')}</th>
+                    <th scope="col" className="text-left text-gold-300 font-medium">{t('users.createdAt')}</th>
+                    <th scope="col" className="text-left text-gold-300 font-medium">{t('users.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user) => (
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center">
+                        <Users className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
+                        <p className="text-gold-300">
+                          {searchTerm || filterRole !== 'all' || filterStatus !== 'all' 
+                            ? 'Nenhum usuário encontrado com os filtros atuais'
+                            : 'Nenhum usuário cadastrado'}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : filteredUsers.map((user) => (
                     <tr key={user.id} className="border-b border-gold-500/10 hover:bg-navy-700/20">
-                      <td className="py-4 px-4">
+                      <td>
                         <p className="font-medium text-gold">{user.full_name || t('users.noName')}</p>
                       </td>
-                      <td className="py-4 px-4">
+                      <td>
                         <div className="space-y-1">
                           <p className="text-gold-200 text-sm flex items-center gap-1">
                             <Mail className="w-3 h-3" />
@@ -680,24 +696,25 @@ export default function UsersPage() {
                           )}
                         </div>
                       </td>
-                      <td className="py-4 px-4">
+                      <td>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleBadge(user.role)}`}>
                           {getRoleLabel(user.role)}
                         </span>
                       </td>
-                      <td className="py-4 px-4">
+                      <td>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(user.status)}`}>
                           {getStatusLabel(user.status)}
                         </span>
                       </td>
-                      <td className="py-4 px-4">
+                      <td>
                         <span className="text-gold-300 text-sm">
                           {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : '-'}
                         </span>
                       </td>
-                      <td className="py-4 px-4 relative">
+                      <td className="relative">
                         <button 
                           className="text-gold-400 hover:text-gold-200 transition-colors p-1"
+                          aria-label="Abrir menu de ações do usuário"
                           onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
                         >
                           <MoreVertical className="w-5 h-5" />
@@ -788,6 +805,7 @@ export default function UsersPage() {
               <button
                 onClick={() => setShowEditModal(false)}
                 className="text-gold-400 hover:text-gold-200 transition-colors"
+                aria-label="Fechar modal de edição"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -808,7 +826,7 @@ export default function UsersPage() {
                   type="text"
                   value={editForm.full_name}
                   onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                   required
                 />
               </div>
@@ -834,7 +852,7 @@ export default function UsersPage() {
                   type="tel"
                   value={editForm.phone}
                   onChange={(e) => setEditForm({ ...editForm, phone: formatPhone(e.target.value) })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                   placeholder="(21) 98765-4321"
                   maxLength={15}
                 />
@@ -847,7 +865,7 @@ export default function UsersPage() {
                 <select
                   value={editForm.role}
                   onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                 >
                   <option value="student">{t('users.student')}</option>
                   <option value="instructor">{t('users.instructor')}</option>
@@ -957,6 +975,7 @@ export default function UsersPage() {
               <button
                 onClick={() => setShowDeleteModal(false)}
                 className="text-gold-400 hover:text-gold-200 transition-colors"
+                aria-label="Fechar modal de exclusão"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1016,6 +1035,7 @@ export default function UsersPage() {
               <button
                 onClick={() => setShowNewUserModal(false)}
                 className="text-gold-400 hover:text-gold-200 transition-colors"
+                aria-label="Fechar modal de novo usuário"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1036,7 +1056,7 @@ export default function UsersPage() {
                   type="text"
                   value={newUserForm.full_name}
                   onChange={(e) => setNewUserForm({ ...newUserForm, full_name: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                   required
                 />
               </div>
@@ -1049,7 +1069,7 @@ export default function UsersPage() {
                   type="email"
                   value={newUserForm.email}
                   onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                   placeholder="usuario@exemplo.com"
                   required
                 />
@@ -1063,7 +1083,7 @@ export default function UsersPage() {
                   type="tel"
                   value={newUserForm.phone}
                   onChange={(e) => setNewUserForm({ ...newUserForm, phone: formatPhone(e.target.value) })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                   placeholder="(21) 98765-4321"
                   maxLength={15}
                 />
@@ -1077,7 +1097,7 @@ export default function UsersPage() {
                   type="password"
                   value={newUserForm.password}
                   onChange={(e) => setNewUserForm({ ...newUserForm, password: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                   required
                   minLength={6}
                 />
@@ -1091,7 +1111,7 @@ export default function UsersPage() {
                 <select
                   value={newUserForm.role}
                   onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as any })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                 >
                   <option value="student">{t('users.student')}</option>
                   <option value="instructor">{t('users.instructor')}</option>

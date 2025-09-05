@@ -3,8 +3,10 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Save, Bell, Shield, Palette, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail } from 'lucide-react'
+import { Save, Bell, Shield, Palette, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail, Settings as SettingsIcon } from 'lucide-react'
 import Card from '../../components/Card'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
+import Spinner from '../../components/ui/Spinner'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
@@ -217,16 +219,20 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Spinner size="xl" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gold">{t('settings.title')}</h1>
+        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <SettingsIcon className="w-8 h-8 text-gold-400" />
+          {t('settings.title')}
+        </h1>
         <p className="text-gold-300 mt-1">{t('settings.subtitle')}</p>
       </div>
 

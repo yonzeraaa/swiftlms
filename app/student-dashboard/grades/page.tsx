@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import StudentGradesReport from '@/app/components/StudentGradesReport'
-import { Calendar, Filter } from 'lucide-react'
+import { Calendar, Filter, FileText } from 'lucide-react'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Card from '@/app/components/Card'
 
 export default function StudentGradesPage() {
@@ -63,10 +64,14 @@ export default function StudentGradesPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header com Filtros */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gold">Minhas Notas</h1>
+        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <FileText className="w-8 h-8 text-gold-400" />
+          Minhas Notas
+        </h1>
           <p className="text-gold-300 mt-1">Acompanhe seu desempenho acadêmico</p>
         </div>
         

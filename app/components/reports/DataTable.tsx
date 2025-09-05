@@ -256,6 +256,12 @@ export default function DataTable<T extends Record<string, any>>({
                   `}
                   style={{ width: column.width }}
                   onClick={() => column.sortable && handleSort(column.key)}
+                  scope="col"
+                  aria-sort={
+                    sortConfig.key === column.key
+                      ? (sortConfig.direction === 'asc' ? 'ascending' : sortConfig.direction === 'desc' ? 'descending' : 'none')
+                      : 'none'
+                  }
                 >
                   <div className={`flex items-center gap-2 ${column.align === 'center' ? 'justify-center' : column.align === 'right' ? 'justify-end' : ''}`}>
                     <span>{column.header}</span>

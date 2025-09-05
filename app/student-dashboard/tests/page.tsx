@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { FileCheck, Clock, Target, RotateCcw, Award, AlertCircle, ChevronRight, Search, TrendingUp, Calendar, CheckCircle, PlayCircle, Eye } from 'lucide-react'
+import { FileCheck, FileText, Clock, Target, RotateCcw, Award, AlertCircle, ChevronRight, Search, TrendingUp, Calendar, CheckCircle, PlayCircle, Eye } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
 import Card from '@/app/components/Card'
 import Button from '@/app/components/Button'
@@ -10,6 +10,7 @@ import EmptyState from '@/app/components/EmptyState'
 import { SkeletonCard } from '@/app/components/Skeleton'
 import { useTranslation } from '@/app/contexts/LanguageContext'
 import Link from 'next/link'
+import Breadcrumbs from '@/app/components/ui/Breadcrumbs'
 
 type Test = Tables<'tests'>
 type TestGrade = Tables<'test_grades'>
@@ -200,9 +201,10 @@ export default function StudentTestsPage() {
     return (
       <div className="min-h-screen space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gold">
-            Meus Testes
-          </h1>
+        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <FileText className="w-8 h-8 text-gold-400" />
+          Meus Testes
+        </h1>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {[...Array(4)].map((_, i) => (
@@ -219,9 +221,11 @@ export default function StudentTestsPage() {
 
   return (
     <div className="min-h-screen space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gold">
+        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <FileText className="w-8 h-8 text-gold-400" />
           Meus Testes
         </h1>
         <div className="text-gold-400/60 text-sm">

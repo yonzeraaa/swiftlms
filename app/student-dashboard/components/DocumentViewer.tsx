@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { FileText, Download, Maximize, X, ExternalLink, Loader2 } from 'lucide-react'
+import { FileText, Download, Maximize, X, ExternalLink } from 'lucide-react'
+import Spinner from '../../components/ui/Spinner'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DocumentViewerProps {
@@ -162,7 +163,7 @@ export default function DocumentViewer({ url, title, onComplete }: DocumentViewe
             className="absolute inset-0 flex items-center justify-center bg-navy-900/50 z-20"
           >
             <div className="text-center">
-              <Loader2 className="w-8 h-8 text-gold-500 animate-spin mx-auto mb-3" />
+              <Spinner size="lg" className="mx-auto mb-3" />
               <p className="text-gold-300">Carregando documento...</p>
             </div>
           </motion.div>

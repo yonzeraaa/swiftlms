@@ -5,6 +5,8 @@ import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, 
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import ImportProgress from '../../components/ImportProgress'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
+import Spinner from '../../components/ui/Spinner'
 import { useImportProgress } from '../../hooks/useImportProgress'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -672,10 +674,14 @@ export default function CoursesPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gold">{t('courses.title')}</h1>
+          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+            <BookOpen className="w-8 h-8 text-gold-400" />
+            {t('courses.title')}
+          </h1>
           <p className="text-gold-300 mt-1">{t('courses.subtitle')}</p>
         </div>
         <Button 
@@ -737,7 +743,7 @@ export default function CoursesPage() {
       {/* Courses Grid */}
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+          <Spinner size="xl" />
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -752,6 +758,7 @@ export default function CoursesPage() {
                   <button 
                     ref={(el) => { dropdownRefs.current[course.id] = el }}
                     className="text-gold-400 hover:text-gold-200 transition-colors ml-4 p-1"
+                    aria-label="Abrir menu de ações do curso"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (openDropdown === course.id) {
@@ -1492,7 +1499,7 @@ export default function CoursesPage() {
             
             {loadingEnrolledStudents ? (
               <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500"></div>
+                <Spinner size="lg" />
               </div>
             ) : enrolledStudents.length === 0 ? (
               <div className="text-center py-8">

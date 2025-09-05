@@ -297,7 +297,7 @@ export default function StudentDashboardLayout({
                         }
                       `}
                     >
-                      <Icon className={`w-5 h-5 flex-shrink-0 ${active && 'animate-pulse'}`} />
+                      <Icon className="w-5 h-5 flex-shrink-0" />
                       <AnimatePresence>
                         {sidebarOpen && (
                           <motion.span 

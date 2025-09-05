@@ -20,16 +20,20 @@ import {
   Send,
   AlertCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Star
 } from 'lucide-react'
 import Card from '../../../components/Card'
 import Button from '../../../components/Button'
+import Tabs from '../../../components/Tabs'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import ProgressRing from '../../../components/ui/ProgressRing'
 import { motion, AnimatePresence } from 'framer-motion'
 import VideoPlayer from '../../components/VideoPlayer'
 import DocumentViewer from '../../components/DocumentViewer'
+import Spinner from '../../../components/ui/Spinner'
+import Breadcrumbs from '../../../components/ui/Breadcrumbs'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
@@ -68,6 +72,7 @@ export default function CoursePage() {
   const [canRequestCertificate, setCanRequestCertificate] = useState(false)
   const [requestingCertificate, setRequestingCertificate] = useState(false)
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
+  const [reviews, setReviews] = useState<any[]>([])
 
   useEffect(() => {
     if (courseId) {
@@ -302,6 +307,15 @@ export default function CoursePage() {
         setSelectedLesson(modulesWithProgress[0].lessons[0])
       }
 
+      // Fetch course reviews (lightweight)
+      const { data: courseReviews } = await supabase
+        .from('course_reviews')
+        .select('rating, title, comment, created_at')
+        .eq('course_id', courseId)
+        .order('created_at', { ascending: false })
+
+      setReviews(courseReviews || [])
+
     } catch (error) {
       console.error('Error fetching course data:', error)
       router.push('/student-dashboard/my-courses')
@@ -496,10 +510,54 @@ export default function CoursePage() {
 
   const progressPercentage = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
 
+  const CertificatePanel = () => (
+    !isAdmin ? (
+      <div className="mt-4 space-y-3">
+        {certificateStatus === 'approved' && (
+          <div className="flex items-center gap-2 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
+            <Award className="w-5 h-5 text-green-400" />
+            <span className="text-green-400">Certificado aprovado! Acesse em \"Meus Certificados\"</span>
+          </div>
+        )}
+        {certificateStatus === 'pending' && (
+          <div className="flex items-center gap-2 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+            <Clock className="w-5 h-5 text-yellow-400" />
+            <span className="text-yellow-400">Certificado solicitado - Aguardando aprovação</span>
+          </div>
+        )}
+        {certificateStatus === 'rejected' && (
+          <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <span className="text-red-400">Certificado rejeitado - Verifique em \"Meus Certificados\"</span>
+          </div>
+        )}
+        {canRequestCertificate && (
+          <Button
+            variant="primary"
+            onClick={requestCertificate}
+            loading={requestingCertificate}
+            icon={<Send className="w-4 h-4" />}
+            className="w-full"
+          >
+            Solicitar Certificado de Conclusão
+          </Button>
+        )}
+        {!canRequestCertificate && certificateStatus === 'none' && progressPercentage === 100 && (
+          <div className="flex items-center gap-2 p-3 bg-navy-900/50 border border-gold-500/20 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-gold-400" />
+            <span className="text-gold-400 text-sm">
+              Você precisa atingir nota mínima de 70% no teste para solicitar o certificado
+            </span>
+          </div>
+        )}
+      </div>
+    ) : null
+  )
+
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Spinner size="xl" />
       </div>
     )
   }
@@ -519,6 +577,7 @@ export default function CoursePage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Admin Mode Indicator */}
       {isAdmin && (
         <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-lg p-4">
@@ -603,51 +662,7 @@ export default function CoursePage() {
             )}
             
             {/* Certificate Status and Request Button */}
-            {!isAdmin && (
-              <div className="mt-4 space-y-3">
-                {certificateStatus === 'approved' && (
-                  <div className="flex items-center gap-2 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
-                    <Award className="w-5 h-5 text-green-400" />
-                    <span className="text-green-400">Certificado aprovado! Acesse em "Meus Certificados"</span>
-                  </div>
-                )}
-                
-                {certificateStatus === 'pending' && (
-                  <div className="flex items-center gap-2 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
-                    <Clock className="w-5 h-5 text-yellow-400" />
-                    <span className="text-yellow-400">Certificado solicitado - Aguardando aprovação</span>
-                  </div>
-                )}
-                
-                {certificateStatus === 'rejected' && (
-                  <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-red-400" />
-                    <span className="text-red-400">Certificado rejeitado - Verifique em "Meus Certificados"</span>
-                  </div>
-                )}
-                
-                {canRequestCertificate && (
-                  <Button
-                    variant="primary"
-                    onClick={requestCertificate}
-                    loading={requestingCertificate}
-                    icon={<Send className="w-4 h-4" />}
-                    className="w-full"
-                  >
-                    Solicitar Certificado de Conclusão
-                  </Button>
-                )}
-                
-                {!canRequestCertificate && certificateStatus === 'none' && progressPercentage === 100 && (
-                  <div className="flex items-center gap-2 p-3 bg-navy-900/50 border border-gold-500/20 rounded-lg">
-                    <AlertCircle className="w-5 h-5 text-gold-400" />
-                    <span className="text-gold-400 text-sm">
-                      Você precisa atingir nota mínima de 70% no teste para solicitar o certificado
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
+            <CertificatePanel />
             {course.instructor && (
               <div className="flex items-center gap-3 pt-2 border-t border-gold-500/20">
                 <div className="w-10 h-10 bg-gradient-to-br from-gold-500/30 to-gold-600/20 rounded-full flex items-center justify-center">
@@ -798,137 +813,228 @@ export default function CoursePage() {
           })}
         </div>
 
-        {/* Lesson Content */}
+        {/* Right Column with Tabs */}
         <div className="lg:col-span-2">
-          {selectedLesson ? (
-            <Card variant="premium" className="h-full">
-              <div className="space-y-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-2xl font-semibold text-gold mb-2">
-                      {selectedLesson.title}
-                    </h2>
-                    {selectedLesson.description && (
-                      <p className="text-gold-300/70">{selectedLesson.description}</p>
-                    )}
-                  </div>
-                  {(selectedLesson as any).progress?.is_completed && (
-                    <div className="flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full">
-                      <CheckCircle2 className="w-4 h-4 text-green-400" />
-                      <span className="text-sm text-green-400">Concluída</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Lesson Content */}
-                <div className="bg-navy-900/50 rounded-lg overflow-hidden">
-                  {selectedLesson.content_type === 'video' ? (
-                    selectedLesson.content_url ? (
-                      <VideoPlayer
-                        url={selectedLesson.content_url}
-                        title={selectedLesson.title}
-                        onComplete={() => {/* Removed auto-complete */}}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-[400px]">
-                        <div className="text-center">
-                          <Video className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                          <p className="text-gold-300">Vídeo não disponível</p>
-                          <p className="text-gold-300/50 text-sm mt-2">
-                            Nenhuma URL de vídeo foi configurada para esta aula
-                          </p>
+          <Tabs
+            variant="underline"
+            tabs={[
+              {
+                id: 'conteudo',
+                label: 'Conteúdo',
+                content: (
+                  selectedLesson ? (
+                    <Card variant="premium" className="h-full">
+                      <div className="space-y-6">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h2 className="text-2xl font-semibold text-gold mb-2">
+                              {selectedLesson.title}
+                            </h2>
+                            {selectedLesson.description && (
+                              <p className="text-gold-300/70">{selectedLesson.description}</p>
+                            )}
+                          </div>
+                          {(selectedLesson as any).progress?.is_completed && (
+                            <div className="flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full">
+                              <CheckCircle2 className="w-4 h-4 text-green-400" />
+                              <span className="text-sm text-green-400">Concluída</span>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )
-                  ) : selectedLesson.content_type === 'text' ? (
-                    // Verificar se há URL de documento primeiro
-                    selectedLesson.content_url ? (
-                      <DocumentViewer
-                        url={selectedLesson.content_url}
-                        title={selectedLesson.title}
-                        onComplete={() => {/* Removed auto-complete */}}
-                      />
-                    ) : (
-                      <div className="w-full h-[400px] overflow-y-auto">
-                        <div className="prose prose-gold max-w-none">
-                          {selectedLesson.content ? (
-                            <div 
-                              className="text-gold-200 leading-relaxed"
-                              dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
-                            />
+
+                        <div className="bg-navy-900/50 rounded-lg overflow-hidden">
+                          {selectedLesson.content_type === 'video' ? (
+                            selectedLesson.content_url ? (
+                              <VideoPlayer
+                                url={selectedLesson.content_url}
+                                title={selectedLesson.title}
+                                onComplete={() => {/* Removed auto-complete */}}
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-[400px]">
+                                <div className="text-center">
+                                  <Video className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                                  <p className="text-gold-300">Vídeo não disponível</p>
+                                  <p className="text-gold-300/50 text-sm mt-2">
+                                    Nenhuma URL de vídeo foi configurada para esta aula
+                                  </p>
+                                </div>
+                              </div>
+                            )
+                          ) : selectedLesson.content_type === 'text' ? (
+                            selectedLesson.content_url ? (
+                              <DocumentViewer
+                                url={selectedLesson.content_url}
+                                title={selectedLesson.title}
+                                onComplete={() => {/* Removed auto-complete */}}
+                              />
+                            ) : (
+                              <div className="w-full h-[400px] overflow-y-auto">
+                                <div className="prose prose-gold max-w-none">
+                                  {selectedLesson.content ? (
+                                    <div 
+                                      className="text-gold-200 leading-relaxed"
+                                      dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
+                                    />
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full">
+                                      <div className="text-center">
+                                        <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                                        <p className="text-gold-300">Conteúdo não disponível</p>
+                                        <p className="text-gold-300/50 text-sm mt-2">
+                                          Nenhum documento ou texto foi configurado para esta aula
+                                        </p>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          ) : selectedLesson.content_type === 'document' ? (
+                            selectedLesson.content_url ? (
+                              <DocumentViewer
+                                url={selectedLesson.content_url}
+                                title={selectedLesson.title}
+                                onComplete={() => {/* Removed auto-complete */}}
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center h-[400px]">
+                                <div className="text-center">
+                                  <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                                  <p className="text-gold-300">Documento não disponível</p>
+                                  <p className="text-gold-300/50 text-sm mt-2">
+                                    Nenhuma URL de documento foi configurada para esta aula
+                                  </p>
+                                </div>
+                              </div>
+                            )
                           ) : (
-                            <div className="flex items-center justify-center h-full">
+                            <div className="flex items-center justify-center h-[400px]">
                               <div className="text-center">
-                                <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                                <p className="text-gold-300">Conteúdo não disponível</p>
+                                <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                                <p className="text-gold-300">Tipo de conteúdo não suportado</p>
                                 <p className="text-gold-300/50 text-sm mt-2">
-                                  Nenhum documento ou texto foi configurado para esta aula
+                                  Tipo: {selectedLesson.content_type}
                                 </p>
                               </div>
                             </div>
                           )}
                         </div>
-                      </div>
-                    )
-                  ) : selectedLesson.content_type === 'document' ? (
-                    // Novo tipo: documento
-                    selectedLesson.content_url ? (
-                      <DocumentViewer
-                        url={selectedLesson.content_url}
-                        title={selectedLesson.title}
-                        onComplete={() => {/* Removed auto-complete */}}
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-[400px]">
-                        <div className="text-center">
-                          <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                          <p className="text-gold-300">Documento não disponível</p>
-                          <p className="text-gold-300/50 text-sm mt-2">
-                            Nenhuma URL de documento foi configurada para esta aula
-                          </p>
+
+                        <div className="flex justify-between items-center pt-4 border-t border-gold-500/20">
+                          <div className="flex items-center gap-2 text-sm text-gold-300/70">
+                            <Clock className="w-4 h-4" />
+                            <span>{selectedLesson.duration_minutes || 0} minutos</span>
+                          </div>
+                          
+                          {!(selectedLesson as any).progress?.is_completed && (
+                            <Button 
+                              variant="primary"
+                              onClick={() => markLessonComplete(selectedLesson.id)}
+                              icon={<CheckCircle2 className="w-4 h-4" />}
+                            >
+                              Marcar esta aula como concluída
+                            </Button>
+                          )}
                         </div>
                       </div>
-                    )
+                    </Card>
                   ) : (
-                    <div className="flex items-center justify-center h-[400px]">
+                    <Card className="h-full flex items-center justify-center">
                       <div className="text-center">
                         <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                        <p className="text-gold-300">Tipo de conteúdo não suportado</p>
-                        <p className="text-gold-300/50 text-sm mt-2">
-                          Tipo: {selectedLesson.content_type}
-                        </p>
+                        <p className="text-gold-300">Selecione uma aula para começar</p>
+                      </div>
+                    </Card>
+                  )
+                )
+              },
+              {
+                id: 'progresso',
+                label: 'Progresso',
+                content: (
+                  <Card>
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-gold-300 text-sm mb-2">Progresso do curso</p>
+                        <div className="w-full bg-navy-800 rounded-full h-2">
+                          <div 
+                            className="h-2 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 transition-all"
+                            style={{ width: `${Math.round(progressPercentage)}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-gold-400 mt-1">
+                          <span>{completedLessons}/{totalLessons} aulas</span>
+                          <span>{Math.round(progressPercentage)}%</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-gold-200 font-medium mb-2">Por módulo</h3>
+                        <div className="space-y-3">
+                          {course.modules.map((m) => {
+                            const mp = calculateModuleProgress(m)
+                            const pct = m.lessons.length ? Math.round((mp.completed / mp.total) * 100) : 0
+                            return (
+                              <div key={m.id} className="p-3 rounded-lg bg-navy-900/40 border border-gold-500/10">
+                                <div className="flex items-center justify-between mb-1">
+                                  <p className="text-sm text-gold-200 font-medium truncate">{m.title}</p>
+                                  <span className="text-xs text-gold-400">{mp.completed}/{mp.total} • {pct}%</span>
+                                </div>
+                                <div className="w-full bg-navy-800 rounded-full h-1.5">
+                                  <div className="h-1.5 rounded-full bg-gold-600" style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Lesson Actions */}
-                <div className="flex justify-between items-center pt-4 border-t border-gold-500/20">
-                  <div className="flex items-center gap-2 text-sm text-gold-300/70">
-                    <Clock className="w-4 h-4" />
-                    <span>{selectedLesson.duration_minutes || 0} minutos</span>
-                  </div>
-                  
-                  {!(selectedLesson as any).progress?.is_completed && (
-                    <Button 
-                      variant="primary"
-                      onClick={() => markLessonComplete(selectedLesson.id)}
-                      icon={<CheckCircle2 className="w-4 h-4" />}
-                    >
-                      Marcar esta aula como concluída
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ) : (
-            <Card className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                <p className="text-gold-300">Selecione uma aula para começar</p>
-              </div>
-            </Card>
-          )}
+                  </Card>
+                )
+              },
+              {
+                id: 'avaliacoes',
+                label: 'Avaliações',
+                content: (
+                  <Card>
+                    <div className="space-y-4">
+                      {reviews.length === 0 ? (
+                        <p className="text-gold-300">Ainda não há avaliações para este curso.</p>
+                      ) : (
+                        reviews.map((r, idx) => (
+                          <div key={idx} className="p-3 rounded-lg bg-navy-900/40 border border-gold-500/10">
+                            <div className="flex items-center gap-2">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star key={i} className={`w-4 h-4 ${i < (r.rating || 0) ? 'text-gold-400' : 'text-gold-600'}`} />
+                              ))}
+                            </div>
+                            {r.title && <p className="text-gold-200 font-medium mt-1">{r.title}</p>}
+                            {r.comment && <p className="text-gold-300/80 text-sm mt-1">{r.comment}</p>}
+                            {r.created_at && (
+                              <p className="text-gold-500/60 text-xs mt-2">{new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </Card>
+                )
+              },
+              {
+                id: 'certificados',
+                label: 'Certificados',
+                content: (
+                  <Card>
+                    <div className="space-y-2">
+                      <h3 className="text-gold-200 font-medium">Status de Certificação</h3>
+                      <CertificatePanel />
+                    </div>
+                  </Card>
+                )
+              }
+            ]}
+          />
         </div>
       </div>
     </div>

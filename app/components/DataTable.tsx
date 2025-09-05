@@ -28,6 +28,7 @@ interface DataTableProps<T> {
   loading?: boolean
   striped?: boolean
   compact?: boolean
+  stickyHeader?: boolean
 }
 
 type SortDirection = 'asc' | 'desc' | null
@@ -53,7 +54,8 @@ export default function DataTable<T extends Record<string, any>>({
   emptyMessage = 'Nenhum item encontrado',
   loading = false,
   striped = false,
-  compact = false
+  compact = false,
+  stickyHeader = false
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: '', direction: null })
@@ -290,7 +292,7 @@ export default function DataTable<T extends Record<string, any>>({
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-gold-500/20">
+      <div className={`overflow-x-auto rounded-xl border border-gold-500/20 ${stickyHeader ? 'table-sticky' : ''}`}>
         <table className="w-full">
           <thead className="bg-navy-800/50 border-b border-gold-500/20">
             <tr>
@@ -304,6 +306,12 @@ export default function DataTable<T extends Record<string, any>>({
                   `}
                   style={{ width: column.width }}
                   onClick={() => column.sortable && handleSort(column.key as string)}
+                  scope="col"
+                  aria-sort={
+                    sortConfig.key === (column.key as string)
+                      ? (sortConfig.direction === 'asc' ? 'ascending' : sortConfig.direction === 'desc' ? 'descending' : 'none')
+                      : 'none'
+                  }
                 >
                   <div className="flex items-center gap-2">
                     {column.label}

@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, AlertCircle, Activity, Sparkles, UserPlus, BookPlus } from 'lucide-react'
 import StatCard from '../components/StatCard'
+import Breadcrumbs from '../components/ui/Breadcrumbs'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import PremiumLoader, { PremiumSkeleton } from '../components/ui/PremiumLoader'
@@ -358,12 +359,13 @@ export default function StudentDashboard() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Welcome Banner */}
       <Card variant="gradient" className="mb-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
-              <Sparkles className="w-8 h-8 text-gold-400 animate-pulse" />
+              <Sparkles className="w-8 h-8 text-gold-400" />
               Meu Painel de Aprendizagem
             </h1>
             <p className="text-gold-300 mt-1">Acompanhe seu progresso e continue aprendendo</p>

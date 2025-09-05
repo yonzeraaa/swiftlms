@@ -19,10 +19,11 @@ import {
   FolderOpen,
   Folder,
   AlertCircle,
-  Check,
-  Loader2
+  Check
 } from 'lucide-react'
 import Card from '../../components/Card'
+import Spinner from '../../components/ui/Spinner'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -561,13 +562,14 @@ export default function StructurePage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-gold-500" />
+        <Spinner size="lg" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>

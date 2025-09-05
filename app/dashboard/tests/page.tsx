@@ -13,6 +13,8 @@ import { useTranslation } from '../../contexts/LanguageContext'
 import { useToast } from '../../components/Toast'
 import EmptyState from '../../components/EmptyState'
 import { SkeletonCard } from '../../components/Skeleton'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
+import Spinner from '../../components/ui/Spinner'
 import { Chip } from '../../components/Badge'
 
 type Test = Tables<'tests'> & { answer_key_count?: number }
@@ -438,9 +440,11 @@ export default function TestsManagementPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header com busca e filtros */}
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gold">
+        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <FileCheck className="w-8 h-8 text-gold-400" />
           {t('tests.title')}
         </h1>
         <Button
@@ -628,6 +632,7 @@ export default function TestsManagementPage() {
                     }}
                     onClick={(e) => handleDropdownClick(e, test.id)}
                     className="p-2 hover:bg-navy-700 rounded-lg transition-colors border border-transparent hover:border-gold-500/30"
+                    aria-label="Abrir menu de ações do teste"
                     type="button"
                   >
                     <MoreVertical className="w-5 h-5 text-gold-400" />

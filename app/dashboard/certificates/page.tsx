@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Award, Download, Eye, Trash2, Plus, CheckCircle, XCircle, Loader2, User, Calendar, Clock, FileText, AlertCircle, CheckCheck, X, Shield } from 'lucide-react'
+import { Award, Download, Eye, Trash2, Plus, CheckCircle, XCircle, User, Calendar, Clock, FileText, AlertCircle, CheckCheck, X, Shield } from 'lucide-react'
 import Card from '../../components/Card'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
+import Spinner from '../../components/ui/Spinner'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
@@ -317,16 +319,20 @@ export default function CertificatesPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Spinner size="xl" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gold">Certificados</h1>
+        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <Award className="w-8 h-8 text-gold-400" />
+          Certificados
+        </h1>
         <p className="text-gold-300 mt-1">Gerencie a emissão de certificados para cursos concluídos</p>
       </div>
 
@@ -398,16 +404,16 @@ export default function CertificatesPage() {
       {/* Requisições Pendentes */}
       {activeTab === 'requests' && (
         <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px]">
-              <thead>
+          <div className="overflow-x-auto table-sticky">
+            <table className="w-full min-w-[1100px] table-density density-compact">
+              <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
                 <tr className="border-b border-gold-500/20">
-                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[300px]">Aluno</th>
-                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[280px]">Curso</th>
-                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Lições</th>
-                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[140px]">Solicitado em</th>
-                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Status</th>
-                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[200px]">Ações</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[300px]">Aluno</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[280px]">Curso</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Lições</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[140px]">Solicitado em</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Status</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[200px]">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gold-500/10">
@@ -463,7 +469,7 @@ export default function CertificatesPage() {
                             onClick={() => approveRequest(request.id)}
                             disabled={processingRequest === request.id}
                             icon={processingRequest === request.id 
-                              ? <Loader2 className="w-4 h-4 animate-spin" />
+                              ? <Spinner size="sm" />
                               : <CheckCheck className="w-4 h-4" />
                             }
                             title="Aprovar"
@@ -537,17 +543,17 @@ export default function CertificatesPage() {
               Pendentes ({stats.pending})
             </Button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1200px]">
-              <thead>
+          <div className="overflow-x-auto table-sticky">
+            <table className="w-full min-w-[1200px] table-density density-compact">
+              <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
                 <tr className="border-b border-gold-500/20">
-                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[220px]">Número</th>
-                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[280px]">Aluno</th>
-                  <th className="text-left py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[250px]">Curso</th>
-                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[80px]">Nota</th>
-                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[140px]">Emitido em</th>
-                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Status</th>
-                  <th className="text-center py-4 px-6 text-gold-200 font-medium uppercase text-xs tracking-wider w-[150px]">Ações</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[220px]">Número</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[280px]">Aluno</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[250px]">Curso</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[80px]">Nota</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[140px]">Emitido em</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Status</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[150px]">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gold-500/10">
@@ -682,6 +688,7 @@ export default function CertificatesPage() {
               <button
                 onClick={() => setShowCertificateModal(false)}
                 className="absolute top-4 right-4 text-gold-400 hover:text-gold-200 transition-colors z-10"
+                aria-label="Fechar visualização do certificado"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -826,7 +833,7 @@ export default function CertificatesPage() {
                   onClick={() => rejectRequest(showRejectionModal)}
                   disabled={processingRequest === showRejectionModal}
                   icon={processingRequest === showRejectionModal 
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    ? <Spinner size="sm" />
                     : <X className="w-4 h-4" />
                   }
                 >

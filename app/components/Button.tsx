@@ -1,7 +1,7 @@
 'use client'
 
 import { ButtonHTMLAttributes, ReactNode, useRef, MouseEvent, forwardRef } from 'react'
-import { Loader2 } from 'lucide-react'
+import Spinner from './ui/Spinner'
 import { motion, HTMLMotionProps } from 'framer-motion'
 import { useTranslation } from '../contexts/LanguageContext'
 
@@ -193,7 +193,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
     <>
       {actualLoading ? (
         <>
-          <Loader2 className={`${iconSizes[size]} animate-spin`} aria-hidden="true" />
+          <Spinner size={size === 'xs' ? 'sm' : (size as any)} className="mr-1" />
           <span className="sr-only">{t('common.loading')}</span>
           <span aria-hidden="true">{t('common.loading')}</span>
         </>

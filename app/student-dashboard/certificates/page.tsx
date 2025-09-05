@@ -3,8 +3,10 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
-import { Award, Download, Eye, Check, X, Calendar, Clock, Medal, Shield, AlertCircle, Loader2 } from 'lucide-react'
+import { Award, Download, Eye, Check, X, Calendar, Clock, Medal, Shield, AlertCircle } from 'lucide-react'
+import Spinner from '../../components/ui/Spinner'
 import Card from '../../components/Card'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
@@ -130,16 +132,20 @@ export default function CertificatesPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Spinner size="xl" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gold">Meus Certificados</h1>
+        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <Award className="w-8 h-8 text-gold-400" />
+          Meus Certificados
+        </h1>
         <p className="text-gold-300 mt-1">Certificados de conclusão dos cursos que você completou</p>
       </div>
 
@@ -328,7 +334,7 @@ export default function CertificatesPage() {
                       <div className="flex items-center gap-2">
                         {request.status === 'pending' ? (
                           <>
-                            <Loader2 className="w-5 h-5 text-yellow-500 animate-spin" />
+                            <Spinner size="sm" className="text-yellow-500" />
                             <span className="text-yellow-400">Aguardando aprovação do administrador</span>
                           </>
                         ) : request.status === 'rejected' ? (

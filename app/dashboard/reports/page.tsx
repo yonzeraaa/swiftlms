@@ -3,10 +3,12 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Download, Calendar, TrendingUp, FileText, Filter, FileSpreadsheet, Users, BookOpen, Award, GraduationCap, Activity, Table } from 'lucide-react'
+import { Download, Calendar, TrendingUp, FileText, Filter, FileSpreadsheet, Users, BookOpen, Award, GraduationCap, Activity, Table, BarChart3 } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import MetricCard from '../../components/reports/MetricCard'
+import Spinner from '../../components/ui/Spinner'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import DataTable, { Column } from '../../components/reports/DataTable'
 import StatusBadge from '../../components/reports/StatusBadge'
 import SkeletonLoader from '../../components/reports/SkeletonLoader'
@@ -1446,10 +1448,14 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gold">{t('reports.title')}</h1>
+          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+            <BarChart3 className="w-8 h-8 text-gold-400" />
+            {t('reports.title')}
+          </h1>
           <p className="text-gold-300 mt-1">{t('reports.subtitle')}</p>
         </div>
         <div className="flex gap-2">
@@ -1591,7 +1597,7 @@ export default function ReportsPage() {
                   >
                     {isGenerating ? (
                       <div className="flex items-center justify-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <Spinner size="sm" colorClass="border-white" />
                         <span>{t('reports.generating')}</span>
                       </div>
                     ) : (
@@ -1681,6 +1687,8 @@ export default function ReportsPage() {
             searchable={false}
             showHeader={false}
             density="compact"
+            stickyHeader
+            maxHeight="300px"
             hoverable
             borderless
             emptyMessage={t('reports.noCoursesInPeriod')}
@@ -1739,6 +1747,8 @@ export default function ReportsPage() {
             searchable={false}
             showHeader={false}
             density="compact"
+            stickyHeader
+            maxHeight="300px"
             hoverable
             borderless
             emptyMessage={t('reports.noCategoriesFound')}

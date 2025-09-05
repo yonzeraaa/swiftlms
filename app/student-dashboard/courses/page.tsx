@@ -3,8 +3,10 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Search, Filter, BookOpen, Clock, Users, Star, DollarSign, Tag, TrendingUp, X, Check, AlertCircle, Loader2, User, Sparkles, Eye, Lock, BookMarked } from 'lucide-react'
+import { Search, Filter, BookOpen, Clock, Users, Star, DollarSign, Tag, TrendingUp, X, Check, AlertCircle, User, Sparkles, Eye, Lock, BookMarked } from 'lucide-react'
+import Spinner from '../../components/ui/Spinner'
 import Card from '../../components/Card'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
@@ -274,25 +276,15 @@ export default function ExploreCourses() {
   if (loading) {
     return (
       <div className="flex flex-col justify-center items-center min-h-[60vh] gap-4">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="rounded-full h-12 w-12 border-b-2 border-gold-500"
-        />
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-gold-300 text-sm"
-        >
-          Carregando cursos disponíveis...
-        </motion.p>
+        <Spinner size="xl" />
+        <p className="text-gold-300 text-sm">Carregando cursos disponíveis...</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <FadeTransition>
         <div>
@@ -303,7 +295,7 @@ export default function ExploreCourses() {
             transition={{ duration: 0.5 }}
           >
             Catálogo de Cursos
-            <Sparkles className="w-6 h-6 text-gold-400 animate-pulse" />
+            <Sparkles className="w-6 h-6 text-gold-400" />
           </motion.h1>
           <motion.p 
             className="text-gold-300 mt-1"
@@ -742,7 +734,7 @@ export default function ExploreCourses() {
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
               {loadingPreview ? (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 text-gold-500 animate-spin mb-4" />
+                  <Spinner size="lg" className="mb-4" />
                   <p className="text-gold-300">Carregando conteúdo...</p>
                 </div>
               ) : previewModules.length > 0 ? (

@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react'
 import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, Loader2, AlertCircle, Link2, CheckCircle2, CheckSquare, Square, Trash } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
+import Spinner from '../../components/ui/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 
@@ -435,17 +437,21 @@ export default function SubjectsPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Spinner size="xl" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gold">Disciplinas</h1>
+          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+            <GraduationCap className="w-8 h-8 text-gold-400" />
+            Disciplinas
+          </h1>
           <p className="text-gold-300 mt-1">Gerencie as disciplinas disponíveis na plataforma</p>
         </div>
         <Button 
@@ -527,14 +533,14 @@ export default function SubjectsPage() {
             />
           </div>
           {selectedSubjects.length > 0 && (
-            <Button 
-              variant="secondary"
-              icon={deletingMultiple ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash className="w-4 h-4" />}
-              onClick={handleDeleteMultiple}
-              disabled={deletingMultiple}
-            >
-              {deletingMultiple ? 'Excluindo...' : `Excluir ${selectedSubjects.length} selecionado(s)`}
-            </Button>
+          <Button 
+            variant="secondary"
+            icon={deletingMultiple ? <Spinner size="sm" /> : <Trash className="w-4 h-4" />}
+            onClick={handleDeleteMultiple}
+            disabled={deletingMultiple}
+          >
+            {deletingMultiple ? 'Excluindo...' : `Excluir ${selectedSubjects.length} selecionado(s)`}
+          </Button>
           )}
           <Button 
             variant="secondary"
@@ -547,9 +553,9 @@ export default function SubjectsPage() {
 
       {/* Subjects Table */}
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+        <div className="overflow-x-auto table-sticky">
+          <table className="w-full table-density density-compact">
+            <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
               <tr className="border-b border-gold-500/20">
                 <th className="text-center py-4 px-4 text-gold-200 font-medium w-12">
                   <button
@@ -559,14 +565,14 @@ export default function SubjectsPage() {
                     {selectAll ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
                   </button>
                 </th>
-                <th className="text-left py-4 px-4 text-gold-200 font-medium">Código</th>
-                <th className="text-left py-4 px-4 text-gold-200 font-medium">Nome</th>
-                <th className="text-left py-4 px-4 text-gold-200 font-medium">Descrição</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Horas</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Aulas</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Cursos</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Criado em</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Código</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Nome</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Descrição</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Horas</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Aulas</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Cursos</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Criado em</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -763,7 +769,7 @@ export default function SubjectsPage() {
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Spinner size="sm" className="mr-2" />
                       Salvando...
                     </>
                   ) : (
@@ -801,7 +807,7 @@ export default function SubjectsPage() {
             <div className="flex-1 overflow-y-auto p-6">
               {lessonsLoading ? (
                 <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+                  <Spinner size="xl" />
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -883,7 +889,7 @@ export default function SubjectsPage() {
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Spinner size="sm" className="mr-2" />
                     Salvando...
                   </>
                 ) : (

@@ -16,7 +16,9 @@ import Button from '../../../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import ProgressRing from '../../../../components/ui/ProgressRing'
+import Breadcrumbs from '../../../../components/ui/Breadcrumbs'
 import HeatMap from '../../../../components/ui/HeatMap'
+import Spinner from '../../../../components/ui/Spinner'
 import { DashboardBento } from '../../../../components/ui/BentoGrid'
 
 type Course = Database['public']['Tables']['courses']['Row']
@@ -241,7 +243,7 @@ export default function CourseProgressPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Spinner size="xl" />
       </div>
     )
   }
@@ -369,6 +371,7 @@ export default function CourseProgressPage() {
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button 

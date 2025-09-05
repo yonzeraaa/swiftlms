@@ -3,9 +3,11 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Folder, Plus, Edit, Trash2, Search, X, Loader2, AlertCircle, BookOpen, GripVertical, CheckSquare, Square, Trash } from 'lucide-react'
+import { Folder, Plus, Edit, Trash2, Search, X, AlertCircle, BookOpen, GripVertical, CheckSquare, Square, Trash } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
+import Spinner from '../../components/ui/Spinner'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import {
@@ -609,13 +611,14 @@ export default function ModulesPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-gold-500" />
+        <Spinner size="lg" />
       </div>
     )
   }
 
   return (
     <div className="p-6 space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -644,7 +647,7 @@ export default function ModulesPage() {
             ) : message.type === 'error' ? (
               <AlertCircle className="w-5 h-5 text-red-400" />
             ) : (
-              <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+              <Spinner size="sm" className="text-blue-400" />
             )}
             <p className={
               message.type === 'success' ? 'text-green-300' : 
@@ -838,7 +841,7 @@ export default function ModulesPage() {
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
                   placeholder="Ex: Módulo 1: Fundamentos"
                 />
               </div>
@@ -863,7 +866,7 @@ export default function ModulesPage() {
                       order_index: maxOrderIndex.toString()
                     })
                   }}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
                 >
                   <option value="">Selecione um curso</option>
                   {courses.map(course => (
@@ -882,7 +885,7 @@ export default function ModulesPage() {
                   type="number"
                   value={formData.order_index}
                   onChange={(e) => setFormData({ ...formData, order_index: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
                   placeholder="Ex: 0"
                   min="0"
                   step="1"
@@ -925,7 +928,7 @@ export default function ModulesPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
                   placeholder="Breve descrição do módulo..."
                   rows={3}
                 />
@@ -948,7 +951,7 @@ export default function ModulesPage() {
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      <Spinner size="sm" className="mr-2" />
                       Salvando...
                     </>
                   ) : (

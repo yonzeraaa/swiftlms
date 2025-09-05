@@ -3,8 +3,10 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { User, Lock, Globe, Bell, Shield, Save, Check, AlertCircle, Moon, Sun, Download, Trash2, Camera, Upload } from 'lucide-react'
+import { User, Lock, Globe, Bell, Shield, Save, Check, AlertCircle, Moon, Sun, Download, Trash2, Camera, Upload, Settings } from 'lucide-react'
 import Card from '../../components/Card'
+import Spinner from '../../components/ui/Spinner'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -331,16 +333,20 @@ export default function StudentSettingsPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Spinner size="xl" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gold">{t('settings.title')}</h1>
+        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <Settings className="w-8 h-8 text-gold-400" />
+          {t('settings.title')}
+        </h1>
         <p className="text-gold-300 mt-1">{t('settings.subtitle')}</p>
       </div>
 
@@ -402,7 +408,7 @@ export default function StudentSettingsPage() {
                 </div>
                 {uploadingAvatar && (
                   <div className="absolute inset-0 bg-navy-900/80 rounded-full flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-500"></div>
+                    <Spinner size="md" />
                   </div>
                 )}
                 <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-gold-500 hover:bg-gold-600 text-navy-900 rounded-full p-2 cursor-pointer transition-colors">

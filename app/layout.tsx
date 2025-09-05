@@ -26,6 +26,7 @@ import { LanguageProvider } from './contexts/LanguageContext'
 import { ToastProvider } from './components/Toast'
 import PremiumToastProvider from './components/ui/ToastProvider'
 import { AuthProvider } from './providers/AuthProvider'
+import PerfMetrics from './components/PerfMetrics'
 
 export default function RootLayout({
   children,
@@ -35,12 +36,22 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={`${openSans.variable} font-open-sans`}>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus-ring fixed top-2 left-2 z-[9999] bg-navy-900 text-gold-100 px-3 py-2 rounded-md"
+        >
+          Pular para o conteúdo
+        </a>
         <AuthProvider>
           <ThemeProvider>
             <LanguageProvider>
               <ToastProvider>
                 <PremiumToastProvider />
-                {children}
+                <main id="main-content">
+                  {children}
+                </main>
+                {/* Performance metrics (LCP/CLS) in dev tools */}
+                <PerfMetrics />
               </ToastProvider>
             </LanguageProvider>
           </ThemeProvider>

@@ -5,6 +5,8 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, Activity, BarChart3, ArrowUp, ArrowDown } from 'lucide-react'
 import Card from '../../components/Card'
+import Spinner from '../../components/ui/Spinner'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import ProgressChart from '../../components/ProgressChart'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
@@ -190,16 +192,20 @@ export default function ProgressPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Spinner size="xl" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gold">Meu Progresso</h1>
+        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <Target className="w-8 h-8 text-gold-400" />
+          Meu Progresso
+        </h1>
         <p className="text-gold-300 mt-1">Acompanhe seu desempenho e evolução nos cursos</p>
       </div>
 

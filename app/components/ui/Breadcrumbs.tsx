@@ -22,7 +22,7 @@ interface BreadcrumbsProps {
 
 export default function Breadcrumbs({
   items,
-  separator = <ChevronRight className="w-4 h-4" />,
+  separator = <ChevronRight className="w-4 h-4 text-gold-600" />,
   showHome = true,
   maxItems = 5,
   className = '',
@@ -93,7 +93,7 @@ export default function Breadcrumbs({
       {itemsToDisplay.map((item, index) => (
         <Fragment key={index}>
           {index > 0 && (
-            <span className="text-navy-400 dark:text-gold-600">
+            <span className="text-gold-600">
               {separator}
             </span>
           )}
@@ -107,13 +107,13 @@ export default function Breadcrumbs({
             {item.href ? (
               <Link
                 href={item.href}
-                className="flex items-center gap-1.5 text-sm font-medium text-navy-600 dark:text-gold-400 hover:text-navy-800 dark:hover:text-gold-200 transition-colors"
+                className="flex items-center gap-1.5 text-sm font-medium text-gold-400 hover:text-gold-200 transition-colors"
               >
                 {item.icon}
                 <span>{item.label}</span>
               </Link>
             ) : (
-              <span className="flex items-center gap-1.5 text-sm font-medium text-navy-900 dark:text-gold-100">
+              <span className="flex items-center gap-1.5 text-sm font-medium text-gold-100" aria-current="page">
                 {item.icon}
                 <span>{item.label}</span>
               </span>

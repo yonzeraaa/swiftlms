@@ -4,8 +4,10 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, Loader2, AlertCircle, BookOpen, Video, FileQuestion, Eye, EyeOff } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, AlertCircle, BookOpen, Video, FileQuestion, Eye, EyeOff } from 'lucide-react'
 import Card from '../../components/Card'
+import Breadcrumbs from '../../components/ui/Breadcrumbs'
+import Spinner from '../../components/ui/Spinner'
 import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
@@ -289,17 +291,21 @@ export default function LessonsPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <Spinner size="xl" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gold">Aulas</h1>
+          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+            <PlayCircle className="w-8 h-8 text-gold-400" />
+            Aulas
+          </h1>
           <p className="text-gold-300 mt-1">Gerencie as aulas dos cursos</p>
         </div>
         <Button 
@@ -391,17 +397,17 @@ export default function LessonsPage() {
 
       {/* Lessons Table */}
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
+        <div className="overflow-x-auto table-sticky">
+          <table className="w-full table-density density-compact">
+            <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
               <tr className="border-b border-gold-500/20">
-                <th className="text-left py-4 px-4 text-gold-200 font-medium">Aula</th>
-                <th className="text-left py-4 px-4 text-gold-200 font-medium">Disciplina</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Tipo</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Duração</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Ordem</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Preview</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Aula</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Disciplina</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Tipo</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Duração</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Ordem</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Preview</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -472,6 +478,7 @@ export default function LessonsPage() {
                               ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
                               : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
                           }`}
+                          aria-label={lesson.is_preview ? 'Marcar como privada' : 'Marcar como preview'}
                         >
                           {lesson.is_preview ? (
                             <><Eye className="w-3 h-3" /> Preview</>
@@ -559,7 +566,7 @@ export default function LessonsPage() {
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
                   placeholder="Ex: Introdução ao Módulo"
                 />
               </div>
@@ -571,7 +578,7 @@ export default function LessonsPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
                   placeholder="Breve descrição da aula..."
                   rows={3}
                 />
@@ -586,7 +593,7 @@ export default function LessonsPage() {
                     required
                     value={formData.content_type}
                     onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
-                    className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
                   >
                     <option value="video">Vídeo</option>
                     <option value="text">Texto</option>
@@ -602,7 +609,7 @@ export default function LessonsPage() {
                     type="number"
                     value={formData.duration_minutes}
                     onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
-                    className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
                     placeholder="Ex: 30"
                     min="0"
                   />
@@ -617,7 +624,7 @@ export default function LessonsPage() {
                   type="url"
                   value={formData.content_url}
                   onChange={(e) => setFormData({ ...formData, content_url: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
                   placeholder="https://..."
                 />
               </div>
@@ -684,7 +691,7 @@ export default function LessonsPage() {
                 >
                   {submitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Spinner size="sm" className="mr-2" />
                       Salvando...
                     </>
                   ) : (
