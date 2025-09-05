@@ -238,7 +238,6 @@ export default function DashboardLayout({
                           ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
                           : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
                         }
-                        ${!sidebarOpen && 'justify-center'}
                       `}
                     >
                       <Icon className={`w-5 h-5 flex-shrink-0 ${active && 'animate-pulse'}`} />
@@ -301,7 +300,6 @@ export default function DashboardLayout({
                   className={`
                     flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
                     text-blue-400 hover:bg-blue-500/20 hover:text-blue-300
-                    ${!sidebarOpen && 'justify-center'}
                   `}
                 >
                   <Eye className="w-5 h-5 flex-shrink-0" />
@@ -352,7 +350,6 @@ export default function DashboardLayout({
                     flex items-center gap-3 px-3 py-2.5 w-full rounded-lg
                     text-gold-300 hover:bg-red-500/20 hover:text-red-400 transition-all
                     disabled:opacity-50 disabled:cursor-not-allowed
-                    ${!sidebarOpen && 'justify-center'}
                   `}
                 >
                   <LogOut className="w-5 h-5 flex-shrink-0" />
