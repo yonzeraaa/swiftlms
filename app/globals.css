@@ -747,6 +747,34 @@ nav a, nav button {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  
+  /* Text clamp utilities for course content */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  
+  /* Better word breaking for long content */
+  .break-words {
+    word-wrap: break-word;
+    word-break: break-word;
+  }
 
   /* Remove excessive shadows in light theme */
   .light [class*="shadow"] {

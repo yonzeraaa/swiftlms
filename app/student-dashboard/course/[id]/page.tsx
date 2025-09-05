@@ -639,7 +639,7 @@ export default function CoursePage() {
           {course.modules.map((module, moduleIndex) => (
             <Card key={module.id} variant="glass">
               <div className="space-y-3">
-                <h3 className="font-semibold text-gold-200">{module.title}</h3>
+                <h3 className="font-semibold text-gold-200 break-words">{module.title}</h3>
                 {module.description && (
                   <p className="text-sm text-gold-300/70">{module.description}</p>
                 )}
@@ -657,49 +657,44 @@ export default function CoursePage() {
                         key={lesson.id}
                         onClick={() => handleLessonSelect(lesson)}
                         className={`
-                          w-full text-left p-3 rounded-lg transition-all relative
+                          w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
                           ${isSelected 
-                            ? 'bg-gold-500/20 border border-gold-500/50' 
+                            ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
                             : isCompleted 
-                              ? 'bg-green-500/10 hover:bg-green-500/20'
-                              : 'bg-navy-800/30 hover:bg-navy-800/50'
+                              ? 'text-green-400 hover:bg-green-500/10'
+                              : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
                           }
                           cursor-pointer
-                          ${!isCompleted && !isSelected ? 'ring-2 ring-gold-500/30' : ''}
                         `}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="flex-shrink-0">
-                            {isCompleted ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-400" />
-                            ) : (
-                              <div className="w-4 h-4 rounded-full border-2 border-gold-500/50" />
+                        <div className="flex-shrink-0">
+                          {isCompleted ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-400" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-gold-500/50" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate whitespace-nowrap">
+                            {lesson.title}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {lesson.content_type === 'video' && <Video className="w-3 h-3 text-gold-400" />}
+                            {lesson.content_type === 'text' && lesson.content_url && <Link className="w-3 h-3 text-gold-400" />}
+                            {lesson.content_type === 'text' && !lesson.content_url && <FileText className="w-3 h-3 text-gold-400" />}
+                            {lesson.content_type === 'document' && <FileImage className="w-3 h-3 text-gold-400" />}
+                            {lesson.duration_minutes && (
+                              <span className="text-xs text-gold-300/50 truncate">
+                                {lesson.duration_minutes} min
+                              </span>
                             )}
-                          </div>
-                          <div className="flex-1">
-                            <p className={`text-sm font-medium ${
-                              isSelected ? 'text-gold' : isCompleted ? 'text-green-400' : 'text-gold-200'
-                            }`}>
-                              {lesson.title}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {lesson.content_type === 'video' && <Video className="w-3 h-3 text-gold-400" />}
-                              {lesson.content_type === 'text' && lesson.content_url && <Link className="w-3 h-3 text-gold-400" />}
-                              {lesson.content_type === 'text' && !lesson.content_url && <FileText className="w-3 h-3 text-gold-400" />}
-                              {lesson.content_type === 'document' && <FileImage className="w-3 h-3 text-gold-400" />}
-                              {lesson.duration_minutes && (
-                                <span className="text-xs text-gold-300/50">
-                                  {lesson.duration_minutes} min
-                                </span>
-                              )}
-                              {!isCompleted && !isSelected && (
-                                <span className="text-xs text-gold-400">
-                                  Disponível
-                                </span>
-                              )}
-                            </div>
+                            {!isCompleted && !isSelected && (
+                              <span className="text-xs text-gold-400 truncate">
+                                Disponível
+                              </span>
+                            )}
                           </div>
                         </div>
                       </motion.button>

@@ -290,7 +290,7 @@ export default function StudentDashboardLayout({
                     <Link
                       href={item.href}
                       className={`
-                        flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group
+                        flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
                         ${active 
                           ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
                           : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
@@ -301,7 +301,7 @@ export default function StudentDashboardLayout({
                       <AnimatePresence>
                         {sidebarOpen && (
                           <motion.span 
-                            className="font-medium whitespace-nowrap"
+                            className="font-medium whitespace-nowrap flex-1"
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: -10 }}
