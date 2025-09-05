@@ -210,8 +210,7 @@ export default function StudentDashboardLayout({
             {/* Logo e Toggle */}
             <div className="flex items-center justify-between mb-8">
               <motion.div 
-                className={`flex items-center gap-3 ${!sidebarOpen && 'justify-center'}`}
-                animate={{ justifyContent: sidebarOpen ? 'flex-start' : 'center' }}
+                className="flex items-center gap-3"
               >
                 <Logo width={48} height={48} />
                 <AnimatePresence>
