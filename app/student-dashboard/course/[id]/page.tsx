@@ -18,14 +18,16 @@ import {
   Link,
   Eye,
   Send,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import Card from '../../../components/Card'
 import Button from '../../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import ProgressRing from '../../../components/ui/ProgressRing'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import VideoPlayer from '../../components/VideoPlayer'
 import DocumentViewer from '../../components/DocumentViewer'
 
@@ -65,12 +67,32 @@ export default function CoursePage() {
   const [certificateStatus, setCertificateStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none')
   const [canRequestCertificate, setCanRequestCertificate] = useState(false)
   const [requestingCertificate, setRequestingCertificate] = useState(false)
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (courseId) {
       fetchCourseData()
     }
   }, [courseId])
+
+  // Auto-expand module that contains selected lesson and expand first module by default
+  useEffect(() => {
+    if (course && course.modules.length > 0) {
+      if (selectedLesson) {
+        // Find which module contains the selected lesson
+        const moduleWithSelectedLesson = course.modules.find(module =>
+          module.lessons.some(lesson => lesson.id === selectedLesson.id)
+        )
+        
+        if (moduleWithSelectedLesson) {
+          setExpandedModules(prev => new Set(prev).add(moduleWithSelectedLesson.id))
+        }
+      } else {
+        // Expand the first module by default when no lesson is selected
+        setExpandedModules(new Set([course.modules[0].id]))
+      }
+    }
+  }, [selectedLesson, course])
 
   const fetchCourseData = async () => {
     try {
@@ -290,6 +312,24 @@ export default function CoursePage() {
 
   const handleLessonSelect = (lesson: Lesson) => {
     setSelectedLesson(lesson)
+  }
+
+  const toggleModuleExpansion = (moduleId: string) => {
+    setExpandedModules(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(moduleId)) {
+        newSet.delete(moduleId)
+      } else {
+        newSet.add(moduleId)
+      }
+      return newSet
+    })
+  }
+
+  const calculateModuleProgress = (module: ModuleWithLessons) => {
+    const totalLessons = module.lessons.length
+    const completedLessons = module.lessons.filter(lesson => lesson.progress?.is_completed).length
+    return { completed: completedLessons, total: totalLessons }
   }
 
   const markAllLessonsComplete = async () => {
@@ -636,74 +676,126 @@ export default function CoursePage() {
         <div className="lg:col-span-1 space-y-4">
           <h2 className="text-xl font-semibold text-gold mb-4">Conteúdo do Curso</h2>
           
-          {course.modules.map((module, moduleIndex) => (
-            <Card key={module.id} variant="glass">
-              <div className="space-y-3">
-                <h3 className="font-semibold text-gold-200 break-words">{module.title}</h3>
-                {module.description && (
-                  <p className="text-sm text-gold-300/70">{module.description}</p>
-                )}
-                
-                <div className="space-y-2">
-                  {module.lessons.map((lesson, lessonIndex) => {
-                    const isCompleted = lesson.progress?.is_completed
-                    const isSelected = selectedLesson?.id === lesson.id
-                    
-                    // All lessons are unlocked - student can watch in any order
-                    const isLocked = false
-                    
-                    return (
-                      <motion.button
-                        key={lesson.id}
-                        onClick={() => handleLessonSelect(lesson)}
-                        className={`
-                          w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
-                          ${isSelected 
-                            ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
-                            : isCompleted 
-                              ? 'text-green-400 hover:bg-green-500/10'
-                              : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
-                          }
-                          cursor-pointer
-                        `}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="flex-shrink-0">
-                          {isCompleted ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-400" />
-                          ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-gold-500/50" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate whitespace-nowrap">
-                            {lesson.title}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {lesson.content_type === 'video' && <Video className="w-3 h-3 text-gold-400" />}
-                            {lesson.content_type === 'text' && lesson.content_url && <Link className="w-3 h-3 text-gold-400" />}
-                            {lesson.content_type === 'text' && !lesson.content_url && <FileText className="w-3 h-3 text-gold-400" />}
-                            {lesson.content_type === 'document' && <FileImage className="w-3 h-3 text-gold-400" />}
-                            {lesson.duration_minutes && (
-                              <span className="text-xs text-gold-300/50 truncate">
-                                {lesson.duration_minutes} min
-                              </span>
-                            )}
-                            {!isCompleted && !isSelected && (
-                              <span className="text-xs text-gold-400 truncate">
-                                Disponível
-                              </span>
-                            )}
+          {course.modules.map((module, moduleIndex) => {
+            const isExpanded = expandedModules.has(module.id)
+            const moduleProgress = calculateModuleProgress(module)
+            const isModuleCompleted = moduleProgress.completed === moduleProgress.total && moduleProgress.total > 0
+            
+            return (
+              <Card key={module.id} variant="glass">
+                <div className="space-y-3">
+                  {/* Module Header - Clickable */}
+                  <motion.button
+                    onClick={() => toggleModuleExpansion(module.id)}
+                    className="w-full text-left flex items-center justify-between gap-3 p-3 -m-3 rounded-lg transition-all hover:bg-navy-800/30"
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`font-semibold break-words ${
+                        isModuleCompleted ? 'text-green-400' : 'text-gold-200'
+                      }`}>
+                        {module.title}
+                      </h3>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-xs text-gold-300/50">
+                          {moduleProgress.completed}/{moduleProgress.total} aulas concluídas
+                        </span>
+                        {isModuleCompleted && (
+                          <div className="flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-green-400" />
+                            <span className="text-xs text-green-400">Completo</span>
                           </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {isExpanded ? (
+                        <ChevronUp className="w-5 h-5 text-gold-400" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-gold-400" />
+                      )}
+                    </div>
+                  </motion.button>
+
+                  {module.description && (
+                    <p className="text-sm text-gold-300/70">{module.description}</p>
+                  )}
+                  
+                  {/* Lessons - Collapsible */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-2 pt-2">
+                          {module.lessons.map((lesson, lessonIndex) => {
+                            const isCompleted = lesson.progress?.is_completed
+                            const isSelected = selectedLesson?.id === lesson.id
+                            
+                            // All lessons are unlocked - student can watch in any order
+                            const isLocked = false
+                            
+                            return (
+                              <motion.button
+                                key={lesson.id}
+                                onClick={() => handleLessonSelect(lesson)}
+                                className={`
+                                  w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
+                                  ${isSelected 
+                                    ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
+                                    : isCompleted 
+                                      ? 'text-green-400 hover:bg-green-500/10'
+                                      : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
+                                  }
+                                  cursor-pointer
+                                `}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                              >
+                                <div className="flex-shrink-0">
+                                  {isCompleted ? (
+                                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                  ) : (
+                                    <div className="w-5 h-5 rounded-full border-2 border-gold-500/50" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate whitespace-nowrap">
+                                    {lesson.title}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {lesson.content_type === 'video' && <Video className="w-3 h-3 text-gold-400" />}
+                                    {lesson.content_type === 'text' && lesson.content_url && <Link className="w-3 h-3 text-gold-400" />}
+                                    {lesson.content_type === 'text' && !lesson.content_url && <FileText className="w-3 h-3 text-gold-400" />}
+                                    {lesson.content_type === 'document' && <FileImage className="w-3 h-3 text-gold-400" />}
+                                    {lesson.duration_minutes && (
+                                      <span className="text-xs text-gold-300/50 truncate">
+                                        {lesson.duration_minutes} min
+                                      </span>
+                                    )}
+                                    {!isCompleted && !isSelected && (
+                                      <span className="text-xs text-gold-400 truncate">
+                                        Disponível
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </motion.button>
+                            )
+                          })}
                         </div>
-                      </motion.button>
-                    )
-                  })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            )
+          })}
         </div>
 
         {/* Lesson Content */}
