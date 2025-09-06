@@ -26,7 +26,7 @@ export function createClient(forceNew = false): any {
       // Configuração de cookies simplificada para Vercel
       cookieOptions: {
         name: 'sb-auth-token',
-        maxAge: 60 * 60 * 24 * 7, // 7 dias
+        maxAge: 60 * 60 * 3, // 3 horas
         path: '/',
         sameSite: 'lax',
         secure: isProduction
@@ -58,8 +58,8 @@ export function createClient(forceNew = false): any {
             
             // Salvar em cookie
             const cookieOptions = isProduction 
-              ? `; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
-              : `; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`
+              ? `; Secure; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 3}`
+              : `; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 3}`
             
             document.cookie = `${key}=${encodeURIComponent(value)}${cookieOptions}`
           },

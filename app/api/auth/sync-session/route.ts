@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       httpOnly: true,
-      maxAge: 60 * 60 * 24 * 7 // 7 dias
+      maxAge: 60 * 60 * 3 // 3 horas
     }
     
     // Cookie principal do Supabase

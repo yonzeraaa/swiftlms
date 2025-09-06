@@ -26,7 +26,7 @@ export function createCookieStorage() {
       // Salvar em ambos: cookie e localStorage
       if (typeof document !== 'undefined') {
         const cookieOptions: CookieOptions = {
-          maxAge: 60 * 60 * 24 * 30, // 30 dias
+          maxAge: 60 * 60 * 3, // 3 horas
           path: '/',
           sameSite: 'lax',
           secure: process.env.NODE_ENV === 'production'
@@ -103,7 +103,7 @@ export function setupStorageSync() {
         const domain = process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_COOKIE_DOMAIN 
           ? `; Domain=${process.env.NEXT_PUBLIC_COOKIE_DOMAIN}` 
           : ''
-        const cookieString = `${key}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${domain}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
+        const cookieString = `${key}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 3}; SameSite=Lax${domain}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`
         document.cookie = cookieString
       } else if (event.data.type === 'STORAGE_REMOVED') {
         const { key } = event.data
