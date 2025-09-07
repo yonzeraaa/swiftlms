@@ -35,7 +35,7 @@ interface AuthProviderProps {
 }
 
 const REFRESH_INTERVAL = 30000 // 30 segundos
-const REFRESH_BEFORE_EXPIRY = 5 * 60 * 1000 // 5 minutos
+const REFRESH_BEFORE_EXPIRY = 0 // Refresh exatamente quando expira (3 horas)
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [authState, setAuthState] = useState<AuthState>({
@@ -255,7 +255,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const now = Date.now()
             const timeUntilExpiry = expiresAt - now
             
-            // Se falta menos de 5 minutos, fazer refresh
+            // Se a sessão expirou, fazer refresh
             if (timeUntilExpiry < REFRESH_BEFORE_EXPIRY) {
               console.log('[AuthProvider] Heartbeat: Sessão próxima de expirar, fazendo refresh')
               refreshSession()

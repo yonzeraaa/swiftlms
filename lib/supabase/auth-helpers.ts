@@ -37,12 +37,12 @@ export class AuthInterceptor {
         return result.session
       }
       
-      // Check if token is about to expire (within 5 minutes)
+      // Check if token has expired
       const expiresAt = session.expires_at ? session.expires_at * 1000 : 0
       const now = Date.now()
-      const fiveMinutes = 5 * 60 * 1000
+      const noMargin = 0
       
-      if (expiresAt && (expiresAt - now) < fiveMinutes) {
+      if (expiresAt && (expiresAt - now) < noMargin) {
         if (!this.refreshPromise) {
           this.refreshPromise = this.refreshSession()
         }

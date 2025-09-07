@@ -172,10 +172,10 @@ export async function middleware(request: NextRequest) {
     const expiresAt = new Date(session.expires_at * 1000).getTime()
     const now = Date.now()
     const timeUntilExpiry = expiresAt - now
-    const fiveMinutes = 5 * 60 * 1000
+    const noMargin = 0
     
-    // Se falta menos de 5 minutos para expirar, fazer refresh
-    if (timeUntilExpiry < fiveMinutes) {
+    // Se a sessão expirou, fazer refresh
+    if (timeUntilExpiry < noMargin) {
       console.log('[MIDDLEWARE] Sessão próxima de expirar, fazendo refresh')
       const { data: refreshData } = await supabase.auth.refreshSession()
       if (refreshData.session) {
