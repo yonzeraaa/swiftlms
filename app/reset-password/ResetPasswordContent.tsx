@@ -23,19 +23,78 @@ export default function ResetPasswordContent() {
   const supabase = createClient()
 
   useEffect(() => {
-    // Verificar se há erro nos parâmetros da URL
-    const urlError = searchParams.get('error')
-    const errorCode = searchParams.get('error_code')
-    const errorDescription = searchParams.get('error_description')
+    const initializeSession = async () => {
+      try {
+        // Verificar se há erro nos parâmetros da URL
+        const urlError = searchParams.get('error')
+        const errorCode = searchParams.get('error_code')
+        const errorDescription = searchParams.get('error_description')
 
-    if (urlError === 'access_denied' && errorCode === 'otp_expired') {
-      setStatus('expired')
-      setError(t('resetPassword.linkExpired'))
-    } else if (urlError) {
-      setStatus('error')
-      setError(errorDescription || t('resetPassword.linkInvalid'))
+        if (urlError === 'access_denied' && errorCode === 'otp_expired') {
+          setStatus('expired')
+          setError(t('resetPassword.linkExpired'))
+          return
+        } else if (urlError) {
+          setStatus('error')
+          setError(errorDescription || t('resetPassword.linkInvalid'))
+          return
+        }
+
+        // Verificar se há tokens de recuperação na URL
+        const accessToken = searchParams.get('access_token')
+        const refreshToken = searchParams.get('refresh_token')
+        const tokenType = searchParams.get('type')
+
+        console.log('Reset password params:', { accessToken: !!accessToken, refreshToken: !!refreshToken, tokenType })
+
+        if (accessToken && refreshToken && tokenType === 'recovery') {
+          console.log('Estabelecendo sessão com tokens de recuperação...')
+          
+          // Estabelecer sessão com os tokens
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          })
+
+          if (sessionError) {
+            console.error('Erro ao estabelecer sessão:', sessionError)
+            
+            if (sessionError.message.includes('expired') || sessionError.message.includes('invalid')) {
+              setStatus('expired')
+              setError(t('resetPassword.sessionExpired'))
+            } else {
+              setError(sessionError.message || t('resetPassword.sessionError'))
+            }
+          } else if (data.session) {
+            console.log('Sessão estabelecida com sucesso para reset de senha')
+            // Limpar a URL dos tokens por segurança
+            window.history.replaceState({}, document.title, '/reset-password')
+          } else {
+            console.error('Sessão não pôde ser estabelecida')
+            setStatus('expired')
+            setError(t('resetPassword.sessionExpired'))
+          }
+        } else if (tokenType === 'recovery') {
+          // Se type=recovery mas não há tokens, link provavelmente expirado
+          setStatus('expired')
+          setError(t('resetPassword.linkExpired'))
+        } else {
+          // Verificar se já existe uma sessão válida
+          const { data: { session } } = await supabase.auth.getSession()
+          if (!session) {
+            console.log('Nenhuma sessão ativa e nenhum token de recuperação')
+            setStatus('expired')
+            setError(t('resetPassword.linkExpired'))
+          }
+        }
+      } catch (error) {
+        console.error('Erro na inicialização da sessão:', error)
+        setError(t('resetPassword.unexpectedError'))
+      }
     }
-  }, [searchParams, t])
+
+    initializeSession()
+  }, [searchParams, t, supabase])
 
   const validatePasswords = () => {
     if (!password.trim()) {
