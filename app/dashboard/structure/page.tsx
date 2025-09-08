@@ -68,7 +68,7 @@ export default function StructurePage() {
       const [coursesRes, modulesRes, subjectsRes, lessonsRes, testsRes] = await Promise.all([
         supabase.from('courses').select('*').order('title'),
         supabase.from('course_modules').select('*').order('order_index'),
-        supabase.from('subjects').select('*').order('name'),
+        supabase.from('subjects').select('id, code, name, description').order('name'),
         supabase.from('lessons').select('*').order('order_index'),
         supabase.from('tests').select('*').order('title')
       ])
@@ -126,7 +126,7 @@ export default function StructurePage() {
             const subjectNode: TreeNode = {
               id: subject.id,
               type: 'subject',
-              title: subject.name,
+              title: subject.code ? `${subject.code} - ${subject.name}` : subject.name,
               parentId: module.id,
               data: subject,
               children: []
@@ -256,7 +256,7 @@ export default function StructurePage() {
       } 
       else if (type === 'subject' && parent.type === 'module') {
         // Get all subjects not already associated with this module
-        const { data: allSubjects } = await supabase.from('subjects').select('*').order('name')
+        const { data: allSubjects } = await supabase.from('subjects').select('id, code, name, description').order('name')
         const { data: moduleSubjects } = await supabase
           .from('module_subjects')
           .select('subject_id')
@@ -748,7 +748,7 @@ export default function StructurePage() {
                       />
                       <div className="flex-1">
                         <p className="text-gold-200 font-medium">
-                          {item.title || item.name}
+                          {item.title || (item.code ? `${item.code} - ${item.name}` : item.name)}
                         </p>
                         {item.description && (
                           <p className="text-gold-400 text-sm">{item.description}</p>
