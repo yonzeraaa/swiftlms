@@ -18,7 +18,6 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
     courseInterest: '',
     message: ''
   })
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -45,41 +44,38 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!validateForm()) {
       return
     }
 
-    setIsSubmitting(true)
-    setSubmitStatus('idle')
+    // Generate mailto link with form data
+    const subject = `Contato via SwiftEDU - ${formData.name}`
+    const body = `Nome: ${formData.name}
+Email: ${formData.email}${formData.courseInterest ? `
+Interesse em Curso: ${formData.courseInterest}` : ''}
 
-    try {
-      const response = await fetch('/api/send-contact-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
+Mensagem:
+${formData.message}
 
-      if (response.ok) {
-        setSubmitStatus('success')
-        setFormData({ name: '', email: '', courseInterest: '', message: '' })
-        setTimeout(() => {
-          onClose()
-          setSubmitStatus('idle')
-        }, 2000)
-      } else {
-        setSubmitStatus('error')
-      }
-    } catch (error) {
-      console.error('Error sending contact email:', error)
-      setSubmitStatus('error')
-    } finally {
-      setIsSubmitting(false)
-    }
+---
+Esta mensagem foi enviada através do formulário de contato do sistema SwiftEDU.`
+
+    // Encode the email content for URL
+    const mailtoLink = `mailto:iqmasetti@masetti.net?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    
+    // Open email client
+    window.open(mailtoLink, '_blank')
+    
+    // Show success message and close modal
+    setSubmitStatus('success')
+    setFormData({ name: '', email: '', courseInterest: '', message: '' })
+    setTimeout(() => {
+      onClose()
+      setSubmitStatus('idle')
+    }, 2000)
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -127,7 +123,7 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
                   errors.name ? 'border-red-500' : 'border-navy-600'
                 }`}
                 placeholder={t('contact.namePlaceholder')}
-                disabled={isSubmitting}
+disabled={false}
               />
             </div>
             {errors.name && (
@@ -151,7 +147,7 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
                   errors.email ? 'border-red-500' : 'border-navy-600'
                 }`}
                 placeholder={t('contact.emailPlaceholder')}
-                disabled={isSubmitting}
+disabled={false}
               />
             </div>
             {errors.email && (
@@ -171,7 +167,7 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
               onChange={(e) => handleInputChange('courseInterest', e.target.value)}
               className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all"
               placeholder={t('contact.courseInterestPlaceholder')}
-              disabled={isSubmitting}
+              disabled={false}
             />
           </div>
 
@@ -191,7 +187,7 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
                   errors.message ? 'border-red-500' : 'border-navy-600'
                 }`}
                 placeholder={t('contact.messagePlaceholder')}
-                disabled={isSubmitting}
+disabled={false}
               />
             </div>
             {errors.message && (
@@ -218,7 +214,7 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
               type="button"
               variant="secondary"
               onClick={onClose}
-              disabled={isSubmitting}
+              disabled={false}
               className="flex-1"
             >
               {t('contact.cancel')}
@@ -226,12 +222,11 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
             <Button
               type="submit"
               variant="primary"
-              loading={isSubmitting}
-              icon={!isSubmitting && <Send className="w-4 h-4" />}
+              icon={<Send className="w-4 h-4" />}
               iconPosition="right"
               className="flex-1"
             >
-              {isSubmitting ? t('contact.sending') : t('contact.send')}
+              {t('contact.send')}
             </Button>
           </div>
         </form>
