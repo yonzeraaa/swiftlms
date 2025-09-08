@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Loader2, AlertCircle, Globe } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Loader2, AlertCircle, Globe, BookOpen } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Logo from './components/Logo'
 import Button from './components/Button'
@@ -268,6 +268,20 @@ export default function LoginPage() {
               <p className="mt-6 text-center text-base text-gold-200">
                 {t('login.contactAdmin')}
               </p>
+
+              {/* Botão Ver Cursos Disponíveis */}
+              <div className="mt-6 text-center">
+                <Button
+                  variant="outline"
+                  size="md"
+                  onClick={() => router.push('/browse-courses')}
+                  icon={<BookOpen className="w-4 h-4" />}
+                  iconPosition="left"
+                  className="text-gold-300 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
+                >
+                  Ver Cursos Disponíveis
+                </Button>
+              </div>
 
               {/* Indicador de segurança */}
               <div className="mt-6 flex items-center justify-center gap-2 text-gold-300/60">
