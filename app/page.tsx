@@ -268,8 +268,8 @@ export default function LoginPage() {
 
               {/* Botões centralizados */}
               <div className="mt-6 space-y-4">
-                {/* Botão Ver Cursos Disponíveis */}
-                <div className="text-center">
+                {/* Botão Ver Cursos Disponíveis - Centralizado */}
+                <div className="flex justify-center">
                   <Button
                     variant="outline"
                     size="md"
@@ -282,18 +282,21 @@ export default function LoginPage() {
                   </Button>
                 </div>
 
-                {/* Botão Fale Conosco */}
-                <div className="text-center">
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    onClick={() => setContactModalOpen(true)}
-                    icon={<MessageCircle className="w-4 h-4" />}
-                    iconPosition="left"
-                    className="text-gold-300/80 hover:text-gold-200 hover:bg-gold-500/10"
-                  >
-                    Fale Conosco
-                  </Button>
+                {/* Seção Fale Conosco com texto */}
+                <div className="text-center space-y-2">
+                  <p className="text-gold-300/80 text-sm">Interessado em algum curso?</p>
+                  <div className="flex justify-center">
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => setContactModalOpen(true)}
+                      icon={<MessageCircle className="w-4 h-4" />}
+                      iconPosition="left"
+                      className="text-gold-300/80 hover:text-gold-200 hover:bg-gold-500/10"
+                    >
+                      Fale Conosco
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
