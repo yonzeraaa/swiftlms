@@ -715,8 +715,8 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           `Disciplina: ${subjectData.name}`
         )
         
-        // Extrair código da disciplina se existir (formato: "DCA01-Nome" -> código: "DCA01")
-        const codeMatch = subjectData.name.match(/^([A-Z0-9]+)-(.+)$/)
+        // Extrair código da disciplina se existir (formatos: "DCA01-Nome", "DCA01 - Nome", "DCA01_Nome")
+        const codeMatch = subjectData.name.match(/^([A-Z0-9]+)\s*[-_]\s*(.+)$/)
         const subjectCode = codeMatch ? codeMatch[1] : `SUB${Date.now()}${subjectIdx}`
         // Manter o nome completo da disciplina (com código) conforme solicitado
         const subjectName = subjectData.name
