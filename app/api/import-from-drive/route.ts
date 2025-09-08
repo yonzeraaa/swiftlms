@@ -651,6 +651,11 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
     modules: 0,
     subjects: 0,
     lessons: 0,
+    skipped: {
+      modules: 0,
+      subjects: 0,
+      lessons: 0
+    },
     errors: [] as string[]
   }
 
@@ -684,27 +689,50 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
       const moduleData = structure.modules[moduleIdx]
       
       await updateDatabaseProgress(
-        `Salvando módulo ${moduleIdx + 1}/${structure.modules.length}`,
+        `Verificando módulo ${moduleIdx + 1}/${structure.modules.length}`,
         `Módulo: ${moduleData.name}`
       )
       
-      const { data: createdModule, error: moduleError } = await supabase
+      // Verificar se o módulo já existe no curso
+      const { data: existingModule } = await supabase
         .from('course_modules')
-        .insert({
-          title: moduleData.name,
-          course_id: courseId,
-          order_index: startModuleIndex + moduleIdx,
-          is_required: true
-        })
-        .select()
+        .select('id, order_index')
+        .eq('course_id', courseId)
+        .eq('title', moduleData.name)
         .single()
 
-      if (moduleError) {
-        results.errors.push(`Erro ao criar módulo ${moduleData.name}: ${moduleError.message}`)
-        continue
-      }
+      let createdModule: any
 
-      results.modules++
+      if (existingModule) {
+        console.log(`Módulo já existe: ${moduleData.name}, pulando criação...`)
+        results.skipped.modules++
+        createdModule = existingModule
+      } else {
+        // Criar novo módulo
+        await updateDatabaseProgress(
+          `Salvando módulo ${moduleIdx + 1}/${structure.modules.length}`,
+          `Módulo: ${moduleData.name}`
+        )
+        
+        const { data: newModule, error: moduleError } = await supabase
+          .from('course_modules')
+          .insert({
+            title: moduleData.name,
+            course_id: courseId,
+            order_index: startModuleIndex + moduleIdx,
+            is_required: true
+          })
+          .select()
+          .single()
+
+        if (moduleError) {
+          results.errors.push(`Erro ao criar módulo ${moduleData.name}: ${moduleError.message}`)
+          continue
+        }
+
+        results.modules++
+        createdModule = newModule
+      }
 
       // Importar disciplinas do módulo
       for (let subjectIdx = 0; subjectIdx < moduleData.subjects.length; subjectIdx++) {
@@ -730,6 +758,8 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           .single()
 
         if (existingSubject) {
+          console.log(`Disciplina já existe: ${subjectCode} - ${subjectName}`)
+          results.skipped.subjects++
           subjectId = existingSubject.id
         } else {
           // Criar nova disciplina
@@ -747,26 +777,34 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
             continue
           }
 
+          results.subjects++
           subjectId = newSubject.id
         }
 
-        // Associar disciplina ao módulo
-        const { error: linkError } = await supabase
+        // Verificar se a associação disciplina-módulo já existe
+        const { data: existingAssociation } = await supabase
           .from('module_subjects')
-          .insert({
-            module_id: createdModule.id,
-            subject_id: subjectId,
-            order_index: subjectIdx
-          })
+          .select('id')
+          .eq('module_id', createdModule.id)
+          .eq('subject_id', subjectId)
+          .single()
 
-        if (linkError) {
-          // Se já existe a associação, ignorar o erro
-          if (!linkError.message.includes('duplicate')) {
+        if (!existingAssociation) {
+          // Associar disciplina ao módulo
+          const { error: linkError } = await supabase
+            .from('module_subjects')
+            .insert({
+              module_id: createdModule.id,
+              subject_id: subjectId,
+              order_index: subjectIdx
+            })
+
+          if (linkError) {
             results.errors.push(`Erro ao associar disciplina ${subjectData.name}: ${linkError.message}`)
             continue
           }
         } else {
-          results.subjects++
+          console.log(`Associação já existe entre módulo ${createdModule.id} e disciplina ${subjectId}`)
         }
 
         // Buscar o maior order_index existente para aulas neste módulo
@@ -803,6 +841,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           
           if (existingLesson) {
             console.log(`Aula já existe: ${fullTitle}, pulando...`)
+            results.skipped.lessons++
             continue
           }
           
@@ -826,8 +865,16 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
             continue
           }
           
-          // Associar a aula à disciplina
-          if (newLesson) {
+          // Verificar se a associação aula-disciplina já existe
+          const { data: existingLessonAssociation } = await supabase
+            .from('subject_lessons')
+            .select('id')
+            .eq('lesson_id', newLesson.id)
+            .eq('subject_id', subjectId)
+            .single()
+
+          if (!existingLessonAssociation) {
+            // Associar a aula à disciplina
             const { error: linkError } = await supabase
               .from('subject_lessons')
               .insert({
@@ -841,9 +888,11 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
               await supabase.from('lessons').delete().eq('id', newLesson.id)
               continue
             }
-            
-            results.lessons++
+          } else {
+            console.log(`Associação já existe entre aula ${newLesson.id} e disciplina ${subjectId}`)
           }
+          
+          results.lessons++
         }
       } // Fim do loop de subjects
     } // Fim do loop de modules
@@ -911,15 +960,23 @@ async function processImportInBackground(
     const results = await importToDatabase(structure, courseId, supabase, importId, userId)
 
     // Atualizar progresso final
+    const totalImported = results.modules + results.subjects + results.lessons
+    const totalSkipped = results.skipped.modules + results.skipped.subjects + results.skipped.lessons
+    
+    let summaryMessage = `${results.modules} módulos, ${results.subjects} disciplinas, ${results.lessons} aulas importados`
+    if (totalSkipped > 0) {
+      summaryMessage += ` (${totalSkipped} itens já existiam e foram pulados)`
+    }
+    
     await updateImportProgress(supabase, importId, userId, courseId, {
       current_step: 'Importação concluída',
-      total_modules: results.modules,
-      processed_modules: results.modules,
-      total_subjects: results.subjects,
-      processed_subjects: results.subjects,
-      total_lessons: results.lessons,
-      processed_lessons: results.lessons,
-      current_item: `${results.modules} módulos, ${results.subjects} disciplinas, ${results.lessons} aulas importados`,
+      total_modules: results.modules + results.skipped.modules,
+      processed_modules: results.modules + results.skipped.modules,
+      total_subjects: results.subjects + results.skipped.subjects,
+      processed_subjects: results.subjects + results.skipped.subjects,
+      total_lessons: results.lessons + results.skipped.lessons,
+      processed_lessons: results.lessons + results.skipped.lessons,
+      current_item: summaryMessage,
       errors: results.errors,
       completed: true,
       percentage: 100

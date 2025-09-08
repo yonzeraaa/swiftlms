@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import Logo from './components/Logo'
 import Button from './components/Button'
 import ContactModal from './components/ContactModal'
+import ForgotPasswordModal from './components/ForgotPasswordModal'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from './contexts/LanguageContext'
 
@@ -22,6 +23,7 @@ export default function LoginPage() {
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [contactModalOpen, setContactModalOpen] = useState(false)
+  const [forgotPasswordModalOpen, setForgotPasswordModalOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
   
@@ -226,20 +228,30 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                {/* Checkbox Lembrar-me */}
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500 focus:ring-2 cursor-pointer"
+                {/* Checkbox Lembrar-me e Esqueci a senha */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="remember"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500 focus:ring-2 cursor-pointer"
+                      disabled={isLoading}
+                      aria-label={t('login.rememberAriaLabel')}
+                    />
+                    <label htmlFor="remember" className="ml-2 text-base text-gold-200 cursor-pointer select-none">
+                      {t('login.rememberMe')}
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setForgotPasswordModalOpen(true)}
                     disabled={isLoading}
-                    aria-label={t('login.rememberAriaLabel')}
-                  />
-                  <label htmlFor="remember" className="ml-2 text-base text-gold-200 cursor-pointer select-none">
-                    {t('login.rememberMe')}
-                  </label>
+                    className="text-sm text-gold-300 hover:text-gold-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gold-500 rounded px-1 disabled:opacity-50"
+                  >
+                    {t('login.forgotPassword')}
+                  </button>
                 </div>
 
                 {/* Botão de Login */}
@@ -308,6 +320,12 @@ export default function LoginPage() {
       <ContactModal 
         isOpen={contactModalOpen} 
         onClose={() => setContactModalOpen(false)} 
+      />
+      
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal 
+        isOpen={forgotPasswordModalOpen} 
+        onClose={() => setForgotPasswordModalOpen(false)} 
       />
     </div>
   )
