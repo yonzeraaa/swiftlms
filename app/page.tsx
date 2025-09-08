@@ -238,17 +238,17 @@ export default function LoginPage() {
 
                 {/* Checkbox Lembrar-me e Esqueci a senha */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center">
+                  <div className="flex items-start">
                     <input
                       type="checkbox"
                       id="remember"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500 focus:ring-2 cursor-pointer"
+                      className="w-4 h-4 mt-0.5 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500 focus:ring-2 cursor-pointer"
                       disabled={isLoading}
                       aria-label={t('login.rememberAriaLabel')}
                     />
-                    <label htmlFor="remember" className="ml-2 text-sm font-medium text-gold-200 cursor-pointer select-none">
+                    <label htmlFor="remember" className="ml-2 text-sm text-gold-300 cursor-pointer select-none">
                       {t('login.rememberMe')}
                     </label>
                   </div>
