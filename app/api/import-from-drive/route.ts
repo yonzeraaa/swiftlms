@@ -466,158 +466,137 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
             const lessons = lessonsResponse.data.files || []
             console.log(`    Disciplina '${subject.name}': ${lessons.length} arquivos/pastas encontrados`)
 
+            // Processamento em lotes para evitar timeout
+            const BATCH_SIZE = 5 // Processar 5 aulas por vez
+            const DELAY_BETWEEN_BATCHES = 100 // 100ms de delay entre lotes
+            
             let actualLessonIndex = 0
-            for (let lessonIndex = 0; lessonIndex < lessons.length; lessonIndex++) {
-              const lessonItem = lessons[lessonIndex]
+            const validLessons = lessons.filter((item: any) => item.mimeType !== 'application/vnd.google-apps.folder')
+            
+            // Processar aulas em lotes
+            for (let batchStart = 0; batchStart < validLessons.length; batchStart += BATCH_SIZE) {
+              const batch = validLessons.slice(batchStart, Math.min(batchStart + BATCH_SIZE, validLessons.length))
               
-              // Ignorar pastas - apenas processar arquivos
-              if (lessonItem.mimeType === 'application/vnd.google-apps.folder') {
-                console.log(`      Ignorando pasta: ${lessonItem.name}`)
-                // TODO: Poderia processar subpastas recursivamente se necessário
-                continue
-              }
+              console.log(`      Processando lote ${Math.floor(batchStart / BATCH_SIZE) + 1}: ${batch.length} aulas`)
               
-              console.log(`      Processando arquivo: ${lessonItem.name} (${lessonItem.mimeType})`)
-              
-              // Atualizar progresso ANTES de processar a aula
-              await updateProgress({
-                current_step: `Processando aula ${processedLessons + 1}/${totalLessons}`,
-                total_modules: totalModules,
-                processed_modules: processedModules,
-                total_subjects: totalSubjects,
-                processed_subjects: processedSubjects,
-                total_lessons: totalLessons,
-                processed_lessons: processedLessons,
-                current_item: `Aula: ${lessonItem.name}`,
-                errors: []
-              })
-              
-              // Determinar tipo de conteúdo baseado no mimeType e nome do arquivo
-              // IMPORTANTE: O banco só aceita 'video', 'text' ou 'assignment'
-              let contentType = 'text' // Padrão para a maioria dos arquivos
-              const mimeType = lessonItem.mimeType.toLowerCase()
-              const fileName = lessonItem.name.toLowerCase()
-              
-              // Arquivos de vídeo
-              if (mimeType.includes('video') || 
-                  mimeType === 'video/mp4' || 
-                  mimeType === 'video/mpeg' || 
-                  mimeType === 'video/quicktime' || 
-                  mimeType === 'video/x-msvideo' ||
-                  mimeType === 'application/vnd.google-apps.video') {
-                contentType = 'video'
-              }
-              // Todos os outros tipos serão tratados como 'text'
-              // Isso inclui: PDFs, áudio, apresentações, planilhas, imagens, etc.
-              
-              console.log(`        Tipo detectado: ${contentType} para ${lessonItem.name} (${mimeType})`)
-              
-              // Gerar link do Google Drive para o arquivo
-              const driveLink = `https://drive.google.com/file/d/${lessonItem.id}/view`
-              
-              // Lista expandida de extensões de arquivo
-              const fileExtensions = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
-              
-              // Extrair código e nome da aula (formato: "AULA01-Nome da Aula" ou "A01-Nome")
-              const lessonFileName = lessonItem.name.replace(fileExtensions, '')
-              const lessonCodeMatch = lessonFileName.match(/^([A-Z0-9]+)-(.+)$/)
-              
-              let lessonCode: string
-              let lessonName: string
-              
-              if (lessonCodeMatch) {
-                lessonCode = lessonCodeMatch[1]
-                lessonName = lessonCodeMatch[2].trim()
-              } else {
-                // Se não seguir o padrão, gerar código automático
-                lessonCode = `A${String(actualLessonIndex + 1).padStart(2, '0')}`
-                lessonName = lessonFileName
-              }
-              
-              const lesson: any = {
-                name: lessonName,
-                code: lessonCode,
-                order: actualLessonIndex + 1,
-                content: undefined as string | undefined,
-                contentType: contentType,
-                contentUrl: driveLink,
-                description: `Aula ${lessonCode}: ${lessonName}`
-              }
-              actualLessonIndex++
-
-              // Atualizar progresso para indicar download de conteúdo
-              await updateProgress({
-                current_step: `Baixando conteúdo da aula ${processedLessons + 1}/${totalLessons}`,
-                total_modules: totalModules,
-                processed_modules: processedModules,
-                total_subjects: totalSubjects,
-                processed_subjects: processedSubjects,
-                total_lessons: totalLessons,
-                processed_lessons: processedLessons,
-                current_item: `Baixando: ${lessonItem.name}`,
-                errors: []
-              })
-              
-              // Tentar obter o conteúdo baseado no tipo do arquivo
-              try {
-                if (lessonItem.mimeType === 'application/vnd.google-apps.document') {
-                  // Google Docs
-                  const content = await drive.files.export({
-                    fileId: lessonItem.id,
-                    mimeType: 'text/plain'
-                  })
-                  lesson.content = content.data as string
-                } else if (lessonItem.mimeType === 'application/vnd.google-apps.presentation') {
-                  // Google Slides - exportar como texto
-                  const content = await drive.files.export({
-                    fileId: lessonItem.id,
-                    mimeType: 'text/plain'
-                  })
-                  lesson.content = content.data as string
-                } else if (lessonItem.mimeType === 'application/vnd.google-apps.spreadsheet') {
-                  // Google Sheets - exportar como CSV
-                  const content = await drive.files.export({
-                    fileId: lessonItem.id,
-                    mimeType: 'text/csv'
-                  })
-                  lesson.content = content.data as string
-                } else if (lessonItem.mimeType && !lessonItem.mimeType.startsWith('application/vnd.google-apps')) {
-                  // Outros arquivos (PDF, DOCX, etc) - baixar conteúdo
-                  try {
-                    const response = await drive.files.get({
-                      fileId: lessonItem.id,
-                      alt: 'media'
-                    })
-                    // Para arquivos binários, apenas registrar que existe
-                    lesson.content = `[Arquivo: ${lessonItem.name}]`
-                  } catch (err) {
-                    console.log(`Arquivo ${lessonItem.name} não pôde ter conteúdo extraído`)
-                    lesson.content = ''
-                  }
+              // Processar aulas do lote
+              for (const lessonItem of batch) {
+                console.log(`      Processando arquivo: ${lessonItem.name} (${lessonItem.mimeType})`)
+                
+                // Atualizar progresso ANTES de processar a aula
+                await updateProgress({
+                  current_step: `Processando aula ${processedLessons + 1}/${totalLessons}`,
+                  total_modules: totalModules,
+                  processed_modules: processedModules,
+                  total_subjects: totalSubjects,
+                  processed_subjects: processedSubjects,
+                  total_lessons: totalLessons,
+                  processed_lessons: processedLessons,
+                  current_item: `Aula: ${lessonItem.name}`,
+                  errors: []
+                })
+                
+                // Determinar tipo de conteúdo baseado no mimeType
+                let contentType = 'text' // Padrão para a maioria dos arquivos
+                const mimeType = lessonItem.mimeType.toLowerCase()
+                
+                // Arquivos de vídeo
+                if (mimeType.includes('video') || 
+                    mimeType === 'video/mp4' || 
+                    mimeType === 'video/mpeg' || 
+                    mimeType === 'video/quicktime' || 
+                    mimeType === 'video/x-msvideo' ||
+                    mimeType === 'application/vnd.google-apps.video') {
+                  contentType = 'video'
                 }
-              } catch (error) {
-                console.error(`Erro ao processar aula ${lessonItem.name}:`, error)
-                lesson.content = ''
-              }
+                
+                console.log(`        Tipo detectado: ${contentType} para ${lessonItem.name} (${mimeType})`)
+                
+                // Gerar link do Google Drive para o arquivo
+                const driveLink = `https://drive.google.com/file/d/${lessonItem.id}/view`
+                
+                // Lista expandida de extensões de arquivo
+                const fileExtensions = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
+                
+                // Extrair código e nome da aula (formato: "AULA01-Nome da Aula" ou "A01-Nome")
+                const lessonFileName = lessonItem.name.replace(fileExtensions, '')
+                const lessonCodeMatch = lessonFileName.match(/^([A-Z0-9]+)-(.+)$/)
+                
+                let lessonCode: string
+                let lessonName: string
+                
+                if (lessonCodeMatch) {
+                  lessonCode = lessonCodeMatch[1]
+                  lessonName = lessonCodeMatch[2].trim()
+                } else {
+                  // Se não seguir o padrão, gerar código automático
+                  lessonCode = `A${String(actualLessonIndex + 1).padStart(2, '0')}`
+                  lessonName = lessonFileName
+                }
+                
+                const lesson: any = {
+                  name: lessonName,
+                  code: lessonCode,
+                  order: actualLessonIndex + 1,
+                  content: undefined as string | undefined,
+                  contentType: contentType,
+                  contentUrl: driveLink,
+                  description: `Aula ${lessonCode}: ${lessonName}`
+                }
+                actualLessonIndex++
 
-              // Apenas adicionar se for um arquivo válido
-              subject.lessons.push(lesson)
-              console.log(`      Aula adicionada: '${lesson.name}' (tipo: ${lessonItem.mimeType})`)
-              processedLessons++
+                // Download de conteúdo otimizado (apenas para tipos específicos)
+                try {
+                  if (lessonItem.mimeType === 'application/vnd.google-apps.document') {
+                    // Google Docs - apenas arquivos pequenos
+                    console.log(`        Baixando conteúdo do Google Docs: ${lessonItem.name}`)
+                    const content = await drive.files.export({
+                      fileId: lessonItem.id,
+                      mimeType: 'text/plain'
+                    })
+                    lesson.content = content.data as string
+                  } else if (lessonItem.mimeType === 'application/vnd.google-apps.presentation') {
+                    // Google Slides - exportar como texto (resumido)
+                    console.log(`        Baixando conteúdo do Google Slides: ${lessonItem.name}`)
+                    const content = await drive.files.export({
+                      fileId: lessonItem.id,
+                      mimeType: 'text/plain'
+                    })
+                    lesson.content = content.data as string
+                  } else {
+                    // Para outros tipos, apenas registrar referência (não baixar conteúdo)
+                    lesson.content = `[Arquivo referenciado: ${lessonItem.name}]`
+                  }
+                } catch (error) {
+                  console.log(`      Erro ao baixar conteúdo de ${lessonItem.name}, usando referência apenas`)
+                  lesson.content = `[Arquivo: ${lessonItem.name}]`
+                }
+
+                // Adicionar aula à lista
+                subject.lessons.push(lesson)
+                console.log(`      Aula adicionada: '${lesson.name}' (tipo: ${lessonItem.mimeType})`)
+                processedLessons++
+                
+                // Atualizar progresso APÓS processar a aula
+                await updateProgress({
+                  current_step: `Aula ${processedLessons}/${totalLessons} processada`,
+                  total_modules: totalModules,
+                  processed_modules: processedModules,
+                  total_subjects: totalSubjects,
+                  processed_subjects: processedSubjects,
+                  total_lessons: totalLessons,
+                  processed_lessons: processedLessons,
+                  current_item: `Concluído: ${lesson.name}`,
+                  phase: 'processing',
+                  errors: []
+                })
+              }
               
-              // Atualizar progresso APÓS processar a aula
-              await updateProgress({
-                current_step: `Aula ${processedLessons}/${totalLessons} processada`,
-                total_modules: totalModules,
-                processed_modules: processedModules,
-                total_subjects: totalSubjects,
-                processed_subjects: processedSubjects,
-                total_lessons: totalLessons,
-                processed_lessons: processedLessons,
-                current_item: `Concluído: ${lesson.name}`,
-                phase: 'processing',
-                errors: []
-              })
+              // Delay pequeno entre lotes para evitar sobrecarga
+              if (batchStart + BATCH_SIZE < validLessons.length) {
+                console.log(`      Aguardando ${DELAY_BETWEEN_BATCHES}ms antes do próximo lote...`)
+                await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES))
+              }
             }
             
             console.log(`    Total de aulas processadas para '${subject.name}': ${subject.lessons.length}`)
@@ -875,9 +854,99 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
   }
 }
 
-export async function POST(req: NextRequest) {
-  let importId: string | undefined
+// Função para processamento assíncrono em background
+async function processImportInBackground(
+  driveUrl: string,
+  courseId: string,
+  importId: string,
+  userId: string,
+  folderId: string
+) {
+  const supabase = await createClient()
   
+  try {
+    console.log(`[IMPORT-BACKGROUND] Iniciando processamento em background para ${importId}`)
+    
+    // Autenticar com Google Drive
+    console.log(`[IMPORT-BACKGROUND] Autenticando Google Drive...`)
+    const drive = await authenticateGoogleDrive()
+    
+    // FASE 1: Contar todos os itens primeiro
+    console.log(`[IMPORT-BACKGROUND] === FASE 1: Contando itens ===`)
+    const totals = await countDriveFolderItems(drive, folderId)
+    
+    // Atualizar progresso com totais
+    await updateImportProgress(supabase, importId, userId, courseId, {
+      phase: 'processing',
+      current_step: 'Iniciando processamento',
+      total_modules: totals.totalModules,
+      processed_modules: 0,
+      total_subjects: totals.totalSubjects,
+      processed_subjects: 0,
+      total_lessons: totals.totalLessons,
+      processed_lessons: 0,
+      current_item: 'Preparando para processar arquivos',
+      percentage: 0,
+      errors: []
+    })
+    
+    // FASE 2: Processar estrutura da pasta
+    console.log(`[IMPORT-BACKGROUND] === FASE 2: Processando conteúdo ===`)
+    const structure = await parseGoogleDriveFolder(drive, folderId, importId, totals, supabase, userId, courseId)
+
+    if (structure.modules.length === 0) {
+      await updateImportProgress(supabase, importId, userId, courseId, {
+        current_step: 'Erro: Nenhum módulo encontrado',
+        current_item: 'Verifique se a pasta contém a estrutura correta',
+        errors: ['Nenhum módulo encontrado na pasta especificada'],
+        completed: true,
+        percentage: 0
+      })
+      return
+    }
+
+    // FASE 3: Importar para o banco de dados
+    console.log(`[IMPORT-BACKGROUND] === FASE 3: Salvando no banco ===`)
+    const results = await importToDatabase(structure, courseId, supabase, importId, userId)
+
+    // Atualizar progresso final
+    await updateImportProgress(supabase, importId, userId, courseId, {
+      current_step: 'Importação concluída',
+      total_modules: results.modules,
+      processed_modules: results.modules,
+      total_subjects: results.subjects,
+      processed_subjects: results.subjects,
+      total_lessons: results.lessons,
+      processed_lessons: results.lessons,
+      current_item: `${results.modules} módulos, ${results.subjects} disciplinas, ${results.lessons} aulas importados`,
+      errors: results.errors,
+      completed: true,
+      percentage: 100
+    })
+    
+    console.log(`[IMPORT-BACKGROUND] Importação concluída com sucesso: ${importId}`)
+
+  } catch (error: any) {
+    console.error(`[IMPORT-BACKGROUND] Erro na importação ${importId}:`, error)
+    
+    // Atualizar progresso com erro
+    await updateImportProgress(supabase, importId, userId, courseId, {
+      current_step: 'Erro na importação',
+      total_modules: 0,
+      processed_modules: 0,
+      total_subjects: 0,
+      processed_subjects: 0,
+      total_lessons: 0,
+      processed_lessons: 0,
+      current_item: error.message || 'Erro desconhecido',
+      errors: [error.message || 'Erro ao processar importação'],
+      completed: true,
+      percentage: 0
+    })
+  }
+}
+
+export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
 
@@ -905,116 +974,53 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Autenticar com Google Drive
-    const drive = await authenticateGoogleDrive()
-
     // Gerar ID único para esta importação
-    importId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    const importId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    
+    console.log(`[IMPORT] Iniciando importação com ID: ${importId}`)
     
     // Inicializar progresso no Supabase
     await updateImportProgress(supabase, importId, user.id, courseId, {
-      phase: 'counting',
-      current_step: 'Contando arquivos...',
+      phase: 'starting',
+      current_step: 'Iniciando importação...',
       total_modules: 0,
       processed_modules: 0,
       total_subjects: 0,
       processed_subjects: 0,
       total_lessons: 0,
       processed_lessons: 0,
-      current_item: 'Analisando estrutura do Google Drive',
+      current_item: 'Preparando processamento em background',
       percentage: 0,
       errors: []
     })
     
-    console.log(`[IMPORT] Iniciando importação com ID: ${importId}`)
-    
-    // FASE 1: Contar todos os itens primeiro
-    console.log('\n=== FASE 1: Contando itens ===')
-    const totals = await countDriveFolderItems(drive, folderId)
-    
-    // Atualizar progresso com totais
-    await updateImportProgress(supabase, importId, user.id, courseId, {
-      phase: 'processing',
-      current_step: 'Iniciando processamento',
-      total_modules: totals.totalModules,
-      processed_modules: 0,
-      total_subjects: totals.totalSubjects,
-      processed_subjects: 0,
-      total_lessons: totals.totalLessons,
-      processed_lessons: 0,
-      current_item: 'Preparando para processar arquivos',
-      percentage: 0,
-      errors: []
+    // Iniciar processamento em background (não aguardar)
+    // Usar setImmediate para garantir que a resposta seja enviada primeiro
+    setImmediate(() => {
+      processImportInBackground(driveUrl, courseId, importId, user.id, folderId)
+        .catch(error => {
+          console.error(`[IMPORT] Erro no processamento em background:`, error)
+        })
     })
     
-    // FASE 2: Processar estrutura da pasta
-    console.log('\n=== FASE 2: Processando conteúdo ===')
-    const structure = await parseGoogleDriveFolder(drive, folderId, importId, totals, supabase, user.id, courseId)
-
-    if (structure.modules.length === 0) {
-      return NextResponse.json(
-        { error: 'Nenhum módulo encontrado na pasta especificada' },
-        { status: 400 }
-      )
-    }
-
-    // Importar para o banco de dados
-    const results = await importToDatabase(structure, courseId, supabase, importId, user.id, user)
-
-    // Atualizar progresso final
-    await updateImportProgress(supabase, importId, user.id, courseId, {
-      current_step: 'Importação concluída',
-      total_modules: results.modules,
-      processed_modules: results.modules,
-      total_subjects: results.subjects,
-      processed_subjects: results.subjects,
-      total_lessons: results.lessons,
-      processed_lessons: results.lessons,
-      current_item: '',
-      errors: results.errors,
-      completed: true,
-      percentage: 100
-    })
-    
-    // Retornar importId e resultados
+    // Retornar imediatamente com o ID da importação
     return NextResponse.json({
       success: true,
-      message: `Importação concluída: ${results.modules} módulos, ${results.subjects} disciplinas e ${results.lessons} aulas importados`,
+      message: 'Importação iniciada. Acompanhe o progresso em tempo real.',
       importId,
-      modulesImported: results.modules,
-      subjectsImported: results.subjects,
-      lessonsImported: results.lessons,
-      errors: results.errors,
-      structure
+      status: 'processing'
+    }, {
+      status: 202, // HTTP 202 Accepted - processamento assíncrono
+      headers: {
+        'Content-Type': 'application/json'
+      }
     })
 
   } catch (error: any) {
-    console.error('Erro na importação:', error)
-    
-    // Atualizar progresso com erro
-    if (importId) {
-      const supabase = await createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (user) {
-        await updateImportProgress(supabase, importId, user.id, '', {
-          current_step: 'Erro na importação',
-          total_modules: 0,
-          processed_modules: 0,
-          total_subjects: 0,
-          processed_subjects: 0,
-          total_lessons: 0,
-          processed_lessons: 0,
-          current_item: error.message || 'Erro desconhecido',
-          errors: [error.message || 'Erro ao processar importação'],
-          completed: true,
-          percentage: 0
-        })
-      }
-    }
+    console.error('Erro ao iniciar importação:', error)
     
     return NextResponse.json(
-      { error: error.message || 'Erro ao processar importação do Google Drive' },
+      { error: error.message || 'Erro ao iniciar importação do Google Drive' },
       { status: 500 }
     )
   }
