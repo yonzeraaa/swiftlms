@@ -377,7 +377,7 @@ export default function StudentTestsPage() {
                         {test.course && (
                           <p className="text-xs text-gold-300">
                             {test.course.title}
-                            {test.subject && ` • ${test.subject.name}`}
+                            {test.subject && ` • ${test.subject.code ? `${test.subject.code} - ${test.subject.name}` : test.subject.name}`}
                           </p>
                         )}
                       </div>

@@ -832,7 +832,7 @@ export default function CoursePage() {
                                     <h4 className={`text-sm font-medium break-words ${
                                       isSubjectCompleted ? 'text-green-400' : 'text-gold-300'
                                     }`}>
-                                      📚 {subject.name}
+                                      📚 {subject.code ? `${subject.code} - ${subject.name}` : subject.name}
                                     </h4>
                                     <div className="flex items-center gap-2 mt-1">
                                       <span className="text-xs text-gold-300/40">

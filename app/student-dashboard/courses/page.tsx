@@ -772,7 +772,7 @@ export default function ExploreCourses() {
                                 <BookOpen className="w-5 h-5 text-gold-400 mt-0.5" />
                                 <div className="flex-1">
                                   <h4 className="font-medium text-gold-200">
-                                    {moduleSubject.subjects?.name || 'Disciplina'}
+                                    {moduleSubject.subjects?.code ? `${moduleSubject.subjects.code} - ${moduleSubject.subjects.name}` : (moduleSubject.subjects?.name || 'Disciplina')}
                                   </h4>
                                   {moduleSubject.subjects?.description && (
                                     <p className="text-gold-300/70 text-sm mt-1">
