@@ -293,21 +293,21 @@ async function countDriveFolderItems(drive: any, folderId: string): Promise<{tot
       pageSize: 1000
     })
     
-    const modules = modulesResponse.data.files || []
-    totalModules = modules.length
+    const modulesList = modulesResponse.data.files || []
+    totalModules = modulesList.length
     console.log(`Contando: ${totalModules} módulos encontrados`)
     
     // Para cada módulo, contar disciplinas
-    for (const module of modules) {
+    for (const moduleItem of modulesList) {
       const subjectsResponse = await drive.files.list({
-        q: `'${module.id}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'`,
+        q: `'${moduleItem.id}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'`,
         fields: 'files(id, name)',
         pageSize: 1000
       })
       
       const subjects = subjectsResponse.data.files || []
       totalSubjects += subjects.length
-      console.log(`  Módulo '${module.name}': ${subjects.length} disciplinas`)
+      console.log(`  Módulo '${moduleItem.name}': ${subjects.length} disciplinas`)
       
       // Para cada disciplina, contar aulas (TODOS os arquivos, não apenas alguns tipos)
       for (const subject of subjects) {
@@ -404,7 +404,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
       const item = items[moduleIndex]
       
       if (item.mimeType === 'application/vnd.google-apps.folder') {
-        const module = {
+        const courseModule = {
           name: item.name,
           order: moduleIndex + 1,
           subjects: [] as any[]
@@ -419,7 +419,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
           processed_subjects: processedSubjects,
           total_lessons: totalLessons,
           processed_lessons: processedLessons,
-          current_item: `Módulo: ${module.name}`,
+          current_item: `Módulo: ${courseModule.name}`,
           errors: []
         })
 
@@ -431,7 +431,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
         })
 
         const subjects = subjectsResponse.data.files || []
-        console.log(`  Módulo '${module.name}': ${subjects.length} disciplinas encontradas`)
+        console.log(`  Módulo '${courseModule.name}': ${subjects.length} disciplinas encontradas`)
 
         for (let subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
           const subjectItem = subjects[subjectIndex]
@@ -601,7 +601,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
             
             console.log(`    Total de aulas processadas para '${subject.name}': ${subject.lessons.length}`)
 
-            module.subjects.push(subject)
+            courseModule.subjects.push(subject)
             processedSubjects++
             
             // Atualizar progresso após processar disciplina
@@ -620,7 +620,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
           }
         }
 
-        structure.modules.push(module)
+        structure.modules.push(courseModule)
         processedModules++
         
         // Atualizar progresso após processar módulo
@@ -632,7 +632,7 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
           processed_subjects: processedSubjects,
           total_lessons: totalLessons,
           processed_lessons: processedLessons,
-          current_item: `Concluído: ${module.name}`,
+          current_item: `Concluído: ${courseModule.name}`,
           phase: 'processing',
           errors: []
         })
@@ -688,7 +688,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
         `Módulo: ${moduleData.name}`
       )
       
-      const { data: module, error: moduleError } = await supabase
+      const { data: createdModule, error: moduleError } = await supabase
         .from('course_modules')
         .insert({
           title: moduleData.name,
@@ -718,7 +718,8 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
         // Extrair código da disciplina se existir (formato: "DCA01-Nome" -> código: "DCA01")
         const codeMatch = subjectData.name.match(/^([A-Z0-9]+)-(.+)$/)
         const subjectCode = codeMatch ? codeMatch[1] : `SUB${Date.now()}${subjectIdx}`
-        const subjectName = codeMatch ? codeMatch[2].trim() : subjectData.name
+        // Manter o nome completo da disciplina (com código) conforme solicitado
+        const subjectName = subjectData.name
 
         // Verificar se a disciplina já existe
         let subjectId: string
@@ -753,7 +754,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
         const { error: linkError } = await supabase
           .from('module_subjects')
           .insert({
-            module_id: module.id,
+            module_id: createdModule.id,
             subject_id: subjectId,
             order_index: subjectIdx
           })
@@ -772,7 +773,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
         const { data: existingLessons } = await supabase
           .from('lessons')
           .select('order_index')
-          .eq('module_id', module.id)
+          .eq('module_id', createdModule.id)
           .order('order_index', { ascending: false })
           .limit(1)
         
@@ -796,7 +797,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           const { data: existingLesson } = await supabase
             .from('lessons')
             .select('id')
-            .eq('module_id', module.id)
+            .eq('module_id', createdModule.id)
             .eq('title', fullTitle)
             .single()
           
@@ -815,7 +816,7 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
               content_type: lessonData.contentType || 'text',
               content_url: lessonData.contentUrl || null,
               order_index: startLessonIndex + lessonIdx,
-              module_id: module.id
+              module_id: createdModule.id
             })
             .select()
             .single()
