@@ -27,7 +27,7 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClient()
   
-  // Check if user is already logged in and redirect
+  // Check if user is already logged in and redirect, also handle forgot-password param
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -41,6 +41,14 @@ export default function LoginPage() {
         
         const redirectUrl = profile?.role === 'student' ? '/student-dashboard' : '/dashboard'
         router.push(redirectUrl)
+      } else {
+        // Check for forgot-password parameter
+        const urlParams = new URLSearchParams(window.location.search)
+        if (urlParams.get('forgot-password') === 'true') {
+          setForgotPasswordModalOpen(true)
+          // Clean URL without refreshing page
+          window.history.replaceState({}, document.title, window.location.pathname)
+        }
       }
     }
     checkAuth()
