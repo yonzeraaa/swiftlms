@@ -248,7 +248,7 @@ export default function LoginPage() {
                       disabled={isLoading}
                       aria-label={t('login.rememberAriaLabel')}
                     />
-                    <label htmlFor="remember" className="ml-2 text-base text-gold-200 cursor-pointer select-none">
+                    <label htmlFor="remember" className="ml-2 text-sm font-medium text-gold-200 cursor-pointer select-none">
                       {t('login.rememberMe')}
                     </label>
                   </div>
