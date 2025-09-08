@@ -60,13 +60,40 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
       const response = await fetch(`/api/import-from-drive-status?importId=${id}`)
       
       if (!response.ok) {
-        const error = await response.json()
-        console.error('[useImportProgress] Error fetching progress:', error)
-        if (onError) onError(error.error || 'Erro ao buscar progresso')
+        let errorMessage = 'Erro ao buscar progresso'
+        try {
+          // Tentar parsear o erro apenas se há conteúdo na resposta
+          const responseText = await response.text()
+          if (responseText.trim()) {
+            const error = JSON.parse(responseText)
+            errorMessage = error.error || errorMessage
+          }
+        } catch (parseError) {
+          console.warn('[useImportProgress] Failed to parse error response:', parseError)
+        }
+        
+        console.error('[useImportProgress] Error fetching progress:', errorMessage)
+        if (onError) onError(errorMessage)
         return
       }
 
-      const data = await response.json()
+      // Verificar se a resposta tem conteúdo antes de tentar parsear
+      const responseText = await response.text()
+      if (!responseText.trim()) {
+        console.warn('[useImportProgress] Empty response received')
+        return
+      }
+
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch (parseError) {
+        console.error('[useImportProgress] Failed to parse JSON response:', parseError)
+        console.error('[useImportProgress] Response text:', responseText.substring(0, 200))
+        if (onError) onError('Erro ao processar resposta do servidor')
+        return
+      }
+
       console.log('[useImportProgress] Progress data received:', {
         percentage: data.percentage,
         processedLessons: data.processedLessons,
@@ -179,10 +206,34 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
         })
       })
 
-      const result = await response.json()
-
       if (!response.ok) {
-        throw new Error(result.error || 'Erro na importação')
+        let errorMessage = 'Erro na importação'
+        try {
+          const responseText = await response.text()
+          if (responseText.trim()) {
+            const result = JSON.parse(responseText)
+            errorMessage = result.error || errorMessage
+          }
+        } catch (parseError) {
+          console.warn('[useImportProgress] Failed to parse error response:', parseError)
+          errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
+      }
+
+      // Verificar se a resposta tem conteúdo antes de tentar parsear
+      const responseText = await response.text()
+      if (!responseText.trim()) {
+        throw new Error('Resposta vazia do servidor')
+      }
+
+      let result
+      try {
+        result = JSON.parse(responseText)
+      } catch (parseError) {
+        console.error('[useImportProgress] Failed to parse import response:', parseError)
+        console.error('[useImportProgress] Response text:', responseText.substring(0, 200))
+        throw new Error('Erro ao processar resposta do servidor')
       }
 
       if (result.importId) {

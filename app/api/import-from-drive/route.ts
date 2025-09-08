@@ -64,18 +64,18 @@ async function updateImportProgress(supabase: any, importId: string, userId: str
 }
 
 async function authenticateGoogleDrive() {
-  console.log('Iniciando autenticação Google Drive...')
-  console.log('Ambiente:', process.env.NODE_ENV)
-  console.log('GOOGLE_SERVICE_ACCOUNT_KEY existe?', !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
-  console.log('Tamanho da chave:', process.env.GOOGLE_SERVICE_ACCOUNT_KEY?.length || 0)
+  console.log('[GOOGLE_AUTH] Iniciando autenticação Google Drive...')
+  console.log('[GOOGLE_AUTH] Ambiente:', process.env.NODE_ENV)
+  console.log('[GOOGLE_AUTH] GOOGLE_SERVICE_ACCOUNT_KEY existe?', !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
+  console.log('[GOOGLE_AUTH] Tamanho da chave:', process.env.GOOGLE_SERVICE_ACCOUNT_KEY?.length || 0)
   
   // Primeiro tentar usar as credenciais do ambiente (para produção)
   const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY
   
   if (serviceAccountKey && serviceAccountKey.trim() !== '') {
-    console.log('Tentando usar GOOGLE_SERVICE_ACCOUNT_KEY do ambiente...')
-    console.log('Tipo da variável:', typeof serviceAccountKey)
-    console.log('Primeiros 50 caracteres:', serviceAccountKey.substring(0, 50))
+    console.log('[GOOGLE_AUTH] Tentando usar GOOGLE_SERVICE_ACCOUNT_KEY do ambiente...')
+    console.log('[GOOGLE_AUTH] Tipo da variável:', typeof serviceAccountKey)
+    console.log('[GOOGLE_AUTH] Primeiros 50 caracteres:', serviceAccountKey.substring(0, 50))
     
     // Se a chave estiver disponível como variável de ambiente (JSON string)
     try {
@@ -86,49 +86,98 @@ async function authenticateGoogleDrive() {
       if ((cleanedKey.startsWith('"') && cleanedKey.endsWith('"')) || 
           (cleanedKey.startsWith("'") && cleanedKey.endsWith("'"))) {
         cleanedKey = cleanedKey.slice(1, -1)
+        console.log('[GOOGLE_AUTH] Removidas aspas da chave')
       }
       
       // Tentar decodificar se estiver em base64
       let jsonString = cleanedKey
       try {
-        // Verificar se é base64
-        if (!jsonString.includes('{')) {
-          console.log('Tentando decodificar de base64...')
+        // Verificar se é base64 (não contém caracteres JSON típicos)
+        if (!jsonString.includes('{') && !jsonString.includes('}')) {
+          console.log('[GOOGLE_AUTH] Detectado formato base64, decodificando...')
           jsonString = Buffer.from(cleanedKey, 'base64').toString('utf-8')
+          console.log('[GOOGLE_AUTH] Decodificação base64 bem-sucedida')
+        } else {
+          console.log('[GOOGLE_AUTH] Formato JSON direto detectado')
         }
-      } catch (e) {
-        console.log('Não é base64, usando string original')
+      } catch (decodeError) {
+        console.log('[GOOGLE_AUTH] Falha na decodificação base64, usando string original:', decodeError)
       }
       
-      console.log('Tentando parsear JSON...')
-      const credentials = JSON.parse(jsonString)
+      // Verificar se a string JSON tem conteúdo válido antes do parse
+      if (!jsonString.trim() || jsonString.trim().length < 10) {
+        throw new Error('String JSON vazia ou muito curta após processamento')
+      }
       
-      console.log('Credenciais parseadas com sucesso')
-      console.log('Client email:', credentials.client_email)
-      console.log('Project ID:', credentials.project_id)
+      // Verificar se parece com JSON válido
+      if (!jsonString.trim().startsWith('{') || !jsonString.trim().endsWith('}')) {
+        throw new Error('String não parece ser JSON válido (não começa com { ou não termina com })')
+      }
+      
+      console.log('[GOOGLE_AUTH] Tentando parsear JSON...')
+      console.log('[GOOGLE_AUTH] Primeiros 100 caracteres do JSON:', jsonString.substring(0, 100))
+      
+      let credentials
+      try {
+        credentials = JSON.parse(jsonString)
+      } catch (parseError) {
+        console.error('[GOOGLE_AUTH] ERRO JSON.parse:', parseError)
+        console.error('[GOOGLE_AUTH] String que falhou no parse (primeiros 500 chars):', jsonString.substring(0, 500))
+        console.error('[GOOGLE_AUTH] String que falhou no parse (últimos 100 chars):', jsonString.substring(jsonString.length - 100))
+        throw new Error(`Falha ao fazer parse do JSON das credenciais: ${parseError instanceof Error ? parseError.message : 'Erro desconhecido'}`)
+      }
+      
+      // Validar campos obrigatórios
+      if (!credentials.client_email || !credentials.private_key || !credentials.project_id) {
+        console.error('[GOOGLE_AUTH] Campos obrigatórios ausentes:', {
+          hasClientEmail: !!credentials.client_email,
+          hasPrivateKey: !!credentials.private_key,
+          hasProjectId: !!credentials.project_id
+        })
+        throw new Error('Credenciais incompletas: campos obrigatórios ausentes')
+      }
+      
+      console.log('[GOOGLE_AUTH] Credenciais parseadas com sucesso')
+      console.log('[GOOGLE_AUTH] Client email:', credentials.client_email)
+      console.log('[GOOGLE_AUTH] Project ID:', credentials.project_id)
+      console.log('[GOOGLE_AUTH] Private key length:', credentials.private_key?.length)
       
       // Garantir que private_key tem quebras de linha corretas
       if (credentials.private_key) {
         credentials.private_key = credentials.private_key.replace(/\\n/g, '\n')
       }
       
+      console.log('[GOOGLE_AUTH] Criando GoogleAuth...')
       const auth = new google.auth.GoogleAuth({
         credentials,
         scopes: ['https://www.googleapis.com/auth/drive.readonly'],
       })
       
+      console.log('[GOOGLE_AUTH] Criando instância do Google Drive...')
       const drive = google.drive({ version: 'v3', auth })
-      console.log('Google Drive autenticado com sucesso via variável de ambiente')
+      console.log('[GOOGLE_AUTH] Google Drive autenticado com sucesso via variável de ambiente')
+      
+      // Testar a conexão fazendo uma chamada simples
+      try {
+        console.log('[GOOGLE_AUTH] Testando conexão com o Google Drive...')
+        await drive.files.list({ pageSize: 1 })
+        console.log('[GOOGLE_AUTH] Teste de conexão bem-sucedido')
+      } catch (testError) {
+        console.error('[GOOGLE_AUTH] Falha no teste de conexão:', testError)
+        throw new Error(`Autenticação criada mas conexão falhou: ${testError instanceof Error ? testError.message : 'Erro desconhecido'}`)
+      }
+      
       return drive
     } catch (error) {
-      console.error('Erro ao parsear GOOGLE_SERVICE_ACCOUNT_KEY:', error)
-      console.error('Primeiros 200 caracteres da chave original:', serviceAccountKey.substring(0, 200))
-      console.error('Últimos 50 caracteres:', serviceAccountKey.substring(serviceAccountKey.length - 50))
+      console.error('[GOOGLE_AUTH] Erro ao processar GOOGLE_SERVICE_ACCOUNT_KEY:', error)
+      console.error('[GOOGLE_AUTH] Primeiros 200 caracteres da chave original:', serviceAccountKey.substring(0, 200))
+      console.error('[GOOGLE_AUTH] Últimos 50 caracteres da chave original:', serviceAccountKey.substring(serviceAccountKey.length - 50))
       
       // Tentar método alternativo com credenciais individuais
-      console.log('Tentando método alternativo com variáveis separadas...')
+      console.log('[GOOGLE_AUTH] Tentando método alternativo com variáveis separadas...')
       try {
         if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+          console.log('[GOOGLE_AUTH] Variáveis separadas encontradas')
           const auth = new google.auth.GoogleAuth({
             credentials: {
               client_email: process.env.GOOGLE_CLIENT_EMAIL,
@@ -138,14 +187,16 @@ async function authenticateGoogleDrive() {
           })
           
           const drive = google.drive({ version: 'v3', auth })
-          console.log('Google Drive autenticado com sucesso via variáveis separadas')
+          console.log('[GOOGLE_AUTH] Google Drive autenticado com sucesso via variáveis separadas')
           return drive
+        } else {
+          console.log('[GOOGLE_AUTH] Variáveis separadas não encontradas')
         }
       } catch (altError) {
-        console.error('Método alternativo também falhou:', altError)
+        console.error('[GOOGLE_AUTH] Método alternativo também falhou:', altError)
       }
       
-      throw new Error(`Erro ao processar credenciais: ${error instanceof Error ? error.message : 'Erro desconhecido'}`)
+      throw new Error(`Erro ao processar credenciais do Google Drive: ${error instanceof Error ? error.message : 'Erro desconhecido'}. Verifique a configuração da variável GOOGLE_SERVICE_ACCOUNT_KEY.`)
     }
   }
   
