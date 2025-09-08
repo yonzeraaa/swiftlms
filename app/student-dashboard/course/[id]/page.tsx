@@ -37,16 +37,22 @@ import Breadcrumbs from '../../../components/ui/Breadcrumbs'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
+type Subject = Database['public']['Tables']['subjects']['Row']
 type Lesson = Database['public']['Tables']['lessons']['Row']
 type LessonProgress = Database['public']['Tables']['lesson_progress']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
 
-interface ModuleWithLessons extends CourseModule {
+interface SubjectWithLessons extends Subject {
   lessons: (Lesson & { progress?: LessonProgress })[]
+  order_index: number
+}
+
+interface ModuleWithSubjects extends CourseModule {
+  subjects: SubjectWithLessons[]
 }
 
 interface CourseWithDetails extends Course {
-  modules: ModuleWithLessons[]
+  modules: ModuleWithSubjects[]
   enrollment?: Enrollment
   instructor?: {
     name: string
@@ -72,6 +78,7 @@ export default function CoursePage() {
   const [canRequestCertificate, setCanRequestCertificate] = useState(false)
   const [requestingCertificate, setRequestingCertificate] = useState(false)
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
+  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set())
   const [reviews, setReviews] = useState<any[]>([])
 
   useEffect(() => {
@@ -80,21 +87,26 @@ export default function CoursePage() {
     }
   }, [courseId])
 
-  // Auto-expand module that contains selected lesson and expand first module by default
+  // Auto-expand module and subject that contains selected lesson and expand first module/subject by default
   useEffect(() => {
     if (course && course.modules.length > 0) {
       if (selectedLesson) {
-        // Find which module contains the selected lesson
-        const moduleWithSelectedLesson = course.modules.find(module =>
-          module.lessons.some(lesson => lesson.id === selectedLesson.id)
-        )
-        
-        if (moduleWithSelectedLesson) {
-          setExpandedModules(prev => new Set(prev).add(moduleWithSelectedLesson.id))
+        // Find which module and subject contain the selected lesson
+        for (const module of course.modules) {
+          for (const subject of module.subjects) {
+            if (subject.lessons.some(lesson => lesson.id === selectedLesson.id)) {
+              setExpandedModules(prev => new Set(prev).add(module.id))
+              setExpandedSubjects(prev => new Set(prev).add(subject.id))
+              return
+            }
+          }
         }
       } else {
-        // Expand the first module by default when no lesson is selected
+        // Expand the first module and first subject by default when no lesson is selected
         setExpandedModules(new Set([course.modules[0].id]))
+        if (course.modules[0].subjects.length > 0) {
+          setExpandedSubjects(new Set([course.modules[0].subjects[0].id]))
+        }
       }
     }
   }, [selectedLesson, course])
@@ -175,48 +187,61 @@ export default function CoursePage() {
         progressData = data || []
       }
 
-      // Process modules and lessons with progress
-      const modulesWithProgress: ModuleWithLessons[] = []
+      // Process modules with subjects and lessons with progress
+      const modulesWithProgress: ModuleWithSubjects[] = []
       let totalLessonCount = 0
       let completedLessonCount = 0
       let firstIncompleteLesson: Lesson | null = null
 
       if (modulesData) {
         for (const module of modulesData) {
-          const allLessons: (Lesson & { progress?: LessonProgress })[] = []
+          const subjectsWithLessons: SubjectWithLessons[] = []
           
-          // Extract lessons from module_subjects -> subjects -> subject_lessons -> lessons
+          // Extract subjects from module_subjects
           const moduleSubjects = (module as any).module_subjects || []
           
           // Sort module_subjects by order_index
           moduleSubjects.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
           
           for (const moduleSubject of moduleSubjects) {
-            if (moduleSubject.subject && moduleSubject.subject.subject_lessons) {
-              for (const subjectLesson of moduleSubject.subject.subject_lessons) {
-                if (subjectLesson.lesson) {
-                  const lesson = subjectLesson.lesson
-                  const progress = progressData?.find(p => p.lesson_id === lesson.id)
-                  
-                  if (progress?.is_completed) {
-                    completedLessonCount++
-                  } else if (!firstIncompleteLesson) {
-                    firstIncompleteLesson = lesson
+            if (moduleSubject.subject) {
+              const subject = moduleSubject.subject
+              const lessonsInSubject: (Lesson & { progress?: LessonProgress })[] = []
+              
+              // Extract lessons from subject_lessons
+              if (subject.subject_lessons) {
+                for (const subjectLesson of subject.subject_lessons) {
+                  if (subjectLesson.lesson) {
+                    const lesson = subjectLesson.lesson
+                    const progress = progressData?.find(p => p.lesson_id === lesson.id)
+                    
+                    if (progress?.is_completed) {
+                      completedLessonCount++
+                    } else if (!firstIncompleteLesson) {
+                      firstIncompleteLesson = lesson
+                    }
+                    
+                    totalLessonCount++
+                    lessonsInSubject.push({ ...lesson, progress })
                   }
-                  
-                  totalLessonCount++
-                  allLessons.push({ ...lesson, progress })
                 }
               }
+
+              // Sort lessons by order_index
+              lessonsInSubject.sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
+
+              // Add subject with its lessons
+              subjectsWithLessons.push({
+                ...subject,
+                lessons: lessonsInSubject,
+                order_index: moduleSubject.order_index || 0
+              })
             }
           }
 
-          // Sort lessons by order_index
-          allLessons.sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-
           modulesWithProgress.push({
             ...module,
-            lessons: allLessons
+            subjects: subjectsWithLessons
           })
         }
       }
@@ -295,7 +320,8 @@ export default function CoursePage() {
       // If there's a lesson ID in the URL, select that lesson
       if (lessonId) {
         const lessonToSelect = modulesWithProgress
-          .flatMap(m => m.lessons)
+          .flatMap(m => m.subjects)
+          .flatMap(s => s.lessons)
           .find(l => l.id === lessonId)
         if (lessonToSelect) {
           setSelectedLesson(lessonToSelect)
@@ -303,8 +329,10 @@ export default function CoursePage() {
       } else if (firstIncompleteLesson) {
         // Otherwise, set the first incomplete lesson as selected
         setSelectedLesson(firstIncompleteLesson)
-      } else if (modulesWithProgress.length > 0 && modulesWithProgress[0].lessons.length > 0) {
-        setSelectedLesson(modulesWithProgress[0].lessons[0])
+      } else if (modulesWithProgress.length > 0 && 
+                 modulesWithProgress[0].subjects.length > 0 && 
+                 modulesWithProgress[0].subjects[0].lessons.length > 0) {
+        setSelectedLesson(modulesWithProgress[0].subjects[0].lessons[0])
       }
 
       // Fetch course reviews (lightweight)
@@ -340,9 +368,33 @@ export default function CoursePage() {
     })
   }
 
-  const calculateModuleProgress = (module: ModuleWithLessons) => {
-    const totalLessons = module.lessons.length
-    const completedLessons = module.lessons.filter(lesson => lesson.progress?.is_completed).length
+  const toggleSubjectExpansion = (subjectId: string) => {
+    setExpandedSubjects(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(subjectId)) {
+        newSet.delete(subjectId)
+      } else {
+        newSet.add(subjectId)
+      }
+      return newSet
+    })
+  }
+
+  const calculateModuleProgress = (module: ModuleWithSubjects) => {
+    let totalLessons = 0
+    let completedLessons = 0
+    
+    for (const subject of module.subjects) {
+      totalLessons += subject.lessons.length
+      completedLessons += subject.lessons.filter(lesson => lesson.progress?.is_completed).length
+    }
+    
+    return { completed: completedLessons, total: totalLessons }
+  }
+
+  const calculateSubjectProgress = (subject: SubjectWithLessons) => {
+    const totalLessons = subject.lessons.length
+    const completedLessons = subject.lessons.filter(lesson => lesson.progress?.is_completed).length
     return { completed: completedLessons, total: totalLessons }
   }
 
@@ -354,7 +406,7 @@ export default function CoursePage() {
       if (!user) return
 
       // Mark all lessons as complete
-      const allLessons = course.modules.flatMap(m => m.lessons)
+      const allLessons = course.modules.flatMap(m => m.subjects).flatMap(s => s.lessons)
       
       for (const lesson of allLessons) {
         await supabase
@@ -476,24 +528,38 @@ export default function CoursePage() {
         }
         
         // Auto-advance to next lesson
-        const currentModuleIndex = course.modules.findIndex(m => 
-          m.lessons.some(l => l.id === lessonId)
-        )
-        const currentModule = course.modules[currentModuleIndex]
-        const currentLessonIndex = currentModule.lessons.findIndex(l => l.id === lessonId)
-        
         let nextLesson = null
         
-        // Try next lesson in same module
-        if (currentLessonIndex < currentModule.lessons.length - 1) {
-          nextLesson = currentModule.lessons[currentLessonIndex + 1]
-        } 
-        // Try first lesson of next module
-        else if (currentModuleIndex < course.modules.length - 1) {
-          const nextModule = course.modules[currentModuleIndex + 1]
-          if (nextModule.lessons.length > 0) {
-            nextLesson = nextModule.lessons[0]
+        // Find current lesson in the hierarchy
+        for (let moduleIndex = 0; moduleIndex < course.modules.length; moduleIndex++) {
+          const module = course.modules[moduleIndex]
+          for (let subjectIndex = 0; subjectIndex < module.subjects.length; subjectIndex++) {
+            const subject = module.subjects[subjectIndex]
+            const lessonIndex = subject.lessons.findIndex(l => l.id === lessonId)
+            
+            if (lessonIndex !== -1) {
+              // Try next lesson in same subject
+              if (lessonIndex < subject.lessons.length - 1) {
+                nextLesson = subject.lessons[lessonIndex + 1]
+              }
+              // Try first lesson of next subject in same module
+              else if (subjectIndex < module.subjects.length - 1) {
+                const nextSubject = module.subjects[subjectIndex + 1]
+                if (nextSubject.lessons.length > 0) {
+                  nextLesson = nextSubject.lessons[0]
+                }
+              }
+              // Try first lesson of first subject in next module
+              else if (moduleIndex < course.modules.length - 1) {
+                const nextModule = course.modules[moduleIndex + 1]
+                if (nextModule.subjects.length > 0 && nextModule.subjects[0].lessons.length > 0) {
+                  nextLesson = nextModule.subjects[0].lessons[0]
+                }
+              }
+              break
+            }
           }
+          if (nextLesson) break
         }
         
         if (nextLesson) {
@@ -737,7 +803,7 @@ export default function CoursePage() {
                     <p className="text-sm text-gold-300/70">{module.description}</p>
                   )}
                   
-                  {/* Lessons - Collapsible */}
+                  {/* Subjects - Collapsible */}
                   <AnimatePresence>
                     {isExpanded && (
                       <motion.div
@@ -747,60 +813,115 @@ export default function CoursePage() {
                         transition={{ duration: 0.3, ease: 'easeInOut' }}
                         className="overflow-hidden"
                       >
-                        <div className="space-y-2 pt-2">
-                          {module.lessons.map((lesson, lessonIndex) => {
-                            const isCompleted = lesson.progress?.is_completed
-                            const isSelected = selectedLesson?.id === lesson.id
-                            
-                            // All lessons are unlocked - student can watch in any order
-                            const isLocked = false
+                        <div className="space-y-3 pt-2">
+                          {module.subjects.map((subject, subjectIndex) => {
+                            const isSubjectExpanded = expandedSubjects.has(subject.id)
+                            const subjectProgress = calculateSubjectProgress(subject)
+                            const isSubjectCompleted = subjectProgress.completed === subjectProgress.total && subjectProgress.total > 0
                             
                             return (
-                              <motion.button
-                                key={lesson.id}
-                                onClick={() => handleLessonSelect(lesson)}
-                                className={`
-                                  w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all group relative
-                                  ${isSelected 
-                                    ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
-                                    : isCompleted 
-                                      ? 'text-green-400 hover:bg-green-500/10'
-                                      : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
-                                  }
-                                  cursor-pointer
-                                `}
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                              >
-                                <div className="flex-shrink-0">
-                                  {isCompleted ? (
-                                    <CheckCircle2 className="w-5 h-5 text-green-400" />
-                                  ) : (
-                                    <div className="w-5 h-5 rounded-full border-2 border-gold-500/50" />
-                                  )}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium truncate whitespace-nowrap">
-                                    {lesson.title}
-                                  </p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    {lesson.content_type === 'video' && <Video className="w-3 h-3 text-gold-400" />}
-                                    {lesson.content_type === 'text' && lesson.content_url && <Link className="w-3 h-3 text-gold-400" />}
-                                    {lesson.content_type === 'text' && !lesson.content_url && <FileText className="w-3 h-3 text-gold-400" />}
-                                    {lesson.content_type === 'document' && <FileImage className="w-3 h-3 text-gold-400" />}
-                                    {lesson.duration_minutes && (
-                                      <span className="text-xs text-gold-300/50 truncate">
-                                        {lesson.duration_minutes} min
+                              <div key={subject.id} className="border-l-2 border-gold-500/20 pl-4">
+                                {/* Subject Header */}
+                                <motion.button
+                                  onClick={() => toggleSubjectExpansion(subject.id)}
+                                  className="w-full text-left flex items-center justify-between gap-3 p-2 -m-2 rounded-lg transition-all hover:bg-navy-800/20"
+                                  whileHover={{ scale: 1.005 }}
+                                  whileTap={{ scale: 0.995 }}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className={`text-sm font-medium break-words ${
+                                      isSubjectCompleted ? 'text-green-400' : 'text-gold-300'
+                                    }`}>
+                                      📚 {subject.name}
+                                    </h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-xs text-gold-300/40">
+                                        {subjectProgress.completed}/{subjectProgress.total} aulas
                                       </span>
-                                    )}
-                                    {!isCompleted && !isSelected && (
-                                      <span className="text-xs text-gold-400 truncate">
-                                        Disponível
-                                      </span>
+                                      {isSubjectCompleted && (
+                                        <div className="flex items-center gap-1">
+                                          <CheckCircle2 className="w-3 h-3 text-green-400" />
+                                          <span className="text-xs text-green-400">Completo</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex-shrink-0">
+                                    {isSubjectExpanded ? (
+                                      <ChevronUp className="w-4 h-4 text-gold-400" />
+                                    ) : (
+                                      <ChevronDown className="w-4 h-4 text-gold-400" />
                                     )}
                                   </div>
-                                </div>
-                              </motion.button>
+                                </motion.button>
+
+                                {subject.description && (
+                                  <p className="text-xs text-gold-300/60 mt-1 pl-2">{subject.description}</p>
+                                )}
+
+                                {/* Lessons in Subject */}
+                                <AnimatePresence>
+                                  {isSubjectExpanded && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                      className="overflow-hidden"
+                                    >
+                                      <div className="space-y-1 pt-2 pl-2">
+                                        {subject.lessons.map((lesson, lessonIndex) => {
+                                          const isCompleted = lesson.progress?.is_completed
+                                          const isSelected = selectedLesson?.id === lesson.id
+                                          
+                                          return (
+                                            <motion.button
+                                              key={lesson.id}
+                                              onClick={() => handleLessonSelect(lesson)}
+                                              className={`
+                                                w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg transition-all group relative
+                                                ${isSelected 
+                                                  ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
+                                                  : isCompleted 
+                                                    ? 'text-green-400 hover:bg-green-500/10'
+                                                    : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
+                                                }
+                                                cursor-pointer
+                                              `}
+                                              whileHover={{ scale: 1.01 }}
+                                              whileTap={{ scale: 0.99 }}
+                                            >
+                                              <div className="flex-shrink-0">
+                                                {isCompleted ? (
+                                                  <CheckCircle2 className="w-4 h-4 text-green-400" />
+                                                ) : (
+                                                  <div className="w-4 h-4 rounded-full border-2 border-gold-500/50" />
+                                                )}
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-medium truncate whitespace-nowrap">
+                                                  {lesson.title}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                  {lesson.content_type === 'video' && <Video className="w-3 h-3 text-gold-400" />}
+                                                  {lesson.content_type === 'text' && lesson.content_url && <Link className="w-3 h-3 text-gold-400" />}
+                                                  {lesson.content_type === 'text' && !lesson.content_url && <FileText className="w-3 h-3 text-gold-400" />}
+                                                  {lesson.content_type === 'document' && <FileImage className="w-3 h-3 text-gold-400" />}
+                                                  {lesson.duration_minutes && (
+                                                    <span className="text-xs text-gold-300/50 truncate">
+                                                      {lesson.duration_minutes} min
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </motion.button>
+                                          )
+                                        })}
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
                             )
                           })}
                         </div>
@@ -974,7 +1095,7 @@ export default function CoursePage() {
                         <div className="space-y-3">
                           {course.modules.map((m) => {
                             const mp = calculateModuleProgress(m)
-                            const pct = m.lessons.length ? Math.round((mp.completed / mp.total) * 100) : 0
+                            const pct = mp.total > 0 ? Math.round((mp.completed / mp.total) * 100) : 0
                             return (
                               <div key={m.id} className="p-3 rounded-lg bg-navy-900/40 border border-gold-500/10">
                                 <div className="flex items-center justify-between mb-1">

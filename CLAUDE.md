@@ -32,3 +32,4 @@ Em resumo, seu objetivo final é produzir um código que um futuro desenvolvedor
 - Lembre-se de que temos o mcp do supabase configurado e podemos utilizá-lo diretamente para configurar querys e outras coisas no supabase.
 - Ao final das modificações, realize o lint e o build. Além disto, realize o commit e push.
 - utilize o mcp playwright para testar a UI e verificar bugs visuais ou problemas no site.
+- Não utilize o mcp playwright a não ser que explicitamente lhe seja dito para tal.
