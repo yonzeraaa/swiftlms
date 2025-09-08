@@ -3,10 +3,11 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Loader2, AlertCircle, Globe, BookOpen } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Loader2, AlertCircle, Globe, BookOpen, MessageCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Logo from './components/Logo'
 import Button from './components/Button'
+import ContactModal from './components/ContactModal'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from './contexts/LanguageContext'
 
@@ -20,6 +21,7 @@ export default function LoginPage() {
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [contactModalOpen, setContactModalOpen] = useState(false)
   const router = useRouter()
   const supabase = createClient()
   
@@ -264,34 +266,46 @@ export default function LoginPage() {
                 </div>
               )}
 
-              {/* Mensagem de contato */}
-              <p className="mt-6 text-center text-base text-gold-200">
-                {t('login.contactAdmin')}
-              </p>
+              {/* Botões centralizados */}
+              <div className="mt-6 space-y-4">
+                {/* Botão Ver Cursos Disponíveis */}
+                <div className="text-center">
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onClick={() => router.push('/browse-courses')}
+                    icon={<BookOpen className="w-4 h-4" />}
+                    iconPosition="left"
+                    className="text-gold-300 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
+                  >
+                    Ver Cursos Disponíveis
+                  </Button>
+                </div>
 
-              {/* Botão Ver Cursos Disponíveis */}
-              <div className="mt-6 text-center">
-                <Button
-                  variant="outline"
-                  size="md"
-                  onClick={() => router.push('/browse-courses')}
-                  icon={<BookOpen className="w-4 h-4" />}
-                  iconPosition="left"
-                  className="text-gold-300 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
-                >
-                  Ver Cursos Disponíveis
-                </Button>
-              </div>
-
-              {/* Indicador de segurança */}
-              <div className="mt-6 flex items-center justify-center gap-2 text-gold-300/60">
-                <Shield className="w-4 h-4" />
-                <span className="text-sm">{t('login.secureConnection')}</span>
+                {/* Botão Fale Conosco */}
+                <div className="text-center">
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => setContactModalOpen(true)}
+                    icon={<MessageCircle className="w-4 h-4" />}
+                    iconPosition="left"
+                    className="text-gold-300/80 hover:text-gold-200 hover:bg-gold-500/10"
+                  >
+                    Fale Conosco
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+      
+      {/* Contact Modal */}
+      <ContactModal 
+        isOpen={contactModalOpen} 
+        onClose={() => setContactModalOpen(false)} 
+      />
     </div>
   )
 }

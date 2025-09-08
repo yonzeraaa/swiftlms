@@ -118,16 +118,16 @@ export async function POST(request: NextRequest) {
       : 0
 
     for (let i = 0; i < modules.length; i++) {
-      const module = modules[i]
+      const courseModule = modules[i]
       
       // Criar o módulo
       const { data: moduleData, error: moduleError } = await supabase
         .from('course_modules')
         .insert({
           course_id: courseId,
-          title: module.title,
+          title: courseModule.title,
           order_index: startIndex + i,
-          total_hours: module.totalHours,
+          total_hours: courseModule.totalHours,
           is_required: true
         })
         .select()
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       totalModulesImported++
 
       // Criar as disciplinas
-      for (const subject of module.subjects) {
+      for (const subject of courseModule.subjects) {
         // Primeiro, criar ou buscar a disciplina
         const { data: existingSubject } = await supabase
           .from('subjects')
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
           .insert({
             module_id: moduleData.id,
             subject_id: subjectId,
-            order_index: module.subjects.indexOf(subject)
+            order_index: courseModule.subjects.indexOf(subject)
           })
 
         if (linkError) {
