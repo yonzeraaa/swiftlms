@@ -244,11 +244,11 @@ export default function LoginPage() {
                       id="remember"
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
-                      className="w-4 h-4 mt-0.5 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500 focus:ring-2 cursor-pointer"
+                      className="w-4 h-4 mt-1 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500 focus:ring-2 cursor-pointer"
                       disabled={isLoading}
                       aria-label={t('login.rememberAriaLabel')}
                     />
-                    <label htmlFor="remember" className="ml-2 text-sm text-gold-300 cursor-pointer select-none">
+                    <label htmlFor="remember" className="ml-2 mt-0.5 text-sm text-gold-300 cursor-pointer select-none">
                       {t('login.rememberMe')}
                     </label>
                   </div>
