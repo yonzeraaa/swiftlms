@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles, MoreVertical, Search, Filter, X } from 'lucide-react'
+import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles, MoreVertical, Search, Filter, X, Eye, EyeOff, MessageSquare } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -31,7 +31,8 @@ export default function TestsManagementPage() {
   const [showModal, setShowModal] = useState(false)
   const [editingTest, setEditingTest] = useState<Test | null>(null)
   const [extractingGabarito, setExtractingGabarito] = useState(false)
-  const [gabaritoData, setGabaritoData] = useState<Array<{ questionNumber: number; correctAnswer: string; points?: number }>>([])
+  const [gabaritoData, setGabaritoData] = useState<Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }>>([])
+  const [showJustifications, setShowJustifications] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filterCourse, setFilterCourse] = useState('all')
@@ -293,7 +294,8 @@ export default function TestsManagementPage() {
       test_id: testId,
       question_number: item.questionNumber,
       correct_answer: item.correctAnswer,
-      points: item.points || 10
+      points: item.points || 10,
+      justification: (item as any).justification || null
     }))
     
     await supabase
@@ -395,6 +397,7 @@ export default function TestsManagementPage() {
     })
     setEditingTest(null)
     setGabaritoData([])
+    setShowJustifications(false)
     setShowModal(false)
   }
 
@@ -762,25 +765,74 @@ export default function TestsManagementPage() {
 
                     {gabaritoData.length > 0 && (
                       <div className="p-4 bg-green-900/30 border border-green-500/30 rounded-xl">
-                        <div className="flex items-center gap-2 mb-3">
-                          <div className="p-1 bg-green-500 rounded-full">
-                            <Check className="w-4 h-4 text-white" />
-                          </div>
-                          <span className="font-semibold text-green-400">
-                            {t('tests.answerKeyExtracted')}
-                          </span>
-                          <span className="text-green-300 font-medium">
-                            {gabaritoData.length} {t('tests.questions')}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-10 gap-2 text-sm">
-                          {gabaritoData.map((item, index) => (
-                            <div key={`gabarito-${index}-${item.questionNumber}`} className="flex items-center justify-center p-2 bg-navy-800 rounded-lg border border-gold-500/20">
-                              <span className="text-gold-300 font-medium">{item.questionNumber}.</span>
-                              <span className="ml-1 font-bold text-gold">{item.correctAnswer}</span>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1 bg-green-500 rounded-full">
+                              <Check className="w-4 h-4 text-white" />
                             </div>
-                          ))}
+                            <span className="font-semibold text-green-400">
+                              {t('tests.answerKeyExtracted')}
+                            </span>
+                            <span className="text-green-300 font-medium">
+                              {gabaritoData.length} {t('tests.questions')}
+                            </span>
+                          </div>
+                          {gabaritoData.some(item => item.justification) && (
+                            <button
+                              type="button"
+                              onClick={() => setShowJustifications(!showJustifications)}
+                              className="flex items-center gap-2 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 rounded-lg border border-gold-500/30 transition-colors"
+                            >
+                              {showJustifications ? (
+                                <>
+                                  <EyeOff className="w-4 h-4 text-gold-400" />
+                                  <span className="text-sm text-gold-300">Ocultar Justificativas</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Eye className="w-4 h-4 text-gold-400" />
+                                  <span className="text-sm text-gold-300">Ver Justificativas</span>
+                                </>
+                              )}
+                            </button>
+                          )}
                         </div>
+                        
+                        {!showJustifications ? (
+                          <div className="grid grid-cols-10 gap-2 text-sm">
+                            {gabaritoData.map((item, index) => (
+                              <div key={`gabarito-${index}-${item.questionNumber}`} className="flex items-center justify-center p-2 bg-navy-800 rounded-lg border border-gold-500/20">
+                                <span className="text-gold-300 font-medium">{item.questionNumber}.</span>
+                                <span className="ml-1 font-bold text-gold">{item.correctAnswer}</span>
+                                {item.justification && (
+                                  <MessageSquare className="w-3 h-3 text-green-400 ml-1" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {gabaritoData.map((item, index) => (
+                              <div key={`gabarito-detail-${index}-${item.questionNumber}`} className="p-3 bg-navy-800 rounded-lg border border-gold-500/20">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <span className="text-gold-400 font-semibold">Questão {item.questionNumber}</span>
+                                  <span className="px-2 py-1 bg-gold-500/20 text-gold-300 rounded font-bold">{item.correctAnswer}</span>
+                                  {item.points && (
+                                    <span className="text-sm text-gold-300/70">({item.points} pontos)</span>
+                                  )}
+                                </div>
+                                {item.justification && (
+                                  <div className="mt-2 p-2 bg-navy-900/50 rounded border border-green-500/20">
+                                    <div className="flex items-start gap-2">
+                                      <MessageSquare className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                                      <p className="text-sm text-gray-300">{item.justification}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 

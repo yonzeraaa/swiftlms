@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function extractQuestionsWithAnswers(content: string): Array<{ questionNumber: number; correctAnswer: string; points?: number }> {
-  const answers: Array<{ questionNumber: number; correctAnswer: string; points?: number }> = []
+function extractQuestionsWithAnswers(content: string): Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }> {
+  const answers: Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }> = []
   const lines = content.split('\n')
   
   let currentQuestion = 0
@@ -181,6 +181,17 @@ function extractQuestionsWithAnswers(content: string): Array<{ questionNumber: n
     }
   }
   
+  // Extrair justificativas baseadas no formato da seção Gabarito
+  const justifications = extractJustifications(content)
+  
+  // Associar justificativas às questões
+  answers.forEach(answer => {
+    const justification = justifications.find(j => j.questionNumber === answer.questionNumber)
+    if (justification) {
+      answer.justification = justification.text
+    }
+  })
+  
   // Não completar com respostas aleatórias - apenas retornar o que foi encontrado
   // Isso permite ao usuário saber quais questões não tiveram gabarito identificado
   
@@ -235,6 +246,104 @@ function extractAnswerKey(content: string): Array<{ questionNumber: number; corr
   answerKey.sort((a, b) => a.questionNumber - b.questionNumber)
   
   return answerKey
+}
+
+function extractJustifications(content: string): Array<{ questionNumber: number; text: string }> {
+  const justifications: Array<{ questionNumber: number; text: string }> = []
+  
+  // Múltiplos padrões para capturar justificativas
+  // Padrão 1: "1. a) Justificativa:" ou "2. b) Justificativa:"
+  // Padrão 2: "1. Justificativa:" direto
+  // Padrão 3: Após a resposta, em formato "Justificativa: ..."
+  
+  const lines = content.split('\n')
+  let currentQuestion = 0
+  let captureJustification = false
+  let justificationBuffer: string[] = []
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    
+    // Detectar número da questão
+    const questionMatch = line.match(/^(\d+)[\.)\s]/)
+    if (questionMatch) {
+      // Se estava capturando justificativa anterior, salvar
+      if (captureJustification && justificationBuffer.length > 0 && currentQuestion > 0) {
+        const existingJustification = justifications.find(j => j.questionNumber === currentQuestion)
+        if (!existingJustification) {
+          justifications.push({
+            questionNumber: currentQuestion,
+            text: justificationBuffer.join(' ').trim()
+          })
+        }
+      }
+      
+      currentQuestion = parseInt(questionMatch[1])
+      captureJustification = false
+      justificationBuffer = []
+    }
+    
+    // Padrão principal do documento: "X. Y) Justificativa: texto"
+    const fullPatternMatch = line.match(/^(\d+)\.\s+([a-eA-E])\)\s+Justificativa:\s*(.+)/i)
+    if (fullPatternMatch) {
+      const questionNum = parseInt(fullPatternMatch[1])
+      const justificationText = fullPatternMatch[3].trim()
+      
+      if (questionNum > 0 && justificationText) {
+        const existingJustification = justifications.find(j => j.questionNumber === questionNum)
+        if (!existingJustification) {
+          justifications.push({
+            questionNumber: questionNum,
+            text: justificationText
+          })
+        }
+      }
+      continue
+    }
+    
+    // Detectar início de justificativa após resposta
+    if (line.match(/^\s*[a-eA-E]\)\s+Justificativa:/i) || line.match(/^Justificativa:/i)) {
+      captureJustification = true
+      const justMatch = line.match(/Justificativa:\s*(.+)/i)
+      if (justMatch && justMatch[1]) {
+        justificationBuffer.push(justMatch[1])
+      }
+      continue
+    }
+    
+    // Continuar capturando texto da justificativa
+    if (captureJustification && line.length > 0) {
+      // Parar se encontrar próxima questão ou alternativa
+      if (line.match(/^(\d+)[\.)\s]/) || line.match(/^[a-eA-E]\)/)) {
+        captureJustification = false
+        if (justificationBuffer.length > 0 && currentQuestion > 0) {
+          const existingJustification = justifications.find(j => j.questionNumber === currentQuestion)
+          if (!existingJustification) {
+            justifications.push({
+              questionNumber: currentQuestion,
+              text: justificationBuffer.join(' ').trim()
+            })
+          }
+        }
+        justificationBuffer = []
+      } else {
+        justificationBuffer.push(line)
+      }
+    }
+  }
+  
+  // Salvar última justificativa se houver
+  if (captureJustification && justificationBuffer.length > 0 && currentQuestion > 0) {
+    const existingJustification = justifications.find(j => j.questionNumber === currentQuestion)
+    if (!existingJustification) {
+      justifications.push({
+        questionNumber: currentQuestion,
+        text: justificationBuffer.join(' ').trim()
+      })
+    }
+  }
+  
+  return justifications
 }
 
 function generateSampleAnswerKey(): Array<{ questionNumber: number; correctAnswer: string; points?: number }> {
