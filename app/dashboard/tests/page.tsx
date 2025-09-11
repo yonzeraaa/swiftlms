@@ -34,7 +34,7 @@ export default function TestsManagementPage() {
   const [gabaritoData, setGabaritoData] = useState<Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }>>([])
   const [showJustifications, setShowJustifications] = useState(false)
   const [showAnswerKeyModal, setShowAnswerKeyModal] = useState(false)
-  const [viewingAnswerKey, setViewingAnswerKey] = useState<Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string | null }> | null>(null)
+  const [viewingAnswerKey, setViewingAnswerKey] = useState<Array<{ question_number: number; correct_answer: string; points?: number; justification?: string | null }> | null>(null)
   const [viewingTestTitle, setViewingTestTitle] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
@@ -1044,11 +1044,11 @@ export default function TestsManagementPage() {
               <div className="grid grid-cols-10 gap-2">
                 {viewingAnswerKey.map((item, index) => (
                   <div 
-                    key={`key-${item.questionNumber}-${index}`}
+                    key={`key-${item.question_number}-${index}`}
                     className="flex items-center justify-center p-2 bg-navy-800 rounded-lg border border-gold-500/20"
                   >
-                    <span className="text-gold-300 font-medium">{item.questionNumber}.</span>
-                    <span className="ml-1 font-bold text-gold">{item.correctAnswer}</span>
+                    <span className="text-gold-300 font-medium">{item.question_number}.</span>
+                    <span className="ml-1 font-bold text-gold">{item.correct_answer}</span>
                     {item.justification && (
                       <MessageSquare className="w-3 h-3 text-green-400 ml-1" />
                     )}
@@ -1062,15 +1062,15 @@ export default function TestsManagementPage() {
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {viewingAnswerKey.map((item, index) => (
                   <div 
-                    key={`detail-${item.questionNumber}-${index}`}
+                    key={`detail-${item.question_number}-${index}`}
                     className="p-4 bg-navy-800 rounded-lg border border-gold-500/20"
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <span className="text-gold-400 font-semibold">
-                        Questão {item.questionNumber}
+                        Questão {item.question_number}
                       </span>
                       <span className="px-3 py-1 bg-gold-500/20 text-gold-300 rounded font-bold">
-                        {item.correctAnswer}
+                        {item.correct_answer}
                       </span>
                       {item.points && (
                         <span className="text-sm text-gold-300/70">
