@@ -92,153 +92,116 @@ export async function POST(request: NextRequest) {
 
 function extractQuestionsWithAnswers(content: string): Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }> {
   const answers: Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }> = []
-  const lines = content.split('\n')
   
-  let currentQuestion = 0
+  // Primeiro, procurar pela seção "Gabarito" explícita
+  const gabaritoSectionMatch = content.match(/Gabarito\s*\n+([\s\S]+?)(?:\n\n|\n(?=[A-Z])|$)/i)
   
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim()
+  if (gabaritoSectionMatch) {
+    const gabaritoSection = gabaritoSectionMatch[1]
+    const lines = gabaritoSection.split('\n')
     
-    // Detectar início de uma questão
-    // Padrões: "Questão 1", "1.", "1)", "1 -", "Q1", "1ª Questão", etc.
-    const questionMatch = line.match(/^(?:Quest[ãa]o\s+)?(\d+)|^(\d+)[ªº]?\s*(?:Quest[ãa]o)|^(\d+)[\.\)\-\s:]|^Q(\d+)/i)
-    if (questionMatch) {
-      const questionNumber = parseInt(questionMatch[1] || questionMatch[2] || questionMatch[3] || questionMatch[4])
-      if (questionNumber > 0) {
-        currentQuestion = questionNumber
+    for (const line of lines) {
+      const trimmedLine = line.trim()
+      
+      // Padrão específico: "1. a) Justificativa:" ou "1. a)" ou "1) a" ou "1. A"
+      const strictMatch = trimmedLine.match(/^(\d+)[\.\)]\s*([a-eA-E])(?:\))?(?:\s+Justificativa:\s*(.+))?$/)
+      if (strictMatch) {
+        const questionNumber = parseInt(strictMatch[1])
+        const correctAnswer = strictMatch[2].toUpperCase()
+        const justification = strictMatch[3]?.trim()
+        
+        // Verificar se já não existe
+        const existingAnswer = answers.find(a => a.questionNumber === questionNumber)
+        if (!existingAnswer && questionNumber > 0 && questionNumber <= 100) {
+          answers.push({
+            questionNumber,
+            correctAnswer,
+            points: 10,
+            justification
+          })
+        }
       }
     }
     
-    // PRIORIDADE MÁXIMA: Procurar por "Gabarito: X" em qualquer lugar
-    const gabaritoMatch = line.match(/Gabarito:\s*([A-Ea-e])/i)
-    if (gabaritoMatch && currentQuestion > 0) {
-      // Verificar se já não adicionamos esta questão
-      const existingAnswer = answers.find(a => a.questionNumber === currentQuestion)
-      if (!existingAnswer) {
-        answers.push({
-          questionNumber: currentQuestion,
-          correctAnswer: gabaritoMatch[1].toUpperCase(),
-          points: 10
-        })
-      }
-      continue
-    }
-    
-    // Padrão alternativo: "Resposta: X" ou "Resposta correta: X"
-    const respostaMatch = line.match(/Resposta(?:\s+correta)?:\s*([A-Ea-e])/i)
-    if (respostaMatch && currentQuestion > 0) {
-      const existingAnswer = answers.find(a => a.questionNumber === currentQuestion)
-      if (!existingAnswer) {
-        answers.push({
-          questionNumber: currentQuestion,
-          correctAnswer: respostaMatch[1].toUpperCase(),
-          points: 10
-        })
-      }
-      continue
-    }
-    
-    // Padrão adicional: "Alternativa correta: X" ou "Correta: X"
-    const alternativaMatch = line.match(/(?:Alternativa\s+)?correta:\s*([A-Ea-e])/i)
-    if (alternativaMatch && currentQuestion > 0) {
-      const existingAnswer = answers.find(a => a.questionNumber === currentQuestion)
-      if (!existingAnswer) {
-        answers.push({
-          questionNumber: currentQuestion,
-          correctAnswer: alternativaMatch[1].toUpperCase(),
-          points: 10
-        })
-      }
-      continue
-    }
-    
-    // Padrão com parênteses: "(X)" ou "[X]" após "correta", "resposta", etc.
-    const parenthesesMatch = line.match(/(?:correta|resposta|gabarito).*?[\[\(]([A-Ea-e])[\]\)]/i)
-    if (parenthesesMatch && currentQuestion > 0) {
-      const existingAnswer = answers.find(a => a.questionNumber === currentQuestion)
-      if (!existingAnswer) {
-        answers.push({
-          questionNumber: currentQuestion,
-          correctAnswer: parenthesesMatch[1].toUpperCase(),
-          points: 10
-        })
-      }
-      continue
-    }
-    
-    // Procurar por alternativas marcadas com asterisco ou negrito
-    const markedMatch = line.match(/^\s*\*?\s*([A-Ea-e])[\)\.\-\s:].*\*|^\s*\*\s*([A-Ea-e])[\)\.\-\s:]/)
-    if (markedMatch && currentQuestion > 0) {
-      const existingAnswer = answers.find(a => a.questionNumber === currentQuestion)
-      if (!existingAnswer) {
-        answers.push({
-          questionNumber: currentQuestion,
-          correctAnswer: (markedMatch[1] || markedMatch[2]).toUpperCase(),
-          points: 10
-        })
-      }
-      continue
+    // Se encontrou a seção Gabarito, retornar apenas essas respostas
+    if (answers.length > 0) {
+      // Extrair justificativas adicionais se houver
+      const justifications = extractJustifications(content)
+      
+      // Associar justificativas às questões
+      answers.forEach(answer => {
+        if (!answer.justification) {
+          const justification = justifications.find(j => j.questionNumber === answer.questionNumber)
+          if (justification) {
+            answer.justification = justification.text
+          }
+        }
+      })
+      
+      // Ordenar por número da questão
+      answers.sort((a, b) => a.questionNumber - b.questionNumber)
+      return answers
     }
   }
   
-  // Extrair justificativas baseadas no formato da seção Gabarito
-  const justifications = extractJustifications(content)
-  
-  // Associar justificativas às questões
-  answers.forEach(answer => {
-    const justification = justifications.find(j => j.questionNumber === answer.questionNumber)
-    if (justification) {
-      answer.justification = justification.text
-    }
-  })
-  
-  // Não completar com respostas aleatórias - apenas retornar o que foi encontrado
-  // Isso permite ao usuário saber quais questões não tiveram gabarito identificado
-  
-  // Ordenar por número da questão
-  answers.sort((a, b) => a.questionNumber - b.questionNumber)
-  
-  return answers
+  // Se não encontrou seção Gabarito, retornar vazio
+  return []
 }
 
-function extractAnswerKey(content: string): Array<{ questionNumber: number; correctAnswer: string; points?: number }> {
-  const answerKey: Array<{ questionNumber: number; correctAnswer: string; points?: number }> = []
+function extractAnswerKey(content: string): Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }> {
+  const answerKey: Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }> = []
   
   // Procurar pela seção de gabarito explícita
-  const gabaritoRegex = /(?:GABARITO|RESPOSTAS?|ANSWER KEY)[\s:]*\n([\s\S]+?)(?:\n\n|$)/i
+  const gabaritoRegex = /(?:GABARITO|Gabarito)[\s:]*\n+([\s\S]+?)(?:\n\n|$)/i
   const gabaritoMatch = content.match(gabaritoRegex)
   
   if (gabaritoMatch) {
     const gabaritoSection = gabaritoMatch[1]
+    const lines = gabaritoSection.split('\n')
     
-    // Extrair cada resposta
-    // Formatos suportados: "1. A", "1 - B", "1) C", "1: D", etc.
-    const respostasRegex = /(\d+)[\.\-\)\s:]+\s*([A-Ea-e])/g
-    let match
-    
-    while ((match = respostasRegex.exec(gabaritoSection)) !== null) {
-      answerKey.push({
-        questionNumber: parseInt(match[1]),
-        correctAnswer: match[2].toUpperCase(),
-        points: 10
-      })
-    }
-  }
-  
-  // Se não encontrou seção de gabarito, procurar por padrões ao longo do texto
-  if (answerKey.length === 0) {
-    // Procurar por linhas que sejam apenas gabarito
-    const lines = content.split('\n')
     for (const line of lines) {
-      // Padrão simples de gabarito: "1. A", "2) B", etc.
-      const match = line.match(/^\s*(\d+)\s*[\.\-\)\s:]+\s*([A-Ea-e])\s*$/);
-      if (match) {
-        answerKey.push({
-          questionNumber: parseInt(match[1]),
-          correctAnswer: match[2].toUpperCase(),
-          points: 10
-        })
+      const trimmedLine = line.trim()
+      
+      // Parar se encontrar outra seção
+      if (trimmedLine.match(/^[A-Z][A-Z\s]+:?$/)) {
+        break
       }
+      
+      // Padrão específico para gabarito: "1. a) Justificativa:" ou "1. a)" ou "1) a" ou "1. A"
+      const match = trimmedLine.match(/^(\d+)[\.\)]\s*([a-eA-E])(?:\))?(?:\s+Justificativa:\s*(.+))?$/)
+      if (match) {
+        const questionNumber = parseInt(match[1])
+        const correctAnswer = match[2].toUpperCase()
+        const justification = match[3]?.trim()
+        
+        // Verificar se o número da questão é razoável
+        if (questionNumber > 0 && questionNumber <= 100) {
+          const existingAnswer = answerKey.find(a => a.questionNumber === questionNumber)
+          if (!existingAnswer) {
+            answerKey.push({
+              questionNumber,
+              correctAnswer,
+              points: 10,
+              justification
+            })
+          }
+        }
+      }
+    }
+    
+    // Extrair justificativas adicionais se houver
+    if (answerKey.length > 0) {
+      const justifications = extractJustifications(content)
+      
+      // Associar justificativas às questões
+      answerKey.forEach(answer => {
+        if (!answer.justification) {
+          const justification = justifications.find(j => j.questionNumber === answer.questionNumber)
+          if (justification) {
+            answer.justification = justification.text
+          }
+        }
+      })
     }
   }
   
