@@ -145,10 +145,11 @@ export async function POST(
     }
 
     // Calcular nota
-    const answerKeyFormatted = answerKeys.map(key => ({
+    const answerKeyFormatted = answerKeys.map((key: any) => ({
       question_number: key.question_number,
       correct_answer: key.correct_answer,
-      points: key.points || 10
+      points: key.points || 10,
+      justification: key.justification || null
     }))
     
     console.log(`Calculando nota para teste ${testId}:`)
@@ -185,34 +186,48 @@ export async function POST(
       )
     }
 
-    // Atualizar ou criar registro de notas consolidadas
-    const { error: gradeError } = await supabase
+    // Buscar nota existente para verificar se precisa atualizar
+    const { data: existingGrade } = await supabase
       .from('test_grades')
-      .upsert({
-        user_id: user.id,
-        course_id: test.course_id,
-        subject_id: test.subject_id,
-        test_id: testId,
-        best_score: score,
-        last_attempt_date: new Date().toISOString(),
-        total_attempts: attemptNumber
-      }, {
-        onConflict: 'user_id,test_id',
-        ignoreDuplicates: false
-      })
+      .select('best_score')
+      .eq('user_id', user.id)
+      .eq('test_id', testId)
+      .single()
 
-    // Se a nova nota for melhor, atualizar
-    if (!gradeError) {
+    // Se não existe registro ou a nova nota é melhor, atualizar
+    if (!existingGrade || score > (existingGrade.best_score || 0)) {
+      const { error: gradeError } = await supabase
+        .from('test_grades')
+        .upsert({
+          user_id: user.id,
+          course_id: test.course_id,
+          subject_id: test.subject_id,
+          test_id: testId,
+          best_score: score,
+          last_attempt_date: new Date().toISOString(),
+          total_attempts: attemptNumber
+        }, {
+          onConflict: 'user_id,test_id',
+          ignoreDuplicates: false
+        })
+
+      if (gradeError) {
+        console.error('Erro ao atualizar nota:', gradeError)
+      } else {
+        console.log(`Nota atualizada: ${score}% (anterior: ${existingGrade?.best_score || 0}%)`)
+      }
+    } else {
+      // Apenas atualizar o número de tentativas e data da última tentativa
       await supabase
         .from('test_grades')
         .update({
-          best_score: score,
           last_attempt_date: new Date().toISOString(),
           total_attempts: attemptNumber
         })
         .eq('user_id', user.id)
         .eq('test_id', testId)
-        .lt('best_score', score)
+      
+      console.log(`Nota mantida: ${existingGrade.best_score}% (nova tentativa: ${score}%)`)
     }
 
     // Se passou no teste, verificar se pode solicitar certificado
@@ -296,6 +311,15 @@ export async function POST(
       }
     }
 
+    // Preparar detalhes das questões SEM justificativas (alunos não devem ver)
+    const questionsDetail = answerKeyFormatted.map(key => ({
+      questionNumber: key.question_number,
+      correctAnswer: key.correct_answer,
+      studentAnswer: answers[key.question_number.toString()] || null,
+      isCorrect: answers[key.question_number.toString()]?.toUpperCase() === key.correct_answer.toUpperCase()
+      // NÃO incluir justification - apenas para uso administrativo
+    }))
+
     // Retornar resultado
     return NextResponse.json({
       success: true,
@@ -307,7 +331,8 @@ export async function POST(
         totalQuestions,
         attemptNumber,
         maxAttempts: test.max_attempts,
-        attemptsRemaining: test.max_attempts ? test.max_attempts - attemptNumber : null
+        attemptsRemaining: test.max_attempts ? test.max_attempts - attemptNumber : null,
+        questionsDetail
       }
     })
 

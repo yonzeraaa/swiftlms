@@ -33,6 +33,9 @@ export default function TestsManagementPage() {
   const [extractingGabarito, setExtractingGabarito] = useState(false)
   const [gabaritoData, setGabaritoData] = useState<Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }>>([])
   const [showJustifications, setShowJustifications] = useState(false)
+  const [showAnswerKeyModal, setShowAnswerKeyModal] = useState(false)
+  const [viewingAnswerKey, setViewingAnswerKey] = useState<Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string | null }> | null>(null)
+  const [viewingTestTitle, setViewingTestTitle] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filterCourse, setFilterCourse] = useState('all')
@@ -401,6 +404,34 @@ export default function TestsManagementPage() {
     setShowModal(false)
   }
 
+  const viewAnswerKey = async (test: Test) => {
+    try {
+      // Buscar gabarito do teste
+      const { data: answerKeys, error } = await supabase
+        .from('test_answer_keys')
+        .select('*')
+        .eq('test_id', test.id)
+        .order('question_number')
+      
+      if (error) {
+        showToast('Erro ao buscar gabarito')
+        return
+      }
+      
+      if (!answerKeys || answerKeys.length === 0) {
+        showToast('Este teste ainda não possui gabarito cadastrado')
+        return
+      }
+      
+      setViewingAnswerKey(answerKeys)
+      setViewingTestTitle(test.title)
+      setShowAnswerKeyModal(true)
+    } catch (error) {
+      console.error('Erro ao buscar gabarito:', error)
+      showToast('Erro ao buscar gabarito')
+    }
+  }
+
   const editTest = async (test: Test) => {
     console.log('Abrindo modal de edição para teste:', test.id)
     setFormData({
@@ -653,6 +684,17 @@ export default function TestsManagementPage() {
                       >
                         <ExternalLink className="w-4 h-4" />
                         Ver Documento
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setOpenDropdown(null)
+                          viewAnswerKey(test)
+                        }}
+                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 transition-colors"
+                      >
+                        <FileCheck className="w-4 h-4" />
+                        Ver Gabarito
                       </button>
                       <button
                         onClick={(e) => {
@@ -957,6 +999,124 @@ export default function TestsManagementPage() {
                     </Button>
                   </div>
                 </form>
+      </Modal>
+
+      {/* Modal para visualizar gabarito com justificativas */}
+      <Modal
+        isOpen={showAnswerKeyModal}
+        onClose={() => {
+          setShowAnswerKeyModal(false)
+          setViewingAnswerKey(null)
+          setViewingTestTitle('')
+        }}
+        title={`Gabarito: ${viewingTestTitle}`}
+        size="lg"
+      >
+        {viewingAnswerKey && viewingAnswerKey.length > 0 ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-gold-400" />
+                <span className="text-gold-300 font-semibold">
+                  Total de {viewingAnswerKey.length} questões
+                </span>
+              </div>
+              <button
+                onClick={() => setShowJustifications(!showJustifications)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 rounded-lg border border-gold-500/30 transition-colors"
+              >
+                {showJustifications ? (
+                  <>
+                    <EyeOff className="w-4 h-4 text-gold-400" />
+                    <span className="text-sm text-gold-300">Ocultar Justificativas</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 text-gold-400" />
+                    <span className="text-sm text-gold-300">Mostrar Justificativas</span>
+                  </>
+                )}
+              </button>
+            </div>
+            
+            {/* Grade compacta do gabarito */}
+            {!showJustifications && (
+              <div className="grid grid-cols-10 gap-2">
+                {viewingAnswerKey.map((item, index) => (
+                  <div 
+                    key={`key-${item.questionNumber}-${index}`}
+                    className="flex items-center justify-center p-2 bg-navy-800 rounded-lg border border-gold-500/20"
+                  >
+                    <span className="text-gold-300 font-medium">{item.questionNumber}.</span>
+                    <span className="ml-1 font-bold text-gold">{item.correctAnswer}</span>
+                    {item.justification && (
+                      <MessageSquare className="w-3 h-3 text-green-400 ml-1" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Visualização detalhada com justificativas */}
+            {showJustifications && (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {viewingAnswerKey.map((item, index) => (
+                  <div 
+                    key={`detail-${item.questionNumber}-${index}`}
+                    className="p-4 bg-navy-800 rounded-lg border border-gold-500/20"
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-gold-400 font-semibold">
+                        Questão {item.questionNumber}
+                      </span>
+                      <span className="px-3 py-1 bg-gold-500/20 text-gold-300 rounded font-bold">
+                        {item.correctAnswer}
+                      </span>
+                      {item.points && (
+                        <span className="text-sm text-gold-300/70">
+                          ({item.points} pontos)
+                        </span>
+                      )}
+                    </div>
+                    
+                    {item.justification && (
+                      <div className="mt-3 p-3 bg-navy-900/50 rounded border border-green-500/20">
+                        <div className="flex items-start gap-2">
+                          <MessageSquare className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-green-400 mb-1">
+                              Justificativa:
+                            </p>
+                            <p className="text-sm text-gray-300">
+                              {item.justification}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="flex justify-end pt-4 border-t border-gold-500/20">
+              <Button
+                onClick={() => {
+                  setShowAnswerKeyModal(false)
+                  setViewingAnswerKey(null)
+                  setViewingTestTitle('')
+                }}
+                variant="secondary"
+              >
+                Fechar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gold-300">Nenhum gabarito encontrado para este teste.</p>
+          </div>
+        )}
       </Modal>
     </div>
   )

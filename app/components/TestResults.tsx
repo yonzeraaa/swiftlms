@@ -1,9 +1,16 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Trophy, XCircle, CheckCircle, RefreshCw, Home, TrendingUp } from 'lucide-react'
+import { Trophy, XCircle, CheckCircle, RefreshCw, Home, TrendingUp, Eye, EyeOff } from 'lucide-react'
 import confetti from 'canvas-confetti'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+
+interface QuestionDetail {
+  questionNumber: number
+  correctAnswer: string
+  studentAnswer: string | null
+  isCorrect: boolean
+}
 
 interface TestResultsProps {
   testId: string
@@ -13,6 +20,7 @@ interface TestResultsProps {
   correctCount: number
   totalQuestions: number
   passingScore: number
+  questionsDetail?: QuestionDetail[]
   onRetry?: () => void
   onExit?: () => void
 }
@@ -25,9 +33,11 @@ export default function TestResults({
   correctCount,
   totalQuestions,
   passingScore,
+  questionsDetail,
   onRetry,
   onExit
 }: TestResultsProps) {
+  const [showDetails, setShowDetails] = useState(false)
   
   useEffect(() => {
     if (passed) {
@@ -186,6 +196,83 @@ export default function TestResults({
               />
             </div>
           </div>
+
+          {/* Botão para ver detalhes das questões */}
+          {questionsDetail && questionsDetail.length > 0 && (
+            <div className="mb-6">
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-navy-800 hover:bg-navy-700 text-gold-300 rounded-lg transition-colors border border-gold-500/20"
+              >
+                {showDetails ? (
+                  <>
+                    <EyeOff className="w-5 h-5" />
+                    Ocultar Respostas
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-5 h-5" />
+                    Ver Suas Respostas
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Detalhes das questões (sem justificativas) */}
+          {showDetails && questionsDetail && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-6 space-y-3"
+            >
+              <h3 className="text-lg font-semibold text-gold mb-3">Suas Respostas</h3>
+              
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {questionsDetail.map((question) => (
+                  <div
+                    key={question.questionNumber}
+                    className={`p-3 rounded-lg border ${
+                      question.isCorrect 
+                        ? 'bg-green-900/20 border-green-500/30' 
+                        : 'bg-red-900/20 border-red-500/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-gold-400 font-semibold">
+                        Questão {question.questionNumber}
+                      </span>
+                      {question.isCorrect ? (
+                        <CheckCircle className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <XCircle className="w-5 h-5 text-red-500" />
+                      )}
+                    </div>
+                    
+                    <div className="flex gap-4 text-sm">
+                      <div>
+                        <span className="text-gold-300/70">Sua resposta: </span>
+                        <span className={`font-semibold ${
+                          question.isCorrect ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {question.studentAnswer || '-'}
+                        </span>
+                      </div>
+                      {!question.isCorrect && (
+                        <div>
+                          <span className="text-gold-300/70">Resposta correta: </span>
+                          <span className="font-semibold text-green-400">
+                            {question.correctAnswer}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Botões de ação */}
           <div className="flex gap-4">
