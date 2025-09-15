@@ -351,13 +351,14 @@ export default function ProgressPage() {
             const progressColor = getProgressColor(courseProgress.progress)
 
             return (
-              <Card key={courseProgress.course.id} className="overflow-hidden">
+              <Card key={courseProgress.course.id} className="overflow-hidden !text-left">
                 {/* Header do Curso */}
                 <button
                   onClick={() => toggleCourseExpansion(courseProgress.course.id)}
-                  className="w-full text-left hover:bg-navy-800/30 transition-all"
+                  className="w-full block text-left hover:bg-navy-800/30 transition-all"
+                  style={{ textAlign: 'left' }}
                 >
-                  <div className="p-4">
+                  <div className="p-4 text-left">
                     {/* Linha superior com chevron e título */}
                     <div className="flex items-start gap-3 mb-3">
                       <div className="mt-1 flex-shrink-0">
@@ -367,11 +368,11 @@ export default function ProgressPage() {
                           <ChevronRight className="w-5 h-5 text-gold-400" />
                         )}
                       </div>
-                      <div className="flex-1 text-left">
-                        <h3 className="text-lg font-semibold text-gold text-left">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-gold text-left break-words" style={{ textAlign: 'left' }}>
                           {courseProgress.course.title}
                         </h3>
-                        <p className="text-sm text-gold-300 mt-1 text-left">
+                        <p className="text-sm text-gold-300 mt-1 text-left" style={{ textAlign: 'left' }}>
                           {courseProgress.completedLessons} de {courseProgress.totalLessons} aulas concluídas
                         </p>
                       </div>
@@ -383,10 +384,10 @@ export default function ProgressPage() {
                     {/* Barra de Progresso */}
                     <div className="ml-8 pr-4">
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`text-sm font-medium ${progressColor.split(' ')[0]} text-left`}>
+                        <span className={`text-sm font-medium ${progressColor.split(' ')[0]}`}>
                           {courseProgress.progress}%
                         </span>
-                        <span className="text-xs text-gold-400 text-right">
+                        <span className="text-xs text-gold-400">
                           {courseProgress.hoursCompleted}h / {courseProgress.course.duration_hours}h
                         </span>
                       </div>
