@@ -682,8 +682,8 @@ export default function TestsManagementPage() {
                         }}
                         className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                       >
-                        <div className="flex items-start gap-3 text-left">
-                          <ExternalLink className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                        <div className="flex items-center gap-3 text-left">
+                          <ExternalLink className="w-4 h-4 text-gold-400 flex-shrink-0" />
                           <span className="text-gold-200 text-left flex-1">Ver Documento</span>
                         </div>
                       </button>
@@ -695,8 +695,8 @@ export default function TestsManagementPage() {
                         }}
                         className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                       >
-                        <div className="flex items-start gap-3 text-left">
-                          <FileCheck className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                        <div className="flex items-center gap-3 text-left">
+                          <FileCheck className="w-4 h-4 text-gold-400 flex-shrink-0" />
                           <span className="text-gold-200 text-left flex-1">Ver Gabarito</span>
                         </div>
                       </button>
@@ -709,8 +709,8 @@ export default function TestsManagementPage() {
                         }}
                         className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                       >
-                        <div className="flex items-start gap-3 text-left">
-                          <Edit className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                        <div className="flex items-center gap-3 text-left">
+                          <Edit className="w-4 h-4 text-gold-400 flex-shrink-0" />
                           <span className="text-gold-200 text-left flex-1">Editar</span>
                         </div>
                       </button>
@@ -725,8 +725,8 @@ export default function TestsManagementPage() {
                           className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors block"
                           type="button"
                         >
-                          <div className="flex items-start gap-3 text-left">
-                            <Trash2 className="w-4 h-4 mt-0.5 text-red-400 flex-shrink-0" />
+                          <div className="flex items-center gap-3 text-left">
+                            <Trash2 className="w-4 h-4 text-red-400 flex-shrink-0" />
                             <span className="text-red-400 text-left flex-1">Excluir</span>
                           </div>
                         </button>

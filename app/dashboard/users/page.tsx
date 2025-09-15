@@ -726,8 +726,8 @@ export default function UsersPage() {
                               onClick={() => openEditModal(user)}
                               className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                             >
-                              <div className="flex items-start gap-3 text-left">
-                                <Edit className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                              <div className="flex items-center gap-3 text-left">
+                                <Edit className="w-4 h-4 text-gold-400 flex-shrink-0" />
                                 <span className="text-gold-200 text-left flex-1">{t('users.edit')}</span>
                               </div>
                             </button>
@@ -737,8 +737,8 @@ export default function UsersPage() {
                                 onClick={() => setOpenDropdown(null)}
                                 className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                               >
-                                <div className="flex items-start gap-3 text-left">
-                                  <FileText className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                                <div className="flex items-center gap-3 text-left">
+                                  <FileText className="w-4 h-4 text-gold-400 flex-shrink-0" />
                                   <span className="text-gold-200 text-left flex-1">Ver Notas</span>
                                 </div>
                               </Link>
@@ -747,8 +747,8 @@ export default function UsersPage() {
                               onClick={() => openResetPasswordModal(user)}
                               className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                             >
-                              <div className="flex items-start gap-3 text-left">
-                                <Key className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                              <div className="flex items-center gap-3 text-left">
+                                <Key className="w-4 h-4 text-gold-400 flex-shrink-0" />
                                 <span className="text-gold-200 text-left flex-1">{t('users.resetPassword')}</span>
                               </div>
                             </button>
@@ -757,8 +757,8 @@ export default function UsersPage() {
                                 onClick={() => updateUserStatus(user.id, 'active')}
                                 className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                               >
-                                <div className="flex items-start gap-3 text-left">
-                                  <Play className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
+                                <div className="flex items-center gap-3 text-left">
+                                  <Play className="w-4 h-4 text-green-400 flex-shrink-0" />
                                   <span className="text-green-400 text-left flex-1">{t('users.unfreeze')}</span>
                                 </div>
                               </button>
@@ -767,8 +767,8 @@ export default function UsersPage() {
                                 onClick={() => updateUserStatus(user.id, 'frozen')}
                                 className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                               >
-                                <div className="flex items-start gap-3 text-left">
-                                  <Snowflake className="w-4 h-4 mt-0.5 text-blue-400 flex-shrink-0" />
+                                <div className="flex items-center gap-3 text-left">
+                                  <Snowflake className="w-4 h-4 text-blue-400 flex-shrink-0" />
                                   <span className="text-blue-400 text-left flex-1">{t('users.freeze')}</span>
                                 </div>
                               </button>
@@ -778,8 +778,8 @@ export default function UsersPage() {
                                 onClick={() => openDeleteModal(user)}
                                 className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors block"
                               >
-                                <div className="flex items-start gap-3 text-left">
-                                  <Trash2 className="w-4 h-4 mt-0.5 text-red-400 flex-shrink-0" />
+                                <div className="flex items-center gap-3 text-left">
+                                  <Trash2 className="w-4 h-4 text-red-400 flex-shrink-0" />
                                   <span className="text-red-400 text-left flex-1">{t('users.delete')}</span>
                                 </div>
                               </button>
