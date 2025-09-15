@@ -355,47 +355,47 @@ export default function ProgressPage() {
                 {/* Header do Curso */}
                 <button
                   onClick={() => toggleCourseExpansion(courseProgress.course.id)}
-                  className="w-full p-4 hover:bg-navy-800/30 transition-all"
+                  className="w-full text-left hover:bg-navy-800/30 transition-all"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-gold-400" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-gold-400" />
-                      )}
-                      <div className="text-left">
+                  <div className="p-4">
+                    {/* Linha superior com chevron e título */}
+                    <div className="flex items-start gap-3 mb-3">
+                      <div className="mt-1">
+                        {isExpanded ? (
+                          <ChevronDown className="w-5 h-5 text-gold-400" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-gold-400" />
+                        )}
+                      </div>
+                      <div className="flex-1">
                         <h3 className="text-lg font-semibold text-gold">
                           {courseProgress.course.title}
                         </h3>
-                        <p className="text-sm text-gold-300">
+                        <p className="text-sm text-gold-300 mt-1">
                           {courseProgress.completedLessons} de {courseProgress.totalLessons} aulas concluídas
                         </p>
                       </div>
-                    </div>
-
-                    {/* Barra de Progresso Grande */}
-                    <div className="flex items-center gap-4">
-                      <div className="w-48">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`text-sm font-medium ${progressColor.split(' ')[0]}`}>
-                            {courseProgress.progress}%
-                          </span>
-                          <span className="text-xs text-gold-400">
-                            {courseProgress.hoursCompleted}h / {courseProgress.course.duration_hours}h
-                          </span>
-                        </div>
-                        <div className="w-full bg-navy-800/50 rounded-full h-3">
-                          <div
-                            className={`${progressColor.split(' ')[1]} h-3 rounded-full transition-all`}
-                            style={{ width: `${courseProgress.progress}%` }}
-                          />
-                        </div>
-                      </div>
-
                       {courseProgress.progress === 100 && (
                         <Award className="w-6 h-6 text-gold-400" />
                       )}
+                    </div>
+
+                    {/* Barra de Progresso */}
+                    <div className="ml-8">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-sm font-medium ${progressColor.split(' ')[0]}`}>
+                          {courseProgress.progress}%
+                        </span>
+                        <span className="text-xs text-gold-400">
+                          {courseProgress.hoursCompleted}h / {courseProgress.course.duration_hours}h
+                        </span>
+                      </div>
+                      <div className="w-full bg-navy-800/50 rounded-full h-3">
+                        <div
+                          className={`${progressColor.split(' ')[1]} h-3 rounded-full transition-all`}
+                          style={{ width: `${courseProgress.progress}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </button>

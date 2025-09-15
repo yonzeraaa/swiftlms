@@ -21,6 +21,7 @@ interface ButtonProps extends Omit<MotionButtonProps, 'onDrag' | 'onDragEnd' | '
   glow?: boolean
   enableMotion?: boolean
   ripple?: boolean
+  align?: 'left' | 'center' | 'right'
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>((
@@ -38,6 +39,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
     glow = false,
     enableMotion = false,
     ripple = true,
+    align = 'center',
     className = '',
     disabled,
     onClick,
@@ -87,12 +89,18 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
     full: 'rounded-full'
   }
 
+  const alignStyles = {
+    left: 'justify-start',
+    center: 'justify-center',
+    right: 'justify-end'
+  }
+
   const baseStyles = `
     relative overflow-hidden font-semibold ${roundedStyles[rounded]}
     transition-all duration-300 ease-out
     focus:outline-none focus:ring-2 focus:ring-offset-2
     disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-    inline-flex items-center justify-center gap-2 whitespace-nowrap
+    inline-flex items-center ${alignStyles[align]} gap-2 whitespace-nowrap
     transform active:scale-[0.98]
     ${fullWidth ? 'w-full' : ''}
     ${pulse ? 'animate-pulse' : ''}

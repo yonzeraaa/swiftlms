@@ -1840,10 +1840,12 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 rounded-t-lg transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
             >
-              <Edit className="w-4 h-4" />
-              {t('courses.edit')}
+              <div className="flex items-start gap-3">
+                <Edit className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                <span className="text-gold-200">{t('courses.edit')}</span>
+              </div>
             </button>
             <button
               type="button" 
@@ -1854,19 +1856,21 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
             >
-              {dropdownCourse.is_published ? (
-                <>
-                  <XCircle className="w-4 h-4" />
-                  {t('courses.unpublish')}
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  {t('courses.publish')}
-                </>
-              )}
+              <div className="flex items-start gap-3">
+                {dropdownCourse.is_published ? (
+                  <>
+                    <XCircle className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                    <span className="text-gold-200">{t('courses.unpublish')}</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                    <span className="text-gold-200">{t('courses.publish')}</span>
+                  </>
+                )}
+              </div>
             </button>
             <button
               type="button" 
@@ -1877,10 +1881,12 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
             >
-              <UserPlus className="w-4 h-4" />
-              {t('courses.enrollStudents')}
+              <div className="flex items-start gap-3">
+                <UserPlus className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                <span className="text-gold-200">{t('courses.enrollStudents')}</span>
+              </div>
             </button>
             <button
               type="button" 
@@ -1891,10 +1897,12 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
             >
-              <Users className="w-4 h-4" />
-              Gerenciar Alunos
+              <div className="flex items-start gap-3">
+                <Users className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                <span className="text-gold-200">Gerenciar Alunos</span>
+              </div>
             </button>
             <button
               type="button" 
@@ -1906,10 +1914,12 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
             >
-              <BookMarked className="w-4 h-4" />
-              Gerenciar Disciplinas
+              <div className="flex items-start gap-3">
+                <BookMarked className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                <span className="text-gold-200">Gerenciar Disciplinas</span>
+              </div>
             </button>
             <button
               type="button" 
@@ -1921,10 +1931,12 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
             >
-              <Upload className="w-4 h-4" />
-              Importar Estrutura (Excel)
+              <div className="flex items-start gap-3">
+                <Upload className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                <span className="text-gold-200">Importar Estrutura (Excel)</span>
+              </div>
             </button>
             <button
               type="button" 
@@ -1936,25 +1948,31 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
             >
-              <FileText className="w-4 h-4" />
-              Importar do Google Drive
+              <div className="flex items-start gap-3">
+                <FileText className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                <span className="text-gold-200">Importar do Google Drive</span>
+              </div>
             </button>
-            <button
-              type="button" 
-              onClick={() => {
-                console.log('Delete clicked for course:', dropdownCourse);
-                openDeleteModal(dropdownCourse);
-                setOpenDropdown(null);
-                setDropdownCourse(null);
-                setDropdownPosition(null);
-              }}
-              className="w-full px-4 py-2 text-left text-red-400 hover:bg-navy-700 flex items-center gap-2 rounded-b-lg transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              {t('courses.delete')}
-            </button>
+            <div className="border-t border-gold-500/20 mt-2 pt-2">
+              <button
+                type="button" 
+                onClick={() => {
+                  console.log('Delete clicked for course:', dropdownCourse);
+                  openDeleteModal(dropdownCourse);
+                  setOpenDropdown(null);
+                  setDropdownCourse(null);
+                  setDropdownPosition(null);
+                }}
+                className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors"
+              >
+                <div className="flex items-start gap-3">
+                  <Trash2 className="w-4 h-4 mt-0.5 text-red-400 flex-shrink-0" />
+                  <span className="text-red-400">{t('courses.delete')}</span>
+                </div>
+              </button>
+            </div>
           </div>
         </>
       )}

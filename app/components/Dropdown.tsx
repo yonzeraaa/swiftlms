@@ -192,7 +192,7 @@ export default function Dropdown({
                   onClick={() => !option.disabled && handleSelect(option.value)}
                   disabled={option.disabled}
                   className={`
-                    w-full px-4 py-2 text-left
+                    w-full px-4 py-3 text-left
                     flex items-center gap-3
                     transition-colors duration-150
                     ${option.disabled 
@@ -205,9 +205,9 @@ export default function Dropdown({
                   {option.icon && (
                     <span className="flex-shrink-0">{option.icon}</span>
                   )}
-                  <span className="flex-1">{option.label}</span>
+                  <span className="flex-1 text-left">{option.label}</span>
                   {isSelected(option.value) && (
-                    <Check className="w-4 h-4 text-gold-400 flex-shrink-0" />
+                    <Check className="w-4 h-4 text-gold-400 flex-shrink-0 ml-auto" />
                   )}
                 </button>
               ))

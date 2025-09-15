@@ -199,7 +199,7 @@ export default function DashboardLayout({
         >
           <div className="flex flex-col h-full p-4">
             {/* Logo e Toggle */}
-            <div className="flex items-center justify-center mb-2">
+            <div className="flex items-center justify-start mb-2">
               <Logo width={sidebarOpen ? 120 : 60} height={sidebarOpen ? 120 : 60} />
             </div>
 

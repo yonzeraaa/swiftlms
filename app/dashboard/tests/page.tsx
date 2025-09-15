@@ -673,17 +673,19 @@ export default function TestsManagementPage() {
                   </button>
                   
                   {openDropdown === test.id && (
-                    <div className="absolute right-0 mt-2 w-48 bg-navy-800 rounded-lg shadow-xl border border-gold-500/20 z-50 pointer-events-auto">
+                    <div className="absolute right-0 mt-2 w-56 bg-navy-800 rounded-lg shadow-xl border border-gold-500/20 z-50 pointer-events-auto">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           window.open(test.google_drive_url, '_blank')
                           setOpenDropdown(null)
                         }}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 transition-colors first:rounded-t-lg"
+                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
                       >
-                        <ExternalLink className="w-4 h-4" />
-                        Ver Documento
+                        <div className="flex items-start gap-3">
+                          <ExternalLink className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                          <span className="text-gold-200">Ver Documento</span>
+                        </div>
                       </button>
                       <button
                         onClick={(e) => {
@@ -691,10 +693,12 @@ export default function TestsManagementPage() {
                           setOpenDropdown(null)
                           viewAnswerKey(test)
                         }}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 transition-colors"
+                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
                       >
-                        <FileCheck className="w-4 h-4" />
-                        Ver Gabarito
+                        <div className="flex items-start gap-3">
+                          <FileCheck className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                          <span className="text-gold-200">Ver Gabarito</span>
+                        </div>
                       </button>
                       <button
                         onClick={(e) => {
@@ -703,24 +707,30 @@ export default function TestsManagementPage() {
                           setOpenDropdown(null)
                           editTest(test)
                         }}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 transition-colors"
+                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
                       >
-                        <Edit className="w-4 h-4" />
-                        Editar
+                        <div className="flex items-start gap-3">
+                          <Edit className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                          <span className="text-gold-200">Editar</span>
+                        </div>
                       </button>
-                      <button
-                        onClick={async (e) => {
-                          e.stopPropagation()
-                          setOpenDropdown(null)
-                          // Chamar a função deleteTest diretamente
-                          await deleteTest(test.id)
-                        }}
-                        className="flex items-center gap-2 w-full px-4 py-2 text-left text-red-400 hover:bg-navy-700 transition-colors last:rounded-b-lg"
-                        type="button"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Excluir
-                      </button>
+                      <div className="border-t border-gold-500/20 mt-2 pt-2">
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation()
+                            setOpenDropdown(null)
+                            // Chamar a função deleteTest diretamente
+                            await deleteTest(test.id)
+                          }}
+                          className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors"
+                          type="button"
+                        >
+                          <div className="flex items-start gap-3">
+                            <Trash2 className="w-4 h-4 mt-0.5 text-red-400 flex-shrink-0" />
+                            <span className="text-red-400">Excluir</span>
+                          </div>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
