@@ -294,7 +294,7 @@ export default function LoginPage() {
                     variant="outline"
                     size="md"
                     onClick={() => router.push('/browse-courses')}
-                    icon={<BookOpen className="w-4 h-4" />}
+                    icon={<BookOpen className="w-4 h-4 flex-shrink-0" />}
                     iconPosition="left"
                     className="text-gold-300 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
                   >
@@ -310,7 +310,7 @@ export default function LoginPage() {
                       variant="ghost"
                       size="md"
                       onClick={() => setContactModalOpen(true)}
-                      icon={<MessageCircle className="w-4 h-4" />}
+                      icon={<MessageCircle className="w-4 h-4 flex-shrink-0" />}
                       iconPosition="left"
                       className="text-gold-300/80 hover:text-gold-200 hover:bg-gold-500/10"
                     >

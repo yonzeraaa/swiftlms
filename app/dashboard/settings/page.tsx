@@ -355,7 +355,7 @@ export default function SettingsPage() {
                 variant="primary"
                 onClick={handleProfileSave}
                 disabled={saving}
-                icon={<Save className="w-5 h-5" />}
+                icon={<Save className="w-5 h-5 flex-shrink-0" />}
               >
                 {saving ? t('settings.saving') : t('settings.saveChanges')}
               </Button>
@@ -410,7 +410,7 @@ export default function SettingsPage() {
                 variant="primary"
                 onClick={handlePasswordChange}
                 disabled={saving}
-                icon={<Key className="w-5 h-5" />}
+                icon={<Key className="w-5 h-5 flex-shrink-0" />}
               >
                 {saving ? 'Alterando...' : 'Alterar Senha'}
               </Button>
@@ -454,7 +454,7 @@ export default function SettingsPage() {
                 variant="primary"
                 onClick={handleSettingsSave}
                 disabled={saving}
-                icon={<Save className="w-5 h-5" />}
+                icon={<Save className="w-5 h-5 flex-shrink-0" />}
               >
                 {saving ? 'Salvando...' : 'Salvar Preferências'}
               </Button>
@@ -546,7 +546,7 @@ export default function SettingsPage() {
                 variant="primary"
                 onClick={handleSettingsSave}
                 disabled={saving}
-                icon={<Save className="w-5 h-5" />}
+                icon={<Save className="w-5 h-5 flex-shrink-0" />}
               >
                 {saving ? 'Salvando...' : 'Salvar Aparência'}
               </Button>
@@ -616,7 +616,7 @@ export default function SettingsPage() {
                 variant="primary"
                 onClick={handleSettingsSave}
                 disabled={saving}
-                icon={<Save className="w-5 h-5" />}
+                icon={<Save className="w-5 h-5 flex-shrink-0" />}
               >
                 {saving ? 'Salvando...' : 'Salvar Privacidade'}
               </Button>

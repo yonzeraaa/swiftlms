@@ -153,8 +153,10 @@ export default function CertificatesPage() {
 
         {/* Botão para TCC */}
         <Link href="/student-dashboard/certificates/tcc">
-          <Button variant="primary" className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
+          <Button
+            variant="primary"
+            icon={<FileText className="w-5 h-5 flex-shrink-0" />}
+          >
             Enviar TCC
           </Button>
         </Link>
@@ -214,14 +216,14 @@ export default function CertificatesPage() {
         <Button
           variant={activeTab === 'approved' ? 'primary' : 'secondary'}
           onClick={() => setActiveTab('approved')}
-          icon={<Award className="w-4 h-4" />}
+          icon={<Award className="w-4 h-4 flex-shrink-0" />}
         >
           Certificados Aprovados ({certificates.length})
         </Button>
         <Button
           variant={activeTab === 'pending' ? 'primary' : 'secondary'}
           onClick={() => setActiveTab('pending')}
-          icon={<Clock className="w-4 h-4" />}
+          icon={<Clock className="w-4 h-4 flex-shrink-0" />}
         >
           Aguardando Aprovação ({certificateRequests.filter((r: any) => r.status === 'pending').length})
         </Button>
@@ -293,7 +295,7 @@ export default function CertificatesPage() {
                       size="sm"
                       onClick={() => handleViewCertificate(certificate)}
                       className="flex-1"
-                      icon={<Eye className="w-4 h-4" />}
+                      icon={<Eye className="w-4 h-4 flex-shrink-0" />}
                     >
                       Visualizar
                     </Button>
@@ -302,7 +304,7 @@ export default function CertificatesPage() {
                       size="sm"
                       onClick={() => handleDownloadCertificate(certificate)}
                       className="flex-1"
-                      icon={<Download className="w-4 h-4" />}
+                      icon={<Download className="w-4 h-4 flex-shrink-0" />}
                       disabled={generatingPDF}
                     >
                       {generatingPDF ? 'Gerando...' : 'Baixar'}

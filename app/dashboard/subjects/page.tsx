@@ -456,7 +456,7 @@ export default function SubjectsPage() {
         </div>
         <Button 
           onClick={openCreateModal}
-          icon={<Plus className="w-4 h-4" />}
+          icon={<Plus className="w-4 h-4 flex-shrink-0" />}
         >
           Nova Disciplina
         </Button>
@@ -544,7 +544,7 @@ export default function SubjectsPage() {
           )}
           <Button 
             variant="secondary"
-            icon={<Filter className="w-4 h-4" />}
+            icon={<Filter className="w-4 h-4 flex-shrink-0" />}
           >
             Filtros
           </Button>
@@ -620,7 +620,7 @@ export default function SubjectsPage() {
                           size="sm"
                           onClick={() => openLessonsModal(subject)}
                           title="Associar Aulas"
-                          icon={<Link2 className="w-4 h-4" />}
+                          icon={<Link2 className="w-4 h-4 flex-shrink-0" />}
                         >
                           {''}
                         </Button>
@@ -629,7 +629,7 @@ export default function SubjectsPage() {
                           size="sm"
                           onClick={() => handleEdit(subject)}
                           title="Editar"
-                          icon={<Edit className="w-4 h-4" />}
+                          icon={<Edit className="w-4 h-4 flex-shrink-0" />}
                         >
                           {''}
                         </Button>
@@ -638,7 +638,7 @@ export default function SubjectsPage() {
                           size="sm"
                           onClick={() => handleDelete(subject)}
                           title="Excluir"
-                          icon={<Trash2 className="w-4 h-4" />}
+                          icon={<Trash2 className="w-4 h-4 flex-shrink-0" />}
                         >
                           {''}
                         </Button>

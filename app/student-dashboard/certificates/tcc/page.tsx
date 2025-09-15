@@ -367,19 +367,10 @@ export default function TccSubmissionPage() {
               type="submit"
               variant="primary"
               disabled={submitting || enrollments.length === 0}
-              className="flex items-center gap-2"
+              loading={submitting}
+              icon={!submitting ? <Send className="w-4 h-4 flex-shrink-0" /> : undefined}
             >
-              {submitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-navy-900"></div>
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Enviar TCC
-                </>
-              )}
+              {submitting ? 'Enviando...' : 'Enviar TCC'}
             </Button>
           </div>
         </form>

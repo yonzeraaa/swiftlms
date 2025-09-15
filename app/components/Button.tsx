@@ -90,9 +90,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
   const baseStyles = `
     relative overflow-hidden font-semibold ${roundedStyles[rounded]}
     transition-all duration-300 ease-out
-    focus:outline-none focus:ring-2 focus:ring-offset-2 
+    focus:outline-none focus:ring-2 focus:ring-offset-2
     disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
-    flex items-center justify-center gap-2
+    inline-flex items-center justify-center gap-2 whitespace-nowrap
     transform active:scale-[0.98]
     ${fullWidth ? 'w-full' : ''}
     ${pulse ? 'animate-pulse' : ''}
@@ -200,7 +200,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
       ) : (
         <>
           {icon && iconPosition === 'left' && (
-            <span className="transition-all duration-300 group-hover:scale-110 group-hover:-translate-x-0.5" aria-hidden="true">
+            <span className="flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:-translate-x-0.5" aria-hidden="true">
               {icon}
             </span>
           )}
@@ -211,7 +211,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
             )}
           </span>
           {icon && iconPosition === 'right' && (
-            <span className="transition-all duration-300 group-hover:scale-110 group-hover:translate-x-0.5" aria-hidden="true">
+            <span className="flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:translate-x-0.5" aria-hidden="true">
               {icon}
             </span>
           )}

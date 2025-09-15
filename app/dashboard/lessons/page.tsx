@@ -310,7 +310,7 @@ export default function LessonsPage() {
         </div>
         <Button 
           onClick={openCreateModal}
-          icon={<Plus className="w-4 h-4" />}
+          icon={<Plus className="w-4 h-4 flex-shrink-0" />}
         >
           Nova Aula
         </Button>
@@ -388,7 +388,7 @@ export default function LessonsPage() {
           </div>
           <Button 
             variant="secondary"
-            icon={<Filter className="w-4 h-4" />}
+            icon={<Filter className="w-4 h-4 flex-shrink-0" />}
           >
             Filtros
           </Button>

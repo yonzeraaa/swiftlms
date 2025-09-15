@@ -386,7 +386,7 @@ export default function CertificatesPage() {
             variant={activeTab === 'requests' ? 'primary' : 'secondary'}
             size="sm"
             onClick={() => setActiveTab('requests')}
-            icon={<AlertCircle className="w-4 h-4" />}
+            icon={<AlertCircle className="w-4 h-4 flex-shrink-0" />}
           >
             Requisições Pendentes ({stats.requests})
           </Button>
@@ -394,7 +394,7 @@ export default function CertificatesPage() {
             variant={activeTab === 'certificates' ? 'primary' : 'secondary'}
             size="sm"
             onClick={() => setActiveTab('certificates')}
-            icon={<Award className="w-4 h-4" />}
+            icon={<Award className="w-4 h-4 flex-shrink-0" />}
           >
             Certificados
           </Button>
@@ -482,7 +482,7 @@ export default function CertificatesPage() {
                             size="sm"
                             onClick={() => setShowRejectionModal(request.id)}
                             disabled={processingRequest === request.id}
-                            icon={<X className="w-4 h-4" />}
+                            icon={<X className="w-4 h-4 flex-shrink-0" />}
                             title="Rejeitar"
                             className="!px-3 !py-1.5"
                           >
@@ -522,7 +522,7 @@ export default function CertificatesPage() {
               variant={filter === 'approved' ? 'primary' : 'secondary'}
               size="sm"
               onClick={() => setFilter('approved')}
-              icon={<CheckCircle className="w-4 h-4" />}
+              icon={<CheckCircle className="w-4 h-4 flex-shrink-0" />}
             >
               Aprovados ({stats.approved})
             </Button>
@@ -530,7 +530,7 @@ export default function CertificatesPage() {
               variant={filter === 'rejected' ? 'primary' : 'secondary'}
               size="sm"
               onClick={() => setFilter('rejected')}
-              icon={<XCircle className="w-4 h-4" />}
+              icon={<XCircle className="w-4 h-4 flex-shrink-0" />}
             >
               Rejeitados ({stats.rejected})
             </Button>
@@ -538,7 +538,7 @@ export default function CertificatesPage() {
               variant={filter === 'pending' ? 'primary' : 'secondary'}
               size="sm"
               onClick={() => setFilter('pending')}
-              icon={<Clock className="w-4 h-4" />}
+              icon={<Clock className="w-4 h-4 flex-shrink-0" />}
             >
               Pendentes ({stats.pending})
             </Button>
@@ -792,7 +792,7 @@ export default function CertificatesPage() {
                 <Button
                   variant="primary"
                   onClick={() => handleDownloadCertificate(selectedCertificate)}
-                  icon={<Download className="w-4 h-4" />}
+                  icon={<Download className="w-4 h-4 flex-shrink-0" />}
                   disabled={generatingPDF}
                 >
                   {generatingPDF ? 'Gerando PDF...' : 'Baixar Certificado'}

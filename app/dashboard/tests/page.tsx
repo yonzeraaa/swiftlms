@@ -484,7 +484,7 @@ export default function TestsManagementPage() {
         <Button
           variant="primary"
           onClick={() => setShowModal(true)}
-          icon={<Plus className="w-5 h-5" />}
+          icon={<Plus className="w-5 h-5 flex-shrink-0" />}
         >
           {t('tests.newTest')}
         </Button>
@@ -507,7 +507,7 @@ export default function TestsManagementPage() {
             <Button
               variant="secondary"
               onClick={() => setShowFilters(!showFilters)}
-              icon={<Filter className="w-5 h-5" />}
+              icon={<Filter className="w-5 h-5 flex-shrink-0" />}
             >
               Filtros ({filteredTests.length})
             </Button>
@@ -733,7 +733,7 @@ export default function TestsManagementPage() {
 
       {!loading && filteredTests.length === 0 && (
         <EmptyState
-          icon={<FileCheck className="w-12 h-12" />}
+          icon={<FileCheck className="w-12 h-12 flex-shrink-0" />}
           title={t('tests.noTests')}
           description={t('tests.noTestsDescription')}
           action={{

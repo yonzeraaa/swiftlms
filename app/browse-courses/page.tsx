@@ -221,7 +221,7 @@ export default function BrowseCoursesPage() {
               <Button
                 variant="outline"
                 onClick={() => router.push('/')}
-                icon={<ArrowLeft className="w-4 h-4" />}
+                icon={<ArrowLeft className="w-4 h-4 flex-shrink-0" />}
               >
                 Voltar ao Login
               </Button>
@@ -258,7 +258,7 @@ export default function BrowseCoursesPage() {
               <Button
                 variant="outline"
                 onClick={() => router.push('/')}
-                icon={<ArrowLeft className="w-4 h-4" />}
+                icon={<ArrowLeft className="w-4 h-4 flex-shrink-0" />}
               >
                 Voltar ao Login
               </Button>
@@ -270,7 +270,7 @@ export default function BrowseCoursesPage() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {courses.length === 0 ? (
             <Card className="text-center py-12">
-              <BookOpen className="w-16 h-16 text-gold-400 mx-auto mb-4" />
+              <BookOpen className="w-16 h-16 text-gold-400 mx-auto mb-4 flex-shrink-0" />
               <h2 className="text-2xl font-bold text-gold-200 mb-2">Nenhum curso disponível</h2>
               <p className="text-gold-300">
                 Não há cursos publicados no momento. Volte em breve para conferir novidades!
@@ -296,7 +296,7 @@ export default function BrowseCoursesPage() {
                           {getCategoryLabel(course.category)}
                         </Badge>
                         <div className="flex items-center gap-1 text-gold-300">
-                          <Clock className="w-4 h-4" />
+                          <Clock className="w-4 h-4 flex-shrink-0" />
                           <span className="text-sm">{course.duration_hours}h</span>
                         </div>
                       </div>
@@ -355,9 +355,9 @@ export default function BrowseCoursesPage() {
                             </div>
                             <div className="flex-shrink-0">
                               {isExpanded ? (
-                                <ChevronUp className="w-5 h-5 text-gold-400" />
+                                <ChevronUp className="w-5 h-5 text-gold-400 flex-shrink-0" />
                               ) : (
-                                <ChevronDown className="w-5 h-5 text-gold-400" />
+                                <ChevronDown className="w-5 h-5 text-gold-400 flex-shrink-0" />
                               )}
                             </div>
                           </motion.button>
