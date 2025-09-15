@@ -360,33 +360,33 @@ export default function ProgressPage() {
                   <div className="p-4">
                     {/* Linha superior com chevron e título */}
                     <div className="flex items-start gap-3 mb-3">
-                      <div className="mt-1">
+                      <div className="mt-1 flex-shrink-0">
                         {isExpanded ? (
                           <ChevronDown className="w-5 h-5 text-gold-400" />
                         ) : (
                           <ChevronRight className="w-5 h-5 text-gold-400" />
                         )}
                       </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gold">
+                      <div className="flex-1 text-left">
+                        <h3 className="text-lg font-semibold text-gold text-left">
                           {courseProgress.course.title}
                         </h3>
-                        <p className="text-sm text-gold-300 mt-1">
+                        <p className="text-sm text-gold-300 mt-1 text-left">
                           {courseProgress.completedLessons} de {courseProgress.totalLessons} aulas concluídas
                         </p>
                       </div>
                       {courseProgress.progress === 100 && (
-                        <Award className="w-6 h-6 text-gold-400" />
+                        <Award className="w-6 h-6 text-gold-400 flex-shrink-0" />
                       )}
                     </div>
 
                     {/* Barra de Progresso */}
-                    <div className="ml-8">
+                    <div className="ml-8 pr-4">
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`text-sm font-medium ${progressColor.split(' ')[0]}`}>
+                        <span className={`text-sm font-medium ${progressColor.split(' ')[0]} text-left`}>
                           {courseProgress.progress}%
                         </span>
-                        <span className="text-xs text-gold-400">
+                        <span className="text-xs text-gold-400 text-right">
                           {courseProgress.hoursCompleted}h / {courseProgress.course.duration_hours}h
                         </span>
                       </div>
