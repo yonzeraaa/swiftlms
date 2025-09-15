@@ -568,10 +568,10 @@ export default function SubjectsPage() {
                 <th scope="col" className="text-left text-gold-200 font-medium">Código</th>
                 <th scope="col" className="text-left text-gold-200 font-medium">Nome</th>
                 <th scope="col" className="text-left text-gold-200 font-medium">Descrição</th>
-                <th scope="col" className="text-center text-gold-200 font-medium">Horas</th>
-                <th scope="col" className="text-center text-gold-200 font-medium">Aulas</th>
-                <th scope="col" className="text-center text-gold-200 font-medium">Cursos</th>
-                <th scope="col" className="text-center text-gold-200 font-medium">Criado em</th>
+                <th scope="col" className="text-right text-gold-200 font-medium">Horas</th>
+                <th scope="col" className="text-right text-gold-200 font-medium">Aulas</th>
+                <th scope="col" className="text-right text-gold-200 font-medium">Cursos</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Criado em</th>
                 <th scope="col" className="text-center text-gold-200 font-medium">Ações</th>
               </tr>
             </thead>
@@ -599,16 +599,16 @@ export default function SubjectsPage() {
                     <td className="py-4 px-4">
                       <span className="text-gold-300 text-sm">{subject.description || '-'}</span>
                     </td>
-                    <td className="py-4 px-4 text-center">
+                    <td className="py-4 px-4 text-right">
                       <span className="text-gold-200">{subject.hours ? `${subject.hours}h` : '-'}</span>
                     </td>
-                    <td className="py-4 px-4 text-center">
+                    <td className="py-4 px-4 text-right">
                       <span className="text-gold-200">{lessonCount[subject.id] || 0}</span>
                     </td>
-                    <td className="py-4 px-4 text-center">
+                    <td className="py-4 px-4 text-right">
                       <span className="text-gold-200">{courseCount[subject.id] || 0}</span>
                     </td>
-                    <td className="py-4 px-4 text-center">
+                    <td className="py-4 px-4 text-left">
                       <span className="text-gold-300 text-sm">
                         {new Date(subject.created_at || '').toLocaleDateString('pt-BR')}
                       </span>

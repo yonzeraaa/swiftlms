@@ -629,10 +629,10 @@ export default function UsersPage() {
 
           {/* Empty State */}
           {filteredUsers.length === 0 && (
-            <Card variant="outlined" className="text-center py-12">
+            <Card variant="outlined" className="py-12">
               <Users className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gold mb-2">Nenhum usuário encontrado</h3>
-              <p className="text-gold-400 mb-6">
+              <h3 className="text-lg font-semibold text-gold mb-2 text-left">Nenhum usuário encontrado</h3>
+              <p className="text-gold-400 mb-6 text-left">
                 {searchTerm || filterRole !== 'all' || filterStatus !== 'all'
                   ? 'Tente ajustar os filtros ou termo de busca'
                   : 'Comece adicionando seu primeiro usuário'}

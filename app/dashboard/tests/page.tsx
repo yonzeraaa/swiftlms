@@ -1123,8 +1123,8 @@ export default function TestsManagementPage() {
             </div>
           </div>
         ) : (
-          <div className="text-center py-8">
-            <p className="text-gold-300">Nenhum gabarito encontrado para este teste.</p>
+          <div className="py-8">
+            <p className="text-gold-300 text-left">Nenhum gabarito encontrado para este teste.</p>
           </div>
         )}
       </Modal>

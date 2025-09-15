@@ -254,12 +254,12 @@ export default function CertificatesPage() {
                   </div>
 
                   {/* Course Title */}
-                  <h3 className="text-lg font-bold text-gold text-center mb-2">
+                  <h3 className="text-lg font-bold text-gold text-left mb-2">
                     {certificate.course.title}
                   </h3>
 
                   {/* Category */}
-                  <p className="text-sm text-gold-400 text-center mb-4">
+                  <p className="text-sm text-gold-400 text-left mb-4">
                     {certificate.course.category}
                   </p>
 

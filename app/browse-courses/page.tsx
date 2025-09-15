@@ -269,10 +269,10 @@ export default function BrowseCoursesPage() {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {courses.length === 0 ? (
-            <Card className="text-center py-12">
+            <Card className="py-12">
               <BookOpen className="w-16 h-16 text-gold-400 mx-auto mb-4 flex-shrink-0" />
-              <h2 className="text-2xl font-bold text-gold-200 mb-2">Nenhum curso disponível</h2>
-              <p className="text-gold-300">
+              <h2 className="text-2xl font-bold text-gold-200 mb-2 text-left">Nenhum curso disponível</h2>
+              <p className="text-gold-300 text-left">
                 Não há cursos publicados no momento. Volte em breve para conferir novidades!
               </p>
             </Card>
