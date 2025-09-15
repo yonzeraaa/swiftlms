@@ -119,7 +119,7 @@ export default function StudentDashboardLayout({
     { name: 'Meus Cursos', href: '/student-dashboard/my-courses', icon: BookOpen },
     { name: 'Progresso', href: '/student-dashboard/progress', icon: GraduationCap },
     { name: 'Calendário', href: '/student-dashboard/calendar', icon: Calendar },
-    { name: 'Testes', href: '/student-dashboard/tests', icon: FileCheck },
+    { name: 'Minhas Avaliações', href: '/student-dashboard/evaluations', icon: FileCheck },
     { name: 'Minhas Notas', href: '/student-dashboard/grades', icon: FileText },
     { name: 'Certificados', href: '/student-dashboard/certificates', icon: Trophy },
     { name: 'Configurações', href: '/student-dashboard/settings', icon: Settings },
@@ -450,7 +450,7 @@ export default function StudentDashboardLayout({
           {/* Page Content with Animation */}
           <ErrorBoundary>
             <PageTransition>
-              <div className="p-8">
+              <div className="p-8 student-dashboard-content">
                 {children}
               </div>
             </PageTransition>

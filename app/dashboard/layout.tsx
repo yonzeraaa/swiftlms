@@ -106,6 +106,7 @@ export default function DashboardLayout({
     { name: t('nav.users'), href: '/dashboard/users', icon: Users },
     { name: t('nav.courses'), href: '/dashboard/courses', icon: BookOpen },
     { name: 'Certificados', href: '/dashboard/certificates', icon: Award },
+    { name: 'Avaliar TCCs', href: '/dashboard/tcc-evaluation', icon: FileCheck },
     { name: 'Módulos', href: '/dashboard/modules', icon: Folder },
     { name: 'Estrutura', href: '/dashboard/structure', icon: Layers },
     { name: t('nav.subjects'), href: '/dashboard/subjects', icon: GraduationCap },

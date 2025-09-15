@@ -72,6 +72,37 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Tamanhos de fonte aumentados para o dashboard do aluno */
+.student-dashboard-content {
+  font-size: 1rem; /* 16px base */
+}
+
+.student-dashboard-content h1 {
+  font-size: 2rem; /* 32px */
+}
+
+.student-dashboard-content h2 {
+  font-size: 1.75rem; /* 28px */
+}
+
+.student-dashboard-content h3 {
+  font-size: 1.5rem; /* 24px */
+}
+
+.student-dashboard-content p,
+.student-dashboard-content span,
+.student-dashboard-content div {
+  font-size: 1rem; /* 16px - mesmo tamanho do menu lateral */
+}
+
+.student-dashboard-content .text-sm {
+  font-size: 0.9375rem; /* 15px ao invés de 14px */
+}
+
+.student-dashboard-content .text-xs {
+  font-size: 0.875rem; /* 14px ao invés de 12px */
+}
+
 /* Progress bar animation */
 @keyframes slide {
   0% {

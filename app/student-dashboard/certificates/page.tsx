@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
-import { Award, Download, Eye, Check, X, Calendar, Clock, Medal, Shield, AlertCircle } from 'lucide-react'
+import { Award, Download, Eye, Check, X, Calendar, Clock, Medal, Shield, AlertCircle, FileText } from 'lucide-react'
 import Spinner from '../../components/ui/Spinner'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
@@ -11,6 +11,7 @@ import Button from '../../components/Button'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { generateCertificatePDF } from '@/app/lib/certificate-pdf'
 
 type Certificate = Database['public']['Tables']['certificates']['Row']
@@ -141,12 +142,22 @@ export default function CertificatesPage() {
     <div className="space-y-6">
       <Breadcrumbs className="mb-2" />
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
-          <Award className="w-8 h-8 text-gold-400" />
-          Meus Certificados
-        </h1>
-        <p className="text-gold-300 mt-1">Certificados de conclusão dos cursos que você completou</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+            <Award className="w-8 h-8 text-gold-400" />
+            Meus Certificados
+          </h1>
+          <p className="text-gold-300 mt-1">Certificados de conclusão dos cursos que você completou</p>
+        </div>
+
+        {/* Botão para TCC */}
+        <Link href="/student-dashboard/certificates/tcc">
+          <Button variant="primary" className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Enviar TCC
+          </Button>
+        </Link>
       </div>
 
       {/* Stats */}

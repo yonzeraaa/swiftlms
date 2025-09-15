@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, Activity, BarChart3, ArrowUp, ArrowDown } from 'lucide-react'
+import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, Activity, BarChart3, ArrowUp, ArrowDown, ChevronRight, ChevronDown, Loader2 as ProgressIcon } from 'lucide-react'
 import Card from '../../components/Card'
 import Spinner from '../../components/ui/Spinner'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
@@ -25,6 +25,13 @@ interface CourseProgress {
   progress: number
   hoursCompleted: number
   lastActivity?: string
+  modules: {
+    id: string
+    title: string
+    totalLessons: number
+    completedLessons: number
+    progress: number
+  }[]
 }
 
 interface WeeklyProgress {
@@ -37,6 +44,7 @@ export default function ProgressPage() {
   const [loading, setLoading] = useState(true)
   const [coursesProgress, setCoursesProgress] = useState<CourseProgress[]>([])
   const [weeklyProgress, setWeeklyProgress] = useState<WeeklyProgress[]>([])
+  const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set())
   const [totalStats, setTotalStats] = useState({
     totalCourses: 0,
     completedCourses: 0,
@@ -96,36 +104,66 @@ export default function ProgressPage() {
 
         for (const enrollment of enrollments) {
           if (enrollment.course) {
-            // Count lessons for this course
+            // Get modules for this course
             const { data: modules } = await supabase
               .from('course_modules')
-              .select('id')
+              .select('*')
               .eq('course_id', enrollment.course_id)
+              .order('order_index')
 
-            const moduleIds = modules?.map((m: any) => m.id) || []
-            
-            const { data: lessons } = await supabase
-              .from('lessons')
-              .select('id')
-              .in('module_id', moduleIds)
+            const moduleProgress = []
+            let totalCourseLessons = 0
+            let totalCompletedLessons = 0
 
-            const { data: completedLessons } = await supabase
-              .from('lesson_progress')
-              .select('lesson_id')
-              .eq('enrollment_id', enrollment.id)
-              .eq('is_completed', true)
+            if (modules) {
+              for (const module of modules) {
+                // Get lessons for this module
+                const { data: lessons } = await supabase
+                  .from('lessons')
+                  .select('id')
+                  .eq('module_id', module.id)
 
-            const totalLessons = lessons?.length || 0
-            const completed = completedLessons?.length || 0
+                const moduleLessonIds = lessons?.map((l: any) => l.id) || []
+
+                // Get completed lessons for this module
+                const { data: completedLessons } = await supabase
+                  .from('lesson_progress')
+                  .select('lesson_id')
+                  .eq('enrollment_id', enrollment.id)
+                  .eq('is_completed', true)
+                  .in('lesson_id', moduleLessonIds)
+
+                const moduleTotalLessons = lessons?.length || 0
+                const moduleCompletedLessons = completedLessons?.length || 0
+
+                totalCourseLessons += moduleTotalLessons
+                totalCompletedLessons += moduleCompletedLessons
+
+                moduleProgress.push({
+                  id: module.id,
+                  title: module.title,
+                  totalLessons: moduleTotalLessons,
+                  completedLessons: moduleCompletedLessons,
+                  progress: moduleTotalLessons > 0
+                    ? Math.round((moduleCompletedLessons / moduleTotalLessons) * 100)
+                    : 0
+                })
+              }
+            }
+
+            const courseProgressPercentage = totalCourseLessons > 0
+              ? Math.round((totalCompletedLessons / totalCourseLessons) * 100)
+              : 0
 
             progressData.push({
               course: enrollment.course,
               enrollment,
-              totalLessons,
-              completedLessons: completed,
-              progress: enrollment.progress_percentage || 0,
-              hoursCompleted: Math.round((enrollment.course.duration_hours || 0) * (enrollment.progress_percentage || 0) / 100),
-              lastActivity: enrollment.enrolled_at || undefined
+              totalLessons: totalCourseLessons,
+              completedLessons: totalCompletedLessons,
+              progress: courseProgressPercentage,
+              hoursCompleted: Math.round((enrollment.course.duration_hours || 0) * courseProgressPercentage / 100),
+              lastActivity: enrollment.enrolled_at || undefined,
+              modules: moduleProgress
             })
           }
         }
@@ -144,30 +182,29 @@ export default function ProgressPage() {
       if (weeklyData) {
         const progressByDay: { [key: string]: number } = {}
         const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-        
+
         // Initialize all days with 0
         days.forEach((day: any) => {
           progressByDay[day] = 0
         })
 
         // Count lessons per day
-        weeklyData.forEach((lesson: any) => {
-          if (lesson.completed_at) {
-            const date = new Date(lesson.completed_at)
+        weeklyData.forEach((progress: any) => {
+          if (progress.completed_at) {
+            const date = new Date(progress.completed_at)
             const dayName = days[date.getDay()]
             progressByDay[dayName]++
           }
         })
 
-        const weekProgress: WeeklyProgress[] = days.map((day: any) => ({
+        const weekProgress = days.map(day => ({
           day,
           lessons: progressByDay[day],
-          hours: Math.round(progressByDay[day] * 0.5) // Assuming 30 min per lesson average
+          hours: Math.round(progressByDay[day] * 0.5) // Estimate 30 minutes per lesson
         }))
 
         setWeeklyProgress(weekProgress)
       }
-
     } catch (error) {
       console.error('Error fetching progress data:', error)
     } finally {
@@ -175,18 +212,23 @@ export default function ProgressPage() {
     }
   }
 
-  const getProgressColor = (progress: number) => {
-    if (progress >= 80) return 'text-green-400'
-    if (progress >= 50) return 'text-blue-400'
-    if (progress >= 20) return 'text-yellow-400'
-    return 'text-red-400'
+  const toggleCourseExpansion = (courseId: string) => {
+    setExpandedCourses(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(courseId)) {
+        newSet.delete(courseId)
+      } else {
+        newSet.add(courseId)
+      }
+      return newSet
+    })
   }
 
-  const getProgressBgColor = (progress: number) => {
-    if (progress >= 80) return 'bg-green-500/20'
-    if (progress >= 50) return 'bg-blue-500/20'
-    if (progress >= 20) return 'bg-yellow-500/20'
-    return 'bg-red-500/20'
+  const getProgressColor = (progress: number) => {
+    if (progress >= 80) return 'text-green-400 bg-green-500'
+    if (progress >= 50) return 'text-yellow-400 bg-yellow-500'
+    if (progress >= 20) return 'text-orange-400 bg-orange-500'
+    return 'text-red-400 bg-red-500'
   }
 
   if (loading) {
@@ -200,264 +242,254 @@ export default function ProgressPage() {
   return (
     <div className="space-y-6">
       <Breadcrumbs className="mb-2" />
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
-          <Target className="w-8 h-8 text-gold-400" />
+          <TrendingUp className="w-8 h-8 text-gold-400" />
           Meu Progresso
         </h1>
         <p className="text-gold-300 mt-1">Acompanhe seu desempenho e evolução nos cursos</p>
       </div>
 
-      {/* Overall Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+      {/* Estatísticas Gerais */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-4 border-gold-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Cursos Ativos</p>
+              <p className="text-2xl font-bold text-gold">{totalStats.totalCourses}</p>
+              <p className="text-xs text-gold-400 mt-1">
+                {totalStats.completedCourses} concluídos
+              </p>
+            </div>
+            <BookOpen className="w-8 h-8 text-gold-400" />
+          </div>
+        </Card>
+
+        <Card className="p-4 border-blue-500/30">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gold-300 text-sm">Progresso Geral</p>
-              <p className="text-3xl font-bold text-gold">{totalStats.averageProgress}%</p>
+              <p className="text-2xl font-bold text-blue-400">{totalStats.averageProgress}%</p>
+              <div className="w-full bg-navy-800/50 rounded-full h-2 mt-2">
+                <div
+                  className="bg-gradient-to-r from-blue-500 to-blue-400 h-2 rounded-full transition-all"
+                  style={{ width: `${totalStats.averageProgress}%` }}
+                />
+              </div>
             </div>
-            <div className="relative">
-              <ProgressChart progress={totalStats.averageProgress} size={80} strokeWidth={6} showLabel={false} />
-            </div>
+            <BarChart3 className="w-8 h-8 text-blue-400" />
           </div>
         </Card>
 
-        <Card>
+        <Card className="p-4 border-green-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Lições Completadas</p>
-              <p className="text-3xl font-bold text-gold">{totalStats.completedLessons}</p>
-              <p className="text-sm text-gold-400">de {totalStats.totalLessons} total</p>
+              <p className="text-gold-300 text-sm">Aulas Concluídas</p>
+              <p className="text-2xl font-bold text-green-400">{totalStats.completedLessons}</p>
+              <p className="text-xs text-gold-400 mt-1">
+                de {totalStats.totalLessons} totais
+              </p>
             </div>
-            <CheckCircle className="w-10 h-10 text-green-500/30" />
+            <CheckCircle className="w-8 h-8 text-green-400" />
           </div>
         </Card>
 
-        <Card>
+        <Card className="p-4 border-purple-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Horas Estudadas</p>
-              <p className="text-3xl font-bold text-gold">{totalStats.completedHours}h</p>
-              <p className="text-sm text-gold-400">de {totalStats.totalHours}h total</p>
+              <p className="text-gold-300 text-sm">Horas de Estudo</p>
+              <p className="text-2xl font-bold text-purple-400">{totalStats.completedHours}h</p>
+              <p className="text-xs text-gold-400 mt-1">
+                de {totalStats.totalHours}h totais
+              </p>
             </div>
-            <Clock className="w-10 h-10 text-blue-500/30" />
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Sequência Atual</p>
-              <p className="text-3xl font-bold text-gold">{totalStats.currentStreak}</p>
-              <p className="text-sm text-gold-400">dias consecutivos</p>
-            </div>
-            <TrendingUp className="w-10 h-10 text-gold-500/30" />
+            <Clock className="w-8 h-8 text-purple-400" />
           </div>
         </Card>
       </div>
 
-      {/* Weekly Progress */}
-      <Card title="Progresso Semanal" subtitle="Atividade nos últimos 7 dias">
-        <div className="space-y-4">
-          <div className="grid grid-cols-7 gap-2">
-            {weeklyProgress.map((day, index) => (
-              <div key={index} className="text-center">
-                <p className="text-xs text-gold-400 mb-2">{day.day}</p>
-                <div className="relative">
-                  <div className="w-full bg-navy-800 rounded-lg h-24 flex items-end">
-                    <div 
-                      className="w-full bg-gradient-to-t from-gold-500 to-gold-400 rounded-lg transition-all duration-500"
-                      style={{ height: `${Math.min(day.lessons * 20, 100)}%` }}
-                    />
+      {/* Atividade Semanal */}
+      <Card className="p-6">
+        <h2 className="text-xl font-semibold text-gold mb-4 flex items-center gap-2">
+          <Activity className="w-5 h-5 text-gold-400" />
+          Atividade Semanal
+        </h2>
+        <div className="grid grid-cols-7 gap-2">
+          {weeklyProgress.map(({ day, lessons }) => (
+            <div key={day} className="text-center">
+              <p className="text-xs text-gold-400 mb-2">{day}</p>
+              <div className="relative">
+                <div className="w-full h-24 bg-navy-800/50 rounded-lg flex items-end">
+                  <div
+                    className="w-full bg-gradient-to-t from-gold-500 to-gold-400 rounded-lg transition-all"
+                    style={{ height: `${Math.min(lessons * 20, 100)}%` }}
+                  />
+                </div>
+                <p className="text-sm text-gold-200 mt-1">{lessons}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Progresso Detalhado por Curso */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-gold flex items-center gap-2">
+          <ProgressIcon className="w-5 h-5 text-gold-400" />
+          Progresso por Curso
+        </h2>
+
+        {coursesProgress.length === 0 ? (
+          <Card className="p-8 text-center">
+            <p className="text-gold-400">Você ainda não está matriculado em nenhum curso.</p>
+          </Card>
+        ) : (
+          coursesProgress.map(courseProgress => {
+            const isExpanded = expandedCourses.has(courseProgress.course.id)
+            const progressColor = getProgressColor(courseProgress.progress)
+
+            return (
+              <Card key={courseProgress.course.id} className="overflow-hidden">
+                {/* Header do Curso */}
+                <button
+                  onClick={() => toggleCourseExpansion(courseProgress.course.id)}
+                  className="w-full p-4 hover:bg-navy-800/30 transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {isExpanded ? (
+                        <ChevronDown className="w-5 h-5 text-gold-400" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-gold-400" />
+                      )}
+                      <div className="text-left">
+                        <h3 className="text-lg font-semibold text-gold">
+                          {courseProgress.course.title}
+                        </h3>
+                        <p className="text-sm text-gold-300">
+                          {courseProgress.completedLessons} de {courseProgress.totalLessons} aulas concluídas
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Barra de Progresso Grande */}
+                    <div className="flex items-center gap-4">
+                      <div className="w-48">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-sm font-medium ${progressColor.split(' ')[0]}`}>
+                            {courseProgress.progress}%
+                          </span>
+                          <span className="text-xs text-gold-400">
+                            {courseProgress.hoursCompleted}h / {courseProgress.course.duration_hours}h
+                          </span>
+                        </div>
+                        <div className="w-full bg-navy-800/50 rounded-full h-3">
+                          <div
+                            className={`${progressColor.split(' ')[1]} h-3 rounded-full transition-all`}
+                            style={{ width: `${courseProgress.progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {courseProgress.progress === 100 && (
+                        <Award className="w-6 h-6 text-gold-400" />
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-gold-300 mt-1">{day.lessons}</p>
+                </button>
+
+                {/* Detalhes dos Módulos - Expandível */}
+                {isExpanded && courseProgress.modules.length > 0 && (
+                  <div className="border-t border-gold-500/20 p-4 bg-navy-800/20">
+                    <h4 className="text-sm font-medium text-gold-300 mb-3">Progresso por Módulo</h4>
+                    <div className="space-y-3">
+                      {courseProgress.modules.map(module => (
+                        <div key={module.id} className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm text-gold-200">{module.title}</p>
+                            <p className="text-xs text-gold-400">
+                              {module.completedLessons}/{module.totalLessons} aulas
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="w-32">
+                              <div className="w-full bg-navy-900/50 rounded-full h-2">
+                                <div
+                                  className={`${getProgressColor(module.progress).split(' ')[1]} h-2 rounded-full transition-all`}
+                                  style={{ width: `${module.progress}%` }}
+                                />
+                              </div>
+                            </div>
+                            <span className={`text-sm font-medium ${getProgressColor(module.progress).split(' ')[0]} min-w-[3rem] text-right`}>
+                              {module.progress}%
+                            </span>
+                            {module.progress === 100 && (
+                              <CheckCircle className="w-4 h-4 text-green-400" />
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Estatísticas do Curso */}
+                    <div className="mt-4 pt-4 border-t border-gold-500/10 grid grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <p className="text-xs text-gold-400">Taxa de Conclusão</p>
+                        <p className="text-lg font-semibold text-gold">{courseProgress.progress}%</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-gold-400">Tempo Investido</p>
+                        <p className="text-lg font-semibold text-gold">{courseProgress.hoursCompleted}h</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-gold-400">Status</p>
+                        <p className="text-lg font-semibold text-gold">
+                          {courseProgress.progress === 100 ? (
+                            <span className="text-green-400">Concluído</span>
+                          ) : courseProgress.progress > 0 ? (
+                            <span className="text-yellow-400">Em Progresso</span>
+                          ) : (
+                            <span className="text-gray-400">Não Iniciado</span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            )
+          })
+        )}
+      </div>
+
+      {/* Gráfico de Progresso */}
+      {coursesProgress.length > 0 && (
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold text-gold mb-4">Visão Geral do Progresso</h2>
+          <div className="space-y-4">
+            {coursesProgress.map(cp => (
+              <div key={cp.course.id} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gold-300">{cp.course.title}</span>
+                  <span className="text-gold-100 font-semibold">{cp.progress}%</span>
+                </div>
+                <div className="w-full bg-navy-800 rounded-full h-3">
+                  <div
+                    className="bg-gradient-to-r from-gold-500 to-gold-400 h-3 rounded-full transition-all duration-500"
+                    style={{ width: `${cp.progress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gold-400">
+                  <span>{cp.completedLessons} de {cp.totalLessons} aulas</span>
+                  <span>{cp.hoursCompleted.toFixed(1)}h estudadas</span>
                 </div>
               </div>
             ))}
           </div>
-          <div className="flex items-center justify-center gap-4 text-sm text-gold-400">
-            <span className="flex items-center gap-1">
-              <div className="w-3 h-3 bg-gold-500 rounded" />
-              Lições completadas
-            </span>
-          </div>
-        </div>
-      </Card>
-
-      {/* Course Progress Details */}
-      <Card title="Progresso por Curso" subtitle="Detalhamento do seu avanço em cada curso">
-        <div className="space-y-4">
-          {coursesProgress.length > 0 ? (
-            coursesProgress.map((courseProgress) => (
-              <div key={courseProgress.enrollment.id} className="bg-navy-900/50 rounded-xl p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-gold">{courseProgress.course.title}</h3>
-                    <p className="text-gold-300 text-sm mt-1">{courseProgress.course.category}</p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm ${getProgressBgColor(courseProgress.progress)} ${getProgressColor(courseProgress.progress)}`}>
-                    {courseProgress.progress}%
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="flex items-center gap-3">
-                    <BookOpen className="w-5 h-5 text-gold-500/50" />
-                    <div>
-                      <p className="text-sm text-gold-400">Lições</p>
-                      <p className="text-gold-200">
-                        {courseProgress.completedLessons} / {courseProgress.totalLessons}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-gold-500/50" />
-                    <div>
-                      <p className="text-sm text-gold-400">Tempo</p>
-                      <p className="text-gold-200">
-                        {courseProgress.hoursCompleted}h / {courseProgress.course.duration_hours}h
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Award className="w-5 h-5 text-gold-500/50" />
-                    <div>
-                      <p className="text-sm text-gold-400">Status</p>
-                      <p className="text-gold-200">
-                        {courseProgress.enrollment.status === 'completed' ? 'Concluído' : 'Em andamento'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gold-300">Progresso do Curso</span>
-                    <span className={`font-medium ${getProgressColor(courseProgress.progress)}`}>
-                      {courseProgress.progress}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-navy-800 rounded-full h-3">
-                    <div 
-                      className={`h-3 rounded-full transition-all duration-1000 ${
-                        courseProgress.progress >= 80 
-                          ? 'bg-gradient-to-r from-green-500 to-green-600'
-                          : courseProgress.progress >= 50
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600'
-                          : courseProgress.progress >= 20
-                          ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
-                          : 'bg-gradient-to-r from-red-500 to-red-600'
-                      }`}
-                      style={{ width: `${courseProgress.progress}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Performance Indicator */}
-                {courseProgress.progress > 0 && (
-                  <div className="mt-4 flex items-center gap-2 text-sm">
-                    {courseProgress.progress >= 80 ? (
-                      <>
-                        <ArrowUp className="w-4 h-4 text-green-400" />
-                        <span className="text-green-400">Excelente progresso! Continue assim!</span>
-                      </>
-                    ) : courseProgress.progress >= 50 ? (
-                      <>
-                        <ArrowUp className="w-4 h-4 text-blue-400" />
-                        <span className="text-blue-400">Bom ritmo! Mais da metade concluída.</span>
-                      </>
-                    ) : (
-                      <>
-                        <Activity className="w-4 h-4 text-yellow-400" />
-                        <span className="text-yellow-400">Continue estudando para avançar!</span>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-12">
-              <BarChart3 className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-              <p className="text-gold-300 text-lg">Você ainda não está matriculado em nenhum curso</p>
-              <p className="text-gold-400 text-sm mt-2">Explore nossos cursos para começar sua jornada de aprendizado</p>
-            </div>
-          )}
-        </div>
-      </Card>
-
-      {/* Achievement Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card title="Conquistas Recentes">
-          <div className="space-y-3">
-            {totalStats.completedCourses > 0 && (
-              <div className="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg">
-                <Award className="w-8 h-8 text-green-400" />
-                <div>
-                  <p className="text-green-400 font-medium">{totalStats.completedCourses} Cursos Concluídos</p>
-                  <p className="text-sm text-green-400/70">Parabéns pela dedicação!</p>
-                </div>
-              </div>
-            )}
-            {totalStats.currentStreak >= 7 && (
-              <div className="flex items-center gap-3 p-3 bg-gold-500/10 rounded-lg">
-                <TrendingUp className="w-8 h-8 text-gold-400" />
-                <div>
-                  <p className="text-gold-400 font-medium">Sequência de {totalStats.currentStreak} dias</p>
-                  <p className="text-sm text-gold-400/70">Consistência é a chave!</p>
-                </div>
-              </div>
-            )}
-            {totalStats.completedLessons >= 50 && (
-              <div className="flex items-center gap-3 p-3 bg-blue-500/10 rounded-lg">
-                <Target className="w-8 h-8 text-blue-400" />
-                <div>
-                  <p className="text-blue-400 font-medium">{totalStats.completedLessons} Lições Completadas</p>
-                  <p className="text-sm text-blue-400/70">Excelente progresso!</p>
-                </div>
-              </div>
-            )}
-          </div>
         </Card>
-
-        <Card title="Metas de Estudo">
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gold-300 text-sm">Meta diária: 2 lições</span>
-                <span className="text-gold-400 text-sm font-medium">
-                  {weeklyProgress.find(d => d.day === new Date().toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0, 3))?.lessons || 0}/2
-                </span>
-              </div>
-              <div className="w-full bg-navy-800 rounded-full h-2">
-                <div 
-                  className="bg-gradient-to-r from-gold-500 to-gold-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(((weeklyProgress.find(d => d.day === new Date().toLocaleDateString('pt-BR', { weekday: 'short' }).slice(0, 3))?.lessons || 0) / 2) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-gold-300 text-sm">Meta semanal: 10 lições</span>
-                <span className="text-gold-400 text-sm font-medium">
-                  {weeklyProgress.reduce((sum, day) => sum + day.lessons, 0)}/10
-                </span>
-              </div>
-              <div className="w-full bg-navy-800 rounded-full h-2">
-                <div 
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min((weeklyProgress.reduce((sum, day) => sum + day.lessons, 0) / 10) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
+      )}
     </div>
   )
 }
