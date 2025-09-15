@@ -40,6 +40,11 @@
   --foreground-rgb: 255, 215, 0;
   --background-start-rgb: 0, 51, 102;
   --background-end-rgb: 0, 26, 51;
+  --font-body: var(--font-open-sans);
+  --font-heading: var(--font-montserrat);
+  --font-subheading: var(--font-lato);
+  --font-ui: var(--font-open-sans);
+  --text-caption: #6B7280;
 }
 
 .light {
@@ -61,15 +66,88 @@ body {
   overflow-x: hidden;
 }
 
+html {
+  font-size: 17px;
+}
+
 body {
   color: rgb(var(--foreground-rgb));
   min-height: 100vh;
-  font-family: var(--font-open-sans), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-body), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 1rem;
   transition: background-color 0.3s ease, color 0.3s ease;
   font-weight: 400;
-  line-height: 1.65;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  p {
+    font-size: 1rem;
+    line-height: 1.5;
+    font-family: var(--font-body), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  h1,
+  .heading-1 {
+    font-family: var(--font-heading), 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    line-height: 1.3;
+  }
+
+  h2,
+  .heading-2 {
+    font-family: var(--font-heading), 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    line-height: 1.35;
+  }
+
+  h3,
+  .heading-3 {
+    font-family: var(--font-heading), 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    line-height: 1.4;
+  }
+
+  .subtitle,
+  .text-subtitle,
+  h4 {
+    font-family: var(--font-subheading), 'Lato', sans-serif;
+    font-weight: 700;
+    font-size: 1.125rem;
+    line-height: 1.4;
+  }
+
+  button,
+  [type='button'],
+  [type='submit'],
+  [role='button'],
+  .btn,
+  nav a,
+  nav button,
+  .breadcrumb {
+    font-family: var(--font-ui), 'Open Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+  }
+
+  small,
+  footer,
+  .text-caption,
+  .text-meta,
+  .helper-text {
+    font-family: var(--font-body), 'Open Sans', sans-serif;
+    font-weight: 400;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--text-caption);
+  }
 }
 
 /* Tamanhos de fonte aumentados para o dashboard do aluno */
@@ -82,11 +160,11 @@ body {
 }
 
 .student-dashboard-content h2 {
-  font-size: 1.75rem; /* 28px */
+  font-size: 1.5rem; /* 24px */
 }
 
 .student-dashboard-content h3 {
-  font-size: 1.5rem; /* 24px */
+  font-size: 1.25rem; /* 20px */
 }
 
 .student-dashboard-content p,
@@ -96,11 +174,11 @@ body {
 }
 
 .student-dashboard-content .text-sm {
-  font-size: 0.9375rem; /* 15px ao invés de 14px */
+  font-size: 0.875rem; /* 14px */
 }
 
 .student-dashboard-content .text-xs {
-  font-size: 0.875rem; /* 14px ao invés de 12px */
+  font-size: 0.75rem; /* 12px */
 }
 
 /* Progress bar animation */
@@ -164,31 +242,32 @@ body {
 
 /* Increase font sizes in light theme for better readability */
 .light body {
-  font-size: 1.05rem;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .light .text-xs {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .light .text-sm {
-  font-size: 0.925rem;
+  font-size: 0.875rem;
 }
 
 .light .text-base {
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .light .text-lg {
-  font-size: 1.2rem;
+  font-size: 1.125rem;
 }
 
 .light .text-xl {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
 }
 
 .light .text-2xl {
-  font-size: 1.65rem;
+  font-size: 1.5rem;
 }
 
 .light .text-3xl {
@@ -243,46 +322,54 @@ body {
   border-color: rgba(255, 215, 0, 0.4);
 }
 
-/* Aplicar Open Sans para todos os headings */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-open-sans), 'Open Sans', sans-serif;
+/* Tipografia para headings */
+h1, h2, h3 {
+  font-family: var(--font-heading), 'Montserrat', sans-serif;
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.3;
   text-transform: none;
 }
 
+h4, h5, h6 {
+  font-family: var(--font-subheading), 'Lato', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  line-height: 1.4;
+  text-transform: none;
+}
+
 /* Ajustes específicos para elementos UI */
 button, .btn {
-  font-family: var(--font-open-sans), 'Open Sans', sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   text-transform: none;
 }
 
 /* Labels e elementos de formulário */
 label {
-  font-family: var(--font-open-sans), 'Open Sans', sans-serif;
-  font-weight: 500;
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
   font-size: 0.875rem;
   letter-spacing: 0.01em;
 }
 
 /* Inputs mantêm a fonte do corpo para melhor legibilidade */
 input, textarea, select {
-  font-family: var(--font-open-sans), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: var(--font-body), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-weight: 400;
 }
 
-/* Increase base font size for better readability */
+/* Normalize base font size using root scaling */
 body {
-  font-size: 16px;
+  font-size: 1rem;
 }
 
 /* ===== Responsive Typography System ===== */
 @media (max-width: 640px) {
   html {
-    font-size: 14px;
+    font-size: 15px;
   }
   
   h1 {
@@ -290,11 +377,11 @@ body {
   }
   
   h2 {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
   }
   
   h3 {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
   }
   
   /* Ensure minimum touch targets on mobile */
@@ -351,34 +438,34 @@ body {
 
 @media (min-width: 640px) and (max-width: 768px) {
   html {
-    font-size: 15px;
+    font-size: 16px;
   }
 }
 
 @media (min-width: 768px) and (max-width: 1024px) {
   html {
-    font-size: 15px;
+    font-size: 17px;
   }
 }
 
 @media (min-width: 1024px) and (max-width: 1280px) {
   html {
-    font-size: 16px;
+    font-size: 17px;
   }
 }
 
 @media (min-width: 1280px) {
   html {
-    font-size: 16px;
+    font-size: 18px;
   }
   
   /* Larger screens can have bigger headings */
   h1 {
-    font-size: 3rem;
+    font-size: 2.5rem;
   }
   
   h2 {
-    font-size: 2.25rem;
+    font-size: 2rem;
   }
 }
 
@@ -442,21 +529,21 @@ body {
 
 /* Premium typography adjustments */
 p {
-  font-family: var(--font-open-sans), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  line-height: 1.75;
+  font-family: var(--font-body), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
   color: inherit;
 }
 
-/* Stats and numbers should use Work Sans for clarity */
+/* Stats and headline numbers use the heading family for emphasis */
 .stat-number, [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="text-5xl"] {
-  font-family: var(--font-open-sans), 'Open Sans', sans-serif !important;
+  font-family: var(--font-heading), 'Montserrat', sans-serif !important;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 /* Small caps for certain UI elements */
 .text-uppercase {
-  font-family: var(--font-open-sans), 'Open Sans', sans-serif;
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -470,38 +557,38 @@ p + p {
 
 /* Premium look for badges and pills */
 .badge, .pill, [class*="rounded-full"][class*="px-"] {
-  font-family: var(--font-open-sans), 'Open Sans', sans-serif;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 /* Increase font sizes for dark mode to match light mode */
 :root body {
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 :root .text-xs {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 :root .text-sm {
-  font-size: 0.925rem;
+  font-size: 0.875rem;
 }
 
 :root .text-base {
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 :root .text-lg {
-  font-size: 1.2rem;
+  font-size: 1.125rem;
 }
 
 :root .text-xl {
-  font-size: 1.35rem;
+  font-size: 1.25rem;
 }
 
 :root .text-2xl {
-  font-size: 1.65rem;
+  font-size: 1.5rem;
 }
 
 :root .text-3xl {
@@ -518,25 +605,25 @@ p + p {
 
 /* Increase heading sizes globally with better hierarchy */
 h1 {
-  font-size: 2.75rem;
-  font-weight: 900;
-  line-height: 1.2;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.3;
 }
 
 h2 {
-  font-size: 2.125rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
 h3 {
-  font-size: 1.75rem;
+  font-size: 1.25rem;
   font-weight: 700;
-  line-height: 1.3;
+  line-height: 1.4;
 }
 
 h4 {
-  font-size: 1.375rem;
+  font-size: 1.125rem;
   font-weight: 700;
   line-height: 1.4;
 }
@@ -548,14 +635,14 @@ h5 {
 }
 
 h6 {
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: 700;
   line-height: 1.4;
 }
 
 /* Texto em tabelas */
 th {
-  font-family: var(--font-open-sans), 'Open Sans', sans-serif;
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -564,15 +651,15 @@ th {
 
 /* Cards titles e subtitles */
 .card-title {
-  font-family: var(--font-open-sans), 'Open Sans', sans-serif;
+  font-family: var(--font-heading), 'Montserrat', sans-serif;
   font-weight: 700;
   letter-spacing: 0;
 }
 
 /* Menu items no sidebar */
 nav a, nav button {
-  font-family: var(--font-open-sans), 'Open Sans', sans-serif;
-  font-weight: 500;
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
   letter-spacing: 0.01em;
 }
 
@@ -637,12 +724,22 @@ nav a, nav button {
     border: 2px solid transparent;
   }
 
-  /* Classes utilitárias para Open Sans */
+  /* Classes utilitárias para tipografia */
   .font-display,
   .font-body,
   .font-ui,
   .font-open-sans {
-    font-family: var(--font-open-sans), 'Open Sans', sans-serif !important;
+    font-family: var(--font-body), 'Open Sans', sans-serif !important;
+  }
+
+  .font-heading,
+  .font-montserrat {
+    font-family: var(--font-heading), 'Montserrat', sans-serif !important;
+  }
+
+  .font-subheading,
+  .font-lato {
+    font-family: var(--font-subheading), 'Lato', sans-serif !important;
   }
 
   /* ============================== */

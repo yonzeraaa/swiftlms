@@ -9,8 +9,12 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        'open-sans': ['var(--font-open-sans)', 'sans-serif'],
-        'sans': ['var(--font-open-sans)', 'sans-serif'],
+        'open-sans': ['var(--font-open-sans)', 'Open Sans', 'sans-serif'],
+        'sans': ['var(--font-open-sans)', 'Open Sans', 'sans-serif'],
+        'body': ['var(--font-open-sans)', 'Open Sans', 'sans-serif'],
+        'heading': ['var(--font-montserrat)', 'Montserrat', 'sans-serif'],
+        'subheading': ['var(--font-lato)', 'Lato', 'sans-serif'],
+        'ui': ['var(--font-open-sans)', 'Open Sans', 'sans-serif'],
       },
       colors: {
         'navy': {

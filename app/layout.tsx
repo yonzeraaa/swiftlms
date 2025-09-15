@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Open_Sans } from 'next/font/google'
+import { Open_Sans, Montserrat, Lato } from 'next/font/google'
 import './globals.css'
 import './styles/animations.css'
 
@@ -8,6 +8,20 @@ const openSans = Open_Sans({
   subsets: ['latin'],
   variable: '--font-open-sans',
   weight: ['300', '400', '500', '600', '700', '800'],
+  display: 'swap',
+})
+
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  variable: '--font-montserrat',
+  weight: ['500', '600', '700', '800'],
+  display: 'swap',
+})
+
+const lato = Lato({
+  subsets: ['latin'],
+  variable: '--font-lato',
+  weight: ['400', '700', '900'],
   display: 'swap',
 })
 
@@ -35,7 +49,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className={`${openSans.variable} font-open-sans`}>
+      <body className={`${openSans.variable} ${montserrat.variable} ${lato.variable} font-open-sans`}>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus-ring fixed top-2 left-2 z-[9999] bg-navy-900 text-gold-100 px-3 py-2 rounded-md"
