@@ -39,7 +39,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
     glow = false,
     enableMotion = false,
     ripple = true,
-    align = 'left',
+    align = 'center',
     className = '',
     disabled,
     onClick,
