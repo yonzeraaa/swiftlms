@@ -680,11 +680,11 @@ export default function TestsManagementPage() {
                           window.open(test.google_drive_url, '_blank')
                           setOpenDropdown(null)
                         }}
-                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-3 text-left">
                           <ExternalLink className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                          <span className="text-gold-200">Ver Documento</span>
+                          <span className="text-gold-200 text-left flex-1">Ver Documento</span>
                         </div>
                       </button>
                       <button
@@ -693,11 +693,11 @@ export default function TestsManagementPage() {
                           setOpenDropdown(null)
                           viewAnswerKey(test)
                         }}
-                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-3 text-left">
                           <FileCheck className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                          <span className="text-gold-200">Ver Gabarito</span>
+                          <span className="text-gold-200 text-left flex-1">Ver Gabarito</span>
                         </div>
                       </button>
                       <button
@@ -707,11 +707,11 @@ export default function TestsManagementPage() {
                           setOpenDropdown(null)
                           editTest(test)
                         }}
-                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-3 text-left">
                           <Edit className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                          <span className="text-gold-200">Editar</span>
+                          <span className="text-gold-200 text-left flex-1">Editar</span>
                         </div>
                       </button>
                       <div className="border-t border-gold-500/20 mt-2 pt-2">
@@ -722,12 +722,12 @@ export default function TestsManagementPage() {
                             // Chamar a função deleteTest diretamente
                             await deleteTest(test.id)
                           }}
-                          className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors"
+                          className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors block"
                           type="button"
                         >
-                          <div className="flex items-start gap-3">
+                          <div className="flex items-start gap-3 text-left">
                             <Trash2 className="w-4 h-4 mt-0.5 text-red-400 flex-shrink-0" />
-                            <span className="text-red-400">Excluir</span>
+                            <span className="text-red-400 text-left flex-1">Excluir</span>
                           </div>
                         </button>
                       </div>

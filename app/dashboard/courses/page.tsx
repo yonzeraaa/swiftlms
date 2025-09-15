@@ -1840,11 +1840,11 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 text-left">
                 <Edit className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                <span className="text-gold-200">{t('courses.edit')}</span>
+                <span className="text-gold-200 text-left flex-1">{t('courses.edit')}</span>
               </div>
             </button>
             <button
@@ -1856,18 +1856,18 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 text-left">
                 {dropdownCourse.is_published ? (
                   <>
                     <XCircle className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                    <span className="text-gold-200">{t('courses.unpublish')}</span>
+                    <span className="text-gold-200 text-left flex-1">{t('courses.unpublish')}</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                    <span className="text-gold-200">{t('courses.publish')}</span>
+                    <span className="text-gold-200 text-left flex-1">{t('courses.publish')}</span>
                   </>
                 )}
               </div>
@@ -1881,11 +1881,11 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 text-left">
                 <UserPlus className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                <span className="text-gold-200">{t('courses.enrollStudents')}</span>
+                <span className="text-gold-200 text-left flex-1">{t('courses.enrollStudents')}</span>
               </div>
             </button>
             <button
@@ -1897,11 +1897,11 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 text-left">
                 <Users className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                <span className="text-gold-200">Gerenciar Alunos</span>
+                <span className="text-gold-200 text-left flex-1">Gerenciar Alunos</span>
               </div>
             </button>
             <button
@@ -1914,11 +1914,11 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 text-left">
                 <BookMarked className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                <span className="text-gold-200">Gerenciar Disciplinas</span>
+                <span className="text-gold-200 text-left flex-1">Gerenciar Disciplinas</span>
               </div>
             </button>
             <button
@@ -1931,11 +1931,11 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 text-left">
                 <Upload className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                <span className="text-gold-200">Importar Estrutura (Excel)</span>
+                <span className="text-gold-200 text-left flex-1">Importar Estrutura (Excel)</span>
               </div>
             </button>
             <button
@@ -1948,11 +1948,11 @@ export default function CoursesPage() {
                 setDropdownCourse(null);
                 setDropdownPosition(null);
               }}
-              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors"
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-3 text-left">
                 <FileText className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
-                <span className="text-gold-200">Importar do Google Drive</span>
+                <span className="text-gold-200 text-left flex-1">Importar do Google Drive</span>
               </div>
             </button>
             <div className="border-t border-gold-500/20 mt-2 pt-2">
@@ -1965,11 +1965,11 @@ export default function CoursesPage() {
                   setDropdownCourse(null);
                   setDropdownPosition(null);
                 }}
-                className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors"
+                className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors block"
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 text-left">
                   <Trash2 className="w-4 h-4 mt-0.5 text-red-400 flex-shrink-0" />
-                  <span className="text-red-400">{t('courses.delete')}</span>
+                  <span className="text-red-400 text-left flex-1">{t('courses.delete')}</span>
                 </div>
               </button>
             </div>

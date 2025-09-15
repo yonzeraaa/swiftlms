@@ -721,55 +721,69 @@ export default function UsersPage() {
                         </button>
                         
                         {openDropdown === user.id && (
-                          <div className="dropdown-menu absolute right-0 mt-2 w-48 bg-navy-800 border border-gold-500/20 rounded-lg shadow-lg z-10">
+                          <div className="dropdown-menu absolute right-0 mt-2 w-56 bg-navy-800 border border-gold-500/20 rounded-lg shadow-xl z-10">
                             <button 
                               onClick={() => openEditModal(user)}
-                              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 rounded-t-lg"
+                              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                             >
-                              <Edit className="w-4 h-4" />
-                              {t('users.edit')}
+                              <div className="flex items-start gap-3 text-left">
+                                <Edit className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                                <span className="text-gold-200 text-left flex-1">{t('users.edit')}</span>
+                              </div>
                             </button>
                             {user.role === 'student' && (
                               <Link 
                                 href={`/dashboard/users/${user.id}/grades`}
                                 onClick={() => setOpenDropdown(null)}
-                                className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2 block"
+                                className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                               >
-                                <FileText className="w-4 h-4" />
-                                Ver Notas
+                                <div className="flex items-start gap-3 text-left">
+                                  <FileText className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                                  <span className="text-gold-200 text-left flex-1">Ver Notas</span>
+                                </div>
                               </Link>
                             )}
                             <button 
                               onClick={() => openResetPasswordModal(user)}
-                              className="w-full px-4 py-2 text-left text-gold-200 hover:bg-navy-700 flex items-center gap-2"
+                              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                             >
-                              <Key className="w-4 h-4" />
-                              {t('users.resetPassword')}
+                              <div className="flex items-start gap-3 text-left">
+                                <Key className="w-4 h-4 mt-0.5 text-gold-400 flex-shrink-0" />
+                                <span className="text-gold-200 text-left flex-1">{t('users.resetPassword')}</span>
+                              </div>
                             </button>
                             {user.status === 'frozen' ? (
                               <button 
                                 onClick={() => updateUserStatus(user.id, 'active')}
-                                className="w-full px-4 py-2 text-left text-green-400 hover:bg-navy-700 flex items-center gap-2"
+                                className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                               >
-                                <Play className="w-4 h-4" />
-                                {t('users.unfreeze')}
+                                <div className="flex items-start gap-3 text-left">
+                                  <Play className="w-4 h-4 mt-0.5 text-green-400 flex-shrink-0" />
+                                  <span className="text-green-400 text-left flex-1">{t('users.unfreeze')}</span>
+                                </div>
                               </button>
                             ) : (
                               <button 
                                 onClick={() => updateUserStatus(user.id, 'frozen')}
-                                className="w-full px-4 py-2 text-left text-blue-400 hover:bg-navy-700 flex items-center gap-2"
+                                className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                               >
-                                <Snowflake className="w-4 h-4" />
-                                {t('users.freeze')}
+                                <div className="flex items-start gap-3 text-left">
+                                  <Snowflake className="w-4 h-4 mt-0.5 text-blue-400 flex-shrink-0" />
+                                  <span className="text-blue-400 text-left flex-1">{t('users.freeze')}</span>
+                                </div>
                               </button>
                             )}
-                            <button 
-                              onClick={() => openDeleteModal(user)}
-                              className="w-full px-4 py-2 text-left text-red-400 hover:bg-navy-700 flex items-center gap-2 rounded-b-lg"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              {t('users.delete')}
-                            </button>
+                            <div className="border-t border-gold-500/20 mt-2 pt-2">
+                              <button 
+                                onClick={() => openDeleteModal(user)}
+                                className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors block"
+                              >
+                                <div className="flex items-start gap-3 text-left">
+                                  <Trash2 className="w-4 h-4 mt-0.5 text-red-400 flex-shrink-0" />
+                                  <span className="text-red-400 text-left flex-1">{t('users.delete')}</span>
+                                </div>
+                              </button>
+                            </div>
                           </div>
                         )}
                       </td>
