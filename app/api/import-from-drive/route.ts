@@ -1157,6 +1157,16 @@ async function processImportInBackground(
   }
 }
 
+export const __testables = {
+  FOLDER_MIME_TYPE,
+  ensureName,
+  isTestFile,
+  listFolderContents,
+  parseGoogleDriveFolder,
+  importToDatabase,
+  countDriveFolderItems,
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
