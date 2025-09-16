@@ -32,6 +32,27 @@ interface CertificateRequest {
   processed_at?: string
   notes?: string
   course?: Course
+  certificate_type: 'technical' | 'lato-sensu'
+}
+
+const certificateTypeLabels: Record<'technical' | 'lato-sensu', string> = {
+  technical: 'Certificado Técnico',
+  'lato-sensu': 'Certificado Lato Sensu'
+}
+
+const certificateTypeBadges: Record<'technical' | 'lato-sensu', string> = {
+  technical: 'bg-green-500/20 text-green-300',
+  'lato-sensu': 'bg-purple-500/20 text-purple-200'
+}
+
+function getCertificateTypeLabel(type: string | null | undefined) {
+  if (type === 'lato-sensu') return certificateTypeLabels['lato-sensu']
+  return certificateTypeLabels.technical
+}
+
+function getCertificateBadgeClasses(type: string | null | undefined) {
+  if (type === 'lato-sensu') return certificateTypeBadges['lato-sensu']
+  return certificateTypeBadges.technical
 }
 
 export default function CertificatesPage() {
@@ -162,6 +183,26 @@ export default function CertificatesPage() {
         </Link>
       </div>
 
+      <Card className="bg-navy-900/60 border border-gold-500/20">
+        <div className="flex items-start gap-3">
+          <Shield className="w-6 h-6 text-gold-400 mt-1" />
+          <div className="space-y-1 text-sm text-gold-200">
+            <p>
+              Complete 100% das aulas e alcance a nota mínima nos testes para receber o
+              <span className="font-semibold text-gold"> Certificado Técnico</span> de conclusão.
+            </p>
+            <p>
+              Após a aprovação do <span className="font-semibold text-gold">TCC</span>, você também habilita o
+              <span className="font-semibold text-gold"> Certificado Lato Sensu</span>, comprovando sua pós-graduação.
+            </p>
+            <p className="text-gold-400">
+              Acompanhe abaixo o status individual de cada tipo de certificado e, se necessário,
+              envie seu TCC pelo botão "Enviar TCC".
+            </p>
+          </div>
+        </div>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
@@ -254,14 +295,20 @@ export default function CertificatesPage() {
                   </div>
 
                   {/* Course Title */}
-                  <h3 className="text-lg font-bold text-gold text-left mb-2">
+                  <h3 className="text-lg font-bold text-gold text-left mb-1">
                     {certificate.course.title}
                   </h3>
 
-                  {/* Category */}
-                  <p className="text-sm text-gold-400 text-left mb-4">
-                    {certificate.course.category}
-                  </p>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm text-gold-400 text-left">
+                      {certificate.course.category}
+                    </p>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getCertificateBadgeClasses(certificate.certificate_type)}`}
+                    >
+                      {getCertificateTypeLabel(certificate.certificate_type)}
+                    </span>
+                  </div>
 
                   {/* Details */}
                   <div className="space-y-2 text-sm">
@@ -342,6 +389,11 @@ export default function CertificatesPage() {
                       <p className="text-sm text-gold-400 mb-3">
                         Solicitado em {formatDate(request.request_date)}
                       </p>
+                      <span
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${getCertificateBadgeClasses(request.certificate_type)}`}
+                      >
+                        {getCertificateTypeLabel(request.certificate_type)}
+                      </span>
                       
                       {/* Status */}
                       <div className="flex items-center gap-2">
@@ -433,6 +485,9 @@ export default function CertificatesPage() {
                   <p className="text-gold-300">concluiu com êxito o curso de</p>
                   <p className="text-3xl font-bold bg-gradient-to-r from-gold to-gold-300 bg-clip-text text-transparent">
                     {selectedCertificate.course.title}
+                  </p>
+                  <p className="text-sm uppercase tracking-wider text-gold-400">
+                    {getCertificateTypeLabel(selectedCertificate.certificate_type)}
                   </p>
                   <div className="flex justify-center gap-8 mt-6">
                     <div>
@@ -559,6 +614,15 @@ export default function CertificatesPage() {
                   lineHeight: '1.2'
                 }}>
                   {selectedCertificate.course.title}
+                </p>
+                <p style={{
+                  color: '#FCD34D',
+                  textTransform: 'uppercase',
+                  letterSpacing: '3px',
+                  fontSize: '14px',
+                  marginBottom: '20px'
+                }}>
+                  {getCertificateTypeLabel(selectedCertificate.certificate_type)}
                 </p>
                 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '60px', marginTop: '30px', marginBottom: '30px' }}>

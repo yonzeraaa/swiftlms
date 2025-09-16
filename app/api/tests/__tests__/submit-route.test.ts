@@ -14,6 +14,42 @@ interface SubmitStubOptions {
   totalLessons?: number
   completedLessons?: number
   previousAttempts?: number
+  tccApproved?: boolean
+}
+
+function createMutatingTable(initialRows: any[] = []) {
+  const rows = [...initialRows]
+
+  const createBuilder = () => {
+    let filtered = [...rows]
+    const builder: any = {
+      eq: vi.fn((column: string, value: any) => {
+        filtered = filtered.filter(row => row[column] === value)
+        return builder
+      }),
+      order: vi.fn(() => builder),
+      in: vi.fn(() => builder),
+      then: (resolve: any, reject?: any) =>
+        Promise.resolve({ data: filtered, error: null }).then(resolve, reject),
+      maybeSingle: vi.fn(() => Promise.resolve({ data: filtered[0] ?? null, error: null })),
+      single: vi.fn(() => Promise.resolve({ data: filtered[0] ?? null, error: null }))
+    }
+    return builder
+  }
+
+  return {
+    rows,
+    select: vi.fn(() => createBuilder()),
+    insert: vi.fn((payload: any) => {
+      const record = { id: payload.id ?? `row-${rows.length + 1}`, ...payload }
+      rows.push(record)
+      return {
+        select: () => ({
+          single: vi.fn().mockResolvedValue({ data: record, error: null })
+        })
+      }
+    })
+  }
 }
 
 function buildSubmitSupabaseStub(options: SubmitStubOptions = {}) {
@@ -21,7 +57,8 @@ function buildSubmitSupabaseStub(options: SubmitStubOptions = {}) {
     enrollmentExists = true,
     totalLessons = 2,
     completedLessons = 2,
-    previousAttempts = 0
+    previousAttempts = 0,
+    tccApproved = false
   } = options
 
   const testRecord = {
@@ -114,28 +151,19 @@ function buildSubmitSupabaseStub(options: SubmitStubOptions = {}) {
     }))
   }
 
-  const certificateRequestsTable = {
-    select: vi.fn(() => ({
-      eq: vi.fn(() => ({
-        single: vi.fn().mockResolvedValue({ data: null, error: null })
-      }))
-    })),
-    insert: vi.fn(() => ({
-      select: vi.fn(() => ({
-        single: vi.fn().mockResolvedValue({ data: { id: 'cert-req-1' }, error: null })
-      }))
-    }))
-  }
+  const certificateRequestsTable = createMutatingTable([])
 
-  const certificatesTable = {
-    select: vi.fn(() => ({
-      eq: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({ data: null, error: null })
-        }))
-      }))
-    }))
-  }
+  const certificatesTable = createMutatingTable([])
+
+  const tccSubmissionsTable = createMutatingTable(
+    tccApproved
+      ? [{
+          id: 'tcc-1',
+          enrollment_id: 'enroll-1',
+          status: 'approved'
+        }]
+      : []
+  )
 
   const activityLogsTable = {
     insert: vi.fn().mockResolvedValue({ error: null })
@@ -152,6 +180,7 @@ function buildSubmitSupabaseStub(options: SubmitStubOptions = {}) {
     lesson_progress: lessonProgressTable,
     certificate_requests: certificateRequestsTable,
     certificates: certificatesTable,
+    tcc_submissions: tccSubmissionsTable,
     activity_logs: activityLogsTable
   }
 
@@ -196,10 +225,43 @@ describe('POST /api/tests/[id]/submit', () => {
     expect(payload.success).toBe(true)
     expect(payload.attempt.score).toBe(100)
 
-    expect(certificateRequestsTable.insert).toHaveBeenCalled()
+    expect(certificateRequestsTable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ certificate_type: 'technical' })
+    )
     expect(activityLogsTable.insert).toHaveBeenCalledWith(expect.objectContaining({
       action: expect.stringContaining('certificate')
     }))
+  })
+
+  it('creates lato sensu request when TCC is approved', async () => {
+    const { supabase, certificateRequestsTable, activityLogsTable } = buildSubmitSupabaseStub({ tccApproved: true })
+    createClientMock.mockResolvedValue(supabase as any)
+
+    const request = {
+      json: vi.fn().mockResolvedValue({ answers: { '1': 'A' } })
+    } as any
+
+    const response = await POST(request, { params: Promise.resolve({ id: 'test-1' }) })
+    const payload = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(payload.success).toBe(true)
+    expect(certificateRequestsTable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ certificate_type: 'technical' })
+    )
+    expect(certificateRequestsTable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ certificate_type: 'lato-sensu' })
+    )
+    expect(activityLogsTable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ certificate_type: 'technical' })
+      })
+    )
+    expect(activityLogsTable.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ certificate_type: 'lato-sensu' })
+      })
+    )
   })
 
   it('returns 403 when user is not enrolled in the course', async () => {

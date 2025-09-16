@@ -62,6 +62,7 @@ export type Database = {
           total_lessons: number | null
           updated_at: string | null
           user_id: string
+          certificate_type: string
         }
         Insert: {
           completed_lessons?: number | null
@@ -77,6 +78,7 @@ export type Database = {
           total_lessons?: number | null
           updated_at?: string | null
           user_id: string
+          certificate_type?: string
         }
         Update: {
           completed_lessons?: number | null
@@ -92,6 +94,7 @@ export type Database = {
           total_lessons?: number | null
           updated_at?: string | null
           user_id?: string
+          certificate_type?: string
         }
         Relationships: [
           {
@@ -215,6 +218,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           certificate_number: string
+          certificate_type: string
           course_hours: number | null
           course_id: string
           created_at: string | null
@@ -234,6 +238,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           certificate_number: string
+          certificate_type?: string
           course_hours?: number | null
           course_id: string
           created_at?: string | null
@@ -253,6 +258,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           certificate_number?: string
+          certificate_type?: string
           course_hours?: number | null
           course_id?: string
           created_at?: string | null
@@ -324,6 +330,82 @@ export type Database = {
             referencedRelation: "user_management"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      tcc_submissions: {
+        Row: {
+          id: string
+          user_id: string
+          course_id: string
+          enrollment_id: string
+          title: string
+          description: string | null
+          file_url: string | null
+          status: string | null
+          grade: number | null
+          feedback: string | null
+          submission_date: string | null
+          evaluated_at: string | null
+          evaluated_by: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          course_id: string
+          enrollment_id: string
+          title: string
+          description?: string | null
+          file_url?: string | null
+          status?: string | null
+          grade?: number | null
+          feedback?: string | null
+          submission_date?: string | null
+          evaluated_at?: string | null
+          evaluated_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          course_id?: string
+          enrollment_id?: string
+          title?: string
+          description?: string | null
+          file_url?: string | null
+          status?: string | null
+          grade?: number | null
+          feedback?: string | null
+          submission_date?: string | null
+          evaluated_at?: string | null
+          evaluated_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tcc_submissions_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tcc_submissions_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tcc_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
         ]
       }
       course_modules: {

@@ -139,11 +139,13 @@ export default function TccEvaluationPage() {
           })
 
         if (finalGradeData !== null) {
+          const certificateType = 'lato-sensu' as const
           // Verificar se já existe certificado
           const { data: existingCert } = await supabase
             .from('certificates')
             .select('id')
             .eq('enrollment_id', selectedSubmission.enrollment_id)
+            .eq('certificate_type', certificateType)
             .single()
 
           if (existingCert) {
@@ -155,7 +157,8 @@ export default function TccEvaluationPage() {
                 final_grade: finalGradeData,
                 approval_status: 'approved',
                 approved_at: new Date().toISOString(),
-                approved_by: user.id
+                approved_by: user.id,
+                certificate_type: certificateType
               })
               .eq('id', existingCert.id)
           } else {
@@ -176,7 +179,8 @@ export default function TccEvaluationPage() {
                 grade: finalGradeData,
                 approval_status: 'approved',
                 approved_at: new Date().toISOString(),
-                approved_by: user.id
+                approved_by: user.id,
+                certificate_type: certificateType
               })
           }
         }

@@ -112,11 +112,13 @@ export async function POST(
       )
     }
 
+    const courseIdForCertificate = test.course_id as string
+
     const { data: enrollment } = await supabase
       .from('enrollments')
       .select('id')
       .eq('user_id', user.id)
-      .eq('course_id', test.course_id)
+      .eq('course_id', courseIdForCertificate)
       .single()
 
     if (!enrollment) {
@@ -258,36 +260,61 @@ export async function POST(
 
         console.log(`Verificando elegibilidade para certificado: ${progressPercentage}% progresso, nota: ${score}%`)
 
+        const { data: tccApproved } = await supabase
+          .from('tcc_submissions')
+          .select('id')
+          .eq('enrollment_id', enrollment.id)
+          .eq('status', 'approved')
+          .maybeSingle()
+
+        const hasApprovedTcc = !!tccApproved
+
         // Se completou 100% do curso e passou no teste
         if (progressPercentage >= 100) {
-          // Verificar se já existe solicitação
-          const { data: existingRequest } = await supabase
-            .from('certificate_requests')
-            .select('*')
-            .eq('enrollment_id', enrollment.id)
-            .single()
+          type CertificateType = 'technical' | 'lato-sensu'
 
-          if (!existingRequest) {
-            // Criar solicitação automática de certificado
+          const ensureRequestForType = async (
+            type: CertificateType,
+            note: string
+          ) => {
+            const { data: existingRequest } = await supabase
+              .from('certificate_requests')
+              .select('id')
+              .eq('enrollment_id', enrollment.id)
+              .eq('certificate_type', type)
+              .maybeSingle()
+
+            const { data: existingCertificate } = await supabase
+              .from('certificates')
+              .select('id, approval_status')
+              .eq('enrollment_id', enrollment.id)
+              .eq('certificate_type', type)
+              .eq('approval_status', 'approved')
+              .maybeSingle()
+
+            if (existingRequest || existingCertificate) {
+              return null
+            }
+
             const { data: newRequest, error: requestError } = await supabase
               .from('certificate_requests')
               .insert({
                 enrollment_id: enrollment.id,
                 user_id: user.id,
-                course_id: test.course_id,
+                course_id: courseIdForCertificate,
                 total_lessons: totalCount,
                 completed_lessons: completedCount,
                 status: 'pending',
                 request_date: new Date().toISOString(),
-                notes: `Solicitação automática após aprovação no teste com ${score}%`
+                notes: note,
+                certificate_type: type
               })
               .select()
               .single()
 
             if (newRequest && !requestError) {
-              console.log('Solicitação de certificado criada automaticamente:', newRequest.id)
-              
-              // Registrar atividade
+              console.log(`Solicitação de certificado (${type}) criada automaticamente:`, newRequest.id)
+
               await supabase
                 .from('activity_logs')
                 .insert({
@@ -295,14 +322,27 @@ export async function POST(
                   action: 'certificate_auto_requested',
                   entity_type: 'certificate_request',
                   entity_id: newRequest.id,
-                  entity_name: `Certificado automático após teste`,
+                  entity_name: `Certificado automático (${type === 'lato-sensu' ? 'Lato Sensu' : 'Técnico'})`,
                   metadata: {
                     test_id: testId,
                     test_score: score,
-                    progress: progressPercentage
+                    progress: progressPercentage,
+                    certificate_type: type
                   }
                 })
             }
+          }
+
+          await ensureRequestForType(
+            'technical',
+            `Solicitação automática (técnico) após aprovação no teste com ${score}%`
+          )
+
+          if (hasApprovedTcc) {
+            await ensureRequestForType(
+              'lato-sensu',
+              `Solicitação automática (lato sensu) após aprovação no teste com ${score}% e TCC aprovado`
+            )
           }
         }
       } catch (certError) {

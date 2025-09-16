@@ -97,43 +97,93 @@ export async function POST(request: Request) {
     const minimumProgress = 100 // 100% das lições
     const minimumTestScore = 70 // 70% no teste
     
-    const requirementsMet = 
-      progressPercentage >= minimumProgress && 
+    const requirementsMet =
+      progressPercentage >= minimumProgress &&
       bestTestScore >= minimumTestScore
+
+    // Verificar TCC aprovado
+    const { data: approvedTcc } = await supabase
+      .from('tcc_submissions')
+      .select('id')
+      .eq('enrollment_id', enrollmentId)
+      .eq('status', 'approved')
+      .maybeSingle()
+
+    const hasApprovedTcc = !!approvedTcc
+
+    const eligibleCertificates = {
+      technical: requirementsMet,
+      latoSensu: requirementsMet && hasApprovedTcc
+    }
 
     console.log('Requisitos:', {
       requirementsMet,
       progressCheck: `${progressPercentage}% >= ${minimumProgress}%`,
-      scoreCheck: `${bestTestScore}% >= ${minimumTestScore}%`
+      scoreCheck: `${bestTestScore}% >= ${minimumTestScore}%`,
+      hasApprovedTcc
     })
 
-    // Verificar se já existe solicitação
-    const { data: existingRequest } = await supabase
-      .from('certificate_requests')
-      .select('*')
-      .eq('enrollment_id', enrollmentId)
-      .single()
+    type CertificateType = 'technical' | 'lato-sensu'
 
-    // Verificar se já existe certificado aprovado
-    const { data: existingCertificate } = await supabase
-      .from('certificates')
-      .select('*')
+    const { data: existingRequestsRows } = await supabase
+      .from('certificate_requests')
+      .select('id, status, certificate_type, request_date')
       .eq('enrollment_id', enrollmentId)
-      .eq('approval_status', 'approved')
-      .single()
+
+    const requestRows = existingRequestsRows ?? []
+
+    const requestsByType = requestRows.reduce(
+      (acc, row) => {
+        if (row.certificate_type === 'technical' || row.certificate_type === 'lato-sensu') {
+          acc[row.certificate_type] = row
+        }
+        return acc
+      },
+      {} as Partial<Record<CertificateType, typeof requestRows[number]>>
+    )
+
+    const { data: existingCertificatesRows } = await supabase
+      .from('certificates')
+      .select('id, approval_status, certificate_type, issued_at')
+      .eq('enrollment_id', enrollmentId)
+
+    const certificateRows = existingCertificatesRows ?? []
+
+    const certificatesByType = certificateRows.reduce(
+      (acc, row) => {
+        if (row.certificate_type === 'technical' || row.certificate_type === 'lato-sensu') {
+          acc[row.certificate_type] = row
+        }
+        return acc
+      },
+      {} as Partial<Record<CertificateType, typeof certificateRows[number]>>
+    )
+
+    const technicalRequest = requestsByType.technical
+    const technicalCertificate = certificatesByType.technical && certificatesByType.technical.approval_status === 'approved'
 
     return NextResponse.json({
       eligible: requirementsMet,
       progressPercentage,
       bestTestScore,
-      totalLessons: totalLessons,
+      totalLessons,
       completedLessons: lessonsCompleted,
       requirementsMet,
-      hasExistingRequest: !!existingRequest,
-      requestStatus: existingRequest?.status,
-      hasApprovedCertificate: !!existingCertificate,
       minimumProgress,
-      minimumTestScore
+      minimumTestScore,
+      hasApprovedTcc,
+      eligibleCertificates,
+      requestsByType: {
+        technical: requestsByType.technical || null,
+        latoSensu: requestsByType['lato-sensu'] || null
+      },
+      approvedCertificatesByType: {
+        technical: certificatesByType.technical || null,
+        latoSensu: certificatesByType['lato-sensu'] || null
+      },
+      hasExistingRequest: !!technicalRequest,
+      requestStatus: technicalRequest?.status,
+      hasApprovedCertificate: !!technicalCertificate
     })
   } catch (error) {
     console.error('Erro ao verificar elegibilidade:', error)
@@ -146,8 +196,8 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const { courseId, enrollmentId } = await request.json()
-    
+    const { courseId, enrollmentId, certificateType: rawCertificateType } = await request.json()
+
     if (!courseId || !enrollmentId) {
       return NextResponse.json(
         { error: 'courseId e enrollmentId são obrigatórios' },
@@ -155,9 +205,11 @@ export async function PUT(request: Request) {
       )
     }
 
+    const certificateType: 'technical' | 'lato-sensu' = rawCertificateType === 'lato-sensu' ? 'lato-sensu' : 'technical'
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Não autorizado' },
@@ -174,29 +226,34 @@ export async function PUT(request: Request) {
     const eligibilityResponse = await POST(eligibilityRequest)
     const eligibility = await eligibilityResponse.json()
 
-    if (!eligibility.eligible) {
+    const eligibleKey = certificateType === 'lato-sensu' ? 'latoSensu' : 'technical'
+
+    if (!eligibility.eligibleCertificates?.[eligibleKey]) {
       return NextResponse.json(
         { 
-          error: 'Você ainda não atende aos requisitos para solicitar o certificado',
+          error: 'Você ainda não atende aos requisitos para solicitar este certificado',
           details: eligibility
         },
         { status: 400 }
       )
     }
 
-    if (eligibility.hasExistingRequest) {
+    const existingRequestForType = eligibility.requestsByType?.[certificateType === 'lato-sensu' ? 'latoSensu' : 'technical'] || null
+    const approvedCertificateForType = eligibility.approvedCertificatesByType?.[certificateType === 'lato-sensu' ? 'latoSensu' : 'technical'] || null
+
+    if (existingRequestForType) {
       return NextResponse.json(
         { 
           error: 'Já existe uma solicitação de certificado para este curso',
-          status: eligibility.requestStatus
+          status: existingRequestForType.status
         },
         { status: 400 }
       )
     }
 
-    if (eligibility.hasApprovedCertificate) {
+    if (approvedCertificateForType?.approval_status === 'approved') {
       return NextResponse.json(
-        { error: 'Você já possui um certificado aprovado para este curso' },
+        { error: 'Você já possui um certificado aprovado deste tipo para este curso' },
         { status: 400 }
       )
     }
@@ -209,7 +266,8 @@ export async function PUT(request: Request) {
       total_lessons: eligibility.totalLessons,
       completed_lessons: eligibility.completedLessons,
       status: 'pending',
-      request_date: new Date().toISOString()
+      request_date: new Date().toISOString(),
+      certificate_type: certificateType
     })
 
     const { data: newRequest, error } = await supabase
@@ -221,7 +279,8 @@ export async function PUT(request: Request) {
         total_lessons: eligibility.totalLessons,
         completed_lessons: eligibility.completedLessons,
         status: 'pending',
-        request_date: new Date().toISOString()
+        request_date: new Date().toISOString(),
+        certificate_type: certificateType
       })
       .select()
       .single()
@@ -275,18 +334,20 @@ export async function PUT(request: Request) {
         action: 'certificate_requested',
         entity_type: 'certificate_request',
         entity_id: newRequest.id,
-        entity_name: `Certificado para curso ${courseId}`,
+        entity_name: `Certificado ${certificateType === 'lato-sensu' ? 'Lato Sensu' : 'Técnico'} para curso ${courseId}`,
         metadata: {
           course_id: courseId,
           enrollment_id: enrollmentId,
           progress: eligibility.progressPercentage,
-          test_score: eligibility.bestTestScore
+          test_score: eligibility.bestTestScore,
+          certificate_type: certificateType
         }
       })
 
     return NextResponse.json({
       success: true,
       request: newRequest,
+      certificateType,
       message: 'Solicitação de certificado criada com sucesso. Aguarde a aprovação do administrador.'
     })
   } catch (error) {
