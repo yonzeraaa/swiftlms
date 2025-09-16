@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { drive_v3 } from 'googleapis'
-import { __testables } from '../route'
+import '../route'
 
 const {
   FOLDER_MIME_TYPE,
   parseGoogleDriveFolder,
   importToDatabase,
-} = __testables
+} = (globalThis as any).__IMPORT_FROM_DRIVE_TESTABLES
 
 describe('Google Drive import parsing', () => {
   it('groups lessons and detects tests within the Drive hierarchy', async () => {
