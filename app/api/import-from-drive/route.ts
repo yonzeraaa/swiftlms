@@ -9,6 +9,11 @@ const GOOGLE_FORM_MIME_TYPE = 'application/vnd.google-apps.form'
 
 type DriveClient = drive_v3.Drive
 
+function ensureName(value: string | null | undefined, fallback: string) {
+  const trimmed = value?.trim()
+  return trimmed && trimmed.length > 0 ? trimmed : fallback
+}
+
 function removeDiacritics(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
@@ -365,23 +370,25 @@ async function countDriveFolderItems(
     
     // Para cada módulo, contar disciplinas
     for (const moduleItem of modulesList) {
+      const moduleName = ensureName(moduleItem.name, 'Módulo sem título')
       const subjects = await listFolderContents(
         drive,
         moduleItem.id!,
         `and mimeType = '${FOLDER_MIME_TYPE}'`
       )
       totalSubjects += subjects.length
-      console.log(`  Módulo '${moduleItem.name}': ${subjects.length} disciplinas`)
+      console.log(`  Módulo '${moduleName}': ${subjects.length} disciplinas`)
       
       // Para cada disciplina, contar aulas (TODOS os arquivos, não apenas alguns tipos)
       for (const subject of subjects) {
+        const subjectName = ensureName(subject.name, 'Disciplina sem título')
         const lessons = await listFolderContents(
           drive,
           subject.id!,
           `and mimeType != '${FOLDER_MIME_TYPE}'`
         )
         totalLessons += lessons.length
-        console.log(`    Disciplina '${subject.name}': ${lessons.length} aulas`)
+        console.log(`    Disciplina '${subjectName}': ${lessons.length} aulas`)
         
         // Log dos tipos de arquivo encontrados para debug
         const mimeTypes = lessons.reduce((acc: any, lesson: any) => {
@@ -471,8 +478,9 @@ async function parseGoogleDriveFolder(
       const item = items[moduleIndex]
       
       if (item.mimeType === 'application/vnd.google-apps.folder') {
+        const moduleName = ensureName(item.name, `Módulo ${moduleIndex + 1}`)
         const courseModule = {
-          name: item.name,
+          name: moduleName,
           order: moduleIndex + 1,
           subjects: [] as any[]
         }
@@ -486,7 +494,7 @@ async function parseGoogleDriveFolder(
           processed_subjects: processedSubjects,
           total_lessons: totalLessons,
           processed_lessons: processedLessons,
-          current_item: `Módulo: ${courseModule.name}`,
+          current_item: `Módulo: ${moduleName}`,
           errors: []
         })
 
@@ -498,14 +506,15 @@ async function parseGoogleDriveFolder(
           console.warn(`  Arquivos soltos ignorados em '${courseModule.name}':`, strayFiles.map(file => file.name))
         }
 
-        console.log(`  Módulo '${courseModule.name}': ${subjects.length} disciplinas encontradas`)
+        console.log(`  Módulo '${moduleName}': ${subjects.length} disciplinas encontradas`)
 
         for (let subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
           const subjectItem = subjects[subjectIndex]
           
           if (subjectItem.mimeType === FOLDER_MIME_TYPE) {
+            const subjectName = ensureName(subjectItem.name, `${moduleName} - Disciplina ${subjectIndex + 1}`)
             const subject = {
-              name: subjectItem.name,
+              name: subjectName,
               order: subjectIndex + 1,
               lessons: [] as any[],
               tests: [] as any[]
@@ -520,7 +529,7 @@ async function parseGoogleDriveFolder(
               processed_subjects: processedSubjects,
               total_lessons: totalLessons,
               processed_lessons: processedLessons,
-              current_item: `Disciplina: ${subject.name}`,
+              current_item: `Disciplina: ${subjectName}`,
               errors: []
             })
 
@@ -529,10 +538,13 @@ async function parseGoogleDriveFolder(
             const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
 
             if (nestedFolders.length > 0) {
-              console.warn(`    Pastas aninhadas ignoradas em '${subject.name}':`, nestedFolders.map(folder => folder.name))
+              console.warn(
+                `    Pastas aninhadas ignoradas em '${subjectName}':`,
+                nestedFolders.map(folder => ensureName(folder.name, 'Pasta sem título'))
+              )
             }
 
-            console.log(`    Disciplina '${subject.name}': ${lessons.length} arquivos detectados`)
+            console.log(`    Disciplina '${subjectName}': ${lessons.length} arquivos detectados`)
 
             // Processamento em lotes para evitar timeout
             const BATCH_SIZE = 5 // Processar 5 aulas por vez
@@ -569,22 +581,26 @@ async function parseGoogleDriveFolder(
                 const driveLink = `https://drive.google.com/file/d/${lessonItem.id}/view`
                 const fileExtensions = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
                 const baseName = (lessonItem.name || '').replace(fileExtensions, '')
-                const formattedTitle = formatTitle(baseName)
+                const formattedTitle = formatTitle(baseName || itemName)
                 const isTest = isTestFile(itemName, mimeType)
+
+                let completedLabel: string
 
                 if (isTest) {
                   testOrder += 1
                   const testCode = generateCode('T', testOrder)
+                  const testName = formattedTitle || `Teste ${testOrder}`
                   subject.tests.push({
-                    name: formattedTitle,
+                    name: testName,
                     code: testCode,
                     order: testOrder,
                     contentType: 'test',
                     contentUrl: driveLink,
-                    description: `Teste ${testCode}: ${formattedTitle}`
+                    description: `Teste ${testCode}: ${testName}`
                   })
 
-                  console.log(`      Teste detectado: '${formattedTitle}' (${mimeType})`)
+                  console.log(`      Teste detectado: '${testName}' (${mimeType})`)
+                  completedLabel = `Teste ${testName}`
                 } else {
                   let contentType = 'text'
 
@@ -601,7 +617,9 @@ async function parseGoogleDriveFolder(
 
                   const codeMatch = baseName.match(/^([A-Z0-9]+)[-_ ]+(.+)$/)
                   const lessonCode = codeMatch ? codeMatch[1] : generateCode('A', lessonOrder + 1)
-                  const lessonName = codeMatch ? codeMatch[2].trim() : formattedTitle
+                  const lessonName = codeMatch
+                    ? codeMatch[2].trim()
+                    : formattedTitle || `Aula ${lessonOrder + 1}`
 
                   const lesson: any = {
                     name: lessonName,
@@ -639,6 +657,7 @@ async function parseGoogleDriveFolder(
 
                   subject.lessons.push(lesson)
                   console.log(`      Aula adicionada: '${lesson.name}' (tipo: ${lessonItem.mimeType})`)
+                  completedLabel = lesson.name
                 }
 
                 processedLessons++
@@ -651,7 +670,7 @@ async function parseGoogleDriveFolder(
                   processed_subjects: processedSubjects,
                   total_lessons: totalLessons,
                   processed_lessons: processedLessons,
-                  current_item: `Concluído: ${isTest ? `Teste ${formattedTitle}` : formattedTitle}`,
+                  current_item: `Concluído: ${completedLabel}`,
                   phase: 'processing',
                   errors: []
                 })
