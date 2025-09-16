@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { FileCheck, FileText, Clock, Target, RotateCcw, Award, AlertCircle, ChevronRight, ChevronDown, Search, TrendingUp, Calendar, CheckCircle, PlayCircle, Eye, BookOpen, X } from 'lucide-react'
+import { FileCheck, FileText, Clock, Target, RotateCcw, AlertCircle, ChevronRight, ChevronDown, Search, CheckCircle, Eye, BookOpen, X } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
 import Card from '@/app/components/Card'
 import Button from '@/app/components/Button'
 import EmptyState from '@/app/components/EmptyState'
 import { SkeletonCard } from '@/app/components/Skeleton'
-import { useTranslation } from '@/app/contexts/LanguageContext'
 import Link from 'next/link'
 import Breadcrumbs from '@/app/components/ui/Breadcrumbs'
 
@@ -35,7 +34,6 @@ export default function StudentEvaluationsPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set())
   const supabase = createClient()
-  const { t } = useTranslation()
 
   useEffect(() => {
     loadTests()
