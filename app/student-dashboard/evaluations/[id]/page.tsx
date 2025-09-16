@@ -52,13 +52,13 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
 
       if (testError || !testData) {
         console.error('Erro ao carregar teste:', testError)
-        router.push('/student-dashboard/tests')
+        router.push('/student-dashboard/evaluations')
         return
       }
 
       if (!testData.is_active) {
         alert(t('test.notAvailable'))
-        router.push('/student-dashboard/tests')
+        router.push('/student-dashboard/evaluations')
         return
       }
 
@@ -74,7 +74,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
 
       if (!enrollment) {
         alert(t('test.enrollmentRequired'))
-        router.push('/student-dashboard/tests')
+        router.push('/student-dashboard/evaluations')
         return
       }
 
@@ -93,13 +93,13 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
 
       if (attemptCount >= maxAttempts) {
         // Mostrar resultados da última tentativa
-        router.push(`/student-dashboard/tests/${id}/results`)
+        router.push(`/student-dashboard/evaluations/${id}/results`)
         return
       }
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
-      router.push('/student-dashboard/tests')
+      router.push('/student-dashboard/evaluations')
     } finally {
       setLoading(false)
     }
@@ -145,7 +145,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
       <div className="min-h-screen">
         <div className="mb-6">
           <Link
-            href="/student-dashboard/tests"
+            href="/student-dashboard/evaluations"
             className="inline-flex items-center gap-2 text-gold-300 hover:text-gold transition-colors group"
           >
             <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
@@ -166,7 +166,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
             setAttemptData(null)
             loadTestData()
           }}
-          onExit={() => router.push('/student-dashboard/tests')}
+          onExit={() => router.push('/student-dashboard/evaluations')}
         />
       </div>
     )

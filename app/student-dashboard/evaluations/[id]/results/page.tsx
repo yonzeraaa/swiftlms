@@ -49,7 +49,7 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
         .single()
 
       if (!testData) {
-        router.push('/student-dashboard/tests')
+        router.push('/student-dashboard/evaluations')
         return
       }
 
@@ -73,7 +73,7 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
         setCanRetry(attemptCount < maxAttempts)
       } else {
         // Se não há tentativas, redirecionar para fazer o teste
-        router.push(`/student-dashboard/tests/${id}`)
+        router.push(`/student-dashboard/evaluations/${id}`)
         return
       }
 
@@ -91,7 +91,7 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
 
     } catch (error) {
       console.error('Erro ao carregar resultados:', error)
-      router.push('/student-dashboard/tests')
+      router.push('/student-dashboard/evaluations')
     } finally {
       setLoading(false)
     }
@@ -99,12 +99,12 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
 
   const handleRetry = () => {
     if (test && canRetry) {
-      router.push(`/student-dashboard/tests/${test.id}`)
+      router.push(`/student-dashboard/evaluations/${test.id}`)
     }
   }
 
   const handleExit = () => {
-    router.push('/student-dashboard/tests')
+    router.push('/student-dashboard/evaluations')
   }
 
   if (loading) {
@@ -148,7 +148,7 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
     <div className="min-h-screen">
       <div className="mb-6">
         <Link
-          href="/student-dashboard/tests"
+          href="/student-dashboard/evaluations"
           className="inline-flex items-center gap-2 text-gold-300 hover:text-gold transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" />
