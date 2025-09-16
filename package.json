@@ -9,7 +9,8 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "lint:full": "npm run lint && npm run type-check",
-    "lint:strict": "npm run type-check && npm run lint"
+    "lint:strict": "npm run type-check && npm run lint",
+    "test": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -63,6 +64,9 @@
     "zod": "^4.0.15"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/canvas-confetti": "^1.9.0",
     "@types/html2canvas": "^1.0.0",
     "@types/node": "24.3.1",
@@ -71,6 +75,8 @@
     "@typescript-eslint/parser": "^8.39.0",
     "eslint": "^9.32.0",
     "eslint-config-next": "^15.4.5",
-    "typescript": "5.9.2"
+    "jsdom": "^27.0.0",
+    "typescript": "5.9.2",
+    "vitest": "^3.2.4"
   }
 }

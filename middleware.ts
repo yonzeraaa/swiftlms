@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { productionCSP, developmentCSP, apiCSP, formatCSP } from './app/lib/csp-config'
 import type { Database } from './lib/database.types'
 
-async function ensureUserEnrollmentForPreview(
+export async function ensureUserEnrollmentForPreview(
   supabase: SupabaseClient<Database>,
   userId: string
 ) {
