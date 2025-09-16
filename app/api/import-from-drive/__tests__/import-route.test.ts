@@ -21,7 +21,7 @@ describe('Google Drive import parsing', () => {
       ],
       'subject-1': [
         { id: 'lesson-1', name: 'A01-Introducao.pdf', mimeType: 'application/pdf' },
-        { id: 'test-1', name: 'Prova FINAL.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
+        { id: 'test-1', name: 'Prova FINAL', mimeType: 'application/vnd.google-apps.document' },
       ],
     }
 
@@ -35,6 +35,14 @@ describe('Google Drive import parsing', () => {
               files: parentId ? filesByParent[parentId] ?? [] : [],
             },
           }
+        }) as any,
+        export: vi.fn(async ({ fileId, mimeType }: { fileId: string; mimeType: string }) => {
+          if (fileId === 'test-1' && mimeType === 'text/plain') {
+            return {
+              data: 'Gabarito\n1. A\n',
+            }
+          }
+          return { data: '' }
         }) as any,
       },
     }
@@ -65,6 +73,9 @@ describe('Google Drive import parsing', () => {
       contentType: 'test',
       contentUrl: 'https://drive.google.com/file/d/test-1/view',
     })
+    expect(subject.tests[0].answerKey).toEqual([
+      { questionNumber: 1, correctAnswer: 'A', points: 10 }
+    ])
   })
 })
 
@@ -77,6 +88,7 @@ describe('Database import orchestration', () => {
       moduleSubjects: [] as any[],
       subjectLessons: [] as any[],
       tests: [] as any[],
+      testAnswerKeys: [] as any[],
     }
 
     let moduleCounter = 0
@@ -205,8 +217,8 @@ describe('Database import orchestration', () => {
           }
         }
 
-       if (table === 'tests') {
-         return {
+        if (table === 'tests') {
+          return {
             select: () => {
               const builder: any = {
                 eq: () => builder,
@@ -215,11 +227,25 @@ describe('Database import orchestration', () => {
 
               return builder
             },
-            insert: async (payload: any) => {
-              inserts.tests.push(payload)
+            insert: (payload: any) => {
+              const newTest = { ...payload, id: `test-${inserts.tests.length + 1}` }
+              inserts.tests.push(newTest)
+              return {
+                select: () => ({
+                  single: async () => ({ data: newTest, error: null })
+                })
+              }
+            },
+          }
+        }
+
+        if (table === 'test_answer_keys') {
+          return {
+            insert: async (payload: any[]) => {
+              inserts.testAnswerKeys.push(...payload)
               return { error: null }
             },
-         }
+          }
         }
 
         throw new Error(`Unexpected table access: ${table}`)
@@ -259,6 +285,10 @@ describe('Database import orchestration', () => {
                   contentType: 'test',
                   contentUrl: 'https://drive/url/test-1',
                   description: 'Teste importado',
+                  answerKey: [
+                    { questionNumber: 1, correctAnswer: 'A', points: 10 }
+                  ],
+                  requiresManualAnswerKey: false,
                 },
               ],
             },
@@ -295,6 +325,10 @@ describe('Database import orchestration', () => {
       title: 'T01 - Prova FINAL',
       course_id: 'course-1',
       google_drive_url: 'https://drive/url/test-1',
+      is_active: true,
     })
+    expect(inserts.testAnswerKeys).toEqual([
+      { test_id: inserts.tests[0].id, question_number: 1, correct_answer: 'A', points: 10 }
+    ])
   })
 })

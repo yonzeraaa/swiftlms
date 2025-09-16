@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google, type drive_v3 } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
+import { parseAnswerKeyFromText, type ParsedAnswerKeyEntry } from '../tests/utils/answer-key'
 import path from 'path'
 import fs from 'fs'
 
@@ -324,6 +325,8 @@ interface CourseStructure {
         contentType: string
         contentUrl: string
         description?: string
+        answerKey?: ParsedAnswerKeyEntry[]
+        requiresManualAnswerKey?: boolean
       }[]
     }[]
   }[]
@@ -590,16 +593,42 @@ async function parseGoogleDriveFolder(
                   testOrder += 1
                   const testCode = generateCode('T', testOrder)
                   const testName = formattedTitle || `Teste ${testOrder}`
+
+                  let extractedAnswerKey: ParsedAnswerKeyEntry[] | undefined
+                  let requiresManualAnswerKey = true
+
+                  if (lessonItem.mimeType === 'application/vnd.google-apps.document') {
+                    try {
+                      console.log(`        Tentando extrair gabarito do Google Docs: ${itemName}`)
+                      const exported = await drive.files.export({
+                        fileId: lessonItem.id!,
+                        mimeType: 'text/plain'
+                      })
+                      const rawContent = typeof exported.data === 'string' ? exported.data : ''
+                      if (rawContent.trim().length > 0) {
+                        const parsed = parseAnswerKeyFromText(rawContent)
+                        if (parsed.length > 0) {
+                          extractedAnswerKey = parsed
+                          requiresManualAnswerKey = false
+                        }
+                      }
+                    } catch (answerKeyError) {
+                      console.warn(`        Não foi possível extrair gabarito automático para ${itemName}:`, answerKeyError)
+                    }
+                  }
+
                   subject.tests.push({
                     name: testName,
                     code: testCode,
                     order: testOrder,
                     contentType: 'test',
                     contentUrl: driveLink,
-                    description: `Teste ${testCode}: ${testName}`
+                    description: `Teste ${testCode}: ${testName}`,
+                    answerKey: extractedAnswerKey,
+                    requiresManualAnswerKey
                   })
 
-                  console.log(`      Teste detectado: '${testName}' (${mimeType})`)
+                  console.log(`      Teste detectado: '${testName}' (${mimeType}) - gabarito automático: ${extractedAnswerKey?.length || 0}`)
                   completedLabel = `Teste ${testName}`
                 } else {
                   let contentType = 'text'
@@ -1015,7 +1044,9 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
             continue
           }
 
-          const { error: testError } = await supabase
+          const hasAnswerKey = Array.isArray(testData.answerKey) && testData.answerKey.length > 0
+
+          const { data: newTest, error: testError } = await supabase
             .from('tests')
             .insert({
               title: testTitle,
@@ -1024,15 +1055,40 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
               module_id: createdModule.id,
               subject_id: subjectId,
               google_drive_url: testData.contentUrl,
-              is_active: true,
+              is_active: hasAnswerKey,
               max_attempts: 3,
               passing_score: 70,
               duration_minutes: 60
             })
+            .select()
+            .single()
 
-          if (testError) {
-            results.errors.push(`Erro ao criar teste ${testTitle}: ${testError.message}`)
+          if (testError || !newTest) {
+            results.errors.push(`Erro ao criar teste ${testTitle}: ${testError?.message ?? 'falha desconhecida'}`)
             continue
+          }
+
+          if (hasAnswerKey && testData.answerKey) {
+            const answerKeyRows = testData.answerKey
+              .filter(entry => Number.isFinite(entry.questionNumber) && entry.correctAnswer)
+              .map(entry => ({
+                test_id: newTest.id,
+                question_number: entry.questionNumber,
+                correct_answer: entry.correctAnswer,
+                points: entry.points ?? 10
+              }))
+
+            if (answerKeyRows.length > 0) {
+              const { error: answerKeyError } = await supabase
+                .from('test_answer_keys')
+                .insert(answerKeyRows)
+
+              if (answerKeyError) {
+                results.errors.push(`Erro ao salvar gabarito para teste ${testTitle}: ${answerKeyError.message}`)
+              }
+            }
+          } else if (testData.requiresManualAnswerKey) {
+            results.errors.push(`Teste ${testTitle} importado sem gabarito detectado automaticamente. Configure o gabarito manualmente e ative o teste quando estiver pronto.`)
           }
 
           results.tests++
