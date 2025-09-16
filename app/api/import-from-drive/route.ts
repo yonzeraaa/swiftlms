@@ -1,8 +1,65 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { google } from 'googleapis'
+import { google, type drive_v3 } from 'googleapis'
 import { createClient } from '@/lib/supabase/server'
 import path from 'path'
 import fs from 'fs'
+
+const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
+const GOOGLE_FORM_MIME_TYPE = 'application/vnd.google-apps.form'
+
+type DriveClient = drive_v3.Drive
+
+function removeDiacritics(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+function normalizeForMatching(value: string) {
+  return removeDiacritics(value).toLowerCase()
+}
+
+async function listFolderContents(
+  drive: DriveClient,
+  folderId: string,
+  querySuffix: string
+) {
+  const files: drive_v3.Schema$File[] = []
+  let pageToken: string | undefined
+
+  do {
+    const response = await drive.files.list({
+      q: `'${folderId}' in parents and trashed = false ${querySuffix}`,
+      fields: 'nextPageToken, files(id, name, mimeType)',
+      pageSize: 1000,
+      orderBy: 'name',
+      pageToken
+    })
+
+    if (response.data.files) {
+      files.push(...response.data.files)
+    }
+
+    pageToken = response.data.nextPageToken ?? undefined
+  } while (pageToken)
+
+  return files
+}
+
+function isTestFile(name: string, mimeType: string) {
+  const normalized = normalizeForMatching(name)
+  const testKeywords = ['teste', 'test', 'prova', 'avaliacao', 'simulado']
+  const hasKeyword = testKeywords.some(keyword => normalized.includes(keyword))
+  const isForm = mimeType.toLowerCase() === GOOGLE_FORM_MIME_TYPE
+
+  return hasKeyword || isForm
+}
+
+function formatTitle(rawName: string) {
+  return rawName.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function generateCode(prefix: string, index: number) {
+  return `${prefix}${String(index).padStart(2, '0')}`
+}
 
 // Função para atualizar progresso no Supabase
 async function updateImportProgress(supabase: any, importId: string, userId: string, courseId: string, progress: any) {
@@ -31,7 +88,7 @@ async function updateImportProgress(supabase: any, importId: string, userId: str
       } else {
         console.log('[PROGRESS] Progresso atualizado com sucesso:', {
           percentage: progress.percentage,
-          processed: `${progress.processed_modules}/${progress.total_modules} módulos, ${progress.processed_subjects}/${progress.total_subjects} disciplinas, ${progress.processed_lessons}/${progress.total_lessons} aulas`
+          processed: `${progress.processed_modules}/${progress.total_modules} módulos, ${progress.processed_subjects}/${progress.total_subjects} disciplinas, ${progress.processed_lessons}/${progress.total_lessons} aulas/testes`
         })
       }
     } else {
@@ -63,7 +120,7 @@ async function updateImportProgress(supabase: any, importId: string, userId: str
   }
 }
 
-async function authenticateGoogleDrive() {
+async function authenticateGoogleDrive(): Promise<DriveClient> {
   console.log('[GOOGLE_AUTH] Iniciando autenticação Google Drive...')
   console.log('[GOOGLE_AUTH] Ambiente:', process.env.NODE_ENV)
   console.log('[GOOGLE_AUTH] GOOGLE_SERVICE_ACCOUNT_KEY existe?', !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY)
@@ -255,6 +312,14 @@ interface CourseStructure {
         description?: string
         questions?: any[]
       }[]
+      tests: {
+        name: string
+        code?: string
+        order: number
+        contentType: string
+        contentUrl: string
+        description?: string
+      }[]
     }[]
   }[]
 }
@@ -280,44 +345,41 @@ function extractDriveFolderId(url: string): string | null {
 }
 
 // Função para contar todos os itens antes de processar
-async function countDriveFolderItems(drive: any, folderId: string): Promise<{totalModules: number, totalSubjects: number, totalLessons: number}> {
+async function countDriveFolderItems(
+  drive: DriveClient,
+  folderId: string
+): Promise<{ totalModules: number; totalSubjects: number; totalLessons: number }> {
   let totalModules = 0
   let totalSubjects = 0
   let totalLessons = 0
   
   try {
     // Listar módulos (pastas de primeiro nível)
-    const modulesResponse = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'`,
-      fields: 'files(id, name)',
-      pageSize: 1000
-    })
-    
-    const modulesList = modulesResponse.data.files || []
+    const modulesList = await listFolderContents(
+      drive,
+      folderId,
+      `and mimeType = '${FOLDER_MIME_TYPE}'`
+    )
     totalModules = modulesList.length
     console.log(`Contando: ${totalModules} módulos encontrados`)
     
     // Para cada módulo, contar disciplinas
     for (const moduleItem of modulesList) {
-      const subjectsResponse = await drive.files.list({
-        q: `'${moduleItem.id}' in parents and trashed = false and mimeType = 'application/vnd.google-apps.folder'`,
-        fields: 'files(id, name)',
-        pageSize: 1000
-      })
-      
-      const subjects = subjectsResponse.data.files || []
+      const subjects = await listFolderContents(
+        drive,
+        moduleItem.id!,
+        `and mimeType = '${FOLDER_MIME_TYPE}'`
+      )
       totalSubjects += subjects.length
       console.log(`  Módulo '${moduleItem.name}': ${subjects.length} disciplinas`)
       
       // Para cada disciplina, contar aulas (TODOS os arquivos, não apenas alguns tipos)
       for (const subject of subjects) {
-        const lessonsResponse = await drive.files.list({
-          q: `'${subject.id}' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'`,
-          fields: 'files(id, name, mimeType)',
-          pageSize: 1000
-        })
-        
-        const lessons = lessonsResponse.data.files || []
+        const lessons = await listFolderContents(
+          drive,
+          subject.id!,
+          `and mimeType != '${FOLDER_MIME_TYPE}'`
+        )
         totalLessons += lessons.length
         console.log(`    Disciplina '${subject.name}': ${lessons.length} aulas`)
         
@@ -340,7 +402,15 @@ async function countDriveFolderItems(drive: any, folderId: string): Promise<{tot
   }
 }
 
-async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: string, totals?: {totalModules: number, totalSubjects: number, totalLessons: number}, supabase?: any, userId?: string, courseId?: string): Promise<CourseStructure> {
+async function parseGoogleDriveFolder(
+  drive: DriveClient,
+  folderId: string,
+  importId?: string,
+  totals?: { totalModules: number; totalSubjects: number; totalLessons: number },
+  supabase?: any,
+  userId?: string,
+  courseId?: string
+): Promise<CourseStructure> {
   const structure: CourseStructure = { modules: [] }
   
   // Usar totais pré-calculados se fornecidos, senão inicializar com zero
@@ -369,20 +439,17 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
   }
 
   try {
-    // Listar todos os arquivos e pastas dentro da pasta principal
-    const response = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false`,
-      fields: 'files(id, name, mimeType)',
-      orderBy: 'name'
-    })
+    const items = await listFolderContents(
+      drive,
+      folderId,
+      `and mimeType = '${FOLDER_MIME_TYPE}'`
+    )
 
-    const items = response.data.files || []
-    console.log(`Processando ${items.length} itens na pasta principal`)
+    console.log(`Processando ${items.length} módulos na pasta principal`)
     
-    // Se não temos totais pré-calculados, contar agora (fallback)
     if (!totals) {
       console.log('Aviso: Totais não fornecidos, contando durante processamento...')
-      totalModules = items.filter((i: any) => i.mimeType === 'application/vnd.google-apps.folder').length
+      totalModules = items.length
     }
     
     // Atualizar progresso inicial
@@ -423,24 +490,25 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
           errors: []
         })
 
-        // Listar disciplinas dentro do módulo
-        const subjectsResponse = await drive.files.list({
-          q: `'${item.id}' in parents and trashed = false`,
-          fields: 'files(id, name, mimeType)',
-          orderBy: 'name'
-        })
+        const subjectCandidates = await listFolderContents(drive, item.id!, '')
+        const subjects = subjectCandidates.filter(candidate => candidate.mimeType === FOLDER_MIME_TYPE)
+        const strayFiles = subjectCandidates.filter(candidate => candidate.mimeType !== FOLDER_MIME_TYPE)
 
-        const subjects = subjectsResponse.data.files || []
+        if (strayFiles.length > 0) {
+          console.warn(`  Arquivos soltos ignorados em '${courseModule.name}':`, strayFiles.map(file => file.name))
+        }
+
         console.log(`  Módulo '${courseModule.name}': ${subjects.length} disciplinas encontradas`)
 
         for (let subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
           const subjectItem = subjects[subjectIndex]
           
-          if (subjectItem.mimeType === 'application/vnd.google-apps.folder') {
+          if (subjectItem.mimeType === FOLDER_MIME_TYPE) {
             const subject = {
               name: subjectItem.name,
               order: subjectIndex + 1,
-              lessons: [] as any[]
+              lessons: [] as any[],
+              tests: [] as any[]
             }
             
             // Atualizar progresso ANTES de processar a disciplina
@@ -456,22 +524,23 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               errors: []
             })
 
-            // Listar aulas dentro da disciplina
-            const lessonsResponse = await drive.files.list({
-              q: `'${subjectItem.id}' in parents and trashed = false`,
-              fields: 'files(id, name, mimeType)',
-              orderBy: 'name'
-            })
+            const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
+            const lessons = subjectAssets.filter(asset => asset.mimeType !== FOLDER_MIME_TYPE)
+            const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
 
-            const lessons = lessonsResponse.data.files || []
-            console.log(`    Disciplina '${subject.name}': ${lessons.length} arquivos/pastas encontrados`)
+            if (nestedFolders.length > 0) {
+              console.warn(`    Pastas aninhadas ignoradas em '${subject.name}':`, nestedFolders.map(folder => folder.name))
+            }
+
+            console.log(`    Disciplina '${subject.name}': ${lessons.length} arquivos detectados`)
 
             // Processamento em lotes para evitar timeout
             const BATCH_SIZE = 5 // Processar 5 aulas por vez
             const DELAY_BETWEEN_BATCHES = 100 // 100ms de delay entre lotes
             
-            let actualLessonIndex = 0
-            const validLessons = lessons.filter((item: any) => item.mimeType !== 'application/vnd.google-apps.folder')
+            let lessonOrder = 0
+            let testOrder = 0
+            const validLessons = lessons
             
             // Processar aulas em lotes
             for (let batchStart = 0; batchStart < validLessons.length; batchStart += BATCH_SIZE) {
@@ -481,112 +550,108 @@ async function parseGoogleDriveFolder(drive: any, folderId: string, importId?: s
               
               // Processar aulas do lote
               for (const lessonItem of batch) {
-                console.log(`      Processando arquivo: ${lessonItem.name} (${lessonItem.mimeType})`)
-                
-                // Atualizar progresso ANTES de processar a aula
+                const itemName = lessonItem.name || 'Arquivo sem nome'
+                console.log(`      Processando arquivo: ${itemName} (${lessonItem.mimeType})`)
+
                 await updateProgress({
-                  current_step: `Processando aula ${processedLessons + 1}/${totalLessons}`,
+                  current_step: `Processando item ${processedLessons + 1}/${totalLessons}`,
                   total_modules: totalModules,
                   processed_modules: processedModules,
                   total_subjects: totalSubjects,
                   processed_subjects: processedSubjects,
                   total_lessons: totalLessons,
                   processed_lessons: processedLessons,
-                  current_item: `Aula: ${lessonItem.name}`,
+                  current_item: `Arquivo: ${itemName}`,
                   errors: []
                 })
-                
-                // Determinar tipo de conteúdo baseado no mimeType
-                let contentType = 'text' // Padrão para a maioria dos arquivos
-                const mimeType = lessonItem.mimeType.toLowerCase()
-                
-                // Arquivos de vídeo
-                if (mimeType.includes('video') || 
-                    mimeType === 'video/mp4' || 
-                    mimeType === 'video/mpeg' || 
-                    mimeType === 'video/quicktime' || 
-                    mimeType === 'video/x-msvideo' ||
-                    mimeType === 'application/vnd.google-apps.video') {
-                  contentType = 'video'
-                }
-                
-                console.log(`        Tipo detectado: ${contentType} para ${lessonItem.name} (${mimeType})`)
-                
-                // Gerar link do Google Drive para o arquivo
+
+                const mimeType = (lessonItem.mimeType || '').toLowerCase()
                 const driveLink = `https://drive.google.com/file/d/${lessonItem.id}/view`
-                
-                // Lista expandida de extensões de arquivo
                 const fileExtensions = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
-                
-                // Extrair código e nome da aula (formato: "AULA01-Nome da Aula" ou "A01-Nome")
-                const lessonFileName = lessonItem.name.replace(fileExtensions, '')
-                const lessonCodeMatch = lessonFileName.match(/^([A-Z0-9]+)-(.+)$/)
-                
-                let lessonCode: string
-                let lessonName: string
-                
-                if (lessonCodeMatch) {
-                  lessonCode = lessonCodeMatch[1]
-                  lessonName = lessonCodeMatch[2].trim()
+                const baseName = (lessonItem.name || '').replace(fileExtensions, '')
+                const formattedTitle = formatTitle(baseName)
+                const isTest = isTestFile(itemName, mimeType)
+
+                if (isTest) {
+                  testOrder += 1
+                  const testCode = generateCode('T', testOrder)
+                  subject.tests.push({
+                    name: formattedTitle,
+                    code: testCode,
+                    order: testOrder,
+                    contentType: 'test',
+                    contentUrl: driveLink,
+                    description: `Teste ${testCode}: ${formattedTitle}`
+                  })
+
+                  console.log(`      Teste detectado: '${formattedTitle}' (${mimeType})`)
                 } else {
-                  // Se não seguir o padrão, gerar código automático
-                  lessonCode = `A${String(actualLessonIndex + 1).padStart(2, '0')}`
-                  lessonName = lessonFileName
-                }
-                
-                const lesson: any = {
-                  name: lessonName,
-                  code: lessonCode,
-                  order: actualLessonIndex + 1,
-                  content: undefined as string | undefined,
-                  contentType: contentType,
-                  contentUrl: driveLink,
-                  description: `Aula ${lessonCode}: ${lessonName}`
-                }
-                actualLessonIndex++
+                  let contentType = 'text'
 
-                // Download de conteúdo otimizado (apenas para tipos específicos)
-                try {
-                  if (lessonItem.mimeType === 'application/vnd.google-apps.document') {
-                    // Google Docs - apenas arquivos pequenos
-                    console.log(`        Baixando conteúdo do Google Docs: ${lessonItem.name}`)
-                    const content = await drive.files.export({
-                      fileId: lessonItem.id,
-                      mimeType: 'text/plain'
-                    })
-                    lesson.content = content.data as string
-                  } else if (lessonItem.mimeType === 'application/vnd.google-apps.presentation') {
-                    // Google Slides - exportar como texto (resumido)
-                    console.log(`        Baixando conteúdo do Google Slides: ${lessonItem.name}`)
-                    const content = await drive.files.export({
-                      fileId: lessonItem.id,
-                      mimeType: 'text/plain'
-                    })
-                    lesson.content = content.data as string
-                  } else {
-                    // Para outros tipos, apenas registrar referência (não baixar conteúdo)
-                    lesson.content = `[Arquivo referenciado: ${lessonItem.name}]`
+                  if (
+                    mimeType.includes('video') ||
+                    mimeType === 'video/mp4' ||
+                    mimeType === 'video/mpeg' ||
+                    mimeType === 'video/quicktime' ||
+                    mimeType === 'video/x-msvideo' ||
+                    mimeType === 'application/vnd.google-apps.video'
+                  ) {
+                    contentType = 'video'
                   }
-                } catch (error) {
-                  console.log(`      Erro ao baixar conteúdo de ${lessonItem.name}, usando referência apenas`)
-                  lesson.content = `[Arquivo: ${lessonItem.name}]`
+
+                  const codeMatch = baseName.match(/^([A-Z0-9]+)[-_ ]+(.+)$/)
+                  const lessonCode = codeMatch ? codeMatch[1] : generateCode('A', lessonOrder + 1)
+                  const lessonName = codeMatch ? codeMatch[2].trim() : formattedTitle
+
+                  const lesson: any = {
+                    name: lessonName,
+                    code: lessonCode,
+                    order: lessonOrder + 1,
+                    content: undefined as string | undefined,
+                    contentType,
+                    contentUrl: driveLink,
+                    description: `Aula ${lessonCode}: ${lessonName}`
+                  }
+                  lessonOrder += 1
+
+                  try {
+                    if (mimeType === 'application/vnd.google-apps.document') {
+                      console.log(`        Baixando conteúdo do Google Docs: ${itemName}`)
+                      const content = await drive.files.export({
+                        fileId: lessonItem.id!,
+                        mimeType: 'text/plain'
+                      })
+                      lesson.content = content.data as string
+                    } else if (mimeType === 'application/vnd.google-apps.presentation') {
+                      console.log(`        Baixando conteúdo do Google Slides: ${itemName}`)
+                      const content = await drive.files.export({
+                        fileId: lessonItem.id!,
+                        mimeType: 'text/plain'
+                      })
+                      lesson.content = content.data as string
+                    } else {
+                      lesson.content = `[Arquivo referenciado: ${itemName}]`
+                    }
+                  } catch (error) {
+                    console.log(`      Erro ao baixar conteúdo de ${itemName}, usando referência apenas`)
+                    lesson.content = `[Arquivo: ${itemName}]`
+                  }
+
+                  subject.lessons.push(lesson)
+                  console.log(`      Aula adicionada: '${lesson.name}' (tipo: ${lessonItem.mimeType})`)
                 }
 
-                // Adicionar aula à lista
-                subject.lessons.push(lesson)
-                console.log(`      Aula adicionada: '${lesson.name}' (tipo: ${lessonItem.mimeType})`)
                 processedLessons++
-                
-                // Atualizar progresso APÓS processar a aula
+
                 await updateProgress({
-                  current_step: `Aula ${processedLessons}/${totalLessons} processada`,
+                  current_step: `Item ${processedLessons}/${totalLessons} processado`,
                   total_modules: totalModules,
                   processed_modules: processedModules,
                   total_subjects: totalSubjects,
                   processed_subjects: processedSubjects,
                   total_lessons: totalLessons,
                   processed_lessons: processedLessons,
-                  current_item: `Concluído: ${lesson.name}`,
+                  current_item: `Concluído: ${isTest ? `Teste ${formattedTitle}` : formattedTitle}`,
                   phase: 'processing',
                   errors: []
                 })
@@ -651,10 +716,12 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
     modules: 0,
     subjects: 0,
     lessons: 0,
+    tests: 0,
     skipped: {
       modules: 0,
       subjects: 0,
-      lessons: 0
+      lessons: 0,
+      tests: 0
     },
     errors: [] as string[]
   }
@@ -894,6 +961,63 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
           
           results.lessons++
         }
+
+        // Processar testes detectados na disciplina
+        const subjectTests = subjectData.tests || []
+        if (subjectTests.length > 0) {
+          console.log(`Processando ${subjectTests.length} testes para disciplina ${subjectData.name}`)
+        }
+
+        for (let testIdx = 0; testIdx < subjectTests.length; testIdx++) {
+          const testData = subjectTests[testIdx]
+          const testTitle = testData.code ? `${testData.code} - ${testData.name}` : testData.name
+
+          await updateDatabaseProgress(
+            `Salvando teste ${testIdx + 1}/${subjectTests.length}`,
+            `Teste: ${testTitle}`
+          )
+
+          if (!testData.contentUrl) {
+            results.skipped.tests++
+            results.errors.push(`Teste ${testTitle} ignorado: link do Drive ausente`)
+            continue
+          }
+
+          const { data: existingTest } = await supabase
+            .from('tests')
+            .select('id')
+            .eq('course_id', courseId)
+            .eq('google_drive_url', testData.contentUrl)
+            .maybeSingle()
+
+          if (existingTest) {
+            console.log(`Teste já existente para URL ${testData.contentUrl}, pulando criação...`)
+            results.skipped.tests++
+            continue
+          }
+
+          const { error: testError } = await supabase
+            .from('tests')
+            .insert({
+              title: testTitle,
+              description: testData.description || `Teste importado automaticamente (${testTitle})`,
+              course_id: courseId,
+              module_id: createdModule.id,
+              subject_id: subjectId,
+              google_drive_url: testData.contentUrl,
+              is_active: true,
+              max_attempts: 3,
+              passing_score: 70,
+              duration_minutes: 60
+            })
+
+          if (testError) {
+            results.errors.push(`Erro ao criar teste ${testTitle}: ${testError.message}`)
+            continue
+          }
+
+          results.tests++
+        }
       } // Fim do loop de subjects
     } // Fim do loop de modules
     
@@ -960,22 +1084,32 @@ async function processImportInBackground(
     const results = await importToDatabase(structure, courseId, supabase, importId, userId)
 
     // Atualizar progresso final
-    const totalImported = results.modules + results.subjects + results.lessons
-    const totalSkipped = results.skipped.modules + results.skipped.subjects + results.skipped.lessons
+    const totalImported = results.modules + results.subjects + results.lessons + results.tests
+    const totalSkipped =
+      results.skipped.modules +
+      results.skipped.subjects +
+      results.skipped.lessons +
+      results.skipped.tests
     
-    let summaryMessage = `${results.modules} módulos, ${results.subjects} disciplinas, ${results.lessons} aulas importados`
+    let summaryMessage = `${results.modules} módulos, ${results.subjects} disciplinas, ${results.lessons} aulas e ${results.tests} testes importados`
     if (totalSkipped > 0) {
       summaryMessage += ` (${totalSkipped} itens já existiam e foram pulados)`
     }
     
+    const totalLessonLikeItems =
+      results.lessons +
+      results.tests +
+      results.skipped.lessons +
+      results.skipped.tests
+
     await updateImportProgress(supabase, importId, userId, courseId, {
       current_step: 'Importação concluída',
       total_modules: results.modules + results.skipped.modules,
       processed_modules: results.modules + results.skipped.modules,
       total_subjects: results.subjects + results.skipped.subjects,
       processed_subjects: results.subjects + results.skipped.subjects,
-      total_lessons: results.lessons + results.skipped.lessons,
-      processed_lessons: results.lessons + results.skipped.lessons,
+      total_lessons: totalLessonLikeItems,
+      processed_lessons: totalLessonLikeItems,
       current_item: summaryMessage,
       errors: results.errors,
       completed: true,

@@ -162,6 +162,7 @@ async function listFolderContents(folderId: string) {
 2. Implementar a lógica de parsing da estrutura de pastas
 3. Adicionar tratamento de erros robusto
 4. Implementar cache para evitar requisições desnecessárias
+5. Nomeie arquivos de avaliação contendo a palavra "TESTE" (ou "Prova"/"Avaliação") para que sejam detectados como testes e criados automaticamente na tabela `tests`. Os demais arquivos serão importados como aulas.
 
 ## Referências
 
