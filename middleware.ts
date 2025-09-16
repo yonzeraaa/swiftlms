@@ -1,6 +1,67 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import { productionCSP, developmentCSP, apiCSP, formatCSP } from './app/lib/csp-config'
+import type { Database } from './lib/database.types'
+
+async function ensureUserEnrollmentForPreview(
+  supabase: SupabaseClient<Database>,
+  userId: string
+) {
+  try {
+    const { data: courses, error: coursesError } = await supabase
+      .from('courses')
+      .select('id')
+
+    if (coursesError) {
+      console.error('[MIDDLEWARE] Failed to load courses for preview enrollment:', coursesError)
+      return
+    }
+
+    if (!courses || courses.length === 0) {
+      return
+    }
+
+    const { data: enrollments, error: enrollmentsError } = await supabase
+      .from('enrollments')
+      .select('course_id')
+      .eq('user_id', userId)
+
+    if (enrollmentsError) {
+      console.error('[MIDDLEWARE] Failed to load admin enrollments:', enrollmentsError)
+      return
+    }
+
+    const enrolledCourseIds = new Set((enrollments || []).map(({ course_id }) => course_id))
+
+    const coursesToEnroll = courses.filter(
+      (course): course is { id: string } => !!course.id && !enrolledCourseIds.has(course.id)
+    )
+
+    if (coursesToEnroll.length === 0) {
+      return
+    }
+
+    const now = new Date().toISOString()
+    const newEnrollments = coursesToEnroll.map(course => ({
+      user_id: userId,
+      course_id: course.id,
+      status: 'active',
+      progress_percentage: 0,
+      enrolled_at: now,
+    }))
+
+    const { error: insertError } = await supabase
+      .from('enrollments')
+      .insert(newEnrollments)
+
+    if (insertError) {
+      console.error('[MIDDLEWARE] Failed to auto-enroll admin for preview:', insertError)
+    }
+  } catch (error) {
+    console.error('[MIDDLEWARE] Unexpected error ensuring preview enrollment:', error)
+  }
+}
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -240,9 +301,13 @@ export async function middleware(request: NextRequest) {
       .eq('id', session.user.id)
       .single()
     
-    // Students and Admins can access freely
-    if (profile?.role === 'student' || profile?.role === 'admin') {
-      // Allow access without restrictions
+    // Students can access freely
+    if (profile?.role === 'student') {
+      return response
+    }
+
+    if (profile?.role === 'admin') {
+      await ensureUserEnrollmentForPreview(supabase, session.user.id)
       return response
     }
     
@@ -276,7 +341,8 @@ export async function middleware(request: NextRequest) {
       
       if (hasViewPermission) {
         console.log('[MIDDLEWARE] Instructor allowed - view mode active')
-        
+        await ensureUserEnrollmentForPreview(supabase, session.user.id)
+
         // If access is granted via query param, set cookies for future requests
         if (hasViewModeQuery && (!viewAsStudent || !isAdminViewMode)) {
           response.cookies.set({
