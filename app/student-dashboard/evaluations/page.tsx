@@ -438,7 +438,7 @@ export default function StudentEvaluationsPage() {
                               </span>
 
                               {canTakeTest && (
-                                <Link href={`/student-dashboard/evaluations/test/${test.id}`}>
+                                <Link href={`/student-dashboard/evaluations/${test.id}`}>
                                   <Button variant="primary" size="sm">
                                     {test.grade ? 'Refazer' : 'Iniciar'}
                                   </Button>
@@ -446,7 +446,7 @@ export default function StudentEvaluationsPage() {
                               )}
 
                               {test.grade && (
-                                <Link href={`/student-dashboard/evaluations/test/${test.id}/results`}>
+                                <Link href={`/student-dashboard/evaluations/${test.id}/results`}>
                                   <Button variant="secondary" size="sm">
                                     <Eye className="w-4 h-4" />
                                   </Button>
