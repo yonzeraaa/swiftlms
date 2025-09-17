@@ -10,6 +10,42 @@ const GOOGLE_FORM_MIME_TYPE = 'application/vnd.google-apps.form'
 
 type DriveClient = drive_v3.Drive
 
+const DEFAULT_RETRY_ATTEMPTS = 3
+const DEFAULT_RETRY_DELAY_MS = 300
+
+async function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function executeWithRetries<T>(
+  label: string,
+  action: () => Promise<T>,
+  options: { retries?: number; delayMs?: number } = {}
+): Promise<T> {
+  const {
+    retries = DEFAULT_RETRY_ATTEMPTS,
+    delayMs = DEFAULT_RETRY_DELAY_MS,
+  } = options
+
+  let attempt = 0
+  let error: unknown
+
+  while (attempt < retries) {
+    try {
+      return await action()
+    } catch (err) {
+      error = err
+      attempt += 1
+      console.warn(`[IMPORT][RETRY] ${label} falhou (tentativa ${attempt}/${retries})`, err)
+      if (attempt < retries) {
+        await wait(delayMs * attempt)
+      }
+    }
+  }
+
+  throw error instanceof Error ? error : new Error(`Falha ao executar ${label}`)
+}
+
 function ensureName(value: string | null | undefined, fallback: string) {
   const trimmed = value?.trim()
   return trimmed && trimmed.length > 0 ? trimmed : fallback
@@ -32,13 +68,17 @@ async function listFolderContents(
   let pageToken: string | undefined
 
   do {
-    const response = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false ${querySuffix}`,
-      fields: 'nextPageToken, files(id, name, mimeType)',
-      pageSize: 1000,
-      orderBy: 'name',
-      pageToken
-    })
+    const response = await executeWithRetries(
+      `drive.files.list (${folderId})`,
+      () =>
+        drive.files.list({
+          q: `'${folderId}' in parents and trashed = false ${querySuffix}`,
+          fields: 'nextPageToken, files(id, name, mimeType)',
+          pageSize: 1000,
+          orderBy: 'name',
+          pageToken
+        })
+    )
 
     if (response.data.files) {
       files.push(...response.data.files)
@@ -600,10 +640,14 @@ async function parseGoogleDriveFolder(
                   if (lessonItem.mimeType === 'application/vnd.google-apps.document') {
                     try {
                       console.log(`        Tentando extrair gabarito do Google Docs: ${itemName}`)
-                      const exported = await drive.files.export({
-                        fileId: lessonItem.id!,
-                        mimeType: 'text/plain'
-                      })
+                      const exported = await executeWithRetries(
+                        `drive.files.export (${lessonItem.id})`,
+                        () =>
+                          drive.files.export({
+                            fileId: lessonItem.id!,
+                            mimeType: 'text/plain'
+                          })
+                      )
                       const rawContent = typeof exported.data === 'string' ? exported.data : ''
                       if (rawContent.trim().length > 0) {
                         const parsed = parseAnswerKeyFromText(rawContent)
@@ -664,18 +708,26 @@ async function parseGoogleDriveFolder(
                   try {
                     if (mimeType === 'application/vnd.google-apps.document') {
                       console.log(`        Baixando conteúdo do Google Docs: ${itemName}`)
-                      const content = await drive.files.export({
-                        fileId: lessonItem.id!,
-                        mimeType: 'text/plain'
-                      })
-                      lesson.content = content.data as string
+                      const content = await executeWithRetries(
+                        `drive.files.export (${lessonItem.id})`,
+                        () =>
+                          drive.files.export({
+                            fileId: lessonItem.id!,
+                            mimeType: 'text/plain'
+                          })
+                      )
+                      lesson.content = (content.data as string) ?? ''
                     } else if (mimeType === 'application/vnd.google-apps.presentation') {
                       console.log(`        Baixando conteúdo do Google Slides: ${itemName}`)
-                      const content = await drive.files.export({
-                        fileId: lessonItem.id!,
-                        mimeType: 'text/plain'
-                      })
-                      lesson.content = content.data as string
+                      const content = await executeWithRetries(
+                        `drive.files.export (${lessonItem.id})`,
+                        () =>
+                          drive.files.export({
+                            fileId: lessonItem.id!,
+                            mimeType: 'text/plain'
+                          })
+                      )
+                      lesson.content = (content.data as string) ?? ''
                     } else {
                       lesson.content = `[Arquivo referenciado: ${itemName}]`
                     }
