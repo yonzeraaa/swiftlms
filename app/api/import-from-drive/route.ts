@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { google, type drive_v3 } from 'googleapis'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import type { Database, Json } from '@/lib/database.types'
 import { parseAnswerKeyFromText, type ParsedAnswerKeyEntry } from '../tests/utils/answer-key'
 import path from 'path'
 import fs from 'fs'
@@ -108,7 +110,14 @@ function generateCode(prefix: string, index: number) {
 }
 
 // Função para atualizar progresso no Supabase
-async function updateImportProgress(supabase: any, importId: string, userId: string, courseId: string, progress: any) {
+async function updateImportProgress(
+  supabase: any,
+  importId: string,
+  userId: string,
+  courseId: string,
+  progress: any,
+  job?: ImportJobContext
+) {
   try {
     // Primeiro verificar se existe
     const { data: existing } = await supabase
@@ -159,8 +168,16 @@ async function updateImportProgress(supabase: any, importId: string, userId: str
       }
     }
     
+    if (job) {
+      await updateJob(job, {
+        processed_items: progress.processed_lessons ?? progress.processed_modules ?? null,
+        current_step: progress.current_step,
+        status: progress.completed ? 'completed' : progress.phase ?? 'processing',
+      })
+    }
+
     // Adicionar pequeno delay para garantir que a UI possa atualizar
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await wait(50)
   } catch (err) {
     console.error('[PROGRESS] Erro ao salvar progresso:', err)
   }
@@ -263,7 +280,7 @@ async function authenticateGoogleDrive(): Promise<DriveClient> {
       // Testar a conexão fazendo uma chamada simples
       try {
         console.log('[GOOGLE_AUTH] Testando conexão com o Google Drive...')
-        await drive.files.list({ pageSize: 1 })
+        await executeWithRetries('drive.files.list (ping)', () => drive.files.list({ pageSize: 1 }))
         console.log('[GOOGLE_AUTH] Teste de conexão bem-sucedido')
       } catch (testError) {
         console.error('[GOOGLE_AUTH] Falha no teste de conexão:', testError)
@@ -459,7 +476,8 @@ async function parseGoogleDriveFolder(
   totals?: { totalModules: number; totalSubjects: number; totalLessons: number },
   supabase?: any,
   userId?: string,
-  courseId?: string
+  courseId?: string,
+  job?: ImportJobContext
 ): Promise<CourseStructure> {
   const structure: CourseStructure = { modules: [] }
   
@@ -484,7 +502,7 @@ async function parseGoogleDriveFolder(
           : 0
       }
       console.log(`[PROGRESS] Atualizando progresso:`, fullProgress)
-      await updateImportProgress(supabase, importId, userId, courseId, fullProgress)
+      await updateImportProgress(supabase, importId, userId, courseId, fullProgress, job)
     }
   }
 
@@ -811,7 +829,15 @@ async function parseGoogleDriveFolder(
   }
 }
 
-async function importToDatabase(structure: CourseStructure, courseId: string, supabase: any, importId?: string, userId?: string, user?: any) {
+async function importToDatabase(
+  structure: CourseStructure,
+  courseId: string,
+  supabase: any,
+  importId?: string,
+  userId?: string,
+  user?: any,
+  job?: ImportJobContext
+) {
   const results = {
     modules: 0,
     subjects: 0,
@@ -832,8 +858,9 @@ async function importToDatabase(structure: CourseStructure, courseId: string, su
       await updateImportProgress(supabase, importId, userId, courseId, {
         current_step: step,
         current_item: item
-      })
+      }, job)
     }
+    await logJob(job, 'info', step, { item })
   }
   
   try {
@@ -1161,20 +1188,40 @@ async function processImportInBackground(
   courseId: string,
   importId: string,
   userId: string,
-  folderId: string
+  folderId: string,
+  jobId?: string
 ) {
   const supabase = await createClient()
+  const jobContext = jobId ? { jobId, supabase } : undefined
   
   try {
     console.log(`[IMPORT-BACKGROUND] Iniciando processamento em background para ${importId}`)
+    await updateJob(jobContext, {
+      status: 'indexing',
+      started_at: new Date().toISOString(),
+      error: null,
+    })
+    await logJob(jobContext, 'info', 'Job iniciado', { importId, courseId })
     
     // Autenticar com Google Drive
     console.log(`[IMPORT-BACKGROUND] Autenticando Google Drive...`)
     const drive = await authenticateGoogleDrive()
     
+    await updateJob(jobContext, {
+      status: 'indexing',
+    })
+    await logJob(jobContext, 'info', 'Autenticação concluída')
+    
     // FASE 1: Contar todos os itens primeiro
     console.log(`[IMPORT-BACKGROUND] === FASE 1: Contando itens ===`)
+    await updateJob(jobContext, { current_step: 'Contando itens' })
     const totals = await countDriveFolderItems(drive, folderId)
+    await updateJob(jobContext, {
+      total_items: totals.totalLessons + totals.totalModules + totals.totalSubjects,
+      processed_items: 0,
+      current_step: 'Estrutura contabilizada',
+    })
+    await logJob(jobContext, 'info', 'Totais contabilizados', totals)
     
     // Atualizar progresso com totais
     await updateImportProgress(supabase, importId, userId, courseId, {
@@ -1189,11 +1236,12 @@ async function processImportInBackground(
       current_item: 'Preparando para processar arquivos',
       percentage: 0,
       errors: []
-    })
+    }, jobContext)
     
     // FASE 2: Processar estrutura da pasta
     console.log(`[IMPORT-BACKGROUND] === FASE 2: Processando conteúdo ===`)
-    const structure = await parseGoogleDriveFolder(drive, folderId, importId, totals, supabase, userId, courseId)
+    await updateJob(jobContext, { status: 'processing', current_step: 'Processando conteúdo' })
+    const structure = await parseGoogleDriveFolder(drive, folderId, importId, totals, supabase, userId, courseId, jobContext)
 
     if (structure.modules.length === 0) {
       await updateImportProgress(supabase, importId, userId, courseId, {
@@ -1202,13 +1250,19 @@ async function processImportInBackground(
         errors: ['Nenhum módulo encontrado na pasta especificada'],
         completed: true,
         percentage: 0
+      }, jobContext)
+      await updateJob(jobContext, {
+        status: 'failed',
+        error: 'Nenhum módulo encontrado',
+        finished_at: new Date().toISOString(),
       })
       return
     }
 
     // FASE 3: Importar para o banco de dados
     console.log(`[IMPORT-BACKGROUND] === FASE 3: Salvando no banco ===`)
-    const results = await importToDatabase(structure, courseId, supabase, importId, userId)
+    await updateJob(jobContext, { status: 'saving', current_step: 'Salvando no banco de dados' })
+    const results = await importToDatabase(structure, courseId, supabase, importId, userId, undefined, jobContext)
 
     // Atualizar progresso final
     const totalImported = results.modules + results.subjects + results.lessons + results.tests
@@ -1241,12 +1295,32 @@ async function processImportInBackground(
       errors: results.errors,
       completed: true,
       percentage: 100
+    }, jobContext)
+
+    await updateJob(jobContext, {
+      status: 'completed',
+      processed_items: totalLessonLikeItems,
+      finished_at: new Date().toISOString(),
+      current_step: 'Importação concluída',
+      error: null,
+    })
+    await logJob(jobContext, 'info', 'Importação concluída', {
+      summaryMessage,
+      totalImported,
+      totalSkipped,
     })
     
     console.log(`[IMPORT-BACKGROUND] Importação concluída com sucesso: ${importId}`)
 
   } catch (error: any) {
     console.error(`[IMPORT-BACKGROUND] Erro na importação ${importId}:`, error)
+    await logJob(jobContext, 'error', 'Importação falhou', { message: error?.message })
+    await updateJob(jobContext, {
+      status: 'failed',
+      error: error?.message ?? 'Erro ao processar importação',
+      finished_at: new Date().toISOString(),
+      current_step: 'Erro na importação',
+    })
     
     // Atualizar progresso com erro
     await updateImportProgress(supabase, importId, userId, courseId, {
@@ -1261,7 +1335,7 @@ async function processImportInBackground(
       errors: [error.message || 'Erro ao processar importação'],
       completed: true,
       percentage: 0
-    })
+    }, jobContext)
   }
 }
 
@@ -1311,6 +1385,22 @@ export async function POST(req: NextRequest) {
     
     console.log(`[IMPORT] Iniciando importação com ID: ${importId}`)
     
+    // Criar job de importação
+    const { data: jobRecord } = await supabase
+      .from('drive_import_jobs')
+      .insert({
+        user_id: user.id,
+        course_id: courseId,
+        folder_id: folderId,
+        status: 'queued',
+        metadata: { importId }
+      })
+      .select()
+      .single()
+
+    const jobContext = jobRecord ? { jobId: jobRecord.id, supabase } : undefined
+    await logJob(jobContext, 'info', 'Job criado', { importId })
+    
     // Inicializar progresso no Supabase
     await updateImportProgress(supabase, importId, user.id, courseId, {
       phase: 'starting',
@@ -1324,12 +1414,12 @@ export async function POST(req: NextRequest) {
       current_item: 'Preparando processamento em background',
       percentage: 0,
       errors: []
-    })
+    }, jobContext)
     
     // Iniciar processamento em background (não aguardar)
     // Usar setImmediate para garantir que a resposta seja enviada primeiro
     setImmediate(() => {
-      processImportInBackground(driveUrl, courseId, importId, user.id, folderId)
+      processImportInBackground(driveUrl, courseId, importId, user.id, folderId, jobRecord?.id)
         .catch(error => {
           console.error(`[IMPORT] Erro no processamento em background:`, error)
         })
@@ -1340,6 +1430,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Importação iniciada. Acompanhe o progresso em tempo real.',
       importId,
+      jobId: jobRecord?.id ?? null,
       status: 'processing'
     }, {
       status: 202, // HTTP 202 Accepted - processamento assíncrono
@@ -1356,4 +1447,72 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     )
   }
+}
+type ImportJobContext = {
+  jobId: string
+  supabase: SupabaseClient<Database>
+}
+
+async function logJob(
+  job: ImportJobContext | undefined,
+  level: 'info' | 'warn' | 'error',
+  message: string,
+  context?: Record<string, unknown>
+) {
+  if (!job) return
+  try {
+    const contextJson: Json | null = context ? (context as unknown as Json) : null
+    await job.supabase.from('drive_import_logs').insert({
+      job_id: job.jobId,
+      level,
+      message,
+      context: contextJson,
+    })
+  } catch (error) {
+    console.error('[IMPORT][LOG] Falha ao registrar log', level, message, context, error)
+  }
+}
+
+async function updateJob(
+  job: ImportJobContext | undefined,
+  updates: Partial<Database['public']['Tables']['drive_import_jobs']['Update']>
+) {
+  if (!job) return
+  try {
+    await job.supabase
+      .from('drive_import_jobs')
+      .update(updates)
+      .eq('id', job.jobId)
+  } catch (error) {
+    console.error('[IMPORT][JOB] Falha ao atualizar job', job.jobId, updates, error)
+  }
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  iterator: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  const executing: Promise<void>[] = []
+
+  const enqueue = (item: T, index: number) => {
+    const p = (async () => {
+      results[index] = await iterator(item, index)
+    })()
+    executing.push(p.then(() => {
+      const idx = executing.indexOf(p as any)
+      if (idx >= 0) executing.splice(idx, 1)
+    }))
+  }
+
+  items.forEach((item, index) => {
+    enqueue(item, index)
+    if (executing.length >= limit) {
+      executing.shift()
+    }
+  })
+
+  await Promise.all(executing)
+  return results
 }

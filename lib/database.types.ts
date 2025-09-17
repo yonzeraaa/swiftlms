@@ -141,6 +141,107 @@ export type Database = {
           },
         ]
       }
+      drive_import_jobs: {
+        Row: {
+          id: string
+          user_id: string | null
+          course_id: string | null
+          folder_id: string
+          status: string
+          total_items: number | null
+          processed_items: number | null
+          current_step: string | null
+          error: string | null
+          metadata: Json | null
+          created_at: string | null
+          updated_at: string | null
+          started_at: string | null
+          finished_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          course_id?: string | null
+          folder_id: string
+          status?: string
+          total_items?: number | null
+          processed_items?: number | null
+          current_step?: string | null
+          error?: string | null
+          metadata?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          started_at?: string | null
+          finished_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          course_id?: string | null
+          folder_id?: string
+          status?: string
+          total_items?: number | null
+          processed_items?: number | null
+          current_step?: string | null
+          error?: string | null
+          metadata?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          started_at?: string | null
+          finished_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_import_jobs_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_import_jobs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      drive_import_logs: {
+        Row: {
+          id: string
+          job_id: string
+          level: string
+          message: string
+          context: Json | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          level?: string
+          message: string
+          context?: Json | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          level?: string
+          message?: string
+          context?: Json | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_import_logs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "drive_import_jobs"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       certificate_requirements: {
         Row: {
           all_lessons_completed: boolean | null
