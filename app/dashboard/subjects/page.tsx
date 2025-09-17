@@ -822,50 +822,62 @@ export default function SubjectsPage() {
 
                   {/* Display all lessons */}
                   <div className="space-y-1">
-                    {availableLessons.map((lesson) => (
-                      <label
-                        key={lesson.id}
-                        className="flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg hover:bg-navy-700/50 cursor-pointer transition-colors"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedLessons.includes(lesson.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedLessons([...selectedLessons, lesson.id])
-                            } else {
-                              setSelectedLessons(selectedLessons.filter((id: any) => id !== lesson.id))
-                            }
-                          }}
-                          className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/50 rounded focus:ring-gold-500 focus:ring-2"
-                        />
-                        <div className="flex-1">
-                          <p className="text-gold-100">
-                            {lesson.title}
-                          </p>
-                          {lesson.description && (
-                            <p className="text-gold-300 text-sm mt-1">
-                              {lesson.description}
+                    {availableLessons.map((lesson) => {
+                      const isSelected = selectedLessons.includes(lesson.id)
+                      const isAssociated = associatedLessons.includes(lesson.id)
+
+                      return (
+                        <div
+                          key={lesson.id}
+                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                            isSelected
+                              ? 'bg-gold-500/10 border-gold-500/40 shadow-inner shadow-gold-500/10'
+                              : 'bg-navy-900/50 border-transparent hover:bg-navy-700/50'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isSelected) {
+                                setSelectedLessons(selectedLessons.filter((id: any) => id !== lesson.id))
+                              } else {
+                                setSelectedLessons([...selectedLessons, lesson.id])
+                              }
+                            }}
+                            className={`text-gold-400 hover:text-gold-200 transition-colors ${isSelected ? 'text-gold-100' : ''}`}
+                            aria-pressed={isSelected}
+                            aria-label={isSelected ? 'Remover aula da seleção' : 'Selecionar aula'}
+                          >
+                            {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                          </button>
+                          <div className="flex-1">
+                            <p className="text-gold-100">
+                              {lesson.title}
                             </p>
-                          )}
-                          <div className="flex items-center gap-4 mt-1">
-                            <span className="text-gold-400 text-sm">
-                              {lesson.content_type === 'video' ? 'Vídeo' : lesson.content_type === 'text' ? 'Texto' : 'Quiz'}
-                            </span>
-                            {lesson.duration_minutes && (
-                              <span className="text-gold-400 text-sm">
-                                {lesson.duration_minutes} min
-                              </span>
+                            {lesson.description && (
+                              <p className="text-gold-300 text-sm mt-1">
+                                {lesson.description}
+                              </p>
                             )}
+                            <div className="flex items-center gap-4 mt-1">
+                              <span className="text-gold-400 text-sm">
+                                {lesson.content_type === 'video' ? 'Vídeo' : lesson.content_type === 'text' ? 'Texto' : 'Quiz'}
+                              </span>
+                              {lesson.duration_minutes && (
+                                <span className="text-gold-400 text-sm">
+                                  {lesson.duration_minutes} min
+                                </span>
+                              )}
+                            </div>
                           </div>
+                          {isAssociated && (
+                            <div title="Já associada">
+                              <CheckCircle2 className="w-5 h-5 text-green-400" />
+                            </div>
+                          )}
                         </div>
-                        {associatedLessons.includes(lesson.id) && (
-                          <div title="Já associada">
-                            <CheckCircle2 className="w-5 h-5 text-green-400" />
-                          </div>
-                        )}
-                      </label>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}

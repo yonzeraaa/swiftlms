@@ -1112,13 +1112,56 @@ async function importToDatabase(
 
           const { data: existingTest } = await supabase
             .from('tests')
-            .select('id')
+            .select('id, title, description')
             .eq('course_id', courseId)
             .eq('google_drive_url', testData.contentUrl)
             .maybeSingle()
 
           if (existingTest) {
-            console.log(`Teste já existente para URL ${testData.contentUrl}, pulando criação...`)
+            console.log(`Teste já existente para URL ${testData.contentUrl}, verificando atualizações de gabarito...`)
+            const hasAnswerKey = Array.isArray(testData.answerKey) && testData.answerKey.length > 0
+
+            if (hasAnswerKey && testData.answerKey) {
+              const answerKeyRows = testData.answerKey
+                .filter(entry => Number.isFinite(entry.questionNumber) && entry.correctAnswer)
+                .map(entry => ({
+                  test_id: existingTest.id,
+                  question_number: entry.questionNumber,
+                  correct_answer: entry.correctAnswer,
+                  points: entry.points ?? 10
+                }))
+
+              if (answerKeyRows.length > 0) {
+                const { error: deleteError } = await supabase
+                  .from('test_answer_keys')
+                  .delete()
+                  .eq('test_id', existingTest.id)
+
+                if (deleteError) {
+                  results.errors.push(`Erro ao limpar gabarito antigo do teste ${testTitle}: ${deleteError.message}`)
+                } else {
+                  const { error: insertError } = await supabase
+                    .from('test_answer_keys')
+                    .insert(answerKeyRows)
+
+                  if (insertError) {
+                    results.errors.push(`Erro ao atualizar gabarito do teste ${testTitle}: ${insertError.message}`)
+                  } else {
+                    await supabase
+                      .from('tests')
+                      .update({
+                        title: testTitle,
+                        description: testData.description || existingTest.description,
+                        is_active: true,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('id', existingTest.id)
+                    console.log(`Gabarito atualizado para teste existente: ${testTitle}`)
+                  }
+                }
+              }
+            }
+
             results.skipped.tests++
             continue
           }

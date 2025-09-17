@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles, MoreVertical, Search, Filter, X, Eye, EyeOff, MessageSquare } from 'lucide-react'
+import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles, MoreVertical, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -528,20 +528,28 @@ export default function TestsManagementPage() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div className="flex items-center gap-4 flex-wrap">
           {tests.length > 0 && (
-            <label className="flex items-center gap-2 text-sm text-gold-300 bg-navy-800/40 border border-gold-500/20 px-3 py-1.5 rounded-lg">
-              <input
-                type="checkbox"
-                className="w-4 h-4 text-gold-500 bg-navy-900 border-gold-500/40 rounded focus:ring-gold-500"
-                onChange={toggleSelectAllFiltered}
-                checked={allFilteredSelected && filteredTests.length > 0}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={toggleSelectAllFiltered}
                 disabled={filteredTests.length === 0}
-              />
-              <span>
+                aria-pressed={allFilteredSelected && filteredTests.length > 0}
+                className={`text-gold-400 hover:text-gold-200 transition-colors ${
+                  filteredTests.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {allFilteredSelected && filteredTests.length > 0 ? (
+                  <CheckSquare className="w-5 h-5" />
+                ) : (
+                  <Square className="w-5 h-5" />
+                )}
+              </button>
+              <span className="text-sm text-gold-300">
                 {allFilteredSelected && filteredTests.length > 0
-                  ? 'Desmarcar resultados filtrados'
+                  ? 'Resultados filtrados selecionados'
                   : 'Selecionar resultados filtrados'}
               </span>
-            </label>
+            </div>
           )}
           <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
             <FileCheck className="w-8 h-8 text-gold-400" />
@@ -674,12 +682,15 @@ export default function TestsManagementPage() {
             >
               <div className="flex justify-between items-start gap-4">
                 <div className="flex items-start gap-3 flex-1">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => toggleTestSelection(test.id)}
-                    className="mt-1 w-5 h-5 text-gold-500 bg-navy-900 border border-gold-500/40 rounded focus:ring-gold-500"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleTestSelection(test.id)}
+                    className="mt-1 text-gold-400 hover:text-gold-200 transition-colors"
+                    aria-pressed={isSelected}
+                    aria-label={isSelected ? 'Remover teste da seleção' : 'Selecionar teste'}
+                  >
+                    {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                  </button>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="p-2 bg-gold-100 rounded-lg border border-gold-500/20">
