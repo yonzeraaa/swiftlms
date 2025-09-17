@@ -6,7 +6,7 @@ export interface ParsedAnswerKeyEntry {
 }
 
 export function parseAnswerKeyFromText(content: string): ParsedAnswerKeyEntry[] {
-  const gabaritoRegex = /(?:^|\n)(?:GABARITO|Gabarito)[\s:]*\n+([\s\S]+?)(?:\n{2,}|$)/i
+  const gabaritoRegex = /(?:^|\n)\s*(?:GABARITO|Gabarito)[\s:]*\n+([\s\S]+?)(?:\n{2,}|$)/i
   const gabaritoMatch = content.match(gabaritoRegex)
 
   if (gabaritoMatch) {
@@ -26,7 +26,7 @@ export function parseAnswerKeyFromText(content: string): ParsedAnswerKeyEntry[] 
 }
 
 export function extractQuestionsWithAnswers(content: string): ParsedAnswerKeyEntry[] {
-  const gabaritoSectionMatch = content.match(/(?:^|\n)Gabarito[\s:]*\n+([\s\S]+?)(?:\n{2,}|\n(?=[A-Z])|$)/i)
+  const gabaritoSectionMatch = content.match(/(?:^|\n)\s*Gabarito[\s:]*\n+([\s\S]+?)(?:\n{2,}|\n(?=[A-Z])|$)/i)
 
   if (gabaritoSectionMatch) {
     const entries = parseAnswerLines(gabaritoSectionMatch[1].split('\n'))
@@ -74,19 +74,22 @@ interface ParseLinesOptions {
 
 function parseAnswerLines(lines: string[], options: ParseLinesOptions = {}): ParsedAnswerKeyEntry[] {
   const entries = new Map<number, ParsedAnswerKeyEntry>()
+  const keywordRegex = /(gabarito|resposta|alternativa|letra|item|resp)/i
 
   for (const rawLine of lines) {
     const trimmedLine = rawLine.trim()
     if (!trimmedLine) continue
-    if (options.requireKeyword && !/(gabarito|resposta)/i.test(trimmedLine)) {
-      continue
-    }
 
     const parsed = parseAnswerLine(trimmedLine)
     if (parsed && parsed.questionNumber > 0 && parsed.questionNumber <= 200) {
       if (!entries.has(parsed.questionNumber)) {
         entries.set(parsed.questionNumber, parsed)
       }
+      continue
+    }
+
+    if (options.requireKeyword && !keywordRegex.test(trimmedLine)) {
+      continue
     }
   }
 

@@ -60,4 +60,16 @@ Gabarito
     const result = extractQuestionsWithAnswers(content)
     expect(result.map(entry => entry.correctAnswer)).toEqual(['D', 'V'])
   })
+
+  it('handles leading spaces before header and bare letter answers', () => {
+    const content = `
+        Gabarito:
+        1) A
+        2) b
+        3)  c
+      `
+
+    const result = parseAnswerKeyFromText(content)
+    expect(result.map(entry => entry.correctAnswer)).toEqual(['A', 'B', 'C'])
+  })
 })
