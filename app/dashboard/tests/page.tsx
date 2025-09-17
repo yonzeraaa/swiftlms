@@ -46,6 +46,8 @@ export default function TestsManagementPage() {
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [selectedTests, setSelectedTests] = useState<string[]>([])
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   
   const supabase = createClient()
   const { t } = useTranslation()
@@ -89,6 +91,7 @@ export default function TestsManagementPage() {
           })
         )
         setTests(testsWithAnswerKeys)
+        setSelectedTests([])
       }
       
       // Carregar cursos
@@ -161,6 +164,38 @@ export default function TestsManagementPage() {
     
     return matchesSearch && matchesCourse && matchesSubject && matchesStatus
   })
+
+  const anySelection = selectedTests.length > 0
+  const allFilteredSelected = filteredTests.length > 0 && filteredTests.every(test => selectedTests.includes(test.id))
+
+  const toggleTestSelection = (testId: string) => {
+    setSelectedTests(prev =>
+      prev.includes(testId)
+        ? prev.filter(id => id !== testId)
+        : [...prev, testId]
+    )
+  }
+
+  const toggleSelectAllFiltered = () => {
+    if (filteredTests.length === 0) return
+
+    if (allFilteredSelected) {
+      const filteredIds = new Set(filteredTests.map(test => test.id))
+      setSelectedTests(prev => prev.filter(id => !filteredIds.has(id)))
+      return
+    }
+
+    const filteredIds = filteredTests.map(test => test.id)
+    setSelectedTests(prev => {
+      const current = new Set(prev)
+      filteredIds.forEach(id => current.add(id))
+      return Array.from(current)
+    })
+  }
+
+  useEffect(() => {
+    setSelectedTests(prev => prev.filter(id => tests.some(test => test.id === id)))
+  }, [tests])
 
   const handleDropdownClick = (e: React.MouseEvent, testId: string) => {
     e.stopPropagation()
@@ -306,83 +341,97 @@ export default function TestsManagementPage() {
       .insert(answerKeys)
   }
 
-  const deleteTest = async (id: string) => {
-    console.log('Função deleteTest chamada com ID:', id)
-    
-    const confirmDelete = confirm('Tem certeza que deseja excluir este teste?')
-    console.log('Usuário confirmou exclusão:', confirmDelete)
-    
-    if (!confirmDelete) {
-      console.log('Exclusão cancelada pelo usuário')
-      return
-    }
-    
-    console.log('Iniciando processo de exclusão do teste:', id)
-    
+  const performDeleteTests = async (testIds: string[]) => {
+    if (testIds.length === 0) return
+
+    setBulkDeleting(true)
     try {
-      // Primeiro deletar registros relacionados
-      console.log('1. Deletando answer keys...')
+      const errors: string[] = []
+
       const { error: answerKeysError } = await supabase
         .from('test_answer_keys')
         .delete()
-        .eq('test_id', id)
-      
+        .in('test_id', testIds)
+
       if (answerKeysError) {
         console.error('Erro ao deletar answer keys:', answerKeysError)
-        // Continuar mesmo com erro, pois pode não haver answer keys
+        errors.push(`Gabaritos: ${answerKeysError.message}`)
       }
-      
-      console.log('2. Deletando attempts...')
+
       const { error: attemptsError } = await supabase
         .from('test_attempts')
         .delete()
-        .eq('test_id', id)
-      
+        .in('test_id', testIds)
+
       if (attemptsError) {
-        console.error('Erro ao deletar attempts:', attemptsError)
-        // Continuar mesmo com erro, pois pode não haver attempts
+        console.error('Erro ao deletar tentativas:', attemptsError)
+        errors.push(`Tentativas: ${attemptsError.message}`)
       }
-      
-      console.log('3. Deletando grades...')
+
       const { error: gradesError } = await supabase
         .from('test_grades')
         .delete()
-        .eq('test_id', id)
-      
+        .in('test_id', testIds)
+
       if (gradesError) {
-        console.error('Erro ao deletar grades:', gradesError)
-        // Continuar mesmo com erro, pois pode não haver grades
+        console.error('Erro ao deletar notas:', gradesError)
+        errors.push(`Notas: ${gradesError.message}`)
       }
-      
-      // Por último, deletar o teste
-      console.log('4. Deletando o teste principal...')
-      const { error } = await supabase
+
+      const { error: testsError } = await supabase
         .from('tests')
         .delete()
-        .eq('id', id)
-      
-      console.log('Resultado da exclusão do teste:', error ? 'ERRO' : 'SUCESSO', error)
-      
-      if (!error) {
-        console.log('Teste excluído com sucesso!')
-        // Atualizar estado local removendo o teste excluído
-        setTests(prevTests => prevTests.filter(test => test.id !== id))
-        showToast('Sucesso: Teste excluído!')
-        // NÃO recarregar dados se a exclusão foi bem sucedida
-      } else {
-        console.error('ERRO AO EXCLUIR TESTE:', error)
-        showToast(`Erro ao excluir teste: ${error.message}`)
-        // Recarregar dados apenas em caso de erro
+        .in('id', testIds)
+
+      if (testsError) {
+        console.error('Erro ao deletar testes:', testsError)
+        showToast(`Erro ao excluir testes: ${testsError.message}`)
         await loadData()
+        return
       }
-    } catch (err) {
-      console.error('Erro inesperado ao excluir teste:', err)
-      showToast('Erro ao excluir teste!')
-      // Recarregar dados em caso de erro
-      await loadData()
+
+      setTests(prev => prev.filter(test => !testIds.includes(test.id)))
+      setSelectedTests(prev => prev.filter(id => !testIds.includes(id)))
+
+      if (testIds.length > 1) {
+        showToast(`Sucesso: ${testIds.length} testes excluídos!`)
+      } else {
+        showToast('Sucesso: Teste excluído!')
+      }
+
+      if (errors.length > 0) {
+        showToast(`Aviso: Nem todos os dados relacionados foram removidos. ${errors.join(' | ')}`)
+      }
+    } catch (error) {
+      console.error('Erro inesperado ao excluir testes:', error)
+      showToast('Erro inesperado ao excluir testes')
+    } finally {
+      setBulkDeleting(false)
     }
-    
-    console.log('Função deleteTest finalizada')
+  }
+
+  const deleteTest = async (id: string) => {
+    if (bulkDeleting) return
+
+    const confirmDelete = confirm('Tem certeza que deseja excluir este teste?')
+    if (!confirmDelete) {
+      return
+    }
+
+    setOpenDropdown(null)
+    await performDeleteTests([id])
+  }
+
+  const handleBulkDelete = async () => {
+    if (!anySelection || bulkDeleting) return
+
+    const confirmDelete = confirm(
+      `Tem certeza que deseja excluir ${selectedTests.length} teste(s) selecionado(s)? Esta ação não pode ser desfeita.`
+    )
+
+    if (!confirmDelete) return
+
+    await performDeleteTests(selectedTests)
   }
 
   const resetForm = () => {
@@ -476,18 +525,55 @@ export default function TestsManagementPage() {
     <div className="space-y-6">
       <Breadcrumbs className="mb-2" />
       {/* Header com busca e filtros */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
-          <FileCheck className="w-8 h-8 text-gold-400" />
-          {t('tests.title')}
-        </h1>
-        <Button
-          variant="primary"
-          onClick={() => setShowModal(true)}
-          icon={<Plus className="w-5 h-5 flex-shrink-0" />}
-        >
-          {t('tests.newTest')}
-        </Button>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+        <div className="flex items-center gap-4 flex-wrap">
+          {tests.length > 0 && (
+            <label className="flex items-center gap-2 text-sm text-gold-300 bg-navy-800/40 border border-gold-500/20 px-3 py-1.5 rounded-lg">
+              <input
+                type="checkbox"
+                className="w-4 h-4 text-gold-500 bg-navy-900 border-gold-500/40 rounded focus:ring-gold-500"
+                onChange={toggleSelectAllFiltered}
+                checked={allFilteredSelected && filteredTests.length > 0}
+                disabled={filteredTests.length === 0}
+              />
+              <span>
+                {allFilteredSelected && filteredTests.length > 0
+                  ? 'Desmarcar resultados filtrados'
+                  : 'Selecionar resultados filtrados'}
+              </span>
+            </label>
+          )}
+          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+            <FileCheck className="w-8 h-8 text-gold-400" />
+            {t('tests.title')}
+          </h1>
+          {anySelection && (
+            <span className="text-sm text-gold-300 bg-gold-500/10 border border-gold-500/30 px-3 py-1 rounded-lg">
+              {selectedTests.length} selecionado(s)
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3 flex-wrap justify-end">
+          {anySelection && (
+            <Button
+              variant="danger"
+              onClick={handleBulkDelete}
+              loading={bulkDeleting}
+              disabled={bulkDeleting}
+              icon={<Trash2 className="w-5 h-5 flex-shrink-0" />}
+            >
+              Excluir selecionados
+            </Button>
+          )}
+          <Button
+            variant="primary"
+            onClick={() => setShowModal(true)}
+            icon={<Plus className="w-5 h-5 flex-shrink-0" />}
+            disabled={bulkDeleting}
+          >
+            {t('tests.newTest')}
+          </Button>
+        </div>
       </div>
 
       {/* Barra de busca e filtros */}
@@ -575,87 +661,98 @@ export default function TestsManagementPage() {
         {filteredTests.map((test) => {
           const course = courses.find(c => c.id === test.course_id)
           const subject = subjects.find(s => s.id === test.subject_id)
-          
+          const isSelected = selectedTests.includes(test.id)
+
           return (
             <Card
               key={test.id}
               variant="elevated"
               hoverable
-              className="relative"
+              className={`relative transition-all ${
+                isSelected ? 'border-2 border-gold-500/60 shadow-gold-500/20' : ''
+              }`}
             >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 bg-gold-100 rounded-lg border border-gold-500/20">
-                      <FileCheck className="w-5 h-5 text-gold-600" />
+              <div className="flex justify-between items-start gap-4">
+                <div className="flex items-start gap-3 flex-1">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleTestSelection(test.id)}
+                    className="mt-1 w-5 h-5 text-gold-500 bg-navy-900 border border-gold-500/40 rounded focus:ring-gold-500"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="p-2 bg-gold-100 rounded-lg border border-gold-500/20">
+                        <FileCheck className="w-5 h-5 text-gold-600" />
+                      </div>
+                      <h3 className="text-xl font-bold text-gold">
+                        {test.title}
+                      </h3>
                     </div>
-                    <h3 className="text-xl font-bold text-gold">
-                      {test.title}
-                    </h3>
-                  </div>
-                  
-                  {test.description && (
-                    <p className="text-gold-300 mb-4 leading-relaxed">{test.description}</p>
-                  )}
-                  
-                  <div className="flex flex-wrap gap-3 mb-4">
-                    {course && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
-                        <BookOpen className="w-5 h-5 text-gold-400" />
-                        <span className="text-sm font-medium text-gold-200">{course.title}</span>
-                      </div>
-                    )}
-                    {subject && (
-                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
-                        <FileText className="w-5 h-5 text-gold-400" />
-                        <span className="text-sm font-medium text-gold-200">{subject.name}</span>
-                      </div>
-                    )}
-                  </div>
 
-                  <div className="flex flex-wrap items-center gap-4 text-sm">
-                    <div className="flex items-center gap-1.5 text-gold-300">
-                      <Clock className="w-5 h-5 text-gold-400" />
-                      <span className="font-medium">{test.duration_minutes} {t('tests.minutes')}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-gold-300">
-                      <Target className="w-5 h-5 text-gold-400" />
-                      <span className="font-medium">{t('tests.minimum')}: {test.passing_score}%</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-gold-300">
-                      <RotateCcw className="w-5 h-5 text-gold-400" />
-                      <span className="font-medium">{test.max_attempts} {t('tests.attempts')}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center gap-3">
-                    <Chip
-                      label={test.is_active ? t('tests.active') : t('tests.inactive')}
-                      color={test.is_active ? 'green' : 'gold'}
-                    />
-                    {test.answer_key_count !== undefined && (
-                      <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
-                        test.answer_key_count > 0 
-                          ? 'bg-green-900/30 border-green-500/30' 
-                          : 'bg-red-900/30 border-red-500/30'
-                      }`}>
-                        {test.answer_key_count > 0 ? (
-                          <>
-                            <Check className="w-4 h-4 text-green-400" />
-                            <span className="text-sm font-medium text-green-400">
-                              Gabarito: {test.answer_key_count} questões
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <X className="w-4 h-4 text-red-400" />
-                            <span className="text-sm font-medium text-red-400">
-                              Sem gabarito
-                            </span>
-                          </>
-                        )}
-                      </div>
+                    {test.description && (
+                      <p className="text-gold-300 mb-4 leading-relaxed">{test.description}</p>
                     )}
+                    
+                    <div className="flex flex-wrap gap-3 mb-4">
+                      {course && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
+                          <BookOpen className="w-5 h-5 text-gold-400" />
+                          <span className="text-sm font-medium text-gold-200">{course.title}</span>
+                        </div>
+                      )}
+                      {subject && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
+                          <FileText className="w-5 h-5 text-gold-400" />
+                          <span className="text-sm font-medium text-gold-200">{subject.name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-4 text-sm">
+                      <div className="flex items-center gap-1.5 text-gold-300">
+                        <Clock className="w-5 h-5 text-gold-400" />
+                        <span className="font-medium">{test.duration_minutes} {t('tests.minutes')}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gold-300">
+                        <Target className="w-5 h-5 text-gold-400" />
+                        <span className="font-medium">{t('tests.minimum')}: {test.passing_score}%</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-gold-300">
+                        <RotateCcw className="w-5 h-5 text-gold-400" />
+                        <span className="font-medium">{test.max_attempts} {t('tests.attempts')}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-3 flex-wrap">
+                      <Chip
+                        label={test.is_active ? t('tests.active') : t('tests.inactive')}
+                        color={test.is_active ? 'green' : 'gold'}
+                      />
+                      {test.answer_key_count !== undefined && (
+                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
+                          test.answer_key_count > 0 
+                            ? 'bg-green-900/30 border-green-500/30' 
+                            : 'bg-red-900/30 border-red-500/30'
+                        }`}>
+                          {test.answer_key_count > 0 ? (
+                            <>
+                              <Check className="w-4 h-4 text-green-400" />
+                              <span className="text-sm font-medium text-green-400">
+                                Gabarito: {test.answer_key_count} questões
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <X className="w-4 h-4 text-red-400" />
+                              <span className="text-sm font-medium text-red-400">
+                                Sem gabarito
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -668,6 +765,7 @@ export default function TestsManagementPage() {
                     className="p-2 hover:bg-navy-700 rounded-lg transition-colors border border-transparent hover:border-gold-500/30"
                     aria-label="Abrir menu de ações do teste"
                     type="button"
+                    disabled={bulkDeleting}
                   >
                     <MoreVertical className="w-5 h-5 text-gold-400" />
                   </button>
@@ -700,12 +798,12 @@ export default function TestsManagementPage() {
                           <span className="text-gold-200 text-left flex-1">Ver Gabarito</span>
                         </div>
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          console.log('Editando teste:', test.id)
-                          setOpenDropdown(null)
-                          editTest(test)
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            console.log('Editando teste:', test.id)
+                            setOpenDropdown(null)
+                            editTest(test)
                         }}
                         className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
                       >
@@ -719,11 +817,11 @@ export default function TestsManagementPage() {
                           onClick={async (e) => {
                             e.stopPropagation()
                             setOpenDropdown(null)
-                            // Chamar a função deleteTest diretamente
                             await deleteTest(test.id)
                           }}
-                          className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors block"
+                          className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors block disabled:opacity-50 disabled:cursor-not-allowed"
                           type="button"
+                          disabled={bulkDeleting}
                         >
                           <div className="flex items-center gap-3 text-left">
                             <Trash2 className="w-4 h-4 text-red-400 flex-shrink-0" />

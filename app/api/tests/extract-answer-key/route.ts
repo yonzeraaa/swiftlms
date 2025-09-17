@@ -16,15 +16,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const docIdMatch = googleDriveUrl.match(/\/document\/d\/([a-zA-Z0-9-_]+)/)
-    if (!docIdMatch) {
+    const docId = extractGoogleDocumentId(googleDriveUrl)
+    if (!docId) {
       return NextResponse.json(
         { error: 'URL do Google Drive inválida' },
         { status: 400 }
       )
     }
-
-    const docId = docIdMatch[1]
     const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`
 
     try {
@@ -88,4 +86,41 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+function extractGoogleDocumentId(rawUrl: string): string | null {
+  const trimmed = rawUrl.trim()
+
+  // Se o usuário forneceu apenas o ID
+  if (/^[a-zA-Z0-9-_]+$/.test(trimmed)) {
+    return trimmed
+  }
+
+  try {
+    const url = new URL(trimmed)
+
+    const patterns = [
+      /\/document\/d\/([a-zA-Z0-9-_]+)/,
+      /\/file\/d\/([a-zA-Z0-9-_]+)/,
+      /\/d\/([a-zA-Z0-9-_]+)/,
+    ]
+
+    for (const pattern of patterns) {
+      const match = url.pathname.match(pattern)
+      if (match) {
+        return match[1]
+      }
+    }
+
+    const idParam = url.searchParams.get('id')
+    if (idParam && /^[a-zA-Z0-9-_]+$/.test(idParam)) {
+      return idParam
+    }
+  } catch (error) {
+    // URL inválida - seguir para o fallback abaixo
+  }
+
+  // Fallback final tentando localizar o padrão em toda a string
+  const fallbackMatch = trimmed.match(/([a-zA-Z0-9-_]{10,})/)
+  return fallbackMatch ? fallbackMatch[1] : null
 }
