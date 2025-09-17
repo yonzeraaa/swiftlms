@@ -455,34 +455,42 @@ export default function TestsManagementPage() {
 
   const viewAnswerKey = async (test: Test) => {
     try {
-      // Buscar gabarito do teste
-      const { data: answerKeys, error } = await supabase
-        .from('test_answer_keys')
-        .select('*')
-        .eq('test_id', test.id)
-        .order('question_number')
-      
-      if (error) {
-        showToast('Erro ao buscar gabarito')
+      const response = await fetch(`/api/tests/${test.id}/sync-answer-key`, {
+        method: 'POST'
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        showToast(data.error || 'Erro ao sincronizar gabarito')
         return
       }
-      
-      if (!answerKeys || answerKeys.length === 0) {
+
+      if (!data.answerKey || data.answerKey.length === 0) {
         showToast('Este teste ainda não possui gabarito cadastrado')
         return
       }
-      
-      setViewingAnswerKey(answerKeys)
+
+      if (data.updated) {
+        showToast('Gabarito atualizado a partir do Google Drive!')
+      }
+
+      setViewingAnswerKey(data.answerKey)
       setViewingTestTitle(test.title)
       setShowAnswerKeyModal(true)
     } catch (error) {
-      console.error('Erro ao buscar gabarito:', error)
-      showToast('Erro ao buscar gabarito')
+      console.error('Erro ao sincronizar gabarito:', error)
+      showToast('Erro ao sincronizar gabarito')
     }
   }
 
   const editTest = async (test: Test) => {
     console.log('Abrindo modal de edição para teste:', test.id)
+    try {
+      await fetch(`/api/tests/${test.id}/sync-answer-key`, { method: 'POST' })
+    } catch (error) {
+      console.warn('Falha ao sincronizar gabarito antes da edição', error)
+    }
     setFormData({
       title: test.title,
       description: test.description || '',

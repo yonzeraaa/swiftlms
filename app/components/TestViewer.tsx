@@ -103,6 +103,14 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
 
     setLoadingQuestions(true)
     try {
+      try {
+        await fetch(`/api/tests/${test.id}/sync-answer-key`, {
+          method: 'POST'
+        })
+      } catch (syncError) {
+        console.warn('Falha ao sincronizar gabarito antes da leitura', syncError)
+      }
+
       const { data, error } = await supabase
         .from('test_answer_keys')
         .select('question_number, correct_answer')

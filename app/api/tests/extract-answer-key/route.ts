@@ -4,6 +4,7 @@ import {
   generateSampleAnswerKey,
   parseAnswerKeyFromText,
 } from '../utils/answer-key'
+import { extractGoogleDocumentId } from '../utils/drive'
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,41 +87,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
-
-function extractGoogleDocumentId(rawUrl: string): string | null {
-  const trimmed = rawUrl.trim()
-
-  // Se o usuário forneceu apenas o ID
-  if (/^[a-zA-Z0-9-_]+$/.test(trimmed)) {
-    return trimmed
-  }
-
-  try {
-    const url = new URL(trimmed)
-
-    const patterns = [
-      /\/document\/d\/([a-zA-Z0-9-_]+)/,
-      /\/file\/d\/([a-zA-Z0-9-_]+)/,
-      /\/d\/([a-zA-Z0-9-_]+)/,
-    ]
-
-    for (const pattern of patterns) {
-      const match = url.pathname.match(pattern)
-      if (match) {
-        return match[1]
-      }
-    }
-
-    const idParam = url.searchParams.get('id')
-    if (idParam && /^[a-zA-Z0-9-_]+$/.test(idParam)) {
-      return idParam
-    }
-  } catch (error) {
-    // URL inválida - seguir para o fallback abaixo
-  }
-
-  // Fallback final tentando localizar o padrão em toda a string
-  const fallbackMatch = trimmed.match(/([a-zA-Z0-9-_]{10,})/)
-  return fallbackMatch ? fallbackMatch[1] : null
 }
