@@ -7,10 +7,14 @@ interface QuestionGridProps {
   questionCount: number
   answers: Record<string, string>
   onChange: (questionNumber: number, answer: string) => void
+  options?: string[]
 }
 
-export default function QuestionGrid({ questionCount, answers, onChange }: QuestionGridProps) {
-  const options = ['A', 'B', 'C', 'D', 'E']
+const DEFAULT_OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
+
+export default function QuestionGrid({ questionCount, answers, onChange, options }: QuestionGridProps) {
+  const availableOptions = (options && options.length > 0 ? options : DEFAULT_OPTIONS).map(option => option.toUpperCase())
+  const uniqueOptions = Array.from(new Set(availableOptions))
   const { t } = useTranslation()
   
   return (
@@ -51,7 +55,7 @@ export default function QuestionGrid({ questionCount, answers, onChange }: Quest
             </div>
             
             <div className="flex gap-2">
-              {options.map(option => (
+              {uniqueOptions.map(option => (
                 <label
                   key={option}
                   className="flex-1 relative cursor-pointer group"

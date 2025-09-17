@@ -15,6 +15,7 @@ interface TestAnswerPanelProps {
   onSubmit: () => void
   questionCount: number
   submitting?: boolean
+  answerOptions?: string[]
 }
 
 export default function TestAnswerPanel({
@@ -25,7 +26,8 @@ export default function TestAnswerPanel({
   onAnswerChange,
   onSubmit,
   questionCount,
-  submitting = false
+  submitting = false,
+  answerOptions
 }: TestAnswerPanelProps) {
   const [isMobile, setIsMobile] = useState(false)
   const { t } = useTranslation()
@@ -92,6 +94,7 @@ export default function TestAnswerPanel({
                     questionCount={questionCount}
                     answers={answers}
                     onChange={onAnswerChange}
+                    options={answerOptions}
                   />
                 )}
                 
@@ -164,6 +167,7 @@ export default function TestAnswerPanel({
                   questionCount={questionCount}
                   answers={answers}
                   onChange={onAnswerChange}
+                  options={answerOptions}
                 />
               )}
             </div>

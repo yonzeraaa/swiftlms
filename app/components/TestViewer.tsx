@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import DocumentViewer from './DocumentViewer'
 import TestAnswerPanel from './TestAnswerPanel'
 import { Tables } from '@/lib/database.types'
@@ -12,6 +12,70 @@ import { useTranslation } from '@/app/contexts/LanguageContext'
 
 type Test = Tables<'tests'>
 
+const DEFAULT_OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const
+const BOOLEAN_OPTIONS = ['V', 'F'] as const
+
+const LETTER_OPTIONS_SET = new Set(DEFAULT_OPTIONS)
+
+type AnswerKeyRow = {
+  question_number: number | null
+  correct_answer: string | null
+}
+
+function normalizeAnswerOption(value?: string | null): string | null {
+  if (!value) return null
+  const cleaned = value.toString().trim().toUpperCase()
+  if (!cleaned) return null
+
+  if (LETTER_OPTIONS_SET.has(cleaned as typeof DEFAULT_OPTIONS[number])) {
+    return cleaned
+  }
+
+  if (cleaned === 'VERDADEIRO' || cleaned === 'TRUE' || cleaned === 'V') {
+    return 'V'
+  }
+
+  if (cleaned === 'FALSO' || cleaned === 'FALSE' || cleaned === 'F') {
+    return 'F'
+  }
+
+  return cleaned
+}
+
+function deriveOptionsFromAnswers(answers: string[]): string[] {
+  if (answers.length === 0) {
+    return [...DEFAULT_OPTIONS]
+  }
+
+  const normalized = Array.from(new Set(answers.map(normalizeAnswerOption).filter((v): v is string => Boolean(v))))
+  const hasLetterOption = normalized.some(value => LETTER_OPTIONS_SET.has(value as typeof DEFAULT_OPTIONS[number]))
+  const hasBooleanOption = normalized.some(value => value === 'V' || value === 'F')
+
+  const result: string[] = []
+
+  if (hasLetterOption) {
+    result.push(...DEFAULT_OPTIONS)
+  }
+
+  if (hasBooleanOption) {
+    const booleanOrder = BOOLEAN_OPTIONS.filter(option => normalized.includes(option))
+    result.push(...booleanOrder)
+  }
+
+  // Adicionar quaisquer outras alternativas únicas preservando a ordem descoberta
+  normalized.forEach(option => {
+    if (!result.includes(option)) {
+      result.push(option)
+    }
+  })
+
+  if (result.length === 0) {
+    return [...DEFAULT_OPTIONS]
+  }
+
+  return result
+}
+
 interface TestViewerProps {
   test: Test
   enrollmentId: string
@@ -22,6 +86,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
   const [showAnswerPanel, setShowAnswerPanel] = useState(false)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [questionCount, setQuestionCount] = useState(0)
+  const [answerOptions, setAnswerOptions] = useState<string[]>([...DEFAULT_OPTIONS])
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
   const [startTime] = useState(new Date())
   const [submitting, setSubmitting] = useState(false)
@@ -33,14 +98,82 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
   const supabase = createClient()
   const { t } = useTranslation()
 
+  const loadAnswerKeyMetadata = useCallback(async () => {
+    if (!test.id) return
+
+    setLoadingQuestions(true)
+    try {
+      const { data, error } = await supabase
+        .from('test_answer_keys')
+        .select('question_number, correct_answer')
+        .eq('test_id', test.id)
+        .order('question_number', { ascending: false })
+
+      if (data && data.length > 0 && !error) {
+        const typedData = data as AnswerKeyRow[]
+
+        const maxQuestionNumber = typedData.reduce((max: number, row: AnswerKeyRow) => {
+          const questionNumber = row.question_number || 0
+          return questionNumber > max ? questionNumber : max
+        }, 0)
+
+        setQuestionCount(maxQuestionNumber)
+
+        const detectedAnswers = typedData
+          .map((row: AnswerKeyRow) => normalizeAnswerOption(row.correct_answer))
+          .filter((value): value is string => Boolean(value))
+
+        setAnswerOptions(deriveOptionsFromAnswers(detectedAnswers))
+        console.log(`Número de questões do gabarito: ${maxQuestionNumber} (detecção automática: ${detectedAnswers.length} gabaritos) `)
+      } else {
+        const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
+        const defaultCount = savedCount ? parseInt(savedCount) : 10
+        setQuestionCount(defaultCount)
+        setAnswerOptions([...DEFAULT_OPTIONS])
+        console.log('Gabarito não encontrado, usando número de questões:', defaultCount)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do gabarito:', error)
+      const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
+      const defaultCount = savedCount ? parseInt(savedCount) : 10
+      setQuestionCount(defaultCount)
+      setAnswerOptions([...DEFAULT_OPTIONS])
+    } finally {
+      setLoadingQuestions(false)
+    }
+  }, [supabase, test.id])
+
+  const handleSetQuestionCount = () => {
+    const count = parseInt(manualQuestionCount)
+    if (count > 0 && count <= 100) {
+      setQuestionCount(count)
+      localStorage.setItem(`test_question_count_${test.id}`, count.toString())
+      setShowQuestionConfig(false)
+    } else {
+      alert('Por favor, insira um número entre 1 e 100')
+    }
+  }
+
+  const loadSavedAnswers = useCallback(() => {
+    // Carregar respostas salvas do localStorage
+    const saved = localStorage.getItem(`test_answers_${test.id}`)
+    if (saved) {
+      try {
+        setAnswers(JSON.parse(saved))
+      } catch (e) {
+        console.error('Erro ao carregar respostas salvas:', e)
+      }
+    }
+  }, [test.id])
+
   useEffect(() => {
-    loadQuestionCount()
+    loadAnswerKeyMetadata()
     loadSavedAnswers()
-    
+
     if (test.duration_minutes) {
       setTimeRemaining(test.duration_minutes * 60) // converter para segundos
     }
-  }, [test])
+  }, [test, loadAnswerKeyMetadata, loadSavedAnswers])
 
   useEffect(() => {
     if (timeRemaining === null || timeRemaining <= 0) return
@@ -58,66 +191,73 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
     return () => clearInterval(timer)
   }, [timeRemaining])
 
-  const loadQuestionCount = async () => {
-    setLoadingQuestions(true)
-    try {
-      // Buscar todas as questões do gabarito para contar corretamente
-      const { data, error, count } = await supabase
-        .from('test_answer_keys')
-        .select('question_number', { count: 'exact' })
-        .eq('test_id', test.id)
-        .order('question_number', { ascending: false })
-      
-      if (data && data.length > 0 && !error) {
-        // Usar o maior número de questão encontrado
-        const maxQuestionNumber = data[0].question_number
-        setQuestionCount(maxQuestionNumber)
-        console.log(`Número de questões do gabarito: ${maxQuestionNumber} (total de ${count} respostas cadastradas)`)
-      } else {
-        // Se não houver gabarito, buscar o número de questões do localStorage ou usar 10 como padrão
-        const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
-        const defaultCount = savedCount ? parseInt(savedCount) : 10
-        setQuestionCount(defaultCount)
-        console.log('Gabarito não encontrado, usando número de questões:', defaultCount)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar número de questões:', error)
-      // Em caso de erro, tentar recuperar do localStorage ou usar 10
-      const savedCount = localStorage.getItem(`test_question_count_${test.id}`)
-      const defaultCount = savedCount ? parseInt(savedCount) : 10
-      setQuestionCount(defaultCount)
-    } finally {
-      setLoadingQuestions(false)
-    }
-  }
+  useEffect(() => {
+    if (!test.id) return
 
-  const handleSetQuestionCount = () => {
-    const count = parseInt(manualQuestionCount)
-    if (count > 0 && count <= 100) {
-      setQuestionCount(count)
-      localStorage.setItem(`test_question_count_${test.id}`, count.toString())
-      setShowQuestionConfig(false)
-    } else {
-      alert('Por favor, insira um número entre 1 e 100')
-    }
-  }
+    const channel = supabase
+      .channel(`test-answer-key-${test.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'test_answer_keys',
+          filter: `test_id=eq.${test.id}`
+        },
+        () => {
+          loadAnswerKeyMetadata()
+        }
+      )
+      .subscribe()
 
-  const loadSavedAnswers = () => {
-    // Carregar respostas salvas do localStorage
-    const saved = localStorage.getItem(`test_answers_${test.id}`)
-    if (saved) {
-      try {
-        setAnswers(JSON.parse(saved))
-      } catch (e) {
-        console.error('Erro ao carregar respostas salvas:', e)
-      }
+    return () => {
+      supabase.removeChannel(channel)
     }
-  }
+  }, [supabase, test.id, loadAnswerKeyMetadata])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    setAnswers(prev => {
+      if (!answerOptions || answerOptions.length === 0) {
+        return prev
+      }
+
+      const validOptions = new Set(answerOptions.map(option => option.toUpperCase()))
+      let changed = false
+      const nextAnswers: Record<string, string> = {}
+
+      Object.entries(prev).forEach(([question, value]) => {
+        const normalizedValue = value.toUpperCase()
+        if (validOptions.has(normalizedValue)) {
+          nextAnswers[question] = normalizedValue
+          if (normalizedValue !== value) {
+            changed = true
+          }
+        } else {
+          changed = true
+        }
+      })
+
+      if (changed) {
+        localStorage.setItem(`test_answers_${test.id}`, JSON.stringify(nextAnswers))
+        return nextAnswers
+      }
+
+      return prev
+    })
+  }, [answerOptions, test.id])
 
   const handleAnswerChange = (questionNumber: number, answer: string) => {
+    const normalizedAnswer = answer.toUpperCase()
+
+    if (answerOptions.length > 0 && !answerOptions.includes(normalizedAnswer)) {
+      return
+    }
+
     const newAnswers = {
       ...answers,
-      [questionNumber]: answer
+      [questionNumber]: normalizedAnswer
     }
     setAnswers(newAnswers)
     
@@ -300,6 +440,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
             onSubmit={handleSubmit}
             questionCount={questionCount}
             submitting={submitting}
+            answerOptions={answerOptions}
           />
         )}
       </div>
