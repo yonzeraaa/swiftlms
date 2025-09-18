@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, Loader2, AlertCircle, Link2, CheckCircle2, CheckSquare, Square, Trash } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
@@ -45,6 +45,7 @@ export default function SubjectsPage() {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([])
   const [selectAll, setSelectAll] = useState(false)
   const [deletingMultiple, setDeletingMultiple] = useState(false)
+  const [subjectSortMode, setSubjectSortMode] = useState<'code' | 'name'>('code')
   
   const supabase = createClient()
 
@@ -234,7 +235,7 @@ export default function SubjectsPage() {
       setSelectedSubjects([])
       setSelectAll(false)
     } else {
-      setSelectedSubjects(filteredSubjects.map((s: any) => s.id))
+      setSelectedSubjects(sortedSubjects.map((s: any) => s.id))
       setSelectAll(true)
     }
   }
@@ -245,7 +246,7 @@ export default function SubjectsPage() {
       setSelectAll(false)
     } else {
       setSelectedSubjects([...selectedSubjects, subjectId])
-      if (selectedSubjects.length + 1 === filteredSubjects.length) {
+      if (selectedSubjects.length + 1 === sortedSubjects.length) {
         setSelectAll(true)
       }
     }
@@ -422,17 +423,44 @@ export default function SubjectsPage() {
     }
   }
 
-  const filteredSubjects = subjects.filter((subject: any) =>
-    subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (subject.code && subject.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (subject.description && subject.description.toLowerCase().includes(searchTerm.toLowerCase()))
-  )
+  const filteredSubjects = useMemo(() => (
+    subjects.filter((subject: any) =>
+      subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (subject.code && subject.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (subject.description && subject.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+  ), [subjects, searchTerm])
+
+  const sortedSubjects = useMemo(() => {
+    const list = [...filteredSubjects]
+
+    if (subjectSortMode === 'code') {
+      return list.sort((a, b) => {
+        const codeA = (a.code || '').toString()
+        const codeB = (b.code || '').toString()
+        const codeCompare = codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
+        if (codeCompare !== 0) return codeCompare
+        return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+      })
+    }
+
+    return list.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
+  }, [filteredSubjects, subjectSortMode])
 
   const totalCourses = Object.values(courseCount).reduce((sum, count) => sum + count, 0)
   const averageCoursesPerSubject = subjects.length > 0 
     ? (totalCourses / subjects.length).toFixed(1) 
     : '0.0'
   const totalHours = subjects.reduce((sum, subject) => sum + (subject.hours || 0), 0)
+
+  useEffect(() => {
+    setSelectedSubjects(prev => {
+      const filtered = prev.filter(id => sortedSubjects.some(subject => subject.id === id))
+      const allSelected = filtered.length > 0 && filtered.length === sortedSubjects.length
+      setSelectAll(allSelected)
+      return filtered
+    })
+  }, [sortedSubjects])
 
   if (loading) {
     return (
@@ -549,6 +577,56 @@ export default function SubjectsPage() {
             Filtros
           </Button>
         </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm mt-4">
+          <span className="text-gold-400/80 font-medium">Ordenar por:</span>
+          <button
+            type="button"
+            onClick={() => setSubjectSortMode('code')}
+            className={`px-3 py-1.5 rounded-lg border transition-colors ${
+              subjectSortMode === 'code'
+                ? 'border-gold-500 text-gold-100 bg-gold-500/10'
+                : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+            }`}
+          >
+            Código (A-Z)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubjectSortMode('name')}
+            className={`px-3 py-1.5 rounded-lg border transition-colors ${
+              subjectSortMode === 'name'
+                ? 'border-gold-500 text-gold-100 bg-gold-500/10'
+                : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+            }`}
+          >
+            Nome (A-Z)
+          </button>
+        </div>
+
+        {subjects.length > 0 && (
+          <div className="flex items-center gap-2 text-sm text-gold-300 mt-2">
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              disabled={sortedSubjects.length === 0}
+              aria-pressed={selectAll && sortedSubjects.length > 0}
+              className={`text-gold-400 hover:text-gold-200 transition-colors ${
+                sortedSubjects.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {selectAll && sortedSubjects.length > 0 ? (
+                <CheckSquare className="w-5 h-5" />
+              ) : (
+                <Square className="w-5 h-5" />
+              )}
+            </button>
+            <span>
+              {selectAll && sortedSubjects.length > 0
+                ? 'Resultados filtrados selecionados'
+                : 'Selecionar resultados filtrados'}
+            </span>
+          </div>
+        )}
       </Card>
 
       {/* Subjects Table */}
@@ -576,8 +654,8 @@ export default function SubjectsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredSubjects.length > 0 ? (
-                filteredSubjects.map((subject) => (
+              {sortedSubjects.length > 0 ? (
+                sortedSubjects.map((subject) => (
                   <tr key={subject.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">
                     <td className="py-4 px-4 text-center">
                       <button

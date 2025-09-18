@@ -562,30 +562,6 @@ export default function TestsManagementPage() {
       {/* Header com busca e filtros */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div className="flex items-center gap-4 flex-wrap">
-          {tests.length > 0 && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleSelectAllFiltered}
-                disabled={filteredTests.length === 0}
-                aria-pressed={allFilteredSelected && filteredTests.length > 0}
-                className={`text-gold-400 hover:text-gold-200 transition-colors ${
-                  filteredTests.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                {allFilteredSelected && filteredTests.length > 0 ? (
-                  <CheckSquare className="w-5 h-5" />
-                ) : (
-                  <Square className="w-5 h-5" />
-                )}
-              </button>
-              <span className="text-sm text-gold-300">
-                {allFilteredSelected && filteredTests.length > 0
-                  ? 'Resultados filtrados selecionados'
-                  : 'Selecionar resultados filtrados'}
-              </span>
-            </div>
-          )}
           <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
             <FileCheck className="w-8 h-8 text-gold-400" />
             {t('tests.title')}
@@ -671,10 +647,10 @@ export default function TestsManagementPage() {
           {/* Filtros expandidos */}
           {showFilters && (
             <div className="pt-4 border-t border-gold-500/20">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gold-200 mb-2">Curso</label>
-                  <select
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gold-200 mb-2">Curso</label>
+                <select
                     value={filterCourse}
                     onChange={(e) => setFilterCourse(e.target.value)}
                     className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
@@ -711,6 +687,31 @@ export default function TestsManagementPage() {
                   </select>
                 </div>
               </div>
+            </div>
+          )}
+
+          {tests.length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-gold-300 pt-1">
+              <button
+                type="button"
+                onClick={toggleSelectAllFiltered}
+                disabled={filteredTests.length === 0}
+                aria-pressed={allFilteredSelected && filteredTests.length > 0}
+                className={`text-gold-400 hover:text-gold-200 transition-colors ${
+                  filteredTests.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {allFilteredSelected && filteredTests.length > 0 ? (
+                  <CheckSquare className="w-5 h-5" />
+                ) : (
+                  <Square className="w-5 h-5" />
+                )}
+              </button>
+              <span>
+                {allFilteredSelected && filteredTests.length > 0
+                  ? 'Resultados filtrados selecionados'
+                  : 'Selecionar resultados filtrados'}
+              </span>
             </div>
           )}
         </div>

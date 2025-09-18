@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, AlertCircle, BookOpen, Video, FileQuestion, Eye, EyeOff, ArrowDownAZ, ArrowUpAZ } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, AlertCircle, BookOpen, Video, FileQuestion, Eye, EyeOff, ArrowDownAZ, ArrowUpAZ, CheckSquare, Square } from 'lucide-react'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
@@ -62,6 +62,9 @@ export default function LessonsPage() {
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [previewLesson, setPreviewLesson] = useState<LessonWithRelations | null>(null)
   const [lessonSortMode, setLessonSortMode] = useState<'code' | 'title'>('code')
+  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([])
+  const [selectAllLessons, setSelectAllLessons] = useState(false)
+  const [bulkDeletingLessons, setBulkDeletingLessons] = useState(false)
   
   const supabase = createClient()
 
@@ -282,6 +285,76 @@ export default function LessonsPage() {
     return list.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' }))
   }, [filteredLessons, lessonSortMode])
 
+  useEffect(() => {
+    setSelectedLessonIds(prev => {
+      const filtered = prev.filter(id => sortedLessons.some(lesson => lesson.id === id))
+      const allSelected = filtered.length > 0 && filtered.length === sortedLessons.length
+      setSelectAllLessons(allSelected)
+      return filtered
+    })
+  }, [sortedLessons])
+
+  const handleToggleLessonSelection = (lessonId: string) => {
+    setSelectedLessonIds(prev => {
+      if (prev.includes(lessonId)) {
+        const updated = prev.filter(id => id !== lessonId)
+        if (selectAllLessons) setSelectAllLessons(false)
+        return updated
+      }
+      const updated = [...prev, lessonId]
+      if (updated.length === sortedLessons.length && sortedLessons.length > 0) {
+        setSelectAllLessons(true)
+      }
+      return updated
+    })
+  }
+
+  const handleSelectAllLessons = () => {
+    if (selectAllLessons) {
+      setSelectedLessonIds([])
+      setSelectAllLessons(false)
+      return
+    }
+
+    const ids = sortedLessons.map(lesson => lesson.id)
+    setSelectedLessonIds(ids)
+    setSelectAllLessons(ids.length > 0)
+  }
+
+  const handleBulkDeleteSelectedLessons = async () => {
+    if (selectedLessonIds.length === 0) return
+
+    const selectedTitles = lessons
+      .filter(lesson => selectedLessonIds.includes(lesson.id))
+      .map(lesson => lesson.title)
+      .join(', ')
+
+    if (!confirm(`Tem certeza que deseja excluir ${selectedLessonIds.length} aula(s)?\n\nAulas: ${selectedTitles}`)) {
+      return
+    }
+
+    setBulkDeletingLessons(true)
+
+    try {
+      const { error } = await supabase
+        .from('lessons')
+        .delete()
+        .in('id', selectedLessonIds)
+
+      if (error) throw error
+
+      setMessage({ type: 'success', text: `${selectedLessonIds.length} aula(s) excluída(s) com sucesso!` })
+      setSelectedLessonIds([])
+      setSelectAllLessons(false)
+      await fetchData()
+    } catch (error: any) {
+      console.error('Error deleting lessons:', error)
+      setMessage({ type: 'error', text: error.message || 'Erro ao excluir aulas selecionadas' })
+    } finally {
+      setBulkDeletingLessons(false)
+    }
+  }
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'video':
@@ -355,6 +428,35 @@ export default function LessonsPage() {
         }`}>
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           {message.text}
+        </div>
+      )}
+
+      {selectedLessonIds.length > 0 && (
+        <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="text-gold-200 font-medium">
+            {selectedLessonIds.length} {selectedLessonIds.length === 1 ? 'aula selecionada' : 'aulas selecionadas'}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedLessonIds([])
+                setSelectAllLessons(false)
+              }}
+              className="text-sm text-gold-300 hover:text-gold-100 underline"
+            >
+              Desmarcar todas
+            </button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleBulkDeleteSelectedLessons}
+              disabled={bulkDeletingLessons}
+              icon={<Trash2 className="w-4 h-4" />}
+            >
+              {bulkDeletingLessons ? 'Excluindo...' : 'Excluir selecionadas'}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -449,6 +551,31 @@ export default function LessonsPage() {
             Título da aula (A-Z)
           </button>
         </div>
+
+        {lessons.length > 0 && (
+          <div className="flex items-center gap-2 text-sm text-gold-300 mt-2">
+            <button
+              type="button"
+              onClick={handleSelectAllLessons}
+              disabled={sortedLessons.length === 0}
+              aria-pressed={selectAllLessons && sortedLessons.length > 0}
+              className={`text-gold-400 hover:text-gold-200 transition-colors ${
+                sortedLessons.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              {selectAllLessons && sortedLessons.length > 0 ? (
+                <CheckSquare className="w-5 h-5" />
+              ) : (
+                <Square className="w-5 h-5" />
+              )}
+            </button>
+            <span>
+              {selectAllLessons && sortedLessons.length > 0
+                ? 'Resultados filtrados selecionados'
+                : 'Selecionar resultados filtrados'}
+            </span>
+          </div>
+        )}
       </Card>
 
       {/* Lessons Table */}
@@ -457,6 +584,18 @@ export default function LessonsPage() {
           <table className="w-full table-density density-compact">
             <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
               <tr className="border-b border-gold-500/20">
+                <th className="text-center text-gold-200 font-medium w-12">
+                  <button
+                    onClick={handleSelectAllLessons}
+                    className="text-gold-400 hover:text-gold-200 transition-colors"
+                  >
+                    {selectAllLessons && sortedLessons.length > 0 ? (
+                      <CheckSquare className="w-5 h-5" />
+                    ) : (
+                      <Square className="w-5 h-5" />
+                    )}
+                  </button>
+                </th>
                 <th scope="col" className="text-left text-gold-200 font-medium">Aula</th>
                 <th scope="col" className="text-left text-gold-200 font-medium">
                   <button
@@ -485,6 +624,18 @@ export default function LessonsPage() {
                   const progress = lessonProgress[lesson.id] || { completed: 0, total: 0 }
                   return (
                     <tr key={lesson.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">
+                      <td className="py-4 px-4 text-center">
+                        <button
+                          onClick={() => handleToggleLessonSelection(lesson.id)}
+                          className="text-gold-400 hover:text-gold-200 transition-colors"
+                        >
+                          {selectedLessonIds.includes(lesson.id) ? (
+                            <CheckSquare className="w-5 h-5" />
+                          ) : (
+                            <Square className="w-5 h-5" />
+                          )}
+                        </button>
+                      </td>
                       <td className="py-4 px-4">
                         <div className="max-w-[220px] md:max-w-[300px]">
                           <p className="text-gold-100 font-medium truncate" title={lesson.title}>
@@ -570,7 +721,7 @@ export default function LessonsPage() {
                       <td className="py-4 px-4">
                         <div className="flex items-center justify-center gap-2">
                           <Button 
-                            variant="secondary" 
+                            variant="secondary"
                             size="sm"
                             onClick={() => {
                               // Redirecionar para a página do curso do aluno com a aula específica
