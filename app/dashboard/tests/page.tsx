@@ -758,7 +758,12 @@ export default function TestsManagementPage() {
                         <FileCheck className="w-5 h-5 text-gold-600" />
                       </div>
                       <h3 className="text-xl font-bold text-gold">
-                        {test.title}
+                        <span
+                          className="inline-block max-w-[240px] md:max-w-[360px] truncate align-middle"
+                          title={test.title}
+                        >
+                          {test.title}
+                        </span>
                       </h3>
                     </div>
 
@@ -768,16 +773,21 @@ export default function TestsManagementPage() {
                     
                     <div className="flex flex-wrap gap-3 mb-4">
                       {course && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
-                          <BookOpen className="w-5 h-5 text-gold-400" />
-                          <span className="text-sm font-medium text-gold-200">{course.title}</span>
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20 max-w-full">
+                          <BookOpen className="w-5 h-5 text-gold-400 flex-shrink-0" />
+                          <span
+                            className="text-sm font-medium text-gold-200 truncate max-w-[180px] md:max-w-[240px]"
+                            title={course.title}
+                          >
+                            {course.title}
+                          </span>
                         </div>
                       )}
                       {subject && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
                           <FileText className="w-5 h-5 text-gold-400" />
-                          <div className="text-sm font-medium text-gold-200 flex flex-col leading-tight">
-                            <span>{subject.name}</span>
+                          <div className="text-sm font-medium text-gold-200 flex flex-col leading-tight max-w-[180px] md:max-w-[220px] truncate">
+                            <span className="truncate" title={subject.name}>{subject.name}</span>
                             {subject.code && (
                               <span className="text-xs uppercase tracking-wide text-gold-400">{subject.code}</span>
                             )}

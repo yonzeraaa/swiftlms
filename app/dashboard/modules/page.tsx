@@ -121,7 +121,12 @@ function ModuleCard({
                 `} />
               )}
               <h3 className="text-xl font-bold text-gold">
-                {module.title}
+                <span
+                  className="inline-block max-w-[220px] md:max-w-[260px] truncate align-middle"
+                  title={module.title}
+                >
+                  {module.title}
+                </span>
               </h3>
             </div>
             {showModuleCode && (
@@ -132,7 +137,9 @@ function ModuleCard({
             {course && (
               <p className="text-sm text-gold-400 mt-1 flex items-center gap-1 ml-7">
                 <BookOpen className="w-4 h-4" />
-                {course.title}
+                <span className="truncate inline-block max-w-[200px]" title={course.title}>
+                  {course.title}
+                </span>
               </p>
             )}
           </div>

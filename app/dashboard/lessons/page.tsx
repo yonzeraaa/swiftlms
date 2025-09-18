@@ -486,19 +486,30 @@ export default function LessonsPage() {
                   return (
                     <tr key={lesson.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">
                       <td className="py-4 px-4">
-                        <div>
-                          <p className="text-gold-100 font-medium">{lesson.title}</p>
+                        <div className="max-w-[220px] md:max-w-[300px]">
+                          <p className="text-gold-100 font-medium truncate" title={lesson.title}>
+                            {lesson.title}
+                          </p>
                           {lesson.description && (
-                            <p className="text-gold-400 text-sm mt-1">{lesson.description}</p>
+                            <p className="text-gold-400 text-sm mt-1 truncate" title={lesson.description}>
+                              {lesson.description}
+                            </p>
                           )}
                         </div>
                       </td>
                       <td className="py-4 px-4">
                         <div className="text-gold-300 text-sm">
                           {(lesson as any).subject_lessons?.[0]?.subjects ? (
-                            <div>
-                              <p className="text-gold-200">{(lesson as any).subject_lessons[0].subjects.name}</p>
-                              <p className="text-gold-400 text-xs">{(lesson as any).subject_lessons[0].subjects.code}</p>
+                            <div className="max-w-[200px] md:max-w-[240px]">
+                              <p
+                                className="text-gold-200 truncate"
+                                title={(lesson as any).subject_lessons[0].subjects.name}
+                              >
+                                {(lesson as any).subject_lessons[0].subjects.name}
+                              </p>
+                              <p className="text-gold-400 text-xs truncate" title={(lesson as any).subject_lessons[0].subjects.code || undefined}>
+                                {(lesson as any).subject_lessons[0].subjects.code}
+                              </p>
                             </div>
                           ) : (
                             <span className="text-gold-500">-</span>
