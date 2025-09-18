@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles, MoreVertical, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
@@ -48,6 +48,7 @@ export default function TestsManagementPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedTests, setSelectedTests] = useState<string[]>([])
   const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [testSortMode, setTestSortMode] = useState<'code' | 'title'>('code')
   
   const supabase = createClient()
   const { t } = useTranslation()
@@ -164,6 +165,32 @@ export default function TestsManagementPage() {
     
     return matchesSearch && matchesCourse && matchesSubject && matchesStatus
   })
+
+  const subjectsById = useMemo(() => {
+    const map = new Map<string, Subject>()
+    subjects.forEach(subject => {
+      map.set(subject.id, subject)
+    })
+    return map
+  }, [subjects])
+
+  const sortedTests = useMemo(() => {
+    const list = [...filteredTests]
+
+    if (testSortMode === 'code') {
+      return list.sort((a, b) => {
+        const codeA = subjectsById.get(a.subject_id || '')?.code || ''
+        const codeB = subjectsById.get(b.subject_id || '')?.code || ''
+        const codeCompare = codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
+
+        if (codeCompare !== 0) return codeCompare
+
+        return a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
+      })
+    }
+
+    return list.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' }))
+  }, [filteredTests, testSortMode, subjectsById])
 
   const anySelection = selectedTests.length > 0
   const allFilteredSelected = filteredTests.length > 0 && filteredTests.every(test => selectedTests.includes(test.id))
@@ -615,6 +642,32 @@ export default function TestsManagementPage() {
             </Button>
           </div>
 
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-gold-400/80 font-medium">Ordenar por:</span>
+            <button
+              type="button"
+              onClick={() => setTestSortMode('code')}
+              className={`px-3 py-1.5 rounded-lg border transition-colors ${
+                testSortMode === 'code'
+                  ? 'border-gold-500 text-gold-100 bg-gold-500/10'
+                  : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+              }`}
+            >
+              Código da disciplina (A-Z)
+            </button>
+            <button
+              type="button"
+              onClick={() => setTestSortMode('title')}
+              className={`px-3 py-1.5 rounded-lg border transition-colors ${
+                testSortMode === 'title'
+                  ? 'border-gold-500 text-gold-100 bg-gold-500/10'
+                  : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+              }`}
+            >
+              Título do teste (A-Z)
+            </button>
+          </div>
+
           {/* Filtros expandidos */}
           {showFilters && (
             <div className="pt-4 border-t border-gold-500/20">
@@ -674,7 +727,7 @@ export default function TestsManagementPage() {
         </div>
       ) : (
       <div className="grid gap-4">
-        {filteredTests.map((test) => {
+        {sortedTests.map((test) => {
           const course = courses.find(c => c.id === test.course_id)
           const subject = subjects.find(s => s.id === test.subject_id)
           const isSelected = selectedTests.includes(test.id)
@@ -723,7 +776,12 @@ export default function TestsManagementPage() {
                       {subject && (
                         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
                           <FileText className="w-5 h-5 text-gold-400" />
-                          <span className="text-sm font-medium text-gold-200">{subject.name}</span>
+                          <div className="text-sm font-medium text-gold-200 flex flex-col leading-tight">
+                            <span>{subject.name}</span>
+                            {subject.code && (
+                              <span className="text-xs uppercase tracking-wide text-gold-400">{subject.code}</span>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

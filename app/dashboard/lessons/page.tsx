@@ -2,9 +2,9 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, AlertCircle, BookOpen, Video, FileQuestion, Eye, EyeOff } from 'lucide-react'
+import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, AlertCircle, BookOpen, Video, FileQuestion, Eye, EyeOff, ArrowDownAZ, ArrowUpAZ } from 'lucide-react'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
@@ -61,6 +61,7 @@ export default function LessonsPage() {
   const [lessonProgress, setLessonProgress] = useState<{ [key: string]: { completed: number, total: number } }>({})
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [previewLesson, setPreviewLesson] = useState<LessonWithRelations | null>(null)
+  const [lessonSortMode, setLessonSortMode] = useState<'code' | 'title'>('code')
   
   const supabase = createClient()
 
@@ -247,10 +248,39 @@ export default function LessonsPage() {
     })
   }
 
-  const filteredLessons = lessons.filter(lesson =>
-    lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filteredLessons = useMemo(() => {
+    return lessons.filter(lesson =>
+      lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [lessons, searchTerm])
+
+  const getLessonSubjectCode = (lesson: LessonWithRelations) => {
+    const code = (lesson as any).subject_lessons?.[0]?.subjects?.code
+    if (typeof code === 'string' && code.trim().length > 0) {
+      return code.trim()
+    }
+    const match = lesson.title.match(/^[A-Za-zÀ-ÖØ-öø-ÿ0-9._-]+/)
+    return match ? match[0] : lesson.title
+  }
+
+  const sortedLessons = useMemo(() => {
+    const list = [...filteredLessons]
+
+    if (lessonSortMode === 'code') {
+      return list.sort((a, b) => {
+        const codeA = getLessonSubjectCode(a)
+        const codeB = getLessonSubjectCode(b)
+        const codeCompare = codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
+
+        if (codeCompare !== 0) return codeCompare
+
+        return a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
+      })
+    }
+
+    return list.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' }))
+  }, [filteredLessons, lessonSortMode])
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -393,6 +423,32 @@ export default function LessonsPage() {
             Filtros
           </Button>
         </div>
+
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-gold-400/80 font-medium">Ordenar por:</span>
+          <button
+            type="button"
+            onClick={() => setLessonSortMode('code')}
+            className={`px-3 py-1.5 rounded-lg border transition-colors ${
+              lessonSortMode === 'code'
+                ? 'border-gold-500 text-gold-100 bg-gold-500/10'
+                : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+            }`}
+          >
+            Código da disciplina (A-Z)
+          </button>
+          <button
+            type="button"
+            onClick={() => setLessonSortMode('title')}
+            className={`px-3 py-1.5 rounded-lg border transition-colors ${
+              lessonSortMode === 'title'
+                ? 'border-gold-500 text-gold-100 bg-gold-500/10'
+                : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+            }`}
+          >
+            Título da aula (A-Z)
+          </button>
+        </div>
       </Card>
 
       {/* Lessons Table */}
@@ -402,7 +458,20 @@ export default function LessonsPage() {
             <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
               <tr className="border-b border-gold-500/20">
                 <th scope="col" className="text-left text-gold-200 font-medium">Aula</th>
-                <th scope="col" className="text-left text-gold-200 font-medium">Disciplina</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">
+                  <button
+                    type="button"
+                    onClick={() => setLessonSortMode(prev => prev === 'code' ? 'title' : 'code')}
+                    className="flex items-center gap-2 text-gold-200 hover:text-gold transition-colors"
+                  >
+                    Disciplina
+                    {lessonSortMode === 'code' ? (
+                      <ArrowDownAZ className="w-4 h-4" />
+                    ) : (
+                      <ArrowUpAZ className="w-4 h-4" />
+                    )}
+                  </button>
+                </th>
                 <th scope="col" className="text-center text-gold-200 font-medium">Tipo</th>
                 <th scope="col" className="text-center text-gold-200 font-medium">Duração</th>
                 <th scope="col" className="text-center text-gold-200 font-medium">Ordem</th>
@@ -411,8 +480,8 @@ export default function LessonsPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredLessons.length > 0 ? (
-                filteredLessons.map((lesson) => {
+              {sortedLessons.length > 0 ? (
+                sortedLessons.map((lesson) => {
                   const progress = lessonProgress[lesson.id] || { completed: 0, total: 0 }
                   return (
                     <tr key={lesson.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">

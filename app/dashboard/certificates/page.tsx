@@ -142,13 +142,27 @@ export default function CertificatesPage() {
         p_admin_id: user.id
       })
       
-      if (!error && data) {
-        await fetchData()
-        alert('Certificado aprovado com sucesso!')
-      } else {
+      const result = Array.isArray(data) ? data[0] : data
+
+      if (error) {
         console.error('Error approving certificate:', error)
         alert('Erro ao aprovar certificado')
+        return
       }
+
+      if (result?.success) {
+        await fetchData()
+        alert(result.message || 'Certificado aprovado com sucesso!')
+        return
+      }
+
+      const fallbackMessage = 'O aluno não cumpriu com todos os requisitos para aprovação e emissão do certificado.'
+      const detailedMessage = typeof result?.message === 'string' && result.message.trim().length > 0
+        ? result.message
+        : fallbackMessage
+
+      console.warn('Certificate approval blocked:', result)
+      alert(detailedMessage)
     } catch (error) {
       console.error('Error:', error)
       alert('Erro ao aprovar certificado')

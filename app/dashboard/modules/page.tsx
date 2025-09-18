@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Folder, Plus, Edit, Trash2, Search, X, AlertCircle, BookOpen, GripVertical, CheckSquare, Square, Trash } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
@@ -35,7 +35,27 @@ import { CSS } from '@dnd-kit/utilities'
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
 
-interface SortableModuleProps {
+const CODE_PREFIX_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9._-]+/
+
+const getModuleIdentifier = (module: CourseModule) => {
+  const rawCode = (module as Record<string, any>)?.code
+
+  if (typeof rawCode === 'string' && rawCode.trim().length > 0) {
+    return rawCode.trim()
+  }
+
+  if (typeof module.title === 'string') {
+    const match = module.title.match(CODE_PREFIX_REGEX)
+    if (match && match[0].length > 0) {
+      return match[0]
+    }
+    return module.title
+  }
+
+  return ''
+}
+
+interface ModuleCardProps {
   module: CourseModule
   course?: Course
   stats: { subjects: number }
@@ -43,9 +63,142 @@ interface SortableModuleProps {
   onDelete: (module: CourseModule) => void
   isSelected: boolean
   onToggleSelect: (moduleId: string) => void
+  isDragging?: boolean
+  isSorting?: boolean
+  showDragHandle?: boolean
 }
 
-function SortableModule({ module, course, stats, onEdit, onDelete, isSelected, onToggleSelect }: SortableModuleProps) {
+function ModuleCard({
+  module,
+  course,
+  stats,
+  onEdit,
+  onDelete,
+  isSelected,
+  onToggleSelect,
+  isDragging = false,
+  isSorting = false,
+  showDragHandle = true
+}: ModuleCardProps) {
+  const moduleCode = getModuleIdentifier(module)
+  const showModuleCode = moduleCode.trim().length > 0 && moduleCode.trim().toLowerCase() !== (module.title || '').trim().toLowerCase()
+
+  return (
+    <Card 
+      variant="gradient" 
+      className={`
+        relative group transition-all duration-200
+        ${isDragging ? 'shadow-2xl ring-2 ring-gold-500/50' : 'hover:shadow-xl'}
+        ${!isDragging && !isSorting ? 'hover:scale-[1.02]' : ''}
+      `}
+    >
+      {/* Drag Indicator Overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 bg-gradient-to-r from-gold-500/20 to-transparent rounded-xl pointer-events-none" />
+      )}
+      
+      <div className="space-y-4">
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleSelect(module.id)
+                }}
+                className="text-gold-400 hover:text-gold-200 transition-colors"
+              >
+                {isSelected ? (
+                  <CheckSquare className="w-5 h-5" />
+                ) : (
+                  <Square className="w-5 h-5" />
+                )}
+              </button>
+              {showDragHandle && (
+                <GripVertical className={`
+                  w-5 h-5 transition-all duration-200
+                  ${isDragging ? 'text-gold-400' : 'text-gold-500/30 group-hover:text-gold-500/50'}
+                `} />
+              )}
+              <h3 className="text-xl font-bold text-gold">
+                {module.title}
+              </h3>
+            </div>
+            {showModuleCode && (
+              <p className="text-xs uppercase tracking-wider text-gold-500 ml-7">
+                {moduleCode}
+              </p>
+            )}
+            {course && (
+              <p className="text-sm text-gold-400 mt-1 flex items-center gap-1 ml-7">
+                <BookOpen className="w-4 h-4" />
+                {course.title}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit(module)
+              }}
+              className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700 rounded-lg transition-colors"
+              title="Editar módulo"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(module)
+              }}
+              className="p-2 text-red-400 hover:text-red-300 hover:bg-navy-700 rounded-lg transition-colors"
+              title="Excluir módulo"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {module.description && (
+          <p className="text-gold-300 text-sm ml-7">
+            {module.description}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between pt-4 border-t border-gold-500/20">
+          <div className="flex items-center gap-4 text-sm ml-7">
+            <span className="text-gold-400">
+              {stats.subjects} disciplina{stats.subjects !== 1 ? 's' : ''}
+            </span>
+            <span className={`
+              px-2 py-0.5 rounded text-xs
+              ${module.is_required === false
+                ? 'bg-blue-500/20 text-blue-300'
+                : 'bg-green-500/20 text-green-300'
+              }
+            `}>
+              {module.is_required === false ? 'Opcional' : 'Obrigatório'}
+            </span>
+            <span className={`
+              px-2 py-0.5 rounded transition-all duration-200
+              ${isDragging 
+                ? 'bg-gold-500/30 text-gold-200 font-semibold' 
+                : 'bg-navy-900/50 text-gold-400'
+              }
+            `}>
+              Ordem: {(module.order_index || 0) + 1}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+interface SortableModuleProps extends Omit<ModuleCardProps, 'isDragging' | 'isSorting' | 'showDragHandle'> {}
+
+function SortableModule(props: SortableModuleProps) {
   const {
     attributes,
     listeners,
@@ -54,7 +207,7 @@ function SortableModule({ module, course, stats, onEdit, onDelete, isSelected, o
     transition,
     isDragging,
     isSorting
-  } = useSortable({ id: module.id })
+  } = useSortable({ id: props.module.id })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -75,108 +228,11 @@ function SortableModule({ module, course, stats, onEdit, onDelete, isSelected, o
         ${isSorting ? 'cursor-grabbing' : ''}
       `}
     >
-      <Card 
-        variant="gradient" 
-        className={`
-          relative group transition-all duration-200
-          ${isDragging ? 'shadow-2xl ring-2 ring-gold-500/50' : 'hover:shadow-xl'}
-          ${!isDragging && !isSorting ? 'hover:scale-[1.02]' : ''}
-        `}
-      >
-        {/* Drag Indicator Overlay */}
-        {isDragging && (
-          <div className="absolute inset-0 bg-gradient-to-r from-gold-500/20 to-transparent rounded-xl pointer-events-none" />
-        )}
-        
-        <div className="space-y-4">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onToggleSelect(module.id)
-                  }}
-                  className="text-gold-400 hover:text-gold-200 transition-colors"
-                >
-                  {isSelected ? (
-                    <CheckSquare className="w-5 h-5" />
-                  ) : (
-                    <Square className="w-5 h-5" />
-                  )}
-                </button>
-                <GripVertical className={`
-                  w-5 h-5 transition-all duration-200
-                  ${isDragging ? 'text-gold-400' : 'text-gold-500/30 group-hover:text-gold-500/50'}
-                `} />
-                <h3 className="text-xl font-bold text-gold">
-                  {module.title}
-                </h3>
-              </div>
-              {course && (
-                <p className="text-sm text-gold-400 mt-1 flex items-center gap-1 ml-7">
-                  <BookOpen className="w-4 h-4" />
-                  {course.title}
-                </p>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onEdit(module)
-                }}
-                className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700 rounded-lg transition-colors"
-                title="Editar módulo"
-              >
-                <Edit className="w-4 h-4" />
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onDelete(module)
-                }}
-                className="p-2 text-red-400 hover:text-red-300 hover:bg-navy-700 rounded-lg transition-colors"
-                title="Excluir módulo"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {module.description && (
-            <p className="text-gold-300 text-sm ml-7">
-              {module.description}
-            </p>
-          )}
-
-          <div className="flex items-center justify-between pt-4 border-t border-gold-500/20">
-            <div className="flex items-center gap-4 text-sm ml-7">
-              <span className="text-gold-400">
-                {stats.subjects} disciplina{stats.subjects !== 1 ? 's' : ''}
-              </span>
-              <span className={`
-                px-2 py-0.5 rounded text-xs
-                ${module.is_required === false
-                  ? 'bg-blue-500/20 text-blue-300'
-                  : 'bg-green-500/20 text-green-300'
-                }
-              `}>
-                {module.is_required === false ? 'Opcional' : 'Obrigatório'}
-              </span>
-              <span className={`
-                px-2 py-0.5 rounded transition-all duration-200
-                ${isDragging 
-                  ? 'bg-gold-500/30 text-gold-200 font-semibold' 
-                  : 'bg-navy-900/50 text-gold-400'
-                }
-              `}>
-                Ordem: {(module.order_index || 0) + 1}
-              </span>
-            </div>
-          </div>
-        </div>
-      </Card>
+      <ModuleCard
+        {...props}
+        isDragging={isDragging}
+        isSorting={isSorting}
+      />
     </div>
   )
 }
@@ -203,6 +259,7 @@ export default function ModulesPage() {
   const [selectedCourse, setSelectedCourse] = useState<string>('all')
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+  const [sortMode, setSortMode] = useState<'code' | 'structure'>('code')
   
   const supabase = createClient()
   
@@ -583,28 +640,50 @@ export default function ModulesPage() {
     }
   }
 
-  // Filter modules by search and selected course
-  const filteredModules = modules.filter(module => {
-    const matchesSearch = module.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      module.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesCourse = selectedCourse === 'all' || module.course_id === selectedCourse
-    
-    return matchesSearch && matchesCourse
-  })
+  const filteredModules = useMemo(() => {
+    return modules.filter(module => {
+      const matchesSearch = module.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        module.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesCourse = selectedCourse === 'all' || module.course_id === selectedCourse
+      
+      return matchesSearch && matchesCourse
+    })
+  }, [modules, searchTerm, selectedCourse])
 
-  // Sort filtered modules by course and then by order
-  const sortedModules = [...filteredModules].sort((a, b) => {
-    // First sort by course
-    const courseA = courses.find(c => c.id === a.course_id)?.title || ''
-    const courseB = courses.find(c => c.id === b.course_id)?.title || ''
-    const courseCompare = courseA.localeCompare(courseB)
-    
-    if (courseCompare !== 0) return courseCompare
-    
-    // Then sort by order within the same course
-    return (a.order_index || 0) - (b.order_index || 0)
-  })
+  const coursesById = useMemo(() => {
+    const map = new Map<string, Course>()
+    courses.forEach(course => {
+      map.set(course.id, course)
+    })
+    return map
+  }, [courses])
+
+  const sortedModules = useMemo(() => {
+    const list = [...filteredModules]
+
+    if (sortMode === 'code') {
+      return list.sort((a, b) => {
+        const codeA = getModuleIdentifier(a)
+        const codeB = getModuleIdentifier(b)
+        const codeCompare = codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
+
+        if (codeCompare !== 0) return codeCompare
+
+        return a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
+      })
+    }
+
+    return list.sort((a, b) => {
+      const courseA = coursesById.get(a.course_id)?.title || ''
+      const courseB = coursesById.get(b.course_id)?.title || ''
+      const courseCompare = courseA.localeCompare(courseB, 'pt-BR', { sensitivity: 'base' })
+
+      if (courseCompare !== 0) return courseCompare
+
+      return (a.order_index || 0) - (b.order_index || 0)
+    })
+  }, [filteredModules, sortMode, coursesById])
 
   const activeModule = activeId ? modules.find(m => m.id === activeId) : null
 
@@ -715,7 +794,33 @@ export default function ModulesPage() {
               ))}
             </select>
           </div>
-          
+
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-gold-400/80 font-medium">Ordenar por:</span>
+            <button
+              type="button"
+              onClick={() => setSortMode('code')}
+              className={`px-3 py-1.5 rounded-lg border transition-colors ${
+                sortMode === 'code'
+                  ? 'border-gold-500 text-gold-100 bg-gold-500/10'
+                  : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+              }`}
+            >
+              Código (A-Z)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode('structure')}
+              className={`px-3 py-1.5 rounded-lg border transition-colors ${
+                sortMode === 'structure'
+                  ? 'border-gold-500 text-gold-100 bg-gold-500/10'
+                  : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+              }`}
+            >
+              Curso e ordem manual
+            </button>
+          </div>
+        
           {/* Actions Row */}
           <div className="flex items-center justify-between">
             {sortedModules.length > 0 && (
@@ -733,7 +838,7 @@ export default function ModulesPage() {
                 </span>
               </button>
             )}
-            {sortedModules.length > 1 && (
+            {sortedModules.length > 1 && sortMode === 'structure' && (
               <div className="flex items-center gap-2 text-sm text-gold-400/70">
                 <GripVertical className="w-4 h-4" />
                 <span>Arraste os cards para reordenar os módulos</span>
@@ -743,76 +848,112 @@ export default function ModulesPage() {
         </div>
       </Card>
 
-      {/* Modules Grid with Drag and Drop */}
+      {/* Modules Grid */}
       <div className="relative">
-        {isSaving && (
+        {sortMode === 'structure' && isSaving && (
           <div className="absolute inset-0 bg-navy-900/50 backdrop-blur-sm flex items-center justify-center z-50 rounded-xl">
             <div className="bg-navy-800 px-4 py-2 rounded-lg border border-gold-500/20">
               <p className="text-gold-300">Salvando alterações...</p>
             </div>
           </div>
         )}
-        
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={sortedModules.map(m => m.id)}
-            strategy={verticalListSortingStrategy}
+
+        {sortMode === 'structure' ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sortedModules.length > 0 ? (
-                sortedModules.map((module) => {
-                  const course = courses.find(c => c.id === module.course_id)
-                  const stats = moduleStats[module.id] || { subjects: 0 }
-                  
-                  return (
-                    <SortableModule
-                      key={module.id}
-                      module={module}
-                      course={course}
-                      stats={stats}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
-                      isSelected={selectedModules.has(module.id)}
-                      onToggleSelect={toggleSelectModule}
-                    />
-                  )
-                })
-              ) : (
-                <div className="col-span-full">
-                  <Card>
-                    <div className="text-center py-12">
-                      <Folder className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                      <p className="text-gold-300">
-                        {searchTerm ? 'Nenhum módulo encontrado' : 'Nenhum módulo cadastrado'}
-                      </p>
+            <SortableContext
+              items={sortedModules.map(m => m.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sortedModules.length > 0 ? (
+                  sortedModules.map((module) => {
+                    const course = courses.find(c => c.id === module.course_id)
+                    const stats = moduleStats[module.id] || { subjects: 0 }
+                    
+                    return (
+                      <SortableModule
+                        key={module.id}
+                        module={module}
+                        course={course}
+                        stats={stats}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        isSelected={selectedModules.has(module.id)}
+                        onToggleSelect={toggleSelectModule}
+                      />
+                    )
+                  })
+                ) : (
+                  <div className="col-span-full">
+                    <Card>
+                      <div className="text-center py-12">
+                        <Folder className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                        <p className="text-gold-300">
+                          {searchTerm ? 'Nenhum módulo encontrado' : 'Nenhum módulo cadastrado'}
+                        </p>
+                      </div>
+                    </Card>
+                  </div>
+                )}
+              </div>
+            </SortableContext>
+            
+            <DragOverlay>
+              {activeModule ? (
+                <div className="transform rotate-3 scale-105">
+                  <Card variant="gradient" className="shadow-2xl ring-2 ring-gold-500 bg-navy-800/95">
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <GripVertical className="w-5 h-5 text-gold-400 animate-pulse" />
+                      <div>
+                        <p className="text-gold-200 font-semibold">{activeModule.title}</p>
+                        <p className="text-gold-400 text-xs">Solte para reordenar</p>
+                      </div>
                     </div>
                   </Card>
                 </div>
-              )}
-            </div>
-          </SortableContext>
-          
-          <DragOverlay>
-            {activeModule ? (
-              <div className="transform rotate-3 scale-105">
-                <Card variant="gradient" className="shadow-2xl ring-2 ring-gold-500 bg-navy-800/95">
-                  <div className="flex items-center gap-3 px-4 py-3">
-                    <GripVertical className="w-5 h-5 text-gold-400 animate-pulse" />
-                    <div>
-                      <p className="text-gold-200 font-semibold">{activeModule.title}</p>
-                      <p className="text-gold-400 text-xs">Solte para reordenar</p>
-                    </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sortedModules.length > 0 ? (
+              sortedModules.map((module) => {
+                const course = coursesById.get(module.course_id)
+                const stats = moduleStats[module.id] || { subjects: 0 }
+
+                return (
+                  <ModuleCard
+                    key={module.id}
+                    module={module}
+                    course={course}
+                    stats={stats}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    isSelected={selectedModules.has(module.id)}
+                    onToggleSelect={toggleSelectModule}
+                    showDragHandle={false}
+                  />
+                )
+              })
+            ) : (
+              <div className="col-span-full">
+                <Card>
+                  <div className="text-center py-12">
+                    <Folder className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
+                    <p className="text-gold-300">
+                      {searchTerm ? 'Nenhum módulo encontrado' : 'Nenhum módulo cadastrado'}
+                    </p>
                   </div>
                 </Card>
               </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Create/Edit Modal */}
