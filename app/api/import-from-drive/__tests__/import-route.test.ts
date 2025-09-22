@@ -135,11 +135,15 @@ describe('Database import orchestration', () => {
 
         if (table === 'subjects') {
           return {
-            select: () => ({
-              eq: () => ({
+            select: () => {
+              const builder: any = {
+                eq: () => builder,
+                maybeSingle: async () => ({ data: null, error: null }),
                 single: async () => ({ data: null, error: null }),
-              }),
-            }),
+              }
+
+              return builder
+            },
             insert: (payload: any) => {
               const newSubject = { ...payload, id: `subject-${++subjectCounter}` }
               inserts.subjects.push(newSubject)
@@ -267,6 +271,7 @@ describe('Database import orchestration', () => {
           subjects: [
             {
               name: 'DISC1 - Disciplina 1',
+              code: 'SUB_DISC1_DISCIPLINA_1',
               order: 1,
               lessons: [
                 {
@@ -307,7 +312,7 @@ describe('Database import orchestration', () => {
 
     expect(inserts.subjects).toHaveLength(1)
     expect(inserts.subjects[0]).toMatchObject({
-      code: 'DISC1',
+      code: 'SUB_DISC1_DISCIPLINA_1',
       name: 'DISC1 - Disciplina 1',
     })
 

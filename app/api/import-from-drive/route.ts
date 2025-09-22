@@ -106,6 +106,115 @@ function generateCode(prefix: string, index: number) {
   return `${prefix}${String(index).padStart(2, '0')}`
 }
 
+
+function generateSubjectCode(moduleName: string, subjectName: string) {
+  const base = normalizeForMatching(`${moduleName} ${subjectName}`)
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  const code = base.length > 0 ? base.toUpperCase().slice(0, 32) : null
+  return code ? `SUB_${code}` : `SUB_${Date.now()}`
+}
+
+interface ExistingCourseState {
+  modulesByName: Map<string, { id: string; title: string }>
+  subjectsByModuleId: Map<string, Map<string, { id: string; name: string }>>
+  existingLessonUrls: Set<string>
+  existingTestUrls: Set<string>
+}
+
+async function loadExistingCourseState(supabase: any, courseId: string): Promise<ExistingCourseState | null> {
+  try {
+    const modulesByName = new Map<string, { id: string; title: string }>()
+    const subjectsByModuleId = new Map<string, Map<string, { id: string; name: string }>>()
+    const existingLessonUrls = new Set<string>()
+    const existingTestUrls = new Set<string>()
+
+    const { data: moduleRows, error: moduleError } = await supabase
+      .from('course_modules')
+      .select('id, title')
+      .eq('course_id', courseId)
+
+    if (moduleError) {
+      throw moduleError
+    }
+
+    const moduleIds: string[] = []
+
+    for (const moduleRow of moduleRows || []) {
+      if (moduleRow?.id && moduleRow?.title) {
+        moduleIds.push(moduleRow.id)
+        modulesByName.set(normalizeForMatching(moduleRow.title), { id: moduleRow.id, title: moduleRow.title })
+      }
+    }
+
+    const subjectIds: string[] = []
+
+    if (moduleIds.length > 0) {
+      const { data: moduleSubjectRows, error: moduleSubjectError } = await supabase
+        .from('module_subjects')
+        .select('module_id, subject_id, subjects ( id, name )')
+        .in('module_id', moduleIds)
+
+      if (moduleSubjectError) {
+        throw moduleSubjectError
+      }
+
+      for (const row of moduleSubjectRows || []) {
+        const moduleId = row?.module_id
+        const subjectId = row?.subject_id
+        const subjectName = row?.subjects?.name
+
+        if (!moduleId || !subjectId || !subjectName) continue
+
+        subjectIds.push(subjectId)
+        if (!subjectsByModuleId.has(moduleId)) {
+          subjectsByModuleId.set(moduleId, new Map())
+        }
+        subjectsByModuleId.get(moduleId)!.set(normalizeForMatching(subjectName), { id: subjectId, name: subjectName })
+      }
+    }
+
+    if (subjectIds.length > 0) {
+      const { data: subjectLessonRows, error: subjectLessonError } = await supabase
+        .from('subject_lessons')
+        .select('lessons ( content_url )')
+        .in('subject_id', subjectIds)
+
+      if (subjectLessonError) {
+        throw subjectLessonError
+      }
+
+      for (const row of subjectLessonRows || []) {
+        const url = row?.lessons?.content_url
+        if (typeof url === 'string' && url.length > 0) {
+          existingLessonUrls.add(url)
+        }
+      }
+    }
+
+    const { data: testsRows, error: testsError } = await supabase
+      .from('tests')
+      .select('google_drive_url')
+      .eq('course_id', courseId)
+
+    if (testsError) {
+      throw testsError
+    }
+
+    for (const row of testsRows || []) {
+      const url = row?.google_drive_url
+      if (typeof url === 'string' && url.length > 0) {
+        existingTestUrls.add(url)
+      }
+    }
+
+    return { modulesByName, subjectsByModuleId, existingLessonUrls, existingTestUrls }
+  } catch (error) {
+    console.warn('[IMPORT] Não foi possível carregar estado existente:', error)
+    return null
+  }
+}
+
 // Função para atualizar progresso no Supabase
 async function updateImportProgress(
   supabase: any,
@@ -361,6 +470,8 @@ interface CourseStructure {
     order: number
     subjects: {
       name: string
+      code?: string
+      existingId?: string
       order: number
       lessons: {
         name: string
@@ -531,6 +642,10 @@ async function parseGoogleDriveFolder(
       errors: []
     })
     
+    const existingState = supabase && courseId
+      ? await loadExistingCourseState(supabase, courseId)
+      : null
+    
     // Processar módulos (pastas de primeiro nível)
     for (let moduleIndex = 0; moduleIndex < items.length; moduleIndex++) {
       const item = items[moduleIndex]
@@ -542,6 +657,13 @@ async function parseGoogleDriveFolder(
           order: moduleIndex + 1,
           subjects: [] as any[]
         }
+        const normalizedModuleName = normalizeForMatching(moduleName)
+        const existingModuleInfo = existingState?.modulesByName.get(normalizedModuleName)
+        const moduleAlreadyImported = Boolean(existingModuleInfo)
+        const existingModuleId = existingModuleInfo?.id
+        const existingSubjectsForModule = existingModuleId
+          ? existingState?.subjectsByModuleId.get(existingModuleId)
+          : undefined
         
         // Atualizar progresso ANTES de processar o módulo
         await updateProgress({
@@ -571,8 +693,14 @@ async function parseGoogleDriveFolder(
           
           if (subjectItem.mimeType === FOLDER_MIME_TYPE) {
             const subjectName = ensureName(subjectItem.name, `${moduleName} - Disciplina ${subjectIndex + 1}`)
+            const subjectCode = generateSubjectCode(moduleName, subjectName)
+            const normalizedSubjectName = normalizeForMatching(subjectName)
+            const existingSubjectEntry = existingSubjectsForModule?.get(normalizedSubjectName)
+            const existingSubjectId = existingSubjectEntry?.id
             const subject = {
               name: subjectName,
+              code: subjectCode,
+              existingId: existingSubjectId,
               order: subjectIndex + 1,
               lessons: [] as any[],
               tests: [] as any[]
@@ -645,6 +773,24 @@ async function parseGoogleDriveFolder(
                 let completedLabel: string
 
                 if (isTest) {
+                  if (existingState?.existingTestUrls?.has(driveLink)) {
+                    console.log(`      Teste já importado detectado: '${itemName}', pulando.`)
+                    processedLessons++
+                    await updateProgress({
+                      current_step: `Item ${processedLessons}/${totalLessons} processado`,
+                      total_modules: totalModules,
+                      processed_modules: processedModules,
+                      total_subjects: totalSubjects,
+                      processed_subjects: processedSubjects,
+                      total_lessons: totalLessons,
+                      processed_lessons: processedLessons,
+                      current_item: `Pulado: ${itemName}`,
+                      phase: 'processing',
+                      errors: []
+                    })
+                    continue
+                  }
+
                   testOrder += 1
                   const normalizedOriginalName = (baseName || itemName).trim()
                   const testName = normalizedOriginalName.length > 0 ? normalizedOriginalName : `Teste ${testOrder}`
@@ -685,10 +831,29 @@ async function parseGoogleDriveFolder(
                     answerKey: extractedAnswerKey,
                     requiresManualAnswerKey
                   })
+                  existingState?.existingTestUrls?.add(driveLink)
 
                   console.log(`      Teste detectado: '${testName}' (${mimeType}) - gabarito automático: ${extractedAnswerKey?.length || 0}`)
                   completedLabel = `Teste ${testName}`
                 } else {
+                  if (existingState?.existingLessonUrls?.has(driveLink)) {
+                    console.log(`      Aula já importada detectada: '${itemName}', pulando.`)
+                    processedLessons++
+                    await updateProgress({
+                      current_step: `Item ${processedLessons}/${totalLessons} processado`,
+                      total_modules: totalModules,
+                      processed_modules: processedModules,
+                      total_subjects: totalSubjects,
+                      processed_subjects: processedSubjects,
+                      total_lessons: totalLessons,
+                      processed_lessons: processedLessons,
+                      current_item: `Pulado: ${itemName}`,
+                      phase: 'processing',
+                      errors: []
+                    })
+                    continue
+                  }
+
                   let contentType = 'text'
 
                   if (
@@ -751,6 +916,7 @@ async function parseGoogleDriveFolder(
                   }
 
                   subject.lessons.push(lesson)
+                  existingState?.existingLessonUrls?.add(driveLink)
                   console.log(`      Aula adicionada: '${lesson.name}' (tipo: ${lessonItem.mimeType})`)
                   completedLabel = lesson.name
                 }
@@ -780,7 +946,15 @@ async function parseGoogleDriveFolder(
             
             console.log(`    Total de aulas processadas para '${subject.name}': ${subject.lessons.length}`)
 
-            courseModule.subjects.push(subject)
+            const subjectHasNewContent = subject.lessons.length > 0 || subject.tests.length > 0
+            const subjectIsNew = !existingSubjectId
+
+            if (subjectHasNewContent || subjectIsNew) {
+              courseModule.subjects.push(subject)
+            } else {
+              console.log(`    Nenhum item novo encontrado para '${subject.name}', pulando disciplina.`)
+            }
+
             processedSubjects++
             
             // Atualizar progresso após processar disciplina
@@ -792,14 +966,21 @@ async function parseGoogleDriveFolder(
               processed_subjects: processedSubjects,
               total_lessons: totalLessons,
               processed_lessons: processedLessons,
-              current_item: `Concluído: ${subject.name}`,
+              current_item: subjectHasNewContent || subjectIsNew
+                ? `Concluído: ${subject.name}`
+                : `Sem novidades: ${subject.name}`,
               phase: 'processing',
               errors: []
             })
           }
         }
 
-        structure.modules.push(courseModule)
+        const moduleHasNewContent = courseModule.subjects.length > 0
+        if (moduleHasNewContent || !moduleAlreadyImported) {
+          structure.modules.push(courseModule)
+        } else {
+          console.log(`  Nenhum conteúdo novo encontrado para o módulo '${courseModule.name}', pulando.`)
+        }
         processedModules++
         
         // Atualizar progresso após processar módulo
@@ -811,7 +992,9 @@ async function parseGoogleDriveFolder(
           processed_subjects: processedSubjects,
           total_lessons: totalLessons,
           processed_lessons: processedLessons,
-          current_item: `Concluído: ${courseModule.name}`,
+          current_item: moduleHasNewContent || !moduleAlreadyImported
+            ? `Concluído: ${courseModule.name}`
+            : `Sem novidades: ${courseModule.name}`,
           phase: 'processing',
           errors: []
         })
@@ -933,30 +1116,46 @@ async function importToDatabase(
           `Disciplina: ${subjectData.name}`
         )
         
-        // Extrair código da disciplina se existir (formatos: "DCA01-Nome", "DCA01 - Nome", "DCA01_Nome")
-        const codeMatch = subjectData.name.match(/^([A-Z0-9]+)\s*[-_]\s*(.+)$/)
-        const subjectCode = codeMatch ? codeMatch[1] : `SUB${Date.now()}${subjectIdx}`
-        // Manter o nome completo da disciplina (com código) conforme solicitado
         const subjectName = subjectData.name
+        const generatedSubjectCode = subjectData.code || generateSubjectCode(moduleData.name, subjectName)
 
-        // Verificar se a disciplina já existe
-        let subjectId: string
-        const { data: existingSubject } = await supabase
-          .from('subjects')
-          .select('id')
-          .eq('code', subjectCode)
-          .single()
+        let subjectId = subjectData.existingId as string | undefined
+        let subjectCodeToUse = generatedSubjectCode
 
-        if (existingSubject) {
-          console.log(`Disciplina já existe: ${subjectCode} - ${subjectName}`)
+        if (!subjectId) {
+          const { data: subjectByCode } = await supabase
+            .from('subjects')
+            .select('id, code')
+            .eq('code', generatedSubjectCode)
+            .maybeSingle()
+
+          if (subjectByCode) {
+            subjectId = subjectByCode.id
+            subjectCodeToUse = subjectByCode.code
+          }
+        }
+
+        if (!subjectId) {
+          const { data: subjectByName } = await supabase
+            .from('subjects')
+            .select('id, code')
+            .eq('name', subjectName)
+            .maybeSingle()
+
+          if (subjectByName) {
+            subjectId = subjectByName.id
+            subjectCodeToUse = subjectByName.code || subjectCodeToUse
+          }
+        }
+
+        if (subjectId) {
+          console.log(`Disciplina já existente identificada: ${subjectName}`)
           results.skipped.subjects++
-          subjectId = existingSubject.id
         } else {
-          // Criar nova disciplina
           const { data: newSubject, error: subjectError } = await supabase
             .from('subjects')
             .insert({
-              code: subjectCode,
+              code: subjectCodeToUse,
               name: subjectName
             })
             .select()
