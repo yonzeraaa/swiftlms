@@ -12,19 +12,46 @@ type DriveClient = drive_v3.Drive
 
 const DEFAULT_RETRY_ATTEMPTS = 3
 const DEFAULT_RETRY_DELAY_MS = 300
+const DEFAULT_ACTION_TIMEOUT_MS = 60_000
 
 async function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+class TimeoutError extends Error {
+  constructor(label: string, timeoutMs: number) {
+    super(`Timeout após ${timeoutMs}ms ao executar ${label}`)
+    this.name = 'TimeoutError'
+  }
+}
+
+async function withTimeout<T>(label: string, action: () => Promise<T>, timeoutMs: number): Promise<T> {
+  return await new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new TimeoutError(label, timeoutMs))
+    }, timeoutMs)
+
+    action()
+      .then(result => {
+        clearTimeout(timer)
+        resolve(result)
+      })
+      .catch(error => {
+        clearTimeout(timer)
+        reject(error)
+      })
+  })
+}
+
 async function executeWithRetries<T>(
   label: string,
   action: () => Promise<T>,
-  options: { retries?: number; delayMs?: number } = {}
+  options: { retries?: number; delayMs?: number; timeoutMs?: number } = {}
 ): Promise<T> {
   const {
     retries = DEFAULT_RETRY_ATTEMPTS,
     delayMs = DEFAULT_RETRY_DELAY_MS,
+    timeoutMs = DEFAULT_ACTION_TIMEOUT_MS
   } = options
 
   let attempt = 0
@@ -32,7 +59,7 @@ async function executeWithRetries<T>(
 
   while (attempt < retries) {
     try {
-      return await action()
+      return await withTimeout(label, action, timeoutMs)
     } catch (err) {
       error = err
       attempt += 1
