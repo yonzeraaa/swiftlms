@@ -185,7 +185,7 @@ function normalizeAnswer(value: string): string | null {
     .replace(/^item\s+/i, '')
     .replace(/^op[cç][aã]o\s+/i, '')
     .replace(/^resp\.?\s*/i, '')
-    .replace(/\.$/, '')
+    .replace(/[\)\]\.:]+$/, '')
     .trim()
 
   if (!cleaned) return null
