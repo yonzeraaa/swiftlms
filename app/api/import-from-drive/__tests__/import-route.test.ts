@@ -68,11 +68,12 @@ describe('Google Drive import parsing', () => {
 
     expect(subject.tests).toHaveLength(1)
     expect(subject.tests[0]).toMatchObject({
-      code: 'T01',
       name: 'Prova FINAL',
+      order: 1,
       contentType: 'test',
       contentUrl: 'https://drive.google.com/file/d/test-1/view',
     })
+    expect(subject.tests[0]).not.toHaveProperty('code')
     expect(subject.tests[0].answerKey).toEqual([
       { questionNumber: 1, correctAnswer: 'A', points: 10 }
     ])
@@ -280,7 +281,6 @@ describe('Database import orchestration', () => {
               tests: [
                 {
                   name: 'Prova FINAL',
-                  code: 'T01',
                   order: 1,
                   contentType: 'test',
                   contentUrl: 'https://drive/url/test-1',
@@ -322,7 +322,7 @@ describe('Database import orchestration', () => {
     expect(inserts.subjectLessons).toHaveLength(1)
     expect(inserts.tests).toHaveLength(1)
     expect(inserts.tests[0]).toMatchObject({
-      title: 'T01 - Prova FINAL',
+      title: 'Prova FINAL',
       course_id: 'course-1',
       google_drive_url: 'https://drive/url/test-1',
       is_active: true,

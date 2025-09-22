@@ -8,8 +8,6 @@ import path from 'path'
 import fs from 'fs'
 
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
-const GOOGLE_FORM_MIME_TYPE = 'application/vnd.google-apps.form'
-
 type DriveClient = drive_v3.Drive
 
 const DEFAULT_RETRY_ATTEMPTS = 3
@@ -92,13 +90,12 @@ async function listFolderContents(
   return files
 }
 
-function isTestFile(name: string, mimeType: string) {
+function isTestFile(name: string) {
   const normalized = normalizeForMatching(name)
   const testKeywords = ['teste', 'test', 'prova', 'avaliacao', 'simulado']
   const hasKeyword = testKeywords.some(keyword => normalized.includes(keyword))
-  const isForm = mimeType.toLowerCase() === GOOGLE_FORM_MIME_TYPE
 
-  return hasKeyword || isForm
+  return hasKeyword
 }
 
 function formatTitle(rawName: string) {
@@ -643,14 +640,14 @@ async function parseGoogleDriveFolder(
                 const fileExtensions = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
                 const baseName = (lessonItem.name || '').replace(fileExtensions, '')
                 const formattedTitle = formatTitle(baseName || itemName)
-                const isTest = isTestFile(itemName, mimeType)
+                const isTest = isTestFile(itemName)
 
                 let completedLabel: string
 
                 if (isTest) {
                   testOrder += 1
-                  const testCode = generateCode('T', testOrder)
-                  const testName = formattedTitle || `Teste ${testOrder}`
+                  const normalizedOriginalName = (baseName || itemName).trim()
+                  const testName = normalizedOriginalName.length > 0 ? normalizedOriginalName : `Teste ${testOrder}`
 
                   let extractedAnswerKey: ParsedAnswerKeyEntry[] | undefined
                   let requiresManualAnswerKey = true
@@ -681,11 +678,10 @@ async function parseGoogleDriveFolder(
 
                   subject.tests.push({
                     name: testName,
-                    code: testCode,
                     order: testOrder,
                     contentType: 'test',
                     contentUrl: driveLink,
-                    description: `Teste ${testCode}: ${testName}`,
+                    description: testName,
                     answerKey: extractedAnswerKey,
                     requiresManualAnswerKey
                   })
@@ -1097,7 +1093,8 @@ async function importToDatabase(
 
         for (let testIdx = 0; testIdx < subjectTests.length; testIdx++) {
           const testData = subjectTests[testIdx]
-          const testTitle = testData.code ? `${testData.code} - ${testData.name}` : testData.name
+          const baseTestTitle = (testData.name || testData.description || '').trim()
+          const testTitle = baseTestTitle.length > 0 ? baseTestTitle : `Teste ${testIdx + 1}`
 
           await updateDatabaseProgress(
             `Salvando teste ${testIdx + 1}/${subjectTests.length}`,
@@ -1151,7 +1148,7 @@ async function importToDatabase(
                       .from('tests')
                       .update({
                         title: testTitle,
-                        description: testData.description || existingTest.description,
+                        description: (testData.description?.trim() || existingTest.description)?.trim() || null,
                         is_active: true,
                         updated_at: new Date().toISOString()
                       })
@@ -1172,7 +1169,7 @@ async function importToDatabase(
             .from('tests')
             .insert({
               title: testTitle,
-              description: testData.description || `Teste importado automaticamente (${testTitle})`,
+              description: testData.description?.trim() || testTitle,
               course_id: courseId,
               module_id: createdModule.id,
               subject_id: subjectId,
