@@ -1481,13 +1481,35 @@ async function processImportInBackground(
     // FASE 1: Contar todos os itens primeiro
     console.log(`[IMPORT-BACKGROUND] === FASE 1: Contando itens ===`)
     await updateJob(jobContext, { current_step: 'Contando itens' })
-    const totals = await countDriveFolderItems(drive, folderId)
+    await updateImportProgress(supabase, importId, userId, courseId, {
+      phase: 'processing',
+      current_step: 'Contando itens no Google Drive...',
+      total_modules: 0,
+      processed_modules: 0,
+      total_subjects: 0,
+      processed_subjects: 0,
+      total_lessons: 0,
+      processed_lessons: 0,
+      current_item: 'Obtendo estrutura inicial',
+      percentage: 0,
+      errors: []
+    }, jobContext)
+
+    let totals: { totalModules: number; totalSubjects: number; totalLessons: number }
+    try {
+      totals = await countDriveFolderItems(drive, folderId)
+      await logJob(jobContext, 'info', 'Totais contabilizados', totals)
+    } catch (countError) {
+      console.error('[IMPORT-BACKGROUND] Falha ao contar itens, prosseguindo mesmo assim:', countError)
+      await logJob(jobContext, 'warn', 'Falha ao contabilizar itens', { message: (countError as Error)?.message })
+      totals = { totalModules: 0, totalSubjects: 0, totalLessons: 0 }
+    }
+
     await updateJob(jobContext, {
       total_items: totals.totalLessons + totals.totalModules + totals.totalSubjects,
       processed_items: 0,
       current_step: 'Estrutura contabilizada',
     })
-    await logJob(jobContext, 'info', 'Totais contabilizados', totals)
     
     // Atualizar progresso com totais
     await updateImportProgress(supabase, importId, userId, courseId, {
