@@ -341,240 +341,70 @@ export default function StructurePage() {
     }
   }
 
-  const deleteTestsCascade = async (testIds: string[]) => {
-    const uniqueIds = Array.from(
-      new Set(testIds.filter((id): id is string => Boolean(id)))
-    )
-
-    if (uniqueIds.length === 0) return
-
-    const { error: answerKeysError } = await supabase
-      .from('test_answer_keys')
-      .delete()
-      .in('test_id', uniqueIds)
-    if (answerKeysError) throw answerKeysError
-
-    const { error: attemptsError } = await supabase
-      .from('test_attempts')
-      .delete()
-      .in('test_id', uniqueIds)
-    if (attemptsError) throw attemptsError
-
-    const { error: gradesError } = await supabase
-      .from('test_grades')
-      .delete()
-      .in('test_id', uniqueIds)
-    if (gradesError) throw gradesError
-
-    const { error: testsError } = await supabase
-      .from('tests')
-      .delete()
-      .in('id', uniqueIds)
-    if (testsError) throw testsError
-  }
-
-  const deleteLessonsCascade = async (lessonIds: string[]) => {
-    const uniqueIds = Array.from(
-      new Set(lessonIds.filter((id): id is string => Boolean(id)))
-    )
-
-    if (uniqueIds.length === 0) return
-
-    const { error: progressError } = await supabase
-      .from('lesson_progress')
-      .delete()
-      .in('lesson_id', uniqueIds)
-    if (progressError) throw progressError
-
-    const { error: subjectLessonError } = await supabase
-      .from('subject_lessons')
-      .delete()
-      .in('lesson_id', uniqueIds)
-    if (subjectLessonError) throw subjectLessonError
-
-    const { error: lessonsError } = await supabase
-      .from('lessons')
-      .delete()
-      .in('id', uniqueIds)
-    if (lessonsError) throw lessonsError
-  }
-
   const handleDeleteNode = async (node: TreeNode) => {
-    const confirmMessage = node.type === 'module' 
+    const confirmMessage = node.type === 'module'
       ? `Tem certeza que deseja excluir o módulo "${node.title}"? Isso removerá todas as disciplinas, aulas, testes e dados associados.`
       : node.type === 'subject'
       ? `Tem certeza que deseja excluir a disciplina "${node.title}"? Isso removerá aulas, testes e dados associados.`
       : `Tem certeza que deseja remover "${node.title}" desta estrutura?`
-    
+
     if (!confirm(confirmMessage)) return
+
+    if (node.type === 'module' || node.type === 'subject') {
+      try {
+        setLoading(true)
+
+        const response = await fetch('/api/structure/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ type: node.type, id: node.id })
+        })
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null)
+          throw new Error(payload?.error || 'Não foi possível remover este item da estrutura.')
+        }
+
+        await fetchHierarchicalData()
+      } catch (error) {
+        console.error('Error removing node:', error)
+        alert('Erro ao remover item da estrutura')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
 
     try {
       setLoading(true)
 
-      if (node.type === 'module') {
-        const moduleId = node.id
-
-        const { data: moduleSubjects, error: moduleSubjectsError } = await supabase
-          .from('module_subjects')
-          .select('subject_id')
-          .eq('module_id', moduleId)
-
-        if (moduleSubjectsError) throw moduleSubjectsError
-
-        const subjectIds = Array.from(
-          new Set((moduleSubjects || []).map(item => item.subject_id).filter((id): id is string => Boolean(id)))
-        )
-
-        let lessonIds: string[] = []
-
-        if (subjectIds.length > 0) {
-          const { data: lessonsData, error: lessonsError } = await supabase
-            .from('subject_lessons')
-            .select('lesson_id')
-            .in('subject_id', subjectIds)
-
-          if (lessonsError) throw lessonsError
-
-          lessonIds = (lessonsData || []).map(row => row.lesson_id)
-        }
-
-        const { data: moduleLessons, error: moduleLessonsError } = await supabase
-          .from('lessons')
-          .select('id')
-          .eq('module_id', moduleId)
-
-        if (moduleLessonsError) throw moduleLessonsError
-
-        moduleLessons?.forEach(lesson => {
-          if (lesson.id) lessonIds.push(lesson.id)
-        })
-
-        let testIds: string[] = []
-
-        if (subjectIds.length > 0) {
-          const { data: testsData, error: testsError } = await supabase
-            .from('tests')
-            .select('id')
-            .in('subject_id', subjectIds)
-
-          if (testsError) throw testsError
-
-          testIds = (testsData || []).map(test => test.id)
-        }
-
-        const { data: moduleTests, error: moduleTestsError } = await supabase
-          .from('tests')
-          .select('id')
-          .eq('module_id', moduleId)
-
-        if (moduleTestsError) throw moduleTestsError
-
-        moduleTests?.forEach(test => {
-          if (test.id) testIds.push(test.id)
-        })
-
-        await deleteTestsCascade(testIds)
-        await deleteLessonsCascade(lessonIds)
-
-        const { error: removeModuleSubjectsError } = await supabase
-          .from('module_subjects')
-          .delete()
-          .eq('module_id', moduleId)
-
-        if (removeModuleSubjectsError) throw removeModuleSubjectsError
-
-        if (subjectIds.length > 0) {
-          const { error: removeCourseSubjectsError } = await supabase
-            .from('course_subjects')
-            .delete()
-            .in('subject_id', subjectIds)
-
-          if (removeCourseSubjectsError) throw removeCourseSubjectsError
-
-          const { error: deleteSubjectsError } = await supabase
-            .from('subjects')
-            .delete()
-            .in('id', subjectIds)
-
-          if (deleteSubjectsError) throw deleteSubjectsError
-        }
-
-        const { error: deleteModuleError } = await supabase
-          .from('course_modules')
-          .delete()
-          .eq('id', moduleId)
-
-        if (deleteModuleError) throw deleteModuleError
-      } 
-      else if (node.type === 'subject' && node.parentId) {
-        const subjectId = node.id
-
-        const { data: subjectLessons, error: subjectLessonsError } = await supabase
-          .from('subject_lessons')
-          .select('lesson_id')
-          .eq('subject_id', subjectId)
-
-        if (subjectLessonsError) throw subjectLessonsError
-
-        const lessonIds = (subjectLessons || []).map(item => item.lesson_id)
-
-        const { data: subjectTests, error: subjectTestsError } = await supabase
-          .from('tests')
-          .select('id')
-          .eq('subject_id', subjectId)
-
-        if (subjectTestsError) throw subjectTestsError
-
-        const testIds = (subjectTests || []).map(test => test.id)
-
-        await deleteTestsCascade(testIds)
-        await deleteLessonsCascade(lessonIds)
-
-        const { error: removeModuleSubjectError } = await supabase
-          .from('module_subjects')
-          .delete()
-          .eq('subject_id', subjectId)
-
-        if (removeModuleSubjectError) throw removeModuleSubjectError
-
-        const { error: removeCourseSubjectError } = await supabase
-          .from('course_subjects')
-          .delete()
-          .eq('subject_id', subjectId)
-
-        if (removeCourseSubjectError) throw removeCourseSubjectError
-
-        const { error: deleteSubjectError } = await supabase
-          .from('subjects')
-          .delete()
-          .eq('id', subjectId)
-
-        if (deleteSubjectError) throw deleteSubjectError
-      }
-      else if (node.type === 'lesson' && node.parentId) {
+      if (node.type === 'lesson' && node.parentId) {
         // Remove association between subject and lesson
         const { error } = await supabase
           .from('subject_lessons')
           .delete()
           .eq('subject_id', node.parentId)
           .eq('lesson_id', node.id)
-        
+
         if (error) throw error
       }
       else if (node.type === 'test' && node.parentId) {
-        // Remove test from subject
+        // Detach test from subject
         const { error } = await supabase
           .from('tests')
           .update({ subject_id: null })
           .eq('id', node.id)
-        
+
         if (error) throw error
       }
-      
+
       await fetchHierarchicalData()
     } catch (error) {
       console.error('Error removing node:', error)
       alert('Erro ao remover item')
+    } finally {
       setLoading(false)
     }
   }
