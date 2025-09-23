@@ -142,9 +142,17 @@ function generateSubjectCode(moduleName: string, subjectName: string) {
   return code ? `SUB_${code}` : `SUB_${Date.now()}`
 }
 
+interface ExistingSubjectInfo {
+  id: string
+  name: string
+  code?: string | null
+  moduleId?: string
+}
+
 interface ExistingCourseState {
   modulesByName: Map<string, { id: string; title: string }>
-  subjectsByModuleId: Map<string, Map<string, { id: string; name: string }>>
+  subjectsByModuleId: Map<string, Map<string, ExistingSubjectInfo>>
+  subjectsByCode: Map<string, ExistingSubjectInfo>
   existingLessonUrls: Set<string>
   existingTestUrls: Set<string>
 }
@@ -152,7 +160,8 @@ interface ExistingCourseState {
 async function loadExistingCourseState(supabase: any, courseId: string): Promise<ExistingCourseState | null> {
   try {
     const modulesByName = new Map<string, { id: string; title: string }>()
-    const subjectsByModuleId = new Map<string, Map<string, { id: string; name: string }>>()
+    const subjectsByModuleId = new Map<string, Map<string, ExistingSubjectInfo>>()
+    const subjectsByCode = new Map<string, ExistingSubjectInfo>()
     const existingLessonUrls = new Set<string>()
     const existingTestUrls = new Set<string>()
 
@@ -179,7 +188,7 @@ async function loadExistingCourseState(supabase: any, courseId: string): Promise
     if (moduleIds.length > 0) {
       const { data: moduleSubjectRows, error: moduleSubjectError } = await supabase
         .from('module_subjects')
-        .select('module_id, subject_id, subjects ( id, name )')
+        .select('module_id, subject_id, subjects ( id, name, code )')
         .in('module_id', moduleIds)
 
       if (moduleSubjectError) {
@@ -197,7 +206,18 @@ async function loadExistingCourseState(supabase: any, courseId: string): Promise
         if (!subjectsByModuleId.has(moduleId)) {
           subjectsByModuleId.set(moduleId, new Map())
         }
-        subjectsByModuleId.get(moduleId)!.set(normalizeForMatching(subjectName), { id: subjectId, name: subjectName })
+          const subjectInfo: ExistingSubjectInfo = {
+            id: subjectId,
+            name: subjectName,
+            code: row?.subjects?.code ?? null,
+            moduleId,
+          }
+
+          subjectsByModuleId.get(moduleId)!.set(normalizeForMatching(subjectName), subjectInfo)
+
+          if (subjectInfo.code) {
+            subjectsByCode.set(subjectInfo.code.toUpperCase(), subjectInfo)
+          }
       }
     }
 
@@ -235,7 +255,7 @@ async function loadExistingCourseState(supabase: any, courseId: string): Promise
       }
     }
 
-    return { modulesByName, subjectsByModuleId, existingLessonUrls, existingTestUrls }
+    return { modulesByName, subjectsByModuleId, subjectsByCode, existingLessonUrls, existingTestUrls }
   } catch (error) {
     console.warn('[IMPORT] Não foi possível carregar estado existente:', error)
     return null
@@ -720,9 +740,17 @@ async function parseGoogleDriveFolder(
           
           if (subjectItem.mimeType === FOLDER_MIME_TYPE) {
             const subjectName = ensureName(subjectItem.name, `${moduleName} - Disciplina ${subjectIndex + 1}`)
-            const subjectCode = generateSubjectCode(moduleName, subjectName)
             const normalizedSubjectName = normalizeForMatching(subjectName)
-            const existingSubjectEntry = existingSubjectsForModule?.get(normalizedSubjectName)
+            const explicitCodeMatch = subjectName.match(/^([A-Za-z0-9]{3,})\s*[-_]/)
+            const explicitSubjectCode = explicitCodeMatch ? explicitCodeMatch[1].toUpperCase() : undefined
+            const generatedSubjectCode = generateSubjectCode(moduleName, subjectName)
+            const subjectCode = (explicitSubjectCode || generatedSubjectCode).slice(0, 32)
+            const existingSubjectByCode = explicitSubjectCode
+              ? existingState?.subjectsByCode.get(explicitSubjectCode.toUpperCase())
+              : undefined
+            const existingSubjectEntry = existingSubjectByCode && existingSubjectByCode.moduleId === existingModuleId
+              ? existingSubjectByCode
+              : existingSubjectsForModule?.get(normalizedSubjectName)
             const existingSubjectId = existingSubjectEntry?.id
             const subject = {
               name: subjectName,
