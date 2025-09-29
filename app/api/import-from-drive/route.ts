@@ -117,12 +117,14 @@ async function listFolderContents(
   return files
 }
 
-function isTestFile(name: string) {
-  const normalized = normalizeForMatching(name)
-  const testKeywords = ['teste', 'test', 'prova', 'avaliacao', 'simulado']
-  const hasKeyword = testKeywords.some(keyword => normalized.includes(keyword))
+function isTestFile(title: string) {
+  const normalizedTitle = normalizeForMatching(title)
 
-  return hasKeyword
+  if (!normalizedTitle) {
+    return false
+  }
+
+  return /\bteste\b/.test(normalizedTitle)
 }
 
 function formatTitle(rawName: string) {
@@ -823,7 +825,7 @@ async function parseGoogleDriveFolder(
                 const fileExtensions = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
                 const baseName = (lessonItem.name || '').replace(fileExtensions, '')
                 const formattedTitle = formatTitle(baseName || itemName)
-                const isTest = isTestFile(itemName)
+                const isTest = isTestFile(formattedTitle)
 
                 let completedLabel: string
 

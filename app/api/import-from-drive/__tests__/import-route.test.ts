@@ -6,7 +6,21 @@ const {
   FOLDER_MIME_TYPE,
   parseGoogleDriveFolder,
   importToDatabase,
+  isTestFile,
 } = (globalThis as any).__IMPORT_FROM_DRIVE_TESTABLES
+
+describe('isTestFile', () => {
+  it('flags titles containing the standalone word TESTE', () => {
+    expect(isTestFile('Aula TESTE 1')).toBe(true)
+    expect(isTestFile('Revisão - Teste-Final')).toBe(true)
+  })
+
+  it('does not match when TESTE is absent as a word', () => {
+    expect(isTestFile('Simulado final')).toBe(false)
+    expect(isTestFile('Testefinal')).toBe(false)
+    expect(isTestFile('Aula de contestação')).toBe(false)
+  })
+})
 
 describe('Google Drive import parsing', () => {
   it('groups lessons and detects tests within the Drive hierarchy', async () => {
@@ -21,7 +35,7 @@ describe('Google Drive import parsing', () => {
       ],
       'subject-1': [
         { id: 'lesson-1', name: 'A01-Introducao.pdf', mimeType: 'application/pdf' },
-        { id: 'test-1', name: 'Prova FINAL', mimeType: 'application/vnd.google-apps.document' },
+        { id: 'test-1', name: 'Teste FINAL', mimeType: 'application/vnd.google-apps.document' },
       ],
     }
 
@@ -68,7 +82,7 @@ describe('Google Drive import parsing', () => {
 
     expect(subject.tests).toHaveLength(1)
     expect(subject.tests[0]).toMatchObject({
-      name: 'Prova FINAL',
+      name: 'Teste FINAL',
       order: 1,
       contentType: 'test',
       contentUrl: 'https://drive.google.com/file/d/test-1/view',
@@ -285,7 +299,7 @@ describe('Database import orchestration', () => {
               ],
               tests: [
                 {
-                  name: 'Prova FINAL',
+                  name: 'Teste FINAL',
                   order: 1,
                   contentType: 'test',
                   contentUrl: 'https://drive/url/test-1',
@@ -327,7 +341,7 @@ describe('Database import orchestration', () => {
     expect(inserts.subjectLessons).toHaveLength(1)
     expect(inserts.tests).toHaveLength(1)
     expect(inserts.tests[0]).toMatchObject({
-      title: 'Prova FINAL',
+      title: 'Teste FINAL',
       course_id: 'course-1',
       google_drive_url: 'https://drive/url/test-1',
       is_active: true,
