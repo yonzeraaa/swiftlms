@@ -788,6 +788,42 @@ export type Database = {
           },
         ]
       }
+      enrollment_modules: {
+        Row: {
+          assigned_at: string
+          enrollment_id: string
+          id: string
+          module_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          enrollment_id: string
+          id?: string
+          module_id: string
+        }
+        Update: {
+          assigned_at?: string
+          enrollment_id?: string
+          id?: string
+          module_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "enrollment_modules_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrollment_modules_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "course_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       enrollments: {
         Row: {
           completed_at: string | null

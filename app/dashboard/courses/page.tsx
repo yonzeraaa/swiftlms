@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, UserPlus, BookMarked, UserMinus, Upload, FileText } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, BookMarked, UserMinus, Upload, FileText } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import ImportProgress from '../../components/ImportProgress'
@@ -64,11 +64,7 @@ export default function CoursesPage() {
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [instructors, setInstructors] = useState<any[]>([])
-  const [showEnrollModal, setShowEnrollModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
-  const [students, setStudents] = useState<any[]>([])
-  const [selectedStudents, setSelectedStudents] = useState<string[]>([])
-  const [enrolling, setEnrolling] = useState(false)
   const [showSubjectsModal, setShowSubjectsModal] = useState(false)
   const [showManageStudentsModal, setShowManageStudentsModal] = useState(false)
   const [enrolledStudents, setEnrolledStudents] = useState<any[]>([])
@@ -157,7 +153,6 @@ export default function CoursesPage() {
       // Fetch data regardless (let individual functions handle auth)
       fetchCourses()
       fetchInstructors()
-      fetchStudents()
     }
     
     // Set up auth state change listener
@@ -174,7 +169,6 @@ export default function CoursesPage() {
         // Refresh data when user signs in
         fetchCourses()
         fetchInstructors()
-        fetchStudents()
       }
     })
     
@@ -210,22 +204,6 @@ export default function CoursesPage() {
       setInstructors(data || [])
     } catch (error) {
       console.error('Error fetching instructors:', error)
-    }
-  }
-  
-  const fetchStudents = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .eq('role', 'student')
-        .eq('status', 'active')
-        .order('full_name')
-        
-      if (error) throw error
-      setStudents(data || [])
-    } catch (error) {
-      console.error('Error fetching students:', error)
     }
   }
   
@@ -403,13 +381,6 @@ export default function CoursesPage() {
     setOpenDropdown(null)
   }
   
-  const openEnrollModal = (course: Course) => {
-    setSelectedCourse(course)
-    setSelectedStudents([])
-    setShowEnrollModal(true)
-    setOpenDropdown(null)
-  }
-  
   const openViewModal = (course: Course) => {
     setSelectedCourse(course)
     setShowViewModal(true)
@@ -499,91 +470,6 @@ export default function CoursesPage() {
     } catch (error: any) {
       console.error('Error unenrolling student:', error)
       alert('Erro ao desmatricular aluno: ' + error.message)
-    }
-  }
-  
-  const enrollStudents = async () => {
-    if (!selectedCourse || selectedStudents.length === 0) return
-    setEnrolling(true)
-    setError(null)
-    
-    try {
-      console.log('[ENROLL] Iniciando processo de matrícula via API...')
-      
-      // Usar a API route para processar matrícula com autenticação server-side
-      const response = await fetch('/api/courses/enroll', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Importante para enviar cookies
-        body: JSON.stringify({
-          courseId: selectedCourse.id,
-          studentIds: selectedStudents
-        })
-      })
-      
-      const data = await response.json()
-      
-      if (!response.ok) {
-        // Se for erro de autenticação, tentar fazer refresh e tentar novamente
-        if (response.status === 401) {
-          console.log('[ENROLL] Erro de autenticação, tentando refresh...')
-          await refreshSession()
-          
-          // Tentar novamente após refresh
-          const retryResponse = await fetch('/api/courses/enroll', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              courseId: selectedCourse.id,
-              studentIds: selectedStudents
-            })
-          })
-          
-          const retryData = await retryResponse.json()
-          
-          if (!retryResponse.ok) {
-            throw new Error(retryData.error || 'Erro ao matricular alunos')
-          }
-          
-          // Sucesso na segunda tentativa
-          alert(retryData.message || `Alunos matriculados com sucesso!`)
-        } else {
-          throw new Error(data.error || 'Erro ao matricular alunos')
-        }
-      } else {
-        // Sucesso na primeira tentativa
-        alert(data.message || `Alunos matriculados com sucesso!`)
-      }
-      
-      console.log('[ENROLL] Matrículas criadas com sucesso')
-      
-      // Limpar estado e atualizar interface
-      setShowEnrollModal(false)
-      setSelectedCourse(null)
-      setSelectedStudents([])
-      
-      // Atualizar lista de cursos
-      await fetchCourses()
-      
-    } catch (error: any) {
-      console.error('[ENROLL] Erro final:', error)
-      const errorMessage = error.message || t('courses.enrollError')
-      
-      // Mensagens de erro mais específicas
-      if (error.message?.includes('AuthSessionMissingError') || error.message?.includes('session missing')) {
-        setError('Sua sessão expirou. Por favor, recarregue a página e faça login novamente.')
-      } else if (error.message?.includes('duplicate') || error.code === '23505') {
-        setError('Um ou mais alunos já estão matriculados neste curso.')
-      } else {
-        setError(errorMessage)
-      }
-    } finally {
-      setEnrolling(false)
     }
   }
   
@@ -1263,90 +1149,6 @@ export default function CoursesPage() {
         </div>
       )}
       
-      {/* Enroll Students Modal */}
-      {showEnrollModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
-                <UserPlus className="w-6 h-6" />
-                {t('courses.enrollStudents')}
-              </h2>
-              <button
-                onClick={() => setShowEnrollModal(false)}
-                className="text-gold-400 hover:text-gold-200 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {error && (
-              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
-            
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gold mb-2">{selectedCourse.title}</h3>
-              <p className="text-gold-300 text-sm">
-                {t('courses.selectStudentsToEnroll')}
-              </p>
-            </div>
-            
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {students.map((student) => (
-                <label
-                  key={student.id}
-                  className="flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg hover:bg-navy-900/70 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedStudents.includes(student.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedStudents([...selectedStudents, student.id])
-                      } else {
-                        setSelectedStudents(selectedStudents.filter(id => id !== student.id))
-                      }
-                    }}
-                    className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500"
-                  />
-                  <div className="flex-1">
-                    <p className="text-gold-200 font-medium">
-                      {student.full_name || student.email}
-                    </p>
-                    <p className="text-gold-400 text-sm">{student.email}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-            
-            <div className="mt-6 flex justify-between items-center">
-              <p className="text-gold-300 text-sm">
-                {selectedStudents.length} {t('courses.selected')}
-              </p>
-              <div className="flex gap-3">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => setShowEnrollModal(false)}
-                >
-                  {t('button.cancel')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={enrollStudents}
-                  disabled={enrolling || selectedStudents.length === 0}
-                >
-                  {enrolling ? t('courses.enrolling') : t('courses.enrollSelected')}
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-      
       {/* View Course Modal */}
       {showViewModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
@@ -1459,15 +1261,6 @@ export default function CoursesPage() {
                 >
                   {t('courses.edit')}
                 </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    setShowViewModal(false)
-                    openEnrollModal(selectedCourse)
-                  }}
-                >
-                  {t('courses.enrollStudents')}
-                </Button>
               </div>
             </div>
           </Card>
@@ -1554,13 +1347,6 @@ export default function CoursesPage() {
             )}
             
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gold-500/20">
-              <Button
-                variant="primary"
-                onClick={() => openEnrollModal(selectedCourse)}
-                icon={<UserPlus className="w-4 h-4" />}
-              >
-                Matricular Novos Alunos
-              </Button>
               <Button
                 variant="secondary"
                 onClick={() => setShowManageStudentsModal(false)}
@@ -1870,22 +1656,6 @@ export default function CoursesPage() {
                     <span className="text-gold-200 text-left flex-1">{t('courses.publish')}</span>
                   </>
                 )}
-              </div>
-            </button>
-            <button
-              type="button" 
-              onClick={() => {
-                console.log('Enroll students clicked for course:', dropdownCourse);
-                openEnrollModal(dropdownCourse);
-                setOpenDropdown(null);
-                setDropdownCourse(null);
-                setDropdownPosition(null);
-              }}
-              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
-            >
-              <div className="flex items-center gap-3 text-left">
-                <UserPlus className="w-4 h-4 text-gold-400 flex-shrink-0" />
-                <span className="text-gold-200 text-left flex-1">{t('courses.enrollStudents')}</span>
               </div>
             </button>
             <button

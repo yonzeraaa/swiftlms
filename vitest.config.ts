@@ -6,6 +6,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: [resolve(__dirname, 'vitest.setup.ts')],
     globals: true,
+    exclude: ['neovim/**', 'node_modules/**'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',

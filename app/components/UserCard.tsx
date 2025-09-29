@@ -30,13 +30,15 @@ interface UserCardProps {
   onEdit: () => void
   onToggleActive: () => void
   onDelete: () => void
+  onEnroll?: () => void
 }
 
 export default function UserCard({ 
   user, 
   onEdit, 
   onToggleActive, 
-  onDelete 
+  onDelete,
+  onEnroll
 }: UserCardProps) {
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -261,14 +263,26 @@ export default function UserCard({
 
       {/* Actions */}
       <div className="flex items-center justify-between gap-2 pt-4 border-t border-gold-500/10">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onEdit}
-          icon={<Edit className="w-4 h-4" />}
-        >
-          Editar
-        </Button>
+        <div className="flex items-center gap-2">
+          {user.role === 'student' && onEnroll && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onEnroll}
+              icon={<GraduationCap className="w-4 h-4" />}
+            >
+              Matricular
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onEdit}
+            icon={<Edit className="w-4 h-4" />}
+          >
+            Editar
+          </Button>
+        </div>
 
         <div className="flex items-center gap-1">
           <Tooltip content={user.is_active ? 'Desativar' : 'Ativar'}>

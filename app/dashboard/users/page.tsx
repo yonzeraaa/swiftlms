@@ -2,9 +2,9 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Edit, Key, X, Check, Trash2, AlertCircle, Phone, Users, Shield, GraduationCap, BookOpen, LayoutGrid, List, Lock, Unlock, FileText } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Edit, Key, X, Check, Trash2, AlertCircle, Phone, Users, Shield, GraduationCap, BookOpen, FileText } from 'lucide-react'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
@@ -16,12 +16,16 @@ import ViewToggle from '../../components/ViewToggle'
 import { Chip } from '../../components/Badge'
 import { SkeletonCard } from '../../components/Skeleton'
 import { useToast } from '../../components/Toast'
+import Spinner from '../../components/ui/Spinner'
 
 type Profile = Tables<'profiles'> & {
   courses?: Array<{ id: string; title: string }>
   enrollments?: Array<{ id: string }>
   tests_created?: Array<{ id: string }>
 }
+
+type Course = Tables<'courses'>
+type CourseModule = Tables<'course_modules'>
 
 interface NewUserForm {
   email: string
@@ -89,17 +93,97 @@ export default function UsersPage() {
   })
   const [newPassword, setNewPassword] = useState('')
   const [updating, setUpdating] = useState(false)
+  const [showEnrollModal, setShowEnrollModal] = useState(false)
+  const [courses, setCourses] = useState<Course[]>([])
+  const [loadingCourses, setLoadingCourses] = useState(false)
+  const [modulesByCourse, setModulesByCourse] = useState<Record<string, CourseModule[]>>({})
+  const [selectedCourseId, setSelectedCourseId] = useState('')
+  const [requiredModuleIds, setRequiredModuleIds] = useState<string[]>([])
+  const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([])
+  const [loadingModules, setLoadingModules] = useState(false)
+  const [enrollingStudent, setEnrollingStudent] = useState(false)
+  const [enrollError, setEnrollError] = useState<string | null>(null)
   const supabase = createClient()
+  const getErrorMessage = (error: unknown, fallback: string) => (
+    error instanceof Error ? error.message : fallback
+  )
+
+  const normalizeRole = (role: Profile['role']): EditUserForm['role'] => {
+    if (role === 'admin') return 'admin'
+    if (role === 'instructor' || role === 'teacher') return 'instructor'
+    return 'student'
+  }
+
+  const getUserCardRole = (role: Profile['role']): 'admin' | 'teacher' | 'instructor' | 'student' => {
+    if (role === 'admin') return 'admin'
+    if (role === 'teacher') return 'teacher'
+    if (role === 'instructor') return 'instructor'
+    return 'student'
+  }
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      const enrichedUsers: Profile[] = await Promise.all(
+        (profiles || []).map(async (profile: Tables<'profiles'>) => {
+          if (profile.role === 'student') {
+            const { data: enrollments } = await supabase
+              .from('enrollments')
+              .select('id')
+              .eq('user_id', profile.id)
+
+            return {
+              ...profile,
+              enrollments: enrollments || []
+            } as Profile
+          }
+
+          if (profile.role === 'instructor' || profile.role === 'teacher') {
+            const { data: courses } = await supabase
+              .from('courses')
+              .select('id, title')
+              .eq('instructor_id', profile.id)
+
+            const { data: tests } = await supabase
+              .from('tests')
+              .select('id')
+              .eq('created_by', profile.id)
+
+            return {
+              ...profile,
+              courses: courses || [],
+              tests_created: tests || []
+            } as Profile
+          }
+
+          return { ...profile } as Profile
+        })
+      )
+
+      setUsers(enrichedUsers)
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      const message = error instanceof Error ? error.message : 'Erro ao carregar usuários'
+      showToast(message)
+    } finally {
+      setLoading(false)
+    }
+  }, [showToast, supabase])
 
   useEffect(() => {
-    // Load view preference from localStorage
     const savedViewMode = localStorage.getItem('usersViewMode')
     if (savedViewMode === 'grid' || savedViewMode === 'list') {
       setViewMode(savedViewMode)
     }
-    
+
     fetchUsers()
-  }, [])
+  }, [fetchUsers])
 
   // Save view mode preference to localStorage
   useEffect(() => {
@@ -118,57 +202,150 @@ export default function UsersPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [openDropdown])
 
-  const fetchUsers = async () => {
+  const loadCourses = async () => {
+    if (loadingCourses || courses.length > 0) return
+
     try {
-      // For students, fetch enrollments and test attempts
-      // For teachers, fetch courses and tests created
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
+      setLoadingCourses(true)
+      const { data, error } = await supabase
+        .from('courses')
+        .select('id, title, category')
+        .order('title')
 
       if (error) throw error
 
-      // Enrich data based on role
-      const enrichedUsers = await Promise.all((profiles || []).map(async (user: any) => {
-        if (user.role === 'student') {
-          // Fetch enrollments and test attempts for students
-          const { data: enrollments } = await supabase
-            .from('enrollments')
-            .select('id')
-            .eq('user_id', user.id)
-
-          return {
-            ...user,
-            enrollments: enrollments || []
-          }
-        } else if (user.role === 'instructor' || user.role === 'teacher') {
-          // Fetch courses and tests created for teachers
-          const { data: courses } = await supabase
-            .from('courses')
-            .select('id, title')
-            .eq('instructor_id', user.id)
-
-          const { data: tests } = await supabase
-            .from('tests')
-            .select('id')
-            .eq('created_by', user.id)
-
-          return {
-            ...user,
-            courses: courses || [],
-            tests_created: tests || []
-          }
-        }
-        return user
-      }))
-
-      setUsers(enrichedUsers)
-    } catch (error) {
-      console.error('Error fetching users:', error)
-      showToast('Erro ao carregar usuários')
+      setCourses(data || [])
+    } catch (courseError) {
+      console.error('Erro ao carregar cursos:', courseError)
+      setEnrollError('Não foi possível carregar os cursos disponíveis.')
     } finally {
-      setLoading(false)
+      setLoadingCourses(false)
+    }
+  }
+
+  const applyModuleDefaults = (modules: CourseModule[]) => {
+    const required = modules
+      .filter(module => module.is_required !== false)
+      .map(module => module.id)
+
+    const optional = modules
+      .filter(module => module.is_required === false)
+      .map(module => module.id)
+
+    setRequiredModuleIds(required)
+    setSelectedModuleIds([...required, ...optional])
+  }
+
+  const loadModulesForCourse = async (courseId: string) => {
+    if (!courseId) return
+
+    const cached = modulesByCourse[courseId]
+    if (cached) {
+      applyModuleDefaults(cached)
+      return
+    }
+
+    try {
+      setLoadingModules(true)
+      const { data, error } = await supabase
+        .from('course_modules')
+        .select('id, title, is_required, order_index')
+        .eq('course_id', courseId)
+        .order('order_index')
+
+      if (error) throw error
+
+      const modules = data || []
+      setModulesByCourse(prev => ({ ...prev, [courseId]: modules }))
+      applyModuleDefaults(modules)
+    } catch (moduleError) {
+      console.error('Erro ao carregar módulos do curso:', moduleError)
+      setEnrollError('Não foi possível carregar os módulos do curso selecionado.')
+    } finally {
+      setLoadingModules(false)
+    }
+  }
+
+  const toggleModuleSelection = (moduleId: string) => {
+    if (requiredModuleIds.includes(moduleId)) {
+      return
+    }
+
+    setSelectedModuleIds(prev => (
+      prev.includes(moduleId)
+        ? prev.filter(id => id !== moduleId)
+        : [...prev, moduleId]
+    ))
+  }
+
+  const openEnrollStudentModal = (user: Profile) => {
+    setSelectedUser(user)
+    setShowEnrollModal(true)
+    setEnrollError(null)
+    setSelectedCourseId('')
+    setSelectedModuleIds([])
+    setRequiredModuleIds([])
+    setOpenDropdown(null)
+    void loadCourses()
+  }
+
+  const closeEnrollModal = () => {
+    setShowEnrollModal(false)
+    setEnrollError(null)
+    setSelectedCourseId('')
+    setSelectedModuleIds([])
+    setRequiredModuleIds([])
+  }
+
+  const handleEnrollStudent = async () => {
+    if (!selectedUser || selectedUser.role !== 'student') {
+      setEnrollError('Selecione um aluno válido para matrícula.')
+      return
+    }
+
+    if (!selectedCourseId) {
+      setEnrollError('Selecione um curso para matricular o aluno.')
+      return
+    }
+
+    setEnrollingStudent(true)
+    setEnrollError(null)
+
+    try {
+      const optionalSelections = selectedModuleIds.filter(id => !requiredModuleIds.includes(id))
+
+      const response = await fetch('/api/courses/enroll', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          courseId: selectedCourseId,
+          students: [
+            {
+              studentId: selectedUser.id,
+              moduleIds: optionalSelections
+            }
+          ]
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao matricular aluno.')
+      }
+
+      showToast(data.message || 'Matrícula criada com sucesso!')
+
+      closeEnrollModal()
+      await fetchUsers()
+    } catch (enrollErr) {
+      console.error('Erro ao matricular aluno:', enrollErr)
+      setEnrollError(getErrorMessage(enrollErr, 'Erro ao matricular aluno.'))
+    } finally {
+      setEnrollingStudent(false)
     }
   }
 
@@ -217,8 +394,8 @@ export default function UsersPage() {
       
       // Refresh users list
       fetchUsers()
-    } catch (error: any) {
-      setError(error.message || t('users.error'))
+    } catch (error) {
+      setError(getErrorMessage(error, t('users.error')))
     } finally {
       setCreating(false)
     }
@@ -234,9 +411,9 @@ export default function UsersPage() {
       if (error) throw error
       
       // Update local state
-      setUsers(users.map((user: any) => 
-        user.id === userId ? { ...user, status } : user
-      ))
+      setUsers(prevUsers =>
+        prevUsers.map(user => (user.id === userId ? { ...user, status } : user))
+      )
       
       showToast(status === 'active' ? 'Usuário ativado' : 'Usuário desativado')
       setOpenDropdown(null)
@@ -251,7 +428,7 @@ export default function UsersPage() {
     setEditForm({
       full_name: user.full_name || '',
       phone: user.phone || '',
-      role: user.role as any || 'student'
+      role: normalizeRole(user.role)
     })
     setShowEditModal(true)
     setOpenDropdown(null)
@@ -275,16 +452,18 @@ export default function UsersPage() {
       if (error) throw error
 
       // Update local state
-      setUsers(users.map((user: any) => 
-        user.id === selectedUser.id 
-          ? { ...user, full_name: editForm.full_name, phone: editForm.phone, role: editForm.role }
-          : user
-      ))
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === selectedUser.id
+            ? { ...user, full_name: editForm.full_name, phone: editForm.phone, role: editForm.role }
+            : user
+        )
+      )
 
       setShowEditModal(false)
       setSelectedUser(null)
-    } catch (error: any) {
-      setError(error.message || t('users.error'))
+    } catch (error) {
+      setError(getErrorMessage(error, t('users.error')))
     } finally {
       setUpdating(false)
     }
@@ -310,8 +489,8 @@ export default function UsersPage() {
       setShowResetPasswordModal(false)
       setSelectedUser(null)
       setNewPassword('')
-    } catch (error: any) {
-      setError(error.message || t('users.error'))
+    } catch (error) {
+      setError(getErrorMessage(error, t('users.error')))
     } finally {
       setUpdating(false)
     }
@@ -341,7 +520,7 @@ export default function UsersPage() {
       }
 
       // Update local state - remove user from list
-      setUsers(users.filter((user: any) => user.id !== selectedUser.id))
+      setUsers(prevUsers => prevUsers.filter(user => user.id !== selectedUser.id))
 
       setShowDeleteModal(false)
       setSelectedUser(null)
@@ -358,21 +537,28 @@ export default function UsersPage() {
           entity_name: selectedUser.full_name || selectedUser.email,
           metadata: { deletedUserEmail: selectedUser.email }
         })
-    } catch (error: any) {
-      setError(error.message || t('users.error'))
+    } catch (error) {
+      setError(getErrorMessage(error, t('users.error')))
     } finally {
       setUpdating(false)
     }
   }
 
-  const filteredUsers = users.filter((user: any) => {
-    const matchesSearch = (user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesRole = filterRole === 'all' || user.role === filterRole
-    const matchesStatus = filterStatus === 'all' || 
+  const filteredUsers = users.filter(user => {
+    const normalizedSearch = searchTerm.toLowerCase()
+    const matchesSearch = (user.full_name?.toLowerCase().includes(normalizedSearch) ?? false) ||
+      user.email.toLowerCase().includes(normalizedSearch)
+
+    const matchesRole =
+      filterRole === 'all' ||
+      (filterRole === 'instructor'
+        ? user.role === 'instructor' || user.role === 'teacher'
+        : user.role === filterRole)
+
+    const matchesStatus =
+      filterStatus === 'all' ||
       (filterStatus === 'active' ? user.status !== 'frozen' : user.status === 'frozen')
-    
+
     return matchesSearch && matchesRole && matchesStatus
   })
 
@@ -406,6 +592,9 @@ export default function UsersPage() {
   const getStatusLabel = (status: string | null) => {
     return status === 'frozen' ? t('users.frozen') : t('users.active')
   }
+
+  const selectedCourseModules = selectedCourseId ? modulesByCourse[selectedCourseId] || [] : []
+  const requiredModuleSet = new Set(requiredModuleIds)
 
   return (
     <div className="space-y-6">
@@ -469,7 +658,7 @@ export default function UsersPage() {
                   selected={filterRole === 'admin'}
                   onClick={() => setFilterRole('admin')}
                   icon={<Shield className="w-4 h-4" />}
-                  count={users.filter((u: any) => u.role === 'admin').length}
+                  count={users.filter(u => u.role === 'admin').length}
                   color="purple"
                 />
                 <Chip
@@ -477,7 +666,7 @@ export default function UsersPage() {
                   selected={filterRole === 'instructor' || filterRole === 'teacher'}
                   onClick={() => setFilterRole('instructor')}
                   icon={<GraduationCap className="w-4 h-4" />}
-                  count={users.filter((u: any) => u.role === 'instructor' || u.role === 'teacher').length}
+                  count={users.filter(u => u.role === 'instructor' || u.role === 'teacher').length}
                   color="blue"
                 />
                 <Chip
@@ -485,7 +674,7 @@ export default function UsersPage() {
                   selected={filterRole === 'student'}
                   onClick={() => setFilterRole('student')}
                   icon={<BookOpen className="w-4 h-4" />}
-                  count={users.filter((u: any) => u.role === 'student').length}
+                  count={users.filter(u => u.role === 'student').length}
                   color="green"
                 />
               </div>
@@ -505,7 +694,7 @@ export default function UsersPage() {
                   selected={filterStatus === 'active'}
                   onClick={() => setFilterStatus('active')}
                   icon={<Check className="w-4 h-4" />}
-                  count={users.filter((u: any) => u.status !== 'frozen').length}
+                  count={users.filter(u => u.status !== 'frozen').length}
                   color="green"
                 />
                 <Chip
@@ -513,7 +702,7 @@ export default function UsersPage() {
                   selected={filterStatus === 'frozen'}
                   onClick={() => setFilterStatus('frozen')}
                   icon={<Snowflake className="w-4 h-4" />}
-                  count={users.filter((u: any) => u.status === 'frozen').length}
+                  count={users.filter(u => u.status === 'frozen').length}
                   color="blue"
                 />
               </div>
@@ -555,7 +744,7 @@ export default function UsersPage() {
             <div>
               <p className="text-gold-300 text-sm">Administradores</p>
               <p className="text-2xl font-bold text-gold mt-1">
-                {users.filter((u: any) => u.role === 'admin').length}
+                {users.filter(u => u.role === 'admin').length}
               </p>
             </div>
             <Shield className="w-8 h-8 text-purple-500/30" />
@@ -567,7 +756,7 @@ export default function UsersPage() {
             <div>
               <p className="text-gold-300 text-sm">Professores</p>
               <p className="text-2xl font-bold text-gold mt-1">
-                {users.filter((u: any) => u.role === 'instructor' || u.role === 'teacher').length}
+                {users.filter(u => u.role === 'instructor' || u.role === 'teacher').length}
               </p>
             </div>
             <GraduationCap className="w-8 h-8 text-blue-500/30" />
@@ -579,7 +768,7 @@ export default function UsersPage() {
             <div>
               <p className="text-gold-300 text-sm">Alunos</p>
               <p className="text-2xl font-bold text-gold mt-1">
-                {users.filter((u: any) => u.role === 'student').length}
+                {users.filter(u => u.role === 'student').length}
               </p>
             </div>
             <BookOpen className="w-8 h-8 text-green-500/30" />
@@ -617,12 +806,13 @@ export default function UsersPage() {
                   ...user,
                   full_name: user.full_name ?? undefined,
                   created_at: user.created_at || new Date().toISOString(),
-                  role: (user.role || 'student') as 'admin' | 'teacher' | 'instructor' | 'student',
+                  role: getUserCardRole(user.role),
                   is_active: user.status !== 'frozen'
                 }}
                 onEdit={() => openEditModal(user)}
                 onToggleActive={() => updateUserStatus(user.id, user.status === 'frozen' ? 'active' : 'frozen')}
                 onDelete={() => openDeleteModal(user)}
+                onEnroll={user.role === 'student' ? () => openEnrollStudentModal(user) : undefined}
               />
             ))}
           </div>
@@ -732,6 +922,17 @@ export default function UsersPage() {
                               </div>
                             </button>
                             {user.role === 'student' && (
+                              <button
+                                onClick={() => openEnrollStudentModal(user)}
+                                className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
+                              >
+                                <div className="flex items-center gap-3 text-left">
+                                  <GraduationCap className="w-4 h-4 text-gold-400 flex-shrink-0" />
+                                  <span className="text-gold-200 text-left flex-1">Matricular em Curso</span>
+                                </div>
+                              </button>
+                            )}
+                            {user.role === 'student' && (
                               <Link 
                                 href={`/dashboard/users/${user.id}/grades`}
                                 onClick={() => setOpenDropdown(null)}
@@ -807,6 +1008,141 @@ export default function UsersPage() {
         </Card>
       )}
 
+      {/* Enroll Student Modal */}
+      {showEnrollModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
+                <GraduationCap className="w-6 h-6" />
+                Matricular aluno
+              </h2>
+              <button
+                onClick={closeEnrollModal}
+                className="text-gold-400 hover:text-gold-200 transition-colors"
+                aria-label="Fechar modal de matrícula"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="mb-4 p-3 bg-navy-900/50 rounded-lg">
+              <p className="text-gold-200 font-medium border-b border-gold-500/10 pb-2">
+                {selectedUser.full_name || selectedUser.email}
+              </p>
+              <p className="text-gold-300 text-sm pt-2">{selectedUser.email}</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gold-200 mb-2">
+                  Curso
+                </label>
+                {loadingCourses ? (
+                  <div className="flex items-center gap-2 text-gold-300 text-sm">
+                    <Spinner size="sm" />
+                    Carregando cursos...
+                  </div>
+                ) : (
+                  <select
+                    value={selectedCourseId}
+                    onChange={async (event) => {
+                      const courseId = event.target.value
+                      setSelectedCourseId(courseId)
+                      setSelectedModuleIds([])
+                      setRequiredModuleIds([])
+                      if (courseId) {
+                        setEnrollError(null)
+                        await loadModulesForCourse(courseId)
+                      }
+                    }}
+                    className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  >
+                    <option value="">Selecione um curso</option>
+                    {courses.map(course => (
+                      <option key={course.id} value={course.id}>
+                        {course.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {selectedCourseId && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gold-200">
+                      Módulos do curso
+                    </label>
+                    <span className="text-xs text-gold-400">
+                      Obrigatórios não podem ser removidos.
+                    </span>
+                  </div>
+                  {loadingModules ? (
+                    <div className="flex items-center gap-2 text-gold-300 text-sm">
+                      <Spinner size="sm" />
+                      Carregando módulos...
+                    </div>
+                  ) : selectedCourseModules.length > 0 ? (
+                    <div className="space-y-2">
+                      {selectedCourseModules.map(module => {
+                        const isRequired = requiredModuleSet.has(module.id)
+                        const isChecked = selectedModuleIds.includes(module.id)
+                        return (
+                          <label
+                            key={module.id}
+                            className={`flex items-center gap-3 p-3 rounded-lg border ${
+                              isRequired
+                                ? 'bg-navy-900/70 border-gold-500/20'
+                                : 'bg-navy-900/40 border-gold-500/10 hover:bg-navy-900/60'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              disabled={isRequired}
+                              onChange={() => toggleModuleSelection(module.id)}
+                              className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500"
+                            />
+                            <div>
+                              <p className="text-gold-200 font-medium">{module.title}</p>
+                              <p className={`text-xs ${isRequired ? 'text-gold-400' : 'text-gold-300'}`}>
+                                {isRequired ? 'Obrigatório' : 'Opcional'}
+                              </p>
+                            </div>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-gold-300 text-sm">Nenhum módulo cadastrado para este curso.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {enrollError && (
+              <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <p className="text-sm text-red-400">{enrollError}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gold-500/20">
+              <Button variant="secondary" onClick={closeEnrollModal}>
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleEnrollStudent}
+                disabled={enrollingStudent || !selectedCourseId}
+              >
+                {enrollingStudent ? 'Matriculando...' : 'Confirmar matrícula'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Edit User Modal */}
       {showEditModal && selectedUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -878,7 +1214,7 @@ export default function UsersPage() {
                 </label>
                 <select
                   value={editForm.role}
-                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value as any })}
+                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value as EditUserForm['role'] })}
                   className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                 >
                   <option value="student">{t('users.student')}</option>
@@ -1124,7 +1460,7 @@ export default function UsersPage() {
                 </label>
                 <select
                   value={newUserForm.role}
-                  onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as any })}
+                  onChange={(e) => setNewUserForm({ ...newUserForm, role: e.target.value as NewUserForm['role'] })}
                   className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent focus-ring"
                 >
                   <option value="student">{t('users.student')}</option>
