@@ -80,6 +80,21 @@ export default function MyCoursesPage() {
               .eq('course_id', enrollment.course.id)
               .order('order_index')
 
+            // Fetch modules assigned to this enrollment
+            let allowedModuleIds: string[] | null = null
+            const { data: enrollmentModules, error: enrollmentModulesError } = await supabase
+              .from('enrollment_modules')
+              .select('module_id')
+              .eq('enrollment_id', enrollment.id)
+
+            if (enrollmentModulesError) {
+              console.error('Erro ao carregar módulos da matrícula:', enrollmentModulesError)
+            } else if (enrollmentModules) {
+              allowedModuleIds = enrollmentModules
+                .map((moduleEntry: { module_id: string | null }) => moduleEntry.module_id)
+                .filter((moduleId: string | null): moduleId is string => typeof moduleId === 'string')
+            }
+
             // Fetch lesson progress
             const { data: lessonProgress } = await supabase
               .from('lesson_progress')
@@ -92,9 +107,13 @@ export default function MyCoursesPage() {
             let nextLesson: Lesson | undefined
             const allLessons: Lesson[] = []
 
-            if (modules) {
+            const filteredModules = modules && allowedModuleIds !== null
+              ? (modules as any[]).filter((module: any) => allowedModuleIds?.includes(module.id))
+              : modules || []
+
+            if (filteredModules.length > 0) {
               // Extract lessons from the nested structure
-              modules.forEach((module: any) => {
+              filteredModules.forEach((module: any) => {
                 const moduleSubjects = (module as any).module_subjects || []
                 
                 // Sort module_subjects by order_index
@@ -194,7 +213,7 @@ export default function MyCoursesPage() {
                 status: progressPercentage === 100 ? 'completed' : enrollment.status,
                 progress_percentage: progressPercentage
               },
-              modules: modules || [],
+              modules: filteredModules,
               totalLessons,
               completedLessons,
               nextLesson

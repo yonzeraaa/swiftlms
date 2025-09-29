@@ -85,6 +85,21 @@ export default function CourseProgressPage() {
       setCourse(courseResult.data)
       setEnrollment(enrollmentResult.data)
 
+      // Fetch module assignments for this enrollment
+      let allowedModuleIds: string[] | null = null
+      const { data: enrollmentModules, error: enrollmentModulesError } = await supabase
+        .from('enrollment_modules')
+        .select('module_id')
+        .eq('enrollment_id', enrollmentResult.data.id)
+
+      if (enrollmentModulesError) {
+        console.error('Erro ao carregar módulos da matrícula:', enrollmentModulesError)
+      } else if (enrollmentModules) {
+        allowedModuleIds = enrollmentModules
+          .map((moduleEntry: { module_id: string | null }) => moduleEntry.module_id)
+          .filter((moduleId: string | null): moduleId is string => typeof moduleId === 'string')
+      }
+
       // Fetch detailed progress data
       const { data: modules } = await supabase
         .from('course_modules')
@@ -104,8 +119,12 @@ export default function CourseProgressPage() {
       let completedLessons = 0
       const recentActivity: ProgressData['recentActivity'] = []
 
-      if (modules) {
-        modules.forEach((module: any) => {
+      const filteredModules = modules && allowedModuleIds !== null
+        ? (modules as any[]).filter((module: any) => allowedModuleIds?.includes(module.id))
+        : modules || []
+
+      if (filteredModules.length > 0) {
+        filteredModules.forEach((module: any) => {
           const lessons = (module as any).lessons || []
           totalLessons += lessons.length
 

@@ -159,23 +159,53 @@ export default function CoursePage() {
         enrollmentData = enrollment
       }
 
-      // Fetch modules with subjects and lessons
-      const { data: modulesData } = await supabase
-        .from('course_modules')
-        .select(`
-          *,
-          module_subjects (
-            subject:subjects (
-              *,
-              subject_lessons (
-                lesson:lessons (*)
-              )
-            ),
-            order_index
-          )
-        `)
-        .eq('course_id', courseId)
-        .order('order_index')
+      // Fetch module assignments for this enrollment
+      let allowedModuleIds: string[] | null = null
+      if (enrollmentData) {
+        const { data: enrollmentModules, error: enrollmentModulesError } = await supabase
+          .from('enrollment_modules')
+          .select('module_id')
+          .eq('enrollment_id', enrollmentData.id)
+
+        if (enrollmentModulesError) {
+          console.error('Erro ao carregar módulos da matrícula:', enrollmentModulesError)
+        } else {
+          allowedModuleIds = (enrollmentModules || [])
+            .map((moduleEntry: { module_id: string | null }) => moduleEntry.module_id)
+            .filter((moduleId: string | null): moduleId is string => typeof moduleId === 'string')
+        }
+      }
+
+      // Fetch modules with subjects and lessons, limited to assigned modules when applicable
+      let modulesData: any[] = []
+
+      if (allowedModuleIds !== null && allowedModuleIds.length === 0) {
+        modulesData = []
+      } else {
+        let modulesQuery = supabase
+          .from('course_modules')
+          .select(`
+            *,
+            module_subjects (
+              subject:subjects (
+                *,
+                subject_lessons (
+                  lesson:lessons (*)
+                )
+              ),
+              order_index
+            )
+          `)
+          .eq('course_id', courseId)
+          .order('order_index')
+
+        if (allowedModuleIds && allowedModuleIds.length > 0) {
+          modulesQuery = modulesQuery.in('id', allowedModuleIds)
+        }
+
+        const { data } = await modulesQuery
+        modulesData = data || []
+      }
 
       // Fetch lesson progress (only for enrolled students)
       let progressData: any[] = []

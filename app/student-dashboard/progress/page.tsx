@@ -111,12 +111,31 @@ export default function ProgressPage() {
               .eq('course_id', enrollment.course_id)
               .order('order_index')
 
+            // Fetch allowed modules for this enrollment
+            let allowedModuleIds: string[] | null = null
+            const { data: enrollmentModules, error: enrollmentModulesError } = await supabase
+              .from('enrollment_modules')
+              .select('module_id')
+              .eq('enrollment_id', enrollment.id)
+
+            if (enrollmentModulesError) {
+              console.error('Erro ao carregar módulos da matrícula:', enrollmentModulesError)
+            } else if (enrollmentModules) {
+              allowedModuleIds = enrollmentModules
+                .map((moduleEntry: { module_id: string | null }) => moduleEntry.module_id)
+                .filter((moduleId: string | null): moduleId is string => typeof moduleId === 'string')
+            }
+
             const moduleProgress = []
             let totalCourseLessons = 0
             let totalCompletedLessons = 0
 
-            if (modules) {
-              for (const module of modules) {
+            const filteredModules = modules && allowedModuleIds !== null
+              ? (modules as any[]).filter((module: any) => allowedModuleIds?.includes(module.id))
+              : modules || []
+
+            if (filteredModules.length > 0) {
+              for (const module of filteredModules) {
                 // Get lessons for this module
                 const { data: lessons } = await supabase
                   .from('lessons')
