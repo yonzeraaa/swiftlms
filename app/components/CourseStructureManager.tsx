@@ -14,7 +14,8 @@ import {
   GripVertical,
   Save,
   X,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import Card from './Card';
 import Button from './Button';
@@ -29,6 +30,7 @@ interface Module {
   title: string;
   description: string | null;
   order_index: number;
+  total_hours: number | null;
 }
 
 interface Subject {
@@ -206,7 +208,15 @@ export default function CourseStructureManager({
       if (error) throw error;
       
       // Atualizar estado local
-      setModules(reorderedItems);
+      const orderedModules = moduleIds
+        .map(id => modules.find(module => module.id === id))
+        .filter((module): module is Module => Boolean(module))
+        .map((module, index) => ({
+          ...module,
+          order_index: index
+        }));
+
+      setModules(orderedModules);
     } catch (error: any) {
       console.error('Erro ao reordenar módulos:', error);
       throw new Error('Erro ao salvar nova ordem dos módulos');
@@ -389,6 +399,10 @@ export default function CourseStructureManager({
           const isExpanded = expandedModules.has(module.id);
           const moduleSubjectsList = moduleSubjects[module.id] || [];
           const moduleLessonsList = lessons[module.id] || [];
+          const totalHours = typeof module.total_hours === 'number' ? module.total_hours : 0;
+          const formattedHours = Number.isInteger(totalHours)
+            ? totalHours.toFixed(0)
+            : totalHours.toFixed(1);
 
           return (
             <Card key={module.id} className="overflow-hidden">
@@ -415,6 +429,11 @@ export default function CourseStructureManager({
                     <span>{moduleSubjectsList.length} disciplinas</span>
                     <span>•</span>
                     <span>{moduleLessonsList.length} aulas</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {formattedHours.replace('.', ',')}h
+                    </span>
                   </div>
                 </div>
 

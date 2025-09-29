@@ -791,6 +791,10 @@ export default function CoursePage() {
             const isExpanded = expandedModules.has(module.id)
             const moduleProgress = calculateModuleProgress(module)
             const isModuleCompleted = moduleProgress.completed === moduleProgress.total && moduleProgress.total > 0
+            const totalHours = typeof module.total_hours === 'number' ? module.total_hours : 0
+            const formattedHours = Number.isInteger(totalHours)
+              ? totalHours.toFixed(0)
+              : totalHours.toFixed(1)
             
             return (
               <Card key={module.id} variant="glass">
@@ -811,6 +815,10 @@ export default function CoursePage() {
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-xs text-gold-300/50">
                           {moduleProgress.completed}/{moduleProgress.total} aulas concluídas
+                        </span>
+                        <span className="text-xs text-gold-300/50 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formattedHours.replace('.', ',')}h
                         </span>
                         {isModuleCompleted && (
                           <div className="flex items-center gap-1">

@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Edit, Key, X, Check, Trash2, AlertCircle, Phone, Users, Shield, GraduationCap, BookOpen, FileText } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Edit, Key, X, Check, Trash2, AlertCircle, Phone, Users, Shield, GraduationCap, BookOpen, FileText, Clock } from 'lucide-react'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
@@ -249,7 +249,7 @@ export default function UsersPage() {
       setLoadingModules(true)
       const { data, error } = await supabase
         .from('course_modules')
-        .select('id, title, is_required, order_index')
+        .select('id, title, is_required, order_index, total_hours')
         .eq('course_id', courseId)
         .order('order_index')
 
@@ -1088,6 +1088,10 @@ export default function UsersPage() {
                       {selectedCourseModules.map(module => {
                         const isRequired = requiredModuleSet.has(module.id)
                         const isChecked = selectedModuleIds.includes(module.id)
+                        const totalHours = typeof module.total_hours === 'number' ? module.total_hours : 0
+                        const formattedHours = Number.isInteger(totalHours)
+                          ? totalHours.toFixed(0)
+                          : totalHours.toFixed(1)
                         return (
                           <label
                             key={module.id}
@@ -1108,6 +1112,10 @@ export default function UsersPage() {
                               <p className="text-gold-200 font-medium">{module.title}</p>
                               <p className={`text-xs ${isRequired ? 'text-gold-400' : 'text-gold-300'}`}>
                                 {isRequired ? 'Obrigatório' : 'Opcional'}
+                              </p>
+                              <p className="text-xs text-gold-400 flex items-center gap-1 mt-1">
+                                <Clock className="w-3 h-3" />
+                                {formattedHours.replace('.', ',')}h de carga horária
                               </p>
                             </div>
                           </label>

@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Folder, Plus, Edit, Trash2, Search, X, AlertCircle, BookOpen, GripVertical, CheckSquare, Square, Trash } from 'lucide-react'
+import { Folder, Plus, Edit, Trash2, Search, X, AlertCircle, BookOpen, GripVertical, CheckSquare, Square, Trash, Clock } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
@@ -82,6 +82,12 @@ function ModuleCard({
 }: ModuleCardProps) {
   const moduleCode = getModuleIdentifier(module)
   const showModuleCode = moduleCode.trim().length > 0 && moduleCode.trim().toLowerCase() !== (module.title || '').trim().toLowerCase()
+  const totalHours = typeof module.total_hours === 'number' ? module.total_hours : 0
+  const formattedHours = (() => {
+    const clamped = Math.max(totalHours, 0)
+    const rounded = Number.isInteger(clamped) ? clamped.toFixed(0) : clamped.toFixed(1)
+    return rounded.replace('.', ',')
+  })()
 
   return (
     <Card 
@@ -177,6 +183,10 @@ function ModuleCard({
           <div className="flex items-center gap-4 text-sm ml-7">
             <span className="text-gold-400">
               {stats.subjects} disciplina{stats.subjects !== 1 ? 's' : ''}
+            </span>
+            <span className="text-gold-400 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              {formattedHours}h
             </span>
             <span className={`
               px-2 py-0.5 rounded text-xs
