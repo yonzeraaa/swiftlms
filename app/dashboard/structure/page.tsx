@@ -39,6 +39,15 @@ interface TreeNode {
   order?: number
 }
 
+interface SubjectOption {
+  id: string
+  code?: string | null
+  name: string
+  description?: string | null
+  associatedModuleId: string | null
+  isAssociatedWithCurrent: boolean
+}
+
 export default function StructurePage() {
   const [treeData, setTreeData] = useState<TreeNode[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,6 +63,8 @@ export default function StructurePage() {
   const [viewMode, setViewMode] = useState<'tree' | 'manage'>('tree')
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const [courses, setCourses] = useState<any[]>([])
+  const [subjectOptions, setSubjectOptions] = useState<SubjectOption[]>([])
+  const [showAllSubjects, setShowAllSubjects] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -200,6 +211,61 @@ export default function StructurePage() {
     })
   }
 
+  const sortSubjectOptions = (subjects: SubjectOption[], currentModuleId?: string | null) => {
+    if (!currentModuleId) return [...subjects]
+
+    return [...subjects].sort((a, b) => {
+      const getGroup = (subject: SubjectOption) => {
+        if (!subject.associatedModuleId) return 0
+        if (subject.associatedModuleId === currentModuleId) return 1
+        return 2
+      }
+
+      const groupDiff = getGroup(a) - getGroup(b)
+      if (groupDiff !== 0) return groupDiff
+
+      const nameA = (a.name || '').toLocaleLowerCase('pt-BR')
+      const nameB = (b.name || '').toLocaleLowerCase('pt-BR')
+      return nameA.localeCompare(nameB, 'pt-BR')
+    })
+  }
+
+  const updateSubjectAvailableItems = (
+    subjects: SubjectOption[],
+    shouldShowAll: boolean,
+    currentModule?: TreeNode | null
+  ) => {
+    if (!currentModule || currentModule.type !== 'module') {
+      setAvailableItems(shouldShowAll ? subjects : subjects.filter(subject => !subject.associatedModuleId))
+      return
+    }
+
+    if (shouldShowAll) {
+      setAvailableItems(sortSubjectOptions(subjects, currentModule.id))
+      return
+    }
+
+    setAvailableItems(subjects.filter(subject => !subject.associatedModuleId))
+  }
+
+  const toggleSubjectFilterMode = () => {
+    setShowAllSubjects(prev => {
+      const nextValue = !prev
+      const currentModule = parentNode && parentNode.type === 'module' ? parentNode : null
+
+      updateSubjectAvailableItems(subjectOptions, nextValue, currentModule)
+
+      if (!nextValue) {
+        setSelectedItems(prevSelected => prevSelected.filter(id => {
+          const subject = subjectOptions.find(option => option.id === id)
+          return subject ? !subject.associatedModuleId : false
+        }))
+      }
+
+      return nextValue
+    })
+  }
+
   const getNodeIcon = (type: string, expanded?: boolean) => {
     switch (type) {
       case 'course':
@@ -239,6 +305,11 @@ export default function StructurePage() {
     setAssociateType(type)
     setSelectedItems([])
     setShowAssociateModal(true)
+    setShowAllSubjects(false)
+
+    if (type !== 'subject') {
+      setSubjectOptions([])
+    }
 
     // Load available items based on type
     try {
@@ -253,17 +324,33 @@ export default function StructurePage() {
           .order('order_index')
         
         data = allModules || []
-      } 
+      }
       else if (type === 'subject' && parent.type === 'module') {
-        // Get all subjects not already associated with this module
-        const { data: allSubjects } = await supabase.from('subjects').select('id, code, name, description').order('name')
-        const { data: moduleSubjects } = await supabase
-          .from('module_subjects')
-          .select('subject_id')
-          .eq('module_id', parent.id)
-        
-        const associatedIds = moduleSubjects?.map((ms: any) => ms.subject_id) || []
-        data = allSubjects?.filter((s: any) => !associatedIds.includes(s.id)) || []
+        // Get all subjects and track their current module associations
+        const [{ data: allSubjects }, { data: subjectLinks }] = await Promise.all([
+          supabase.from('subjects').select('id, code, name, description').order('name'),
+          supabase.from('module_subjects').select('subject_id, module_id')
+        ])
+
+        const associationMap = new Map<string, string>()
+        subjectLinks?.forEach((link: any) => {
+          if (!associationMap.has(link.subject_id)) {
+            associationMap.set(link.subject_id, link.module_id)
+          }
+        })
+
+        const subjectsWithMetadata: SubjectOption[] = (allSubjects || []).map((subject: any) => ({
+          id: subject.id,
+          code: subject.code,
+          name: subject.name,
+          description: subject.description,
+          associatedModuleId: associationMap.get(subject.id) || null,
+          isAssociatedWithCurrent: associationMap.get(subject.id) === parent.id
+        }))
+
+        setSubjectOptions(subjectsWithMetadata)
+        updateSubjectAvailableItems(subjectsWithMetadata, false, parent)
+        return
       } 
       else if ((type === 'lesson' || type === 'test') && parent.type === 'subject') {
         if (type === 'lesson') {
@@ -727,6 +814,23 @@ export default function StructurePage() {
             </div>
 
             <div className="flex-1 overflow-y-auto mb-4">
+              {associateType === 'subject' && subjectOptions.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-gold-300">
+                  <p>
+                    {showAllSubjects
+                      ? 'Exibindo todas as disciplinas. As não associadas aparecem primeiro.'
+                      : 'Exibindo apenas disciplinas disponíveis para associação.'}
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleSubjectFilterMode}
+                  >
+                    {showAllSubjects ? 'Ver somente não associadas' : 'Ver todas as disciplinas'}
+                  </Button>
+                </div>
+              )}
+
               {availableItems.length === 0 ? (
                 <div className="text-center py-8">
                   <AlertCircle className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
@@ -740,39 +844,74 @@ export default function StructurePage() {
                      'Crie módulos na página de Módulos e eles aparecerão automaticamente aqui' :
                      'Crie novos itens na página correspondente antes de associá-los'}
                   </p>
+                  {associateType === 'subject' && subjectOptions.length > 0 && !showAllSubjects && (
+                    <div className="mt-4">
+                      <Button variant="secondary" size="sm" onClick={toggleSubjectFilterMode}>
+                        Exibir todas as disciplinas
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {availableItems.map((item: any) => (
-                    <label
-                      key={item.id}
-                      className="flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg hover:bg-navy-900/70 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedItems([...selectedItems, item.id])
-                          } else {
-                            setSelectedItems(selectedItems.filter((id: any) => id !== item.id))
-                          }
-                        }}
-                        className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500"
-                      />
-                      <div className="flex-1">
-                        <p className="text-gold-200 font-medium">
-                          {item.title || (item.code ? `${item.code} - ${item.name}` : item.name)}
-                        </p>
-                        {item.description && (
-                          <p className="text-gold-400 text-sm">{item.description}</p>
+                  {availableItems.map((item: any) => {
+                    const isSubjectAssociation = associateType === 'subject'
+                    const isUnavailableSubject = isSubjectAssociation && Boolean(item.associatedModuleId)
+                    const statusText = !isSubjectAssociation
+                      ? null
+                      : !item.associatedModuleId
+                      ? 'Disponível para associação'
+                      : item.isAssociatedWithCurrent
+                      ? 'Já faz parte deste módulo'
+                      : 'Associada a outro módulo'
+                    const statusColor = !isSubjectAssociation
+                      ? ''
+                      : !item.associatedModuleId
+                      ? 'text-green-400'
+                      : item.isAssociatedWithCurrent
+                      ? 'text-gold-400'
+                      : 'text-orange-300'
+
+                    return (
+                      <label
+                        key={item.id}
+                        className={`flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg ${
+                          isUnavailableSubject ? 'opacity-60 cursor-not-allowed' : 'hover:bg-navy-900/70 cursor-pointer'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.includes(item.id)}
+                          onChange={(e) => {
+                            setSelectedItems(prev => {
+                              if (e.target.checked) {
+                                return prev.includes(item.id) ? prev : [...prev, item.id]
+                              }
+                              return prev.filter((id) => id !== item.id)
+                            })
+                          }}
+                          disabled={isUnavailableSubject}
+                          className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500 disabled:opacity-50"
+                        />
+                        <div className="flex-1">
+                          <p className="text-gold-200 font-medium">
+                            {item.title || (item.code ? `${item.code} - ${item.name}` : item.name)}
+                          </p>
+                          {item.description && (
+                            <p className="text-gold-400 text-sm">{item.description}</p>
+                          )}
+                          {statusText && (
+                            <p className={`text-xs mt-1 ${statusColor}`}>
+                              {statusText}
+                            </p>
+                          )}
+                        </div>
+                        {selectedItems.includes(item.id) && (
+                          <Check className="w-5 h-5 text-green-400" />
                         )}
-                      </div>
-                      {selectedItems.includes(item.id) && (
-                        <Check className="w-5 h-5 text-green-400" />
-                      )}
-                    </label>
-                  ))}
+                      </label>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -793,7 +932,7 @@ export default function StructurePage() {
                   onClick={saveAssociations}
                   disabled={selectedItems.length === 0 || associating}
                 >
-                  {associating ? 'Associando...' : 'Associar'}
+                  {associating ? 'Confirmando...' : 'Confirmar'}
                 </Button>
               </div>
             </div>
