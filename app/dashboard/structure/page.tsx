@@ -881,7 +881,7 @@ export default function StructurePage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto mb-4">
+            <div className="flex-1 min-h-0 overflow-y-auto mb-4">
               {associateType !== 'module' && associationOptions.length > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-gold-300">
                   <p>
