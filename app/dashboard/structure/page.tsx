@@ -866,27 +866,28 @@ export default function StructurePage() {
       {showAssociateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <Card className="w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
-                <Link2 className="w-6 h-6" />
-                {associateType === 'module' ? 'Gerenciar Módulos' :
-                 `Associar ${associateType === 'subject' ? 'Disciplinas' : 
-                           associateType === 'lesson' ? 'Aulas' : 'Testes'}`}
-              </h2>
-              <button
-                onClick={() => setShowAssociateModal(false)}
-                className="text-gold-400 hover:text-gold-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+            <div className="flex h-full flex-col">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gold flex items-center gap-2">
+                  <Link2 className="w-6 h-6" />
+                  {associateType === 'module' ? 'Gerenciar Módulos' :
+                   `Associar ${associateType === 'subject' ? 'Disciplinas' : 
+                             associateType === 'lesson' ? 'Aulas' : 'Testes'}`}
+                </h2>
+                <button
+                  onClick={() => setShowAssociateModal(false)}
+                  className="text-gold-400 hover:text-gold-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            <div className="flex-1 min-h-0 overflow-y-auto mb-4">
-              {associateType !== 'module' && associationOptions.length > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-gold-300">
-                  <p>
-                    {showOnlyAvailableOptions
-                      ? 'Exibindo apenas itens disponíveis para associação.'
+              <div className="flex-1 min-h-0 overflow-y-auto mb-4">
+                {associateType !== 'module' && associationOptions.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-gold-300">
+                    <p>
+                      {showOnlyAvailableOptions
+                        ? 'Exibindo apenas itens disponíveis para associação.'
                       : 'Exibindo todos os itens, com destaque para os já utilizados.'}
                   </p>
                   <Button
@@ -974,26 +975,27 @@ export default function StructurePage() {
                   })}
                 </div>
               )}
-            </div>
+              </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-gold-500/20">
-              <p className="text-gold-300 text-sm">
-                {selectedItems.length} {selectedItems.length === 1 ? 'item selecionado' : 'itens selecionados'}
-              </p>
-              <div className="flex gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowAssociateModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={saveAssociations}
-                  disabled={selectedItems.length === 0 || associating}
-                >
-                  {associating ? 'Confirmando...' : 'Confirmar'}
-                </Button>
+              <div className="flex justify-between items-center pt-4 border-t border-gold-500/20">
+                <p className="text-gold-300 text-sm">
+                  {selectedItems.length} {selectedItems.length === 1 ? 'item selecionado' : 'itens selecionados'}
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowAssociateModal(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={saveAssociations}
+                    disabled={selectedItems.length === 0 || associating}
+                  >
+                    {associating ? 'Confirmando...' : 'Confirmar'}
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
