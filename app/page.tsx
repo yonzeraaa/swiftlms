@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Loader2, AlertCircle, Globe, BookOpen, MessageCircle } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle, Globe, BookOpen, MessageCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Logo from './components/Logo'
 import Button from './components/Button'
@@ -11,6 +11,7 @@ import ContactModal from './components/ContactModal'
 import ForgotPasswordModal from './components/ForgotPasswordModal'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from './contexts/LanguageContext'
+import type { Language } from './contexts/LanguageContext'
 
 export default function LoginPage() {
   const { t, language, setLanguage } = useTranslation()
@@ -154,7 +155,7 @@ export default function LoginPage() {
               <Globe className="w-4 h-4 text-gold-400" />
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as any)}
+                onChange={(e) => setLanguage(e.target.value as Language)}
                 className="bg-transparent text-gold-200 text-base focus:outline-none cursor-pointer"
                 aria-label={t('settings.language')}
               >
@@ -172,8 +173,7 @@ export default function LoginPage() {
                 <div className="flex justify-center mb-2">
                   <Logo width={180} height={80} className="transform hover:scale-110 transition-transform duration-300" />
                 </div>
-                <p className="text-gold-200 text-base">{t('login.systemTitle')}</p>
-                <p className="text-gold-300 text-sm mt-1">{t('login.systemSubtitle')}</p>
+                <p className="text-gold-200 text-lg font-semibold mt-1">{t('login.systemSubtitle')}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -298,13 +298,13 @@ export default function LoginPage() {
                     iconPosition="left"
                     className="text-gold-300 border-gold-500/30 hover:border-gold-400 hover:bg-gold-500/10"
                   >
-                    Ver Cursos Disponíveis
+                    {t('login.viewCourses')}
                   </Button>
                 </div>
 
                 {/* Seção Fale Conosco com texto */}
                 <div className="text-center space-y-2">
-                  <p className="text-gold-300/80 text-sm">Interessado em algum curso?</p>
+                  <p className="text-gold-300/80 text-sm">{t('login.contactPrompt')}</p>
                   <div className="flex justify-center">
                     <Button
                       variant="ghost"
@@ -314,7 +314,7 @@ export default function LoginPage() {
                       iconPosition="left"
                       className="text-gold-300/80 hover:text-gold-200 hover:bg-gold-500/10"
                     >
-                      Fale Conosco
+                      {t('login.contactButton')}
                     </Button>
                   </div>
                 </div>

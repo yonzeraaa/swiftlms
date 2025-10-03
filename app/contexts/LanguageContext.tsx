@@ -337,6 +337,9 @@ const translations: Record<Language, Record<string, string>> = {
     'login.confirmEmail': 'Por favor, confirme seu email',
     'login.rememberMe': 'Lembrar-me',
     'login.forgotPassword': 'Esqueci a minha senha',
+    'login.viewCourses': 'Ver Cursos Disponíveis',
+    'login.contactPrompt': 'Interessado em algum curso?',
+    'login.contactButton': 'Fale Conosco',
     
     // Forgot Password
     'forgotPassword.title': 'Recuperar Senha',
@@ -630,6 +633,9 @@ const translations: Record<Language, Record<string, string>> = {
     'login.confirmEmail': 'Please confirm your email',
     'login.rememberMe': 'Remember me',
     'login.forgotPassword': 'Forgot my password',
+    'login.viewCourses': 'View Available Courses',
+    'login.contactPrompt': 'Interested in any course?',
+    'login.contactButton': 'Contact Us',
     
     // Forgot Password
     'forgotPassword.title': 'Reset Password',
@@ -884,6 +890,9 @@ const translations: Record<Language, Record<string, string>> = {
     'login.confirmEmail': 'Por favor, confirme su correo',
     'login.rememberMe': 'Recordarme',
     'login.forgotPassword': 'Olvidé mi contraseña',
+    'login.viewCourses': 'Ver Cursos Disponibles',
+    'login.contactPrompt': '¿Interesado en algún curso?',
+    'login.contactButton': 'Contáctanos',
     
     // Forgot Password
     'forgotPassword.title': 'Recuperar Contraseña',
