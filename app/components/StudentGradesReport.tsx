@@ -72,12 +72,6 @@ export default function StudentGradesReport({
   
   const supabase = createClient()
 
-  useEffect(() => {
-    if (userId) {
-      fetchStudentGrades()
-    }
-  }, [userId, fetchStudentGrades])
-
   const fetchStudentGrades = useCallback(async (options?: { skipLoading?: boolean }) => {
     try {
       if (!options?.skipLoading) {
@@ -240,6 +234,12 @@ export default function StudentGradesReport({
       }
     }
   }, [supabase, userId, userName, dateRange])
+
+  useEffect(() => {
+    if (userId) {
+      fetchStudentGrades()
+    }
+  }, [userId, fetchStudentGrades])
 
   const toggleSubject = (subjectId: string) => {
     const newExpanded = new Set(expandedSubjects)
