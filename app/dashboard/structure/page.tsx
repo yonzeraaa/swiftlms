@@ -881,22 +881,22 @@ export default function StructurePage() {
               </button>
             </div>
 
-            {associateType !== 'module' && associationOptions.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-gold-300">
-                <p>
-                  {showOnlyAvailableOptions
-                    ? 'Exibindo apenas itens disponíveis para associação.'
-                    : 'Exibindo todos os itens, com destaque para os já utilizados.'}
-                </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleAssociationFilterMode}
-                >
-                  {showOnlyAvailableOptions ? 'Ver todos os itens' : 'Ver somente disponíveis'}
-                </Button>
-              </div>
-            )}
+              {associateType !== 'module' && associationOptions.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-gold-300">
+                  <p className="text-gold-200">
+                    {showOnlyAvailableOptions
+                      ? 'Exibindo apenas itens disponíveis para associação.'
+                      : 'Exibindo todos os itens, com destaque para os já utilizados.'}
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={toggleAssociationFilterMode}
+                  >
+                    {showOnlyAvailableOptions ? 'Ver todos os itens' : 'Ver somente disponíveis'}
+                  </Button>
+                </div>
+              )}
 
             <div
               className="overflow-y-auto pr-1"
@@ -915,13 +915,6 @@ export default function StructurePage() {
                      'Crie módulos na página de Módulos e eles aparecerão automaticamente aqui' :
                      'Crie novos itens na página correspondente antes de associá-los'}
                   </p>
-                  {associateType !== 'module' && associationOptions.length > 0 && showOnlyAvailableOptions && (
-                    <div className="mt-4">
-                      <Button variant="secondary" size="sm" onClick={toggleAssociationFilterMode}>
-                        Exibir todos os itens
-                      </Button>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="space-y-2">

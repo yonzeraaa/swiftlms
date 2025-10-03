@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo } from 'react'
-import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, Loader2, AlertCircle, Link2, CheckCircle2, CheckSquare, Square, Trash } from 'lucide-react'
+import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, AlertCircle, Link2, CheckSquare, Square, Trash, Check } from 'lucide-react'
 import Button from '../../components/Button'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
@@ -16,6 +16,17 @@ type SubjectLessonView = Database['public']['Views']['subject_lessons_view']['Ro
 type Lesson = Database['public']['Tables']['lessons']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
+
+interface LessonAssociationOption {
+  id: string
+  displayName: string
+  description?: string | null
+  availability: 'available' | 'current' | 'assignedElsewhere'
+  statusText: string
+  statusColorClass: string
+  contentType?: string | null
+  durationMinutes?: number | null
+}
 
 export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -35,9 +46,11 @@ export default function SubjectsPage() {
   const [courseCount, setCourseCount] = useState<{ [key: string]: number }>({})
   const [showLessonsModal, setShowLessonsModal] = useState(false)
   const [selectedSubjectForLessons, setSelectedSubjectForLessons] = useState<Subject | null>(null)
-  const [availableLessons, setAvailableLessons] = useState<Lesson[]>([])
-  const [associatedLessons, setAssociatedLessons] = useState<string[]>([])
-  const [selectedLessons, setSelectedLessons] = useState<string[]>([])
+  const [lessonAssociationOptions, setLessonAssociationOptions] = useState<LessonAssociationOption[]>([])
+  const [lessonAvailableItems, setLessonAvailableItems] = useState<LessonAssociationOption[]>([])
+  const [showOnlyAvailableLessons, setShowOnlyAvailableLessons] = useState(true)
+  const [selectedLessonOptions, setSelectedLessonOptions] = useState<string[]>([])
+  const [currentLessonAssociations, setCurrentLessonAssociations] = useState<string[]>([])
   const [lessonsLoading, setLessonsLoading] = useState(false)
   const [lessonCount, setLessonCount] = useState<{ [key: string]: number }>({})
   const [currentModuleOrder, setCurrentModuleOrder] = useState<number | null>(null)
@@ -48,6 +61,49 @@ export default function SubjectsPage() {
   const [subjectSortMode, setSubjectSortMode] = useState<'code' | 'name'>('code')
   
   const supabase = createClient()
+
+  const sortLessonOptions = (options: LessonAssociationOption[]) => {
+    const priority = {
+      available: 0,
+      current: 1,
+      assignedElsewhere: 2
+    } as const
+
+    return [...options].sort((a, b) => {
+      const priorityDiff = priority[a.availability] - priority[b.availability]
+      if (priorityDiff !== 0) return priorityDiff
+      return a.displayName.toLocaleLowerCase('pt-BR').localeCompare(
+        b.displayName.toLocaleLowerCase('pt-BR'),
+        'pt-BR'
+      )
+    })
+  }
+
+  const updateLessonAvailableItems = (
+    options: LessonAssociationOption[],
+    onlyAvailable: boolean
+  ) => {
+    const filtered = onlyAvailable
+      ? options.filter(option => option.availability === 'available')
+      : options
+
+    setLessonAvailableItems(sortLessonOptions(filtered))
+
+    if (onlyAvailable) {
+      setSelectedLessonOptions(prev => prev.filter(id => {
+        const option = options.find(item => item.id === id)
+        return option ? option.availability === 'available' : false
+      }))
+    }
+  }
+
+  const toggleLessonFilterMode = () => {
+    setShowOnlyAvailableLessons(prev => {
+      const nextValue = !prev
+      updateLessonAvailableItems(lessonAssociationOptions, nextValue)
+      return nextValue
+    })
+  }
 
   useEffect(() => {
     fetchSubjects()
@@ -346,30 +402,70 @@ export default function SubjectsPage() {
     setSelectedSubjectForLessons(subject)
     setShowLessonsModal(true)
     setLessonsLoading(true)
-    setSelectedLessons([])
+    setSelectedLessonOptions([])
+    setLessonAssociationOptions([])
+    setLessonAvailableItems([])
+    setShowOnlyAvailableLessons(true)
+    setCurrentLessonAssociations([])
 
     try {
-      // Fetch all lessons
-      const { data: lessonsData, error: lessonsError } = await supabase
-        .from('lessons')
-        .select('*')
-        .order('title')
+      const [{ data: lessonsData, error: lessonsError }, { data: lessonLinks, error: lessonLinksError }] = await Promise.all([
+        supabase.from('lessons').select('id, title, description, content_type, duration_minutes').order('title'),
+        supabase.from('subject_lessons').select('subject_id, lesson_id')
+      ])
 
       if (lessonsError) throw lessonsError
+      if (lessonLinksError) throw lessonLinksError
 
-      setAvailableLessons(lessonsData || [])
+      const associationMap = new Map<string, Set<string>>()
+      lessonLinks?.forEach((link: any) => {
+        if (!associationMap.has(link.lesson_id)) {
+          associationMap.set(link.lesson_id, new Set())
+        }
+        associationMap.get(link.lesson_id)!.add(link.subject_id)
+      })
 
-      // Fetch already associated lessons
-      const { data: associatedData, error: associatedError } = await supabase
-        .from('subject_lessons')
-        .select('lesson_id')
-        .eq('subject_id', subject.id)
+      const options: LessonAssociationOption[] = (lessonsData || []).map((lesson: Lesson) => {
+        const associatedSubjects = associationMap.get(lesson.id)
+        const isAssociatedWithCurrent = associatedSubjects?.has(subject.id) || false
+        const otherAssociations = associatedSubjects
+          ? associatedSubjects.size - (isAssociatedWithCurrent ? 1 : 0)
+          : 0
 
-      if (associatedError) throw associatedError
+        const availability: LessonAssociationOption['availability'] = !associatedSubjects || associatedSubjects.size === 0
+          ? 'available'
+          : isAssociatedWithCurrent
+          ? 'current'
+          : 'assignedElsewhere'
 
-      const associatedIds = associatedData?.map((sl: any) => sl.lesson_id) || []
-      setAssociatedLessons(associatedIds)
-      setSelectedLessons(associatedIds)
+        const statusText = availability === 'available'
+          ? 'Disponível para associação'
+          : availability === 'current'
+          ? 'Já faz parte desta disciplina'
+          : `Associada a ${otherAssociations} outra${otherAssociations === 1 ? '' : 's'} disciplina${otherAssociations === 1 ? '' : 's'}`
+
+        return {
+          id: lesson.id,
+          displayName: lesson.title,
+          description: lesson.description,
+          availability,
+          statusText,
+          statusColorClass:
+            availability === 'available'
+              ? 'text-green-400'
+              : availability === 'current'
+              ? 'text-gold-400'
+              : 'text-orange-300',
+          contentType: lesson.content_type,
+          durationMinutes: lesson.duration_minutes
+        }
+      })
+
+      const currentIds = options.filter(option => option.availability === 'current').map(option => option.id)
+
+      setLessonAssociationOptions(options)
+      setCurrentLessonAssociations(currentIds)
+      updateLessonAvailableItems(options, true)
     } catch (error) {
       console.error('Error fetching lessons:', error)
       setMessage({ type: 'error', text: 'Erro ao carregar aulas' })
@@ -383,22 +479,8 @@ export default function SubjectsPage() {
     setSubmitting(true)
 
     try {
-      // Get lessons to add and remove
-      const toAdd = selectedLessons.filter((id: any) => !associatedLessons.includes(id))
-      const toRemove = associatedLessons.filter((id: any) => !selectedLessons.includes(id))
+      const toAdd = selectedLessonOptions.filter(id => !currentLessonAssociations.includes(id))
 
-      // Remove associations
-      if (toRemove.length > 0) {
-        const { error } = await supabase
-          .from('subject_lessons')
-          .delete()
-          .eq('subject_id', selectedSubjectForLessons.id)
-          .in('lesson_id', toRemove)
-
-        if (error) throw error
-      }
-
-      // Add new associations
       if (toAdd.length > 0) {
         const { error } = await supabase
           .from('subject_lessons')
@@ -412,7 +494,10 @@ export default function SubjectsPage() {
         if (error) throw error
       }
 
-      setMessage({ type: 'success', text: 'Aulas associadas com sucesso!' })
+      if (toAdd.length > 0) {
+        setMessage({ type: 'success', text: 'Aulas associadas com sucesso!' })
+      }
+
       setShowLessonsModal(false)
       await fetchSubjects()
     } catch (error: any) {
@@ -862,132 +947,143 @@ export default function SubjectsPage() {
 
       {/* Lessons Association Modal */}
       {showLessonsModal && selectedSubjectForLessons && (
-        <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
-          <div className="bg-navy-800 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col border border-gold-500/20">
-            <div className="flex items-center justify-between p-6 border-b border-gold-500/20">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <Card className="w-full max-w-2xl" padding="lg">
+            <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-xl font-bold text-gold flex items-center gap-2">
                   <Link2 className="w-6 h-6" />
                   Associar Aulas
                 </h2>
-                <p className="text-gold-300 mt-1">
-                  Disciplina: {selectedSubjectForLessons.name}
+                <p className="text-gold-300 text-sm mt-1">
+                  Disciplina: <span className="text-gold-100 font-medium">{selectedSubjectForLessons.name}</span>
                 </p>
               </div>
               <button
                 onClick={() => setShowLessonsModal(false)}
                 className="text-gold-400 hover:text-gold-200 transition-colors"
+                aria-label="Fechar"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              {lessonsLoading ? (
-                <div className="flex justify-center items-center h-64">
-                  <Spinner size="xl" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between mb-4">
+            {lessonsLoading ? (
+              <div className="flex justify-center items-center py-16">
+                <Spinner size="lg" />
+              </div>
+            ) : (
+              <>
+                {lessonAssociationOptions.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-gold-300">
                     <p className="text-gold-200">
-                      Selecione as aulas para associar com esta disciplina
+                      {showOnlyAvailableLessons
+                        ? 'Exibindo apenas itens disponíveis para associação.'
+                        : 'Exibindo todos os itens, com destaque para os já utilizados.'}
                     </p>
-                    <span className="text-gold-300 text-sm">
-                      {selectedLessons.length} aula(s) selecionada(s)
-                    </span>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={toggleLessonFilterMode}
+                    >
+                      {showOnlyAvailableLessons ? 'Ver todos os itens' : 'Ver somente disponíveis'}
+                    </Button>
                   </div>
+                )}
 
-                  {/* Display all lessons */}
-                  <div className="space-y-1">
-                    {availableLessons.map((lesson) => {
-                      const isSelected = selectedLessons.includes(lesson.id)
-                      const isAssociated = associatedLessons.includes(lesson.id)
+                <div className="overflow-y-auto pr-1" style={{ maxHeight: '50vh' }}>
+                  {lessonAvailableItems.length === 0 ? (
+                    <div className="text-center py-8">
+                      <AlertCircle className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
+                      <p className="text-gold-300">Nenhuma aula disponível</p>
+                      <p className="text-gold-400 text-sm mt-2">
+                        Crie novas aulas na página correspondente antes de associá-las
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {lessonAvailableItems.map((item) => {
+                        const isDisabled = item.availability === 'current'
+                        const isSelected = selectedLessonOptions.includes(item.id)
+                        const contentLabel = item.contentType === 'video'
+                          ? 'Vídeo'
+                          : item.contentType === 'text'
+                          ? 'Texto'
+                          : item.contentType === 'quiz'
+                          ? 'Quiz'
+                          : null
 
-                      return (
-                        <div
-                          key={lesson.id}
-                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                            isSelected
-                              ? 'bg-gold-500/10 border-gold-500/40 shadow-inner shadow-gold-500/10'
-                              : 'bg-navy-900/50 border-transparent hover:bg-navy-700/50'
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (isSelected) {
-                                setSelectedLessons(selectedLessons.filter((id: any) => id !== lesson.id))
-                              } else {
-                                setSelectedLessons([...selectedLessons, lesson.id])
-                              }
-                            }}
-                            className={`text-gold-400 hover:text-gold-200 transition-colors ${isSelected ? 'text-gold-100' : ''}`}
-                            aria-pressed={isSelected}
-                            aria-label={isSelected ? 'Remover aula da seleção' : 'Selecionar aula'}
-                          >
-                            {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                          </button>
-                          <div className="flex-1">
-                            <p className="text-gold-100">
-                              {lesson.title}
-                            </p>
-                            {lesson.description && (
-                              <p className="text-gold-300 text-sm mt-1">
-                                {lesson.description}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-4 mt-1">
-                              <span className="text-gold-400 text-sm">
-                                {lesson.content_type === 'video' ? 'Vídeo' : lesson.content_type === 'text' ? 'Texto' : 'Quiz'}
-                              </span>
-                              {lesson.duration_minutes && (
-                                <span className="text-gold-400 text-sm">
-                                  {lesson.duration_minutes} min
-                                </span>
+                        const labelClasses = `flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg ${
+                          isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:bg-navy-900/70 cursor-pointer'
+                        }`
+
+                        const handleToggle = (checked: boolean) => {
+                          setSelectedLessonOptions(prev => {
+                            if (checked) {
+                              return prev.includes(item.id) ? prev : [...prev, item.id]
+                            }
+                            return prev.filter(id => id !== item.id)
+                          })
+                        }
+
+                        return (
+                          <label key={item.id} className={labelClasses}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => handleToggle(e.target.checked)}
+                              disabled={isDisabled}
+                              className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500 disabled:opacity-50"
+                            />
+                            <div className="flex-1">
+                              <p className="text-gold-200 font-medium">{item.displayName}</p>
+                              {item.description && (
+                                <p className="text-gold-400 text-sm">{item.description}</p>
+                              )}
+                              <div className="flex flex-wrap items-center gap-3 text-xs text-gold-400 mt-1">
+                                {contentLabel && <span>{contentLabel}</span>}
+                                {typeof item.durationMinutes === 'number' && (
+                                  <span>{item.durationMinutes} min</span>
+                                )}
+                              </div>
+                              {item.statusText && (
+                                <p className={`text-xs mt-1 ${item.statusColorClass}`}>
+                                  {item.statusText}
+                                </p>
                               )}
                             </div>
-                          </div>
-                          {isAssociated && (
-                            <div title="Já associada">
-                              <CheckCircle2 className="w-5 h-5 text-green-400" />
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
+                            {isSelected && !isDisabled && <Check className="w-5 h-5 text-green-400" />}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
 
-            <div className="flex gap-3 p-6 border-t border-gold-500/20">
-              <Button
-                type="button"
-                variant="secondary"
-                className="flex-1"
-                onClick={() => setShowLessonsModal(false)}
-                disabled={submitting}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                className="flex-1"
-                onClick={saveLessonAssociations}
-                disabled={submitting || lessonsLoading}
-              >
-                {submitting ? (
-                  <>
-                    <Spinner size="sm" className="mr-2" />
-                    Salvando...
-                  </>
-                ) : (
-                  'Salvar Associações'
-                )}
-              </Button>
+            <div className="flex justify-between items-center pt-4 border-t border-gold-500/20 mt-6">
+              <p className="text-gold-300 text-sm">
+                {selectedLessonOptions.length} {selectedLessonOptions.length === 1 ? 'aula selecionada' : 'aulas selecionadas'}
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowLessonsModal(false)}
+                  disabled={submitting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={saveLessonAssociations}
+                  disabled={selectedLessonOptions.length === 0 || submitting || lessonsLoading}
+                >
+                  {submitting ? 'Confirmando...' : 'Confirmar'}
+                </Button>
+              </div>
             </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>
