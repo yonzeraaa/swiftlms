@@ -36,6 +36,8 @@ interface AuthProviderProps {
 
 const REFRESH_INTERVAL = 30000 // 30 segundos
 const REFRESH_BEFORE_EXPIRY = 0 // Refresh exatamente quando expira (3 horas)
+const SESSION_REFRESH_INTERVAL_MINUTES = 240
+const SESSION_REFRESH_INTERVAL_MS = SESSION_REFRESH_INTERVAL_MINUTES * 60 * 1000
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [authState, setAuthState] = useState<AuthState>({
@@ -50,6 +52,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const refreshTimerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const checkIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const broadcastChannelRef = useRef<BroadcastChannel | undefined>(undefined)
+  const isMountedRef = useRef(true)
+
+  const handleSessionExpired = (message?: string) => {
+    if (!isMountedRef.current) return
+
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current)
+      refreshTimerRef.current = undefined
+    }
+
+    setAuthState({
+      session: null,
+      user: null,
+      isLoading: false,
+      error: message ?? null
+    })
+
+    router.replace('/')
+  }
 
   const signOut = async () => {
     try {
@@ -128,10 +149,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
         
         scheduleRefresh(data.session)
+        return
       }
+
+      handleSessionExpired('Sessão expirada. Faça login novamente.')
     } catch (error) {
       console.error('[AuthProvider] Erro no refresh:', error)
-      setAuthState(prev => ({ ...prev, error: 'Falha ao atualizar sess\u00e3o' }))
+      handleSessionExpired('Sessão expirada. Faça login novamente.')
     }
   }
 
@@ -146,18 +170,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const expiresAt = new Date(session.expires_at * 1000).getTime()
     const now = Date.now()
     const timeUntilExpiry = expiresAt - now
-    const refreshAt = timeUntilExpiry - REFRESH_BEFORE_EXPIRY
-    
-    if (refreshAt > 0) {
-      console.log(`[AuthProvider] Refresh agendado para ${Math.round(refreshAt / 1000 / 60)} minutos`)
+    const targetDelay = timeUntilExpiry - REFRESH_BEFORE_EXPIRY
+    const refreshDelay = Math.max(
+      Math.min(targetDelay, SESSION_REFRESH_INTERVAL_MS),
+      0
+    )
+
+    if (refreshDelay > 0) {
+      console.log(`[AuthProvider] Refresh agendado para ${Math.round(refreshDelay / 1000 / 60)} minutos`)
       refreshTimerRef.current = setTimeout(() => {
         refreshSession()
-      }, refreshAt)
+      }, refreshDelay)
+    } else {
+      console.log('[AuthProvider] Refresh imediato requerido')
+      refreshSession()
     }
   }
 
   // Initialize auth state and listen for changes
   useEffect(() => {
+    isMountedRef.current = true
     let mounted = true
 
     // Configurar sincroniza\u00e7\u00e3o de storage
@@ -277,17 +309,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('[AuthProvider] Estado de auth mudou:', event)
 
         if (mounted) {
-          setAuthState({
-            session,
-            user: session?.user ?? null,
-            isLoading: false,
-            error: null
-          })
-          
           if (session) {
+            setAuthState({
+              session,
+              user: session?.user ?? null,
+              isLoading: false,
+              error: null
+            })
+
             scheduleRefresh(session)
+          } else if (event === 'INITIAL_SESSION') {
+            setAuthState(prev => ({
+              ...prev,
+              session: null,
+              user: null,
+              isLoading: false,
+              error: null
+            }))
+          } else {
+            handleSessionExpired('Sessão expirada. Faça login novamente.')
           }
-          
+
           // Notificar outras abas
           if (broadcastChannelRef.current) {
             broadcastChannelRef.current.postMessage({ type: 'SESSION_REFRESHED' })
@@ -300,6 +342,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     return () => {
       mounted = false
+      isMountedRef.current = false
       subscription.unsubscribe()
       cleanupStorage()
       

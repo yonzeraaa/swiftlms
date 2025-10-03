@@ -25,6 +25,7 @@ export default function AdminStudentGradesPage({ params }: { params: Promise<{ i
 
   useEffect(() => {
     checkAdminAndFetchUser()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedParams.id])
 
   const checkAdminAndFetchUser = async () => {
@@ -163,6 +164,7 @@ export default function AdminStudentGradesPage({ params }: { params: Promise<{ i
         showHeader={false}
         allowExport={true}
         dateRange={dateRange}
+        allowEditing={true}
       />
     </div>
   )
