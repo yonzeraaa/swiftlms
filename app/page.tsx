@@ -318,6 +318,12 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 </div>
+                
+                <div className="pt-2 text-center">
+                  <p className="text-gold-200/70 text-xs sm:text-sm">
+                    Powered by IQMasetti &amp; RTronics. Todos os direitos reservados.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
