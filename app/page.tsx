@@ -324,6 +324,12 @@ export default function LoginPage() {
         </div>
       </div>
       
+      <div className="absolute bottom-6 inset-x-0 px-4">
+        <p className="text-center text-gold-200/70 text-xs sm:text-sm">
+          Powered by IQMasetti &amp; RTronics. Todos os direitos reservados.
+        </p>
+      </div>
+      
       {/* Contact Modal */}
       <ContactModal 
         isOpen={contactModalOpen} 
