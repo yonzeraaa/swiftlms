@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { google, type drive_v3 } from 'googleapis'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { Database, Json } from '@/lib/database.types'
 import { parseAnswerKeyFromText, type ParsedAnswerKeyEntry } from '../tests/utils/answer-key'
 import path from 'path'
@@ -1485,9 +1486,10 @@ async function processImportInBackground(
   importId: string,
   userId: string,
   folderId: string,
-  jobId?: string
+  jobId?: string,
+  supabaseClient?: SupabaseClient<Database>
 ) {
-  const supabase = await createClient()
+  const supabase = supabaseClient ?? createAdminClient()
   const jobContext = jobId ? { jobId, supabase } : undefined
   
   try {
@@ -1734,13 +1736,20 @@ export async function POST(req: NextRequest) {
       errors: []
     }, jobContext)
     
-    // Iniciar processamento em background (não aguardar)
-    // Usar setImmediate para garantir que a resposta seja enviada primeiro
-    setImmediate(() => {
-      processImportInBackground(driveUrl, courseId, importId, user.id, folderId, jobRecord?.id)
-        .catch(error => {
-          console.error(`[IMPORT] Erro no processamento em background:`, error)
-        })
+    // Iniciar processamento em background (não aguardar resposta)
+    after(async () => {
+      try {
+        await processImportInBackground(
+          driveUrl,
+          courseId,
+          importId,
+          user.id,
+          folderId,
+          jobRecord?.id
+        )
+      } catch (error) {
+        console.error('[IMPORT] Erro no processamento em background:', error)
+      }
     })
     
     // Retornar imediatamente com o ID da importação
