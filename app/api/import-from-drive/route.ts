@@ -11,12 +11,50 @@ import fs from 'fs'
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 type DriveClient = drive_v3.Drive
 
-const DEFAULT_RETRY_ATTEMPTS = 3
+const DEFAULT_RETRY_ATTEMPTS = 6
 const DEFAULT_RETRY_DELAY_MS = 300
 const DEFAULT_ACTION_TIMEOUT_MS = 60_000
+const RATE_LIMIT_INTERVAL_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_INTERVAL_MS ?? 200)
+const MAX_RATE_LIMIT_BACKOFF_MS = 8_000
+
+let rateLimitChain: Promise<void> = Promise.resolve()
+let lastDriveRequestTimestamp = 0
 
 async function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function enforceDriveRateLimit() {
+  rateLimitChain = rateLimitChain.then(async () => {
+    const now = Date.now()
+    const elapsed = now - lastDriveRequestTimestamp
+    if (elapsed < RATE_LIMIT_INTERVAL_MS) {
+      await wait(RATE_LIMIT_INTERVAL_MS - elapsed)
+    }
+    lastDriveRequestTimestamp = Date.now()
+  })
+  await rateLimitChain
+}
+
+function extractGoogleErrorReason(error: any): string | undefined {
+  return (
+    error?.errors?.[0]?.reason ??
+    error?.response?.data?.error?.errors?.[0]?.reason ??
+    error?.response?.data?.error?.status ??
+    (typeof error?.code === 'string' ? error.code : undefined)
+  )
+}
+
+function isRateLimitError(error: any): boolean {
+  const statusCode = error?.code ?? error?.response?.status
+  if (statusCode === 429) return true
+  const reason = extractGoogleErrorReason(error)
+  if (!reason) {
+    const message: string | undefined = error?.message
+    return Boolean(message && /rate limit/i.test(message))
+  }
+  const normalized = reason.toLowerCase()
+  return ['ratelimitexceeded', 'userratelimitexceeded', 'quotaexceeded', 'dailylimitexceeded'].includes(normalized)
 }
 
 class TimeoutError extends Error {
@@ -60,13 +98,22 @@ async function executeWithRetries<T>(
 
   while (attempt < retries) {
     try {
+      await enforceDriveRateLimit()
       return await withTimeout(label, action, timeoutMs)
     } catch (err) {
       error = err
       attempt += 1
-      console.warn(`[IMPORT][RETRY] ${label} falhou (tentativa ${attempt}/${retries})`, err)
+      const rateLimited = isRateLimitError(err)
+      const exponentialDelay = delayMs * Math.pow(2, attempt)
+      const computedDelay = rateLimited
+        ? Math.min(MAX_RATE_LIMIT_BACKOFF_MS, Math.max(delayMs, exponentialDelay))
+        : Math.max(delayMs, delayMs * attempt)
+      console.warn(
+        `[IMPORT][RETRY] ${label} falhou (tentativa ${attempt}/${retries})${rateLimited ? ' - rate limited' : ''}`,
+        err
+      )
       if (attempt < retries) {
-        await wait(delayMs * attempt)
+        await wait(computedDelay)
       }
     }
   }
