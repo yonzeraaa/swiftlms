@@ -331,9 +331,6 @@ async function updateImportProgress(
         status: progress.completed ? 'completed' : progress.phase ?? 'processing',
       })
     }
-
-    // Adicionar pequeno delay para garantir que a UI possa atualizar
-    await wait(50)
   } catch (err) {
     console.error('[PROGRESS] Erro ao salvar progresso:', err)
   }
@@ -567,71 +564,10 @@ function extractDriveFolderId(url: string): string | null {
   return null
 }
 
-// Função para contar todos os itens antes de processar
-async function countDriveFolderItems(
-  drive: DriveClient,
-  folderId: string
-): Promise<{ totalModules: number; totalSubjects: number; totalLessons: number }> {
-  let totalModules = 0
-  let totalSubjects = 0
-  let totalLessons = 0
-  
-  try {
-    // Listar módulos (pastas de primeiro nível)
-    const modulesList = await listFolderContents(
-      drive,
-      folderId,
-      `and mimeType = '${FOLDER_MIME_TYPE}'`
-    )
-    totalModules = modulesList.length
-    console.log(`Contando: ${totalModules} módulos encontrados`)
-    
-    // Para cada módulo, contar disciplinas
-    for (const moduleItem of modulesList) {
-      const moduleName = ensureName(moduleItem.name, 'Módulo sem título')
-      const subjects = await listFolderContents(
-        drive,
-        moduleItem.id!,
-        `and mimeType = '${FOLDER_MIME_TYPE}'`
-      )
-      totalSubjects += subjects.length
-      console.log(`  Módulo '${moduleName}': ${subjects.length} disciplinas`)
-      
-      // Para cada disciplina, contar aulas (TODOS os arquivos, não apenas alguns tipos)
-      for (const subject of subjects) {
-        const subjectName = ensureName(subject.name, 'Disciplina sem título')
-        const lessons = await listFolderContents(
-          drive,
-          subject.id!,
-          `and mimeType != '${FOLDER_MIME_TYPE}'`
-        )
-        totalLessons += lessons.length
-        console.log(`    Disciplina '${subjectName}': ${lessons.length} aulas`)
-        
-        // Log dos tipos de arquivo encontrados para debug
-        const mimeTypes = lessons.reduce((acc: any, lesson: any) => {
-          acc[lesson.mimeType] = (acc[lesson.mimeType] || 0) + 1
-          return acc
-        }, {})
-        if (Object.keys(mimeTypes).length > 0) {
-          console.log(`      Tipos de arquivo:`, mimeTypes)
-        }
-      }
-    }
-    
-    console.log(`\nTotal contabilizado: ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} aulas`)
-    return { totalModules, totalSubjects, totalLessons }
-  } catch (error) {
-    console.error('Erro ao contar itens:', error)
-    throw error
-  }
-}
-
 async function parseGoogleDriveFolder(
   drive: DriveClient,
   folderId: string,
   importId?: string,
-  totals?: { totalModules: number; totalSubjects: number; totalLessons: number },
   supabase?: any,
   userId?: string,
   courseId?: string,
@@ -639,10 +575,9 @@ async function parseGoogleDriveFolder(
 ): Promise<CourseStructure> {
   const structure: CourseStructure = { modules: [] }
   
-  // Usar totais pré-calculados se fornecidos, senão inicializar com zero
-  let totalModules = totals?.totalModules || 0
-  let totalSubjects = totals?.totalSubjects || 0  
-  let totalLessons = totals?.totalLessons || 0
+  let totalModules = 0
+  let totalSubjects = 0  
+  let totalLessons = 0
   let processedModules = 0
   let processedSubjects = 0
   let processedLessons = 0
@@ -672,11 +607,7 @@ async function parseGoogleDriveFolder(
     )
 
     console.log(`Processando ${items.length} módulos na pasta principal`)
-    
-    if (!totals) {
-      console.log('Aviso: Totais não fornecidos, contando durante processamento...')
-      totalModules = items.length
-    }
+    totalModules = items.length
     
     // Atualizar progresso inicial
     await updateProgress({
@@ -715,7 +646,18 @@ async function parseGoogleDriveFolder(
           ? existingState?.subjectsByModuleId.get(existingModuleId)
           : undefined
         
-        // Atualizar progresso ANTES de processar o módulo
+        const subjectCandidates = await listFolderContents(drive, item.id!, '')
+        const subjects = subjectCandidates.filter(candidate => candidate.mimeType === FOLDER_MIME_TYPE)
+        const strayFiles = subjectCandidates.filter(candidate => candidate.mimeType !== FOLDER_MIME_TYPE)
+
+        if (strayFiles.length > 0) {
+          console.warn(`  Arquivos soltos ignorados em '${courseModule.name}':`, strayFiles.map(file => file.name))
+        }
+
+        console.log(`  Módulo '${moduleName}': ${subjects.length} disciplinas encontradas`)
+        totalSubjects += subjects.length
+
+        // Atualizar progresso ANTES de processar o módulo (já com total de disciplinas conhecido)
         await updateProgress({
           current_step: `Processando módulo ${processedModules + 1}/${totalModules}`,
           total_modules: totalModules,
@@ -727,16 +669,6 @@ async function parseGoogleDriveFolder(
           current_item: `Módulo: ${moduleName}`,
           errors: []
         })
-
-        const subjectCandidates = await listFolderContents(drive, item.id!, '')
-        const subjects = subjectCandidates.filter(candidate => candidate.mimeType === FOLDER_MIME_TYPE)
-        const strayFiles = subjectCandidates.filter(candidate => candidate.mimeType !== FOLDER_MIME_TYPE)
-
-        if (strayFiles.length > 0) {
-          console.warn(`  Arquivos soltos ignorados em '${courseModule.name}':`, strayFiles.map(file => file.name))
-        }
-
-        console.log(`  Módulo '${moduleName}': ${subjects.length} disciplinas encontradas`)
 
         for (let subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
           const subjectItem = subjects[subjectIndex]
@@ -755,6 +687,11 @@ async function parseGoogleDriveFolder(
               ? existingSubjectByCode
               : existingSubjectsForModule?.get(normalizedSubjectName)
             const existingSubjectId = existingSubjectEntry?.id
+            const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
+            const lessons = subjectAssets.filter(asset => asset.mimeType !== FOLDER_MIME_TYPE)
+            const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
+            totalLessons += lessons.length
+
             const subject = {
               name: subjectName,
               code: subjectCode,
@@ -777,10 +714,6 @@ async function parseGoogleDriveFolder(
               errors: []
             })
 
-            const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
-            const lessons = subjectAssets.filter(asset => asset.mimeType !== FOLDER_MIME_TYPE)
-            const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
-
             if (nestedFolders.length > 0) {
               console.warn(
                 `    Pastas aninhadas ignoradas em '${subjectName}':`,
@@ -792,7 +725,7 @@ async function parseGoogleDriveFolder(
 
             // Processamento em lotes para evitar timeout
             const BATCH_SIZE = 5 // Processar 5 aulas por vez
-            const DELAY_BETWEEN_BATCHES = 100 // 100ms de delay entre lotes
+            const DELAY_BETWEEN_BATCHES = 25 // Delay curto entre lotes para reduzir uso da API
             
             let lessonOrder = 0
             let testOrder = 0
@@ -865,7 +798,8 @@ async function parseGoogleDriveFolder(
                           drive.files.export({
                             fileId: lessonItem.id!,
                             mimeType: 'text/plain'
-                          })
+                          }),
+                        { timeoutMs: 15000, retries: 2 }
                       )
                       const rawContent = typeof exported.data === 'string' ? exported.data : ''
                       if (rawContent.trim().length > 0) {
@@ -951,7 +885,8 @@ async function parseGoogleDriveFolder(
                           drive.files.export({
                             fileId: lessonItem.id!,
                             mimeType: 'text/plain'
-                          })
+                          }),
+                        { timeoutMs: 15000, retries: 2 }
                       )
                       lesson.content = (content.data as string) ?? ''
                     } else if (mimeType === 'application/vnd.google-apps.presentation') {
@@ -962,7 +897,8 @@ async function parseGoogleDriveFolder(
                           drive.files.export({
                             fileId: lessonItem.id!,
                             mimeType: 'text/plain'
-                          })
+                          }),
+                        { timeoutMs: 15000, retries: 2 }
                       )
                       lesson.content = (content.data as string) ?? ''
                     } else {
@@ -1510,48 +1446,16 @@ async function processImportInBackground(
     })
     await logJob(jobContext, 'info', 'Autenticação concluída')
     
-    // FASE 1: Contar todos os itens primeiro
-    console.log(`[IMPORT-BACKGROUND] === FASE 1: Contando itens ===`)
-    await updateJob(jobContext, { current_step: 'Contando itens' })
+    // Atualizar progresso inicial
+    await updateJob(jobContext, { current_step: 'Iniciando processamento' })
     await updateImportProgress(supabase, importId, userId, courseId, {
       phase: 'processing',
-      current_step: 'Contando itens no Google Drive...',
+      current_step: 'Iniciando processamento',
       total_modules: 0,
       processed_modules: 0,
       total_subjects: 0,
       processed_subjects: 0,
       total_lessons: 0,
-      processed_lessons: 0,
-      current_item: 'Obtendo estrutura inicial',
-      percentage: 0,
-      errors: []
-    }, jobContext)
-
-    let totals: { totalModules: number; totalSubjects: number; totalLessons: number }
-    try {
-      totals = await countDriveFolderItems(drive, folderId)
-      await logJob(jobContext, 'info', 'Totais contabilizados', totals)
-    } catch (countError) {
-      console.error('[IMPORT-BACKGROUND] Falha ao contar itens, prosseguindo mesmo assim:', countError)
-      await logJob(jobContext, 'warn', 'Falha ao contabilizar itens', { message: (countError as Error)?.message })
-      totals = { totalModules: 0, totalSubjects: 0, totalLessons: 0 }
-    }
-
-    await updateJob(jobContext, {
-      total_items: totals.totalLessons + totals.totalModules + totals.totalSubjects,
-      processed_items: 0,
-      current_step: 'Estrutura contabilizada',
-    })
-    
-    // Atualizar progresso com totais
-    await updateImportProgress(supabase, importId, userId, courseId, {
-      phase: 'processing',
-      current_step: 'Iniciando processamento',
-      total_modules: totals.totalModules,
-      processed_modules: 0,
-      total_subjects: totals.totalSubjects,
-      processed_subjects: 0,
-      total_lessons: totals.totalLessons,
       processed_lessons: 0,
       current_item: 'Preparando para processar arquivos',
       percentage: 0,
@@ -1561,7 +1465,7 @@ async function processImportInBackground(
     // FASE 2: Processar estrutura da pasta
     console.log(`[IMPORT-BACKGROUND] === FASE 2: Processando conteúdo ===`)
     await updateJob(jobContext, { status: 'processing', current_step: 'Processando conteúdo' })
-    const structure = await parseGoogleDriveFolder(drive, folderId, importId, totals, supabase, userId, courseId, jobContext)
+    const structure = await parseGoogleDriveFolder(drive, folderId, importId, supabase, userId, courseId, jobContext)
 
     if (structure.modules.length === 0) {
       await updateImportProgress(supabase, importId, userId, courseId, {
@@ -1668,7 +1572,6 @@ if (process.env.NODE_ENV === 'test') {
     listFolderContents,
     parseGoogleDriveFolder,
     importToDatabase,
-    countDriveFolderItems,
   }
 }
 
