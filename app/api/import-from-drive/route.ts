@@ -888,6 +888,14 @@ async function parseGoogleDriveFolder(
                   if (lessonItem.mimeType === 'application/vnd.google-apps.document') {
                     try {
                       console.log(`        Tentando extrair gabarito do Google Docs: ${itemName}`)
+                      if (job) {
+                        await logJob(job, 'info', 'Exportando gabarito do teste', {
+                          moduleName,
+                          subjectName,
+                          fileId: lessonItem.id,
+                          itemName,
+                        })
+                      }
                       const exported = await executeWithRetries(
                         `drive.files.export (${lessonItem.id})`,
                         () =>
@@ -903,10 +911,27 @@ async function parseGoogleDriveFolder(
                         if (parsed.length > 0) {
                           extractedAnswerKey = parsed
                           requiresManualAnswerKey = false
+                          if (job) {
+                            await logJob(job, 'info', 'Gabarito extraído automaticamente', {
+                              moduleName,
+                              subjectName,
+                              fileId: lessonItem.id,
+                              questions: parsed.length,
+                            })
+                          }
                         }
                       }
                     } catch (answerKeyError) {
                       console.warn(`        Não foi possível extrair gabarito automático para ${itemName}:`, answerKeyError)
+                      if (job) {
+                        await logJob(job, 'warn', 'Falha ao extrair gabarito automaticamente', {
+                          moduleName,
+                          subjectName,
+                          fileId: lessonItem.id,
+                          itemName,
+                          error: answerKeyError instanceof Error ? answerKeyError.message : 'Erro desconhecido',
+                        })
+                      }
                     }
                   }
 
