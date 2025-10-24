@@ -717,6 +717,11 @@ async function parseGoogleDriveFolder(
           ? existingState?.subjectsByModuleId.get(existingModuleId)
           : undefined
         
+        await logJob(job, 'info', 'Listando disciplinas do módulo', {
+          moduleName,
+          folderId: item.id,
+        })
+
         const subjectCandidates = await listFolderContents(drive, item.id!, '')
         const subjects = subjectCandidates.filter(candidate => candidate.mimeType === FOLDER_MIME_TYPE)
         const strayFiles = subjectCandidates.filter(candidate => candidate.mimeType !== FOLDER_MIME_TYPE)
@@ -727,6 +732,12 @@ async function parseGoogleDriveFolder(
 
         console.log(`  Módulo '${moduleName}': ${subjects.length} disciplinas encontradas`)
         totalSubjects += subjects.length
+
+        await logJob(job, 'info', 'Disciplinas listadas', {
+          moduleName,
+          subjectsFound: subjects.length,
+          strayFiles: strayFiles.length,
+        })
 
         // Atualizar progresso ANTES de processar o módulo (já com total de disciplinas conhecido)
         await updateProgress({
@@ -758,6 +769,13 @@ async function parseGoogleDriveFolder(
               ? existingSubjectByCode
               : existingSubjectsForModule?.get(normalizedSubjectName)
             const existingSubjectId = existingSubjectEntry?.id
+
+            await logJob(job, 'info', 'Listando itens da disciplina', {
+              moduleName,
+              subjectName,
+              folderId: subjectItem.id,
+            })
+
             const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
             const lessons = subjectAssets.filter(asset => asset.mimeType !== FOLDER_MIME_TYPE)
             const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
@@ -786,13 +804,20 @@ async function parseGoogleDriveFolder(
             })
 
             if (nestedFolders.length > 0) {
-              console.warn(
-                `    Pastas aninhadas ignoradas em '${subjectName}':`,
-                nestedFolders.map(folder => ensureName(folder.name, 'Pasta sem título'))
-              )
-            }
+            console.warn(
+              `    Pastas aninhadas ignoradas em '${subjectName}':`,
+              nestedFolders.map(folder => ensureName(folder.name, 'Pasta sem título'))
+            )
+          }
 
             console.log(`    Disciplina '${subjectName}': ${lessons.length} arquivos detectados`)
+
+            await logJob(job, 'info', 'Itens da disciplina listados', {
+              moduleName,
+              subjectName,
+              lessonsFound: lessons.length,
+              nestedFolders: nestedFolders.length,
+            })
 
             // Processamento em lotes para evitar timeout
             const BATCH_SIZE = 5 // Processar 5 aulas por vez
