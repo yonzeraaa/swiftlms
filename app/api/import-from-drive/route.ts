@@ -372,10 +372,34 @@ async function updateImportProgress(
     }
     
     if (job) {
+      const processedItems =
+        progress.processed_lessons ??
+        progress.processed_modules ??
+        progress.processed_subjects ??
+        null
+
+      const totalItems =
+        (progress.total_modules ?? 0) +
+        (progress.total_subjects ?? 0) +
+        (progress.total_lessons ?? 0)
+
       await updateJob(job, {
-        processed_items: progress.processed_lessons ?? progress.processed_modules ?? null,
+        processed_items: processedItems,
+        total_items: totalItems > 0 ? totalItems : null,
         current_step: progress.current_step,
         status: progress.completed ? 'completed' : progress.phase ?? 'processing',
+      })
+
+      await logJob(job, 'info', progress.current_step ?? 'Progresso atualizado', {
+        percentage: progress.percentage ?? null,
+        processed_modules: progress.processed_modules ?? null,
+        total_modules: progress.total_modules ?? null,
+        processed_subjects: progress.processed_subjects ?? null,
+        total_subjects: progress.total_subjects ?? null,
+        processed_lessons: progress.processed_lessons ?? null,
+        total_lessons: progress.total_lessons ?? null,
+        current_item: progress.current_item ?? null,
+        completed: progress.completed ?? false
       })
     }
   } catch (err) {
