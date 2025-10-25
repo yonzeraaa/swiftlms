@@ -16,6 +16,7 @@ const DEFAULT_RETRY_DELAY_MS = 300
 const DEFAULT_ACTION_TIMEOUT_MS = 60_000
 const RATE_LIMIT_INTERVAL_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_INTERVAL_MS ?? 200)
 const MAX_RATE_LIMIT_BACKOFF_MS = 8_000
+const MAX_DOC_EXPORT_BYTES = Number(process.env.GOOGLE_DRIVE_MAX_EXPORT_BYTES ?? 7 * 1024 * 1024)
 
 let rateLimitChain: Promise<void> = Promise.resolve()
 let lastDriveRequestTimestamp = 0
@@ -55,6 +56,21 @@ function isRateLimitError(error: any): boolean {
   }
   const normalized = reason.toLowerCase()
   return ['ratelimitexceeded', 'userratelimitexceeded', 'quotaexceeded', 'dailylimitexceeded'].includes(normalized)
+}
+
+function getDriveFileSizeBytes(file: drive_v3.Schema$File | undefined): number {
+  if (!file) return 0
+  const raw =
+    typeof file.size === 'string'
+      ? parseInt(file.size, 10)
+      : typeof file.size === 'number'
+        ? file.size
+        : typeof file.quotaBytesUsed === 'string'
+          ? parseInt(file.quotaBytesUsed, 10)
+          : typeof file.quotaBytesUsed === 'number'
+            ? file.quotaBytesUsed
+            : 0
+  return Number.isFinite(raw) ? Math.max(raw, 0) : 0
 }
 
 class TimeoutError extends Error {
@@ -148,7 +164,7 @@ async function listFolderContents(
       () =>
         drive.files.list({
           q: `'${folderId}' in parents and trashed = false ${querySuffix}`,
-          fields: 'nextPageToken, files(id, name, mimeType)',
+          fields: 'nextPageToken, files(id, name, mimeType, size, quotaBytesUsed)',
           pageSize: 1000,
           orderBy: 'name',
           pageToken
@@ -857,6 +873,7 @@ async function parseGoogleDriveFolder(
                 const formattedTitle = formatTitle(baseName || itemName)
                 const isTest = isTestFile(formattedTitle)
 
+                const fileSizeBytes = getDriveFileSizeBytes(lessonItem)
                 let completedLabel: string
 
                 if (isTest) {
@@ -884,8 +901,22 @@ async function parseGoogleDriveFolder(
 
                   let extractedAnswerKey: ParsedAnswerKeyEntry[] | undefined
                   let requiresManualAnswerKey = true
+                  const skippingLargeDoc =
+                    lessonItem.mimeType === 'application/vnd.google-apps.document' &&
+                    fileSizeBytes > MAX_DOC_EXPORT_BYTES
 
-                  if (lessonItem.mimeType === 'application/vnd.google-apps.document') {
+                  if (skippingLargeDoc) {
+                    if (job) {
+                      await logJob(job, 'warn', 'Teste demasiado grande para exportar gabarito automaticamente', {
+                        moduleName,
+                        subjectName,
+                        fileId: lessonItem.id,
+                        itemName,
+                        sizeBytes: fileSizeBytes,
+                        limitBytes: MAX_DOC_EXPORT_BYTES
+                      })
+                    }
+                  } else if (lessonItem.mimeType === 'application/vnd.google-apps.document') {
                     try {
                       console.log(`        Tentando extrair gabarito do Google Docs: ${itemName}`)
                       if (job) {
@@ -911,12 +942,13 @@ async function parseGoogleDriveFolder(
                         if (parsed.length > 0) {
                           extractedAnswerKey = parsed
                           requiresManualAnswerKey = false
-                          if (job) {
+                          if (job && parsed.length > 0) {
                             await logJob(job, 'info', 'Gabarito extraído automaticamente', {
                               moduleName,
                               subjectName,
                               fileId: lessonItem.id,
                               questions: parsed.length,
+                              sizeBytes: fileSizeBytes || null
                             })
                           }
                         }
@@ -929,6 +961,7 @@ async function parseGoogleDriveFolder(
                           subjectName,
                           fileId: lessonItem.id,
                           itemName,
+                          sizeBytes: fileSizeBytes || null,
                           error: answerKeyError instanceof Error ? answerKeyError.message : 'Erro desconhecido',
                         })
                       }
@@ -997,9 +1030,35 @@ async function parseGoogleDriveFolder(
                   }
                   lessonOrder += 1
 
+                  const skippingLargeContent =
+                    (lessonItem.mimeType === 'application/vnd.google-apps.document' ||
+                      lessonItem.mimeType === 'application/vnd.google-apps.presentation') &&
+                    fileSizeBytes > MAX_DOC_EXPORT_BYTES
+
                   try {
-                    if (mimeType === 'application/vnd.google-apps.document') {
+                    if (skippingLargeContent) {
+                      lesson.content = `[Arquivo grande referenciado: ${itemName}]`
+                      if (job) {
+                        await logJob(job, 'warn', 'Arquivo grande — conteúdo não exportado', {
+                          moduleName,
+                          subjectName,
+                          fileId: lessonItem.id,
+                          itemName,
+                          sizeBytes: fileSizeBytes,
+                          limitBytes: MAX_DOC_EXPORT_BYTES
+                        })
+                      }
+                    } else if (mimeType === 'application/vnd.google-apps.document') {
                       console.log(`        Baixando conteúdo do Google Docs: ${itemName}`)
+                      if (job) {
+                        await logJob(job, 'info', 'Exportando conteúdo do Google Docs', {
+                          moduleName,
+                          subjectName,
+                          fileId: lessonItem.id,
+                          itemName,
+                          sizeBytes: fileSizeBytes || null
+                        })
+                      }
                       const content = await executeWithRetries(
                         `drive.files.export (${lessonItem.id})`,
                         () =>
@@ -1012,6 +1071,15 @@ async function parseGoogleDriveFolder(
                       lesson.content = (content.data as string) ?? ''
                     } else if (mimeType === 'application/vnd.google-apps.presentation') {
                       console.log(`        Baixando conteúdo do Google Slides: ${itemName}`)
+                      if (job) {
+                        await logJob(job, 'info', 'Exportando conteúdo do Google Slides', {
+                          moduleName,
+                          subjectName,
+                          fileId: lessonItem.id,
+                          itemName,
+                          sizeBytes: fileSizeBytes || null
+                        })
+                      }
                       const content = await executeWithRetries(
                         `drive.files.export (${lessonItem.id})`,
                         () =>
@@ -1028,6 +1096,16 @@ async function parseGoogleDriveFolder(
                   } catch (error) {
                     console.log(`      Erro ao baixar conteúdo de ${itemName}, usando referência apenas`)
                     lesson.content = `[Arquivo: ${itemName}]`
+                    if (job) {
+                      await logJob(job, 'warn', 'Falha ao exportar conteúdo do arquivo', {
+                        moduleName,
+                        subjectName,
+                        fileId: lessonItem.id,
+                        itemName,
+                        sizeBytes: fileSizeBytes || null,
+                        error: error instanceof Error ? error.message : 'Erro desconhecido'
+                      })
+                    }
                   }
 
                   subject.lessons.push(lesson)
