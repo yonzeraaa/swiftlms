@@ -242,6 +242,131 @@ export type Database = {
           }
         ]
       }
+      drive_import_items: {
+        Row: {
+          id: string
+          job_id: string
+          drive_file_id: string
+          parent_id: string | null
+          name: string
+          mime_type: string | null
+          size_bytes: number | null
+          kind: string | null
+          status: string
+          attempt_count: number
+          storage_bucket: string | null
+          storage_path: string | null
+          storage_public_url: string | null
+          storage_content_type: string | null
+          web_view_link: string | null
+          web_content_link: string | null
+          error: string | null
+          metadata: Json | null
+          created_at: string | null
+          updated_at: string | null
+          processed_at: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          drive_file_id: string
+          parent_id?: string | null
+          name: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          kind?: string | null
+          status?: string
+          attempt_count?: number
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_public_url?: string | null
+          storage_content_type?: string | null
+          web_view_link?: string | null
+          web_content_link?: string | null
+          error?: string | null
+          metadata?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          processed_at?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          drive_file_id?: string
+          parent_id?: string | null
+          name?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          kind?: string | null
+          status?: string
+          attempt_count?: number
+          storage_bucket?: string | null
+          storage_path?: string | null
+          storage_public_url?: string | null
+          storage_content_type?: string | null
+          web_view_link?: string | null
+          web_content_link?: string | null
+          error?: string | null
+          metadata?: Json | null
+          created_at?: string | null
+          updated_at?: string | null
+          processed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_import_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "drive_import_jobs"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      drive_import_events: {
+        Row: {
+          id: string
+          job_id: string
+          item_id: string | null
+          level: string
+          message: string
+          context: Json | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          item_id?: string | null
+          level?: string
+          message: string
+          context?: Json | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          item_id?: string | null
+          level?: string
+          message?: string
+          context?: Json | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_import_events_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "drive_import_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drive_import_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "drive_import_jobs"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       certificate_requirements: {
         Row: {
           all_lessons_completed: boolean | null

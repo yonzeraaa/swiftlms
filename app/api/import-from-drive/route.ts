@@ -6,7 +6,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { Database, Json } from '@/lib/database.types'
 import { parseAnswerKeyFromText, type ParsedAnswerKeyEntry } from '../tests/utils/answer-key'
 import path from 'path'
+import os from 'os'
 import fs from 'fs'
+import { pipeline } from 'stream/promises'
 
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 type DriveClient = drive_v3.Drive
@@ -80,14 +82,6 @@ function slugifyForStorage(value: string) {
   return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
 }
 
-async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
-  const chunks: Buffer[] = []
-  for await (const chunk of stream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-  }
-  return Buffer.concat(chunks)
-}
-
 async function ensureStorageBucketExists(supabase: SupabaseClient<Database>, job?: ImportJobContext) {
   if (storageBucketInitialized) return
   const { data, error } = await supabase.storage.getBucket(DRIVE_IMPORT_BUCKET)
@@ -140,38 +134,47 @@ async function uploadLargeDriveFile(options: {
   const extension = targetExtension || (exportMimeType === 'application/pdf' ? 'pdf' : (originalMimeType?.split('/').pop() || 'bin'))
   const storagePath = `${courseId}/${moduleSlug}/${subjectSlug}/${fileId}.${extension}`
 
-  const response = exportMimeType
-    ? await drive.files.export({ fileId, mimeType: exportMimeType }, { responseType: 'stream' })
-    : await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' })
+  const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'drive-import-'))
+  const tempFile = path.join(tempDir, `${fileId}.${extension}`)
 
-  const buffer = await streamToBuffer(response.data as NodeJS.ReadableStream)
-  const contentType = exportMimeType ?? originalMimeType ?? 'application/octet-stream'
+  try {
+    const response = exportMimeType
+      ? await drive.files.export({ fileId, mimeType: exportMimeType }, { responseType: 'stream' })
+      : await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' })
 
-  const { error: uploadError } = await supabase.storage
-    .from(DRIVE_IMPORT_BUCKET)
-    .upload(storagePath, buffer, { contentType, upsert: true })
+    const writeStream = fs.createWriteStream(tempFile)
+    await pipeline(response.data as NodeJS.ReadableStream, writeStream)
 
-  if (uploadError) {
-    throw uploadError
+    const contentType = exportMimeType ?? originalMimeType ?? 'application/octet-stream'
+
+    const { error: uploadError } = await supabase.storage
+      .from(DRIVE_IMPORT_BUCKET)
+      .upload(storagePath, fs.createReadStream(tempFile), { contentType, upsert: true })
+
+    if (uploadError) {
+      throw uploadError
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(DRIVE_IMPORT_BUCKET).getPublicUrl(storagePath)
+    const publicUrl = publicUrlData?.publicUrl ?? ''
+
+    if (job) {
+      await logJob(job, 'info', 'Arquivo salvo no storage', {
+        bucket: DRIVE_IMPORT_BUCKET,
+        storagePath,
+        publicUrl,
+        moduleName,
+        subjectName,
+        fileId,
+        itemName,
+        contentType
+      })
+    }
+
+    return { storagePath, publicUrl, contentType }
+  } finally {
+    await fs.promises.rm(tempDir, { recursive: true, force: true })
   }
-
-  const { data: publicUrlData } = supabase.storage.from(DRIVE_IMPORT_BUCKET).getPublicUrl(storagePath)
-  const publicUrl = publicUrlData?.publicUrl ?? ''
-
-  if (job) {
-    await logJob(job, 'info', 'Arquivo salvo no storage', {
-      bucket: DRIVE_IMPORT_BUCKET,
-      storagePath,
-      publicUrl,
-      moduleName,
-      subjectName,
-      fileId,
-      itemName,
-      contentType
-    })
-  }
-
-  return { storagePath, publicUrl, contentType }
 }
 
 class TimeoutError extends Error {
@@ -2015,6 +2018,12 @@ async function logJob(
   try {
     const contextJson: Json | null = context ? (context as unknown as Json) : null
     await job.supabase.from('drive_import_logs').insert({
+      job_id: job.jobId,
+      level,
+      message,
+      context: contextJson,
+    })
+    await job.supabase.from('drive_import_events').insert({
       job_id: job.jobId,
       level,
       message,
