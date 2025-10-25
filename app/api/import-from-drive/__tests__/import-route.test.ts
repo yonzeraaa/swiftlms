@@ -63,7 +63,8 @@ describe('Google Drive import parsing', () => {
 
     const structure = await parseGoogleDriveFolder(
       driveStub as unknown as drive_v3.Drive,
-      'root-folder'
+      'root-folder',
+      'course-1'
     )
 
     expect(structure.modules).toHaveLength(1)

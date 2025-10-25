@@ -17,9 +17,11 @@ const DEFAULT_ACTION_TIMEOUT_MS = 60_000
 const RATE_LIMIT_INTERVAL_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_INTERVAL_MS ?? 200)
 const MAX_RATE_LIMIT_BACKOFF_MS = 8_000
 const MAX_DOC_EXPORT_BYTES = Number(process.env.GOOGLE_DRIVE_MAX_EXPORT_BYTES ?? 25 * 1024 * 1024)
+const DRIVE_IMPORT_BUCKET = process.env.DRIVE_IMPORT_BUCKET ?? 'drive-imports'
 
 let rateLimitChain: Promise<void> = Promise.resolve()
 let lastDriveRequestTimestamp = 0
+let storageBucketInitialized = false
 
 async function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -71,6 +73,105 @@ function getDriveFileSizeBytes(file: drive_v3.Schema$File | undefined): number {
             ? file.quotaBytesUsed
             : 0
   return Number.isFinite(raw) ? Math.max(raw, 0) : 0
+}
+
+function slugifyForStorage(value: string) {
+  const normalized = normalizeForMatching(value)
+  return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
+}
+
+async function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+  const chunks: Buffer[] = []
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+  return Buffer.concat(chunks)
+}
+
+async function ensureStorageBucketExists(supabase: SupabaseClient<Database>, job?: ImportJobContext) {
+  if (storageBucketInitialized) return
+  const { data, error } = await supabase.storage.getBucket(DRIVE_IMPORT_BUCKET)
+  if (error || !data) {
+    const { error: createError } = await supabase.storage.createBucket(DRIVE_IMPORT_BUCKET, {
+      public: true,
+      fileSizeLimit: undefined
+    })
+    if (createError && !createError.message?.toLowerCase().includes('already exists')) {
+      throw createError
+    }
+    if (job) {
+      await logJob(job, 'info', 'Bucket de importação preparado', { bucket: DRIVE_IMPORT_BUCKET })
+    }
+  }
+  storageBucketInitialized = true
+}
+
+async function uploadLargeDriveFile(options: {
+  drive: DriveClient
+  supabase: SupabaseClient<Database>
+  fileId: string
+  courseId: string
+  moduleName: string
+  subjectName: string
+  itemName: string
+  exportMimeType?: string
+  targetExtension?: string
+  originalMimeType?: string | null
+  job?: ImportJobContext
+}) {
+  const {
+    drive,
+    supabase,
+    fileId,
+    courseId,
+    moduleName,
+    subjectName,
+    itemName,
+    exportMimeType,
+    targetExtension,
+    originalMimeType,
+    job
+  } = options
+
+  await ensureStorageBucketExists(supabase, job)
+
+  const moduleSlug = slugifyForStorage(moduleName)
+  const subjectSlug = slugifyForStorage(subjectName)
+  const extension = targetExtension || (exportMimeType === 'application/pdf' ? 'pdf' : (originalMimeType?.split('/').pop() || 'bin'))
+  const storagePath = `${courseId}/${moduleSlug}/${subjectSlug}/${fileId}.${extension}`
+
+  const response = exportMimeType
+    ? await drive.files.export({ fileId, mimeType: exportMimeType }, { responseType: 'stream' })
+    : await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' })
+
+  const buffer = await streamToBuffer(response.data as NodeJS.ReadableStream)
+  const contentType = exportMimeType ?? originalMimeType ?? 'application/octet-stream'
+
+  const { error: uploadError } = await supabase.storage
+    .from(DRIVE_IMPORT_BUCKET)
+    .upload(storagePath, buffer, { contentType, upsert: true })
+
+  if (uploadError) {
+    throw uploadError
+  }
+
+  const { data: publicUrlData } = supabase.storage.from(DRIVE_IMPORT_BUCKET).getPublicUrl(storagePath)
+  const publicUrl = publicUrlData?.publicUrl ?? ''
+
+  if (job) {
+    await logJob(job, 'info', 'Arquivo salvo no storage', {
+      bucket: DRIVE_IMPORT_BUCKET,
+      storagePath,
+      publicUrl,
+      moduleName,
+      subjectName,
+      fileId,
+      itemName,
+      contentType
+    })
+  }
+
+  return { storagePath, publicUrl, contentType }
 }
 
 class TimeoutError extends Error {
@@ -654,10 +755,10 @@ function extractDriveFolderId(url: string): string | null {
 async function parseGoogleDriveFolder(
   drive: DriveClient,
   folderId: string,
+  courseId: string,
   importId?: string,
   supabase?: any,
   userId?: string,
-  courseId?: string,
   job?: ImportJobContext
 ): Promise<CourseStructure> {
   const structure: CourseStructure = { modules: [] }
@@ -1037,17 +1138,38 @@ async function parseGoogleDriveFolder(
 
                   try {
                     if (skippingLargeContent) {
-                      lesson.content = `[Arquivo grande referenciado: ${itemName}]`
+                      const exportMimeType =
+                        lessonItem.mimeType === 'application/vnd.google-apps.document' ||
+                        lessonItem.mimeType === 'application/vnd.google-apps.presentation'
+                          ? 'application/pdf'
+                          : undefined
+                      const storageResult = await uploadLargeDriveFile({
+                        drive,
+                        supabase,
+                        fileId: lessonItem.id!,
+                        courseId,
+                        moduleName,
+                        subjectName,
+                        itemName,
+                        exportMimeType,
+                        targetExtension: exportMimeType ? 'pdf' : undefined,
+                        originalMimeType: lessonItem.mimeType,
+                        job
+                      })
+                      lesson.content = ''
+                      lesson.contentUrl = storageResult.publicUrl
                       if (job) {
-                        await logJob(job, 'warn', 'Arquivo grande — conteúdo não exportado', {
+                        await logJob(job, 'info', 'Arquivo grande armazenado no bucket', {
                           moduleName,
                           subjectName,
                           fileId: lessonItem.id,
                           itemName,
                           sizeBytes: fileSizeBytes,
-                          limitBytes: MAX_DOC_EXPORT_BYTES
+                          limitBytes: MAX_DOC_EXPORT_BYTES,
+                          storagePath: storageResult.storagePath
                         })
                       }
+                      completedLabel = `${lesson.name} (arquivo armazenado)`
                     } else if (mimeType === 'application/vnd.google-apps.document') {
                       console.log(`        Baixando conteúdo do Google Docs: ${itemName}`)
                       if (job) {
@@ -1096,6 +1218,7 @@ async function parseGoogleDriveFolder(
                   } catch (error) {
                     console.log(`      Erro ao baixar conteúdo de ${itemName}, usando referência apenas`)
                     lesson.content = `[Arquivo: ${itemName}]`
+                    lesson.contentUrl = driveLink
                     if (job) {
                       await logJob(job, 'warn', 'Falha ao exportar conteúdo do arquivo', {
                         moduleName,
@@ -1664,7 +1787,7 @@ async function processImportInBackground(
     // FASE 2: Processar estrutura da pasta
     console.log(`[IMPORT-BACKGROUND] === FASE 2: Processando conteúdo ===`)
     await updateJob(jobContext, { status: 'processing', current_step: 'Processando conteúdo' })
-    const structure = await parseGoogleDriveFolder(drive, folderId, importId, supabase, userId, courseId, jobContext)
+    const structure = await parseGoogleDriveFolder(drive, folderId, courseId, importId, supabase, userId, jobContext)
 
     if (structure.modules.length === 0) {
       await updateImportProgress(supabase, importId, userId, courseId, {
