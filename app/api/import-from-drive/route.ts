@@ -16,7 +16,7 @@ const DEFAULT_RETRY_DELAY_MS = 300
 const DEFAULT_ACTION_TIMEOUT_MS = 60_000
 const RATE_LIMIT_INTERVAL_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_INTERVAL_MS ?? 200)
 const MAX_RATE_LIMIT_BACKOFF_MS = 8_000
-const MAX_DOC_EXPORT_BYTES = Number(process.env.GOOGLE_DRIVE_MAX_EXPORT_BYTES ?? 7 * 1024 * 1024)
+const MAX_DOC_EXPORT_BYTES = Number(process.env.GOOGLE_DRIVE_MAX_EXPORT_BYTES ?? 25 * 1024 * 1024)
 
 let rateLimitChain: Promise<void> = Promise.resolve()
 let lastDriveRequestTimestamp = 0
