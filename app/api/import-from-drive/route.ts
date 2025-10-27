@@ -55,7 +55,9 @@ async function streamWithTimeout(
       if (settled) return
       const timeoutError = new TimeoutError(label, timeoutMs)
       // Garantir que os streams sejam interrompidos para evitar vazamentos
-      source.destroy(timeoutError)
+      if (typeof (source as any)?.destroy === 'function') {
+        (source as any).destroy(timeoutError)
+      }
       if (typeof (destination as any)?.destroy === 'function') {
         (destination as any).destroy(timeoutError)
       }
