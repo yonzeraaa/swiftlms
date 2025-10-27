@@ -1004,82 +1004,6 @@ export default function CoursesPage() {
               </div>
             </form>
           </Card>
-          {mediaPrompt && (
-            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4">
-              <Card className="w-full max-w-xl space-y-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
-                    <Video className="w-5 h-5" />
-                    Arquivos de mídia detectados
-                  </h3>
-                  <button
-                    onClick={() => setMediaPrompt(null)}
-                    className="text-gold-400 hover:text-gold-200 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <p className="text-sm text-gold-200 space-y-1">
-                  <span>
-                    Encontramos <span className="font-semibold">{mediaCounts?.total ?? 0}</span> arquivos de áudio ou vídeo nesta pasta.
-                  </span>
-                  <span className="block text-gold-400 text-xs">
-                    {mediaCounts ? `${mediaCounts.video} vídeo(s) • ${mediaCounts.audio} áudio(s)` : ''}
-                  </span>
-                  <span className="block">
-                    Deseja importá-los junto com o restante do conteúdo?
-                  </span>
-                </p>
-
-                <div className="bg-navy-900/60 border border-navy-700 rounded-lg max-h-48 overflow-y-auto">
-                  <ul className="divide-y divide-navy-800">
-                    {mediaPrompt.files.slice(0, 8).map((file, index) => {
-                      const isVideo = file.mimeType.toLowerCase().startsWith('video')
-                      const isAudio = file.mimeType.toLowerCase().startsWith('audio')
-                      const label = isVideo ? 'Vídeo' : isAudio ? 'Áudio' : 'Mídia'
-                      return (
-                        <li key={`${file.moduleName}-${file.subjectName}-${file.itemName}-${index}`} className="p-3 text-sm">
-                          <p className="text-gold-100 font-medium flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy-800 text-gold-300">{label}</span>
-                            {file.itemName}
-                          </p>
-                          <p className="text-xs text-gold-400">{file.moduleName} • {file.subjectName}</p>
-                          <p className="text-xs text-gold-500">{file.mimeType} • {formatBytes(file.sizeBytes)}</p>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                  {mediaPrompt.files.length > 8 && (
-                    <div className="p-3 text-xs text-gold-300/80">
-                      + {mediaPrompt.files.length - 8} arquivos adicionais
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => confirmMediaImport(false)}
-                    className="flex-1"
-                    disabled={importingFromDrive}
-                  >
-                    Ignorar mídias
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    onClick={() => confirmMediaImport(true)}
-                    className="flex-1"
-                    disabled={importingFromDrive}
-                  >
-                    Importar mídias
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          )}
         </div>
       )}
       
@@ -1643,6 +1567,7 @@ export default function CoursesPage() {
       
       {/* Google Drive Import Modal */}
       {showDriveImportModal && selectedCourse && (
+        <>
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
           <Card className="w-full max-w-md">
             <div className="flex justify-between items-center mb-6">
@@ -1752,6 +1677,83 @@ export default function CoursesPage() {
             </div>
           </Card>
         </div>
+        {mediaPrompt && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4">
+            <Card className="w-full max-w-xl space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
+                  <Video className="w-5 h-5" />
+                  Arquivos de mídia detectados
+                </h3>
+                <button
+                  onClick={() => setMediaPrompt(null)}
+                  className="text-gold-400 hover:text-gold-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-sm text-gold-200 space-y-1">
+                <span>
+                  Encontramos <span className="font-semibold">{mediaCounts?.total ?? 0}</span> arquivos de áudio ou vídeo nesta pasta.
+                </span>
+                <span className="block text-gold-400 text-xs">
+                  {mediaCounts ? `${mediaCounts.video} vídeo(s) • ${mediaCounts.audio} áudio(s)` : ''}
+                </span>
+                <span className="block">
+                  Deseja importá-los junto com o restante do conteúdo?
+                </span>
+              </p>
+
+              <div className="bg-navy-900/60 border border-navy-700 rounded-lg max-h-48 overflow-y-auto">
+                <ul className="divide-y divide-navy-800">
+                  {mediaPrompt.files.slice(0, 8).map((file, index) => {
+                    const isVideo = file.mimeType.toLowerCase().startsWith('video')
+                    const isAudio = file.mimeType.toLowerCase().startsWith('audio')
+                    const label = isVideo ? 'Vídeo' : isAudio ? 'Áudio' : 'Mídia'
+                    return (
+                      <li key={`${file.moduleName}-${file.subjectName}-${file.itemName}-${index}`} className="p-3 text-sm">
+                        <p className="text-gold-100 font-medium flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy-800 text-gold-300">{label}</span>
+                          {file.itemName}
+                        </p>
+                        <p className="text-xs text-gold-400">{file.moduleName} • {file.subjectName}</p>
+                        <p className="text-xs text-gold-500">{file.mimeType} • {formatBytes(file.sizeBytes)}</p>
+                      </li>
+                    )
+                  })}
+                </ul>
+                {mediaPrompt.files.length > 8 && (
+                  <div className="p-3 text-xs text-gold-300/80">
+                    + {mediaPrompt.files.length - 8} arquivos adicionais
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => confirmMediaImport(false)}
+                  className="flex-1"
+                  disabled={importingFromDrive}
+                >
+                  Ignorar mídias
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => confirmMediaImport(true)}
+                  className="flex-1"
+                  disabled={importingFromDrive}
+                >
+                  Importar mídias
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+        </>
       )}
 
       {/* Dropdown Portal */}
