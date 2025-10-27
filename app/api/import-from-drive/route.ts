@@ -124,12 +124,12 @@ function getDriveFileSizeBytes(file: drive_v3.Schema$File | undefined): number {
   return Number.isFinite(raw) ? Math.max(raw, 0) : 0
 }
 
-export function slugifyForStorage(value: string) {
+function slugifyForStorage(value: string) {
   const normalized = normalizeForMatching(value)
   return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
 }
 
-export async function ensureStorageBucketExists(supabase: SupabaseClient<Database>, job?: ImportJobContext) {
+async function ensureStorageBucketExists(supabase: SupabaseClient<Database>, job?: ImportJobContext) {
   if (storageBucketInitialized) return
   const { data, error } = await supabase.storage.getBucket(DRIVE_IMPORT_BUCKET)
   if (error || !data) {
@@ -343,16 +343,16 @@ async function executeWithRetries<T>(
   throw error instanceof Error ? error : new Error(`Falha ao executar ${label}`)
 }
 
-export function ensureName(value: string | null | undefined, fallback: string) {
+function ensureName(value: string | null | undefined, fallback: string) {
   const trimmed = value?.trim()
   return trimmed && trimmed.length > 0 ? trimmed : fallback
 }
 
-export function removeDiacritics(value: string) {
+function removeDiacritics(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
-export function normalizeForMatching(value: string) {
+function normalizeForMatching(value: string) {
   return removeDiacritics(value).toLowerCase()
 }
 
@@ -387,7 +387,7 @@ async function listFolderContents(
   return files
 }
 
-export function isTestFile(title: string) {
+function isTestFile(title: string) {
   const normalizedTitle = normalizeForMatching(title)
 
   if (!normalizedTitle) {
@@ -397,16 +397,16 @@ export function isTestFile(title: string) {
   return /\bteste\b/.test(normalizedTitle)
 }
 
-export function formatTitle(rawName: string) {
+function formatTitle(rawName: string) {
   return rawName.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-export function generateCode(prefix: string, index: number) {
+function generateCode(prefix: string, index: number) {
   return `${prefix}${String(index).padStart(2, '0')}`
 }
 
 
-export function generateSubjectCode(moduleName: string, subjectName: string) {
+function generateSubjectCode(moduleName: string, subjectName: string) {
   const base = normalizeForMatching(`${moduleName} ${subjectName}`)
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
@@ -414,14 +414,14 @@ export function generateSubjectCode(moduleName: string, subjectName: string) {
   return code ? `SUB_${code}` : `SUB_${Date.now()}`
 }
 
-export interface ExistingSubjectInfo {
+interface ExistingSubjectInfo {
   id: string
   name: string
   code?: string | null
   moduleId?: string
 }
 
-export interface ExistingCourseState {
+interface ExistingCourseState {
   modulesByName: Map<string, { id: string; title: string }>
   subjectsByModuleId: Map<string, Map<string, ExistingSubjectInfo>>
   subjectsByCode: Map<string, ExistingSubjectInfo>
@@ -429,7 +429,7 @@ export interface ExistingCourseState {
   existingTestUrls: Set<string>
 }
 
-export async function loadExistingCourseState(supabase: any, courseId: string): Promise<ExistingCourseState | null> {
+async function loadExistingCourseState(supabase: any, courseId: string): Promise<ExistingCourseState | null> {
   try {
     const modulesByName = new Map<string, { id: string; title: string }>()
     const subjectsByModuleId = new Map<string, Map<string, ExistingSubjectInfo>>()
@@ -535,7 +535,7 @@ export async function loadExistingCourseState(supabase: any, courseId: string): 
 }
 
 // Função para atualizar progresso no Supabase
-export async function updateImportProgress(
+async function updateImportProgress(
   supabase: any,
   importId: string,
   userId: string,
@@ -804,7 +804,7 @@ Path tentado: ${absolutePath}`
   return drive
 }
 
-export interface CourseStructure {
+interface CourseStructure {
   modules: {
     name: string
     order: number
@@ -1429,7 +1429,7 @@ async function parseGoogleDriveFolder(
   }
 }
 
-export async function importToDatabase(
+async function importToDatabase(
   structure: CourseStructure,
   courseId: string,
   supabase: any,
@@ -2122,13 +2122,13 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-export type ImportJobContext = {
+type ImportJobContext = {
   jobId: string
   supabase: SupabaseClient<Database>
   provider: string
 }
 
-export async function logJob(
+async function logJob(
   job: ImportJobContext | undefined,
   level: 'info' | 'warn' | 'error',
   message: string,
@@ -2156,7 +2156,7 @@ export async function logJob(
   }
 }
 
-export async function updateJob(
+async function updateJob(
   job: ImportJobContext | undefined,
   updates: Partial<Database['public']['Tables']['file_import_jobs']['Update']>
 ) {
