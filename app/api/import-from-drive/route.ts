@@ -124,6 +124,40 @@ function getDriveFileSizeBytes(file: drive_v3.Schema$File | undefined): number {
   return Number.isFinite(raw) ? Math.max(raw, 0) : 0
 }
 
+function getFileExtension(name: string | null | undefined): string | null {
+  if (!name) return null
+  const match = name.match(/\.([a-z0-9]+)$/i)
+  return match ? match[1].toLowerCase() : null
+}
+
+function isVideoMimeType(mimeType: string | null | undefined, name?: string | null): boolean {
+  const normalized = (mimeType ?? '').toLowerCase()
+  if (normalized.startsWith('video/')) return true
+  const ext = getFileExtension(name)
+  if (!ext) return false
+  return ['mp4', 'm4v', 'mov', 'avi', 'mkv', 'webm', 'wmv', 'flv'].includes(ext)
+}
+
+function isAudioMimeType(mimeType: string | null | undefined, name?: string | null): boolean {
+  const normalized = (mimeType ?? '').toLowerCase()
+  if (normalized.startsWith('audio/')) return true
+  const ext = getFileExtension(name)
+  if (!ext) return false
+  return ['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'oga', 'opus', 'wma'].includes(ext)
+}
+
+function isMediaFile(item: drive_v3.Schema$File): boolean {
+  return isVideoMimeType(item.mimeType ?? '', item.name ?? null) || isAudioMimeType(item.mimeType ?? '', item.name ?? null)
+}
+
+interface MediaFileInfo {
+  moduleName: string
+  subjectName: string
+  itemName: string
+  mimeType: string
+  sizeBytes: number | null
+}
+
 function slugifyForStorage(value: string) {
   const normalized = normalizeForMatching(value)
   return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
@@ -857,6 +891,53 @@ function extractDriveFolderId(url: string): string | null {
   return null
 }
 
+interface ParseOptions {
+  includeMedia?: boolean
+  collectMedia?: boolean
+  mediaFiles?: MediaFileInfo[]
+}
+
+async function findMediaFiles(
+  drive: DriveClient,
+  folderId: string
+): Promise<MediaFileInfo[]> {
+  const mediaFiles: MediaFileInfo[] = []
+  const moduleFolders = await listFolderContents(
+    drive,
+    folderId,
+    `and mimeType = '${FOLDER_MIME_TYPE}'`
+  )
+
+  for (let moduleIndex = 0; moduleIndex < moduleFolders.length; moduleIndex++) {
+    const moduleFolder = moduleFolders[moduleIndex]
+    if (moduleFolder.mimeType !== FOLDER_MIME_TYPE) continue
+    const moduleName = ensureName(moduleFolder.name, `Módulo ${moduleIndex + 1}`)
+
+    const subjectCandidates = await listFolderContents(drive, moduleFolder.id!, '')
+    const subjectFolders = subjectCandidates.filter(candidate => candidate.mimeType === FOLDER_MIME_TYPE)
+
+    for (let subjectIndex = 0; subjectIndex < subjectFolders.length; subjectIndex++) {
+      const subjectFolder = subjectFolders[subjectIndex]
+      const subjectName = ensureName(subjectFolder.name, `${moduleName} - Disciplina ${subjectIndex + 1}`)
+
+      const assets = await listFolderContents(drive, subjectFolder.id!, '')
+      for (const asset of assets) {
+        if (asset.mimeType === FOLDER_MIME_TYPE) continue
+        if (!isMediaFile(asset)) continue
+        mediaFiles.push({
+          moduleName,
+          subjectName,
+          itemName: ensureName(asset.name, 'Arquivo sem nome'),
+          mimeType: asset.mimeType ?? 'desconhecido',
+          sizeBytes: getDriveFileSizeBytes(asset) || null
+        })
+      }
+    }
+  }
+
+  return mediaFiles
+}
+
 async function parseGoogleDriveFolder(
   drive: DriveClient,
   folderId: string,
@@ -864,9 +945,11 @@ async function parseGoogleDriveFolder(
   importId?: string,
   supabase?: any,
   userId?: string,
-  job?: ImportJobContext
+  job?: ImportJobContext,
+  options: ParseOptions = {}
 ): Promise<CourseStructure> {
   const structure: CourseStructure = { modules: [] }
+  const includeMedia = options.includeMedia !== false
   
   let totalModules = 0
   let totalSubjects = 0  
@@ -998,15 +1081,33 @@ async function parseGoogleDriveFolder(
               folderId: subjectItem.id,
             })
 
-            const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
-            const lessons = subjectAssets.filter(asset => asset.mimeType !== FOLDER_MIME_TYPE)
-            const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
-            totalLessons += lessons.length
+        const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
+        const lessons = subjectAssets.filter(asset => asset.mimeType !== FOLDER_MIME_TYPE)
+        const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
 
-            const subject = {
-              name: subjectName,
-              code: subjectCode,
-              existingId: existingSubjectId,
+        const mediaAssets = lessons.filter(isMediaFile)
+        if (options.collectMedia && mediaAssets.length > 0 && options.mediaFiles) {
+          for (const mediaAsset of mediaAssets) {
+            options.mediaFiles.push({
+              moduleName,
+              subjectName,
+              itemName: ensureName(mediaAsset.name, 'Arquivo sem nome'),
+              mimeType: mediaAsset.mimeType ?? 'desconhecido',
+              sizeBytes: getDriveFileSizeBytes(mediaAsset) || null
+            })
+          }
+        }
+
+        const lessonAssets = includeMedia
+          ? lessons
+          : lessons.filter(asset => !isMediaFile(asset))
+
+        totalLessons += lessonAssets.length
+
+        const subject = {
+          name: subjectName,
+          code: subjectCode,
+          existingId: existingSubjectId,
               order: subjectIndex + 1,
               lessons: [] as any[],
               tests: [] as any[]
@@ -1032,14 +1133,26 @@ async function parseGoogleDriveFolder(
             )
           }
 
-            console.log(`    Disciplina '${subjectName}': ${lessons.length} arquivos detectados`)
-
-            await logJob(job, 'info', 'Itens da disciplina listados', {
+        const skippedMediaCount = lessons.length - lessonAssets.length
+        if (!includeMedia && skippedMediaCount > 0) {
+          console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos importáveis (${skippedMediaCount} mídias ignoradas)`)        
+          if (job) {
+            await logJob(job, 'info', 'Arquivos de mídia ignorados nesta disciplina', {
               moduleName,
               subjectName,
-              lessonsFound: lessons.length,
-              nestedFolders: nestedFolders.length,
+              ignoredMediaCount: skippedMediaCount
             })
+          }
+        } else {
+          console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos detectados`)
+        }
+
+        await logJob(job, 'info', 'Itens da disciplina listados', {
+          moduleName,
+          subjectName,
+          lessonsFound: lessons.length,
+          nestedFolders: nestedFolders.length,
+        })
 
             // Processamento em lotes para evitar timeout
             const BATCH_SIZE = 5 // Processar 5 aulas por vez
@@ -1047,7 +1160,7 @@ async function parseGoogleDriveFolder(
             
             let lessonOrder = 0
             let testOrder = 0
-            const validLessons = lessons
+            const validLessons = lessonAssets
             
             // Processar aulas em lotes
             for (let batchStart = 0; batchStart < validLessons.length; batchStart += BATCH_SIZE) {
@@ -1850,6 +1963,7 @@ async function processImportInBackground(
   userId: string,
   folderId: string,
   jobId?: string,
+  includeMedia = true,
   supabaseClient?: SupabaseClient<Database>
 ) {
   const supabase = supabaseClient ?? createAdminClient()
@@ -1863,6 +1977,7 @@ async function processImportInBackground(
       error: null,
     })
     await logJob(jobContext, 'info', 'Job iniciado', { importId, courseId })
+    await logJob(jobContext, 'info', includeMedia ? 'Arquivos de mídia serão importados' : 'Arquivos de mídia serão ignorados')
     
     // Autenticar com Google Drive
     console.log(`[IMPORT-BACKGROUND] Autenticando Google Drive...`)
@@ -1892,7 +2007,16 @@ async function processImportInBackground(
     // FASE 2: Processar estrutura da pasta
     console.log(`[IMPORT-BACKGROUND] === FASE 2: Processando conteúdo ===`)
     await updateJob(jobContext, { status: 'processing', current_step: 'Processando conteúdo' })
-    const structure = await parseGoogleDriveFolder(drive, folderId, courseId, importId, supabase, userId, jobContext)
+    const structure = await parseGoogleDriveFolder(
+      drive,
+      folderId,
+      courseId,
+      importId,
+      supabase,
+      userId,
+      jobContext,
+      { includeMedia }
+    )
 
     if (structure.modules.length === 0) {
       await updateImportProgress(supabase, importId, userId, courseId, {
@@ -2012,7 +2136,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const { driveUrl, courseId } = await req.json()
+    const { driveUrl, courseId, includeMedia, dryRun } = await req.json()
+    const includeMediaFlag = includeMedia !== false
 
     if (!driveUrl || !courseId) {
       return NextResponse.json(
@@ -2035,6 +2160,21 @@ export async function POST(req: NextRequest) {
     
     console.log(`[IMPORT] Iniciando importação com ID: ${importId}`)
     
+    if (dryRun) {
+      const drive = await authenticateGoogleDrive()
+      const mediaFiles = await findMediaFiles(drive, folderId)
+      return NextResponse.json({
+        hasMedia: mediaFiles.length > 0,
+        totalMediaFiles: mediaFiles.length,
+        mediaFiles
+      }, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+    }
+
     // Criar job de importação
     const { data: jobRecord, error: jobError } = await supabase
       .from('drive_import_jobs')
@@ -2043,7 +2183,7 @@ export async function POST(req: NextRequest) {
         course_id: courseId,
         folder_id: folderId,
         status: 'queued',
-        metadata: { importId }
+        metadata: { importId, includeMedia: includeMediaFlag }
       })
       .select()
       .single()
@@ -2057,7 +2197,7 @@ export async function POST(req: NextRequest) {
     }
 
     const jobContext = jobRecord ? { jobId: jobRecord.id, supabase } : undefined
-    await logJob(jobContext, 'info', 'Job criado', { importId })
+    await logJob(jobContext, 'info', 'Job criado', { importId, includeMedia: includeMediaFlag })
     
     // Inicializar progresso no Supabase
     await updateImportProgress(supabase, importId, user.id, courseId, {
@@ -2069,7 +2209,9 @@ export async function POST(req: NextRequest) {
       processed_subjects: 0,
       total_lessons: 0,
       processed_lessons: 0,
-      current_item: 'Preparando processamento em background',
+      current_item: includeMediaFlag
+        ? 'Preparando processamento em background'
+        : 'Preparando importação sem arquivos de mídia',
       percentage: 0,
       errors: []
     }, jobContext)
@@ -2083,7 +2225,8 @@ export async function POST(req: NextRequest) {
           importId,
           user.id,
           folderId,
-          jobRecord?.id
+          jobRecord?.id,
+          includeMediaFlag
         )
       } catch (error) {
         console.error('[IMPORT] Erro no processamento em background:', error)
@@ -2093,7 +2236,9 @@ export async function POST(req: NextRequest) {
     // Retornar imediatamente com o ID da importação
     return NextResponse.json({
       success: true,
-      message: 'Importação iniciada. Acompanhe o progresso em tempo real.',
+      message: includeMediaFlag
+        ? 'Importação iniciada. Acompanhe o progresso em tempo real.'
+        : 'Importação iniciada (arquivos de mídia serão ignorados).',
       importId,
       jobId: jobRecord?.id ?? null,
       status: 'processing'

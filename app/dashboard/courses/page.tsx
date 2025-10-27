@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, BookMarked, UserMinus, Upload, FileText } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, BookMarked, UserMinus, Upload, FileText, Video } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import ImportProgress from '../../components/ImportProgress'
@@ -33,6 +33,18 @@ interface Course {
   _count?: {
     enrollments: number
   }
+}
+
+interface MediaFileSummary {
+  moduleName: string
+  subjectName: string
+  itemName: string
+  mimeType: string
+  sizeBytes: number | null
+}
+
+interface MediaPromptState {
+  files: MediaFileSummary[]
 }
 
 interface NewCourseForm {
@@ -74,13 +86,15 @@ export default function CoursesPage() {
   const [importing, setImporting] = useState(false)
   const [showDriveImportModal, setShowDriveImportModal] = useState(false)
   const [driveUrl, setDriveUrl] = useState('')
+  const [inspectingDrive, setInspectingDrive] = useState(false)
+  const [mediaPrompt, setMediaPrompt] = useState<MediaPromptState | null>(null)
   
   // Usar o novo hook de progresso
   const { 
     progress: importProgress, 
     isImporting: importingFromDrive, 
     startImport, 
-    cancelImport 
+    cancelImport
   } = useImportProgress({
     onComplete: () => {
       console.log('[CoursesPage] Import completed successfully')
@@ -108,6 +122,27 @@ export default function CoursesPage() {
     price: 0,
     is_featured: false
   })
+
+  const formatBytes = (bytes: number | null) => {
+    if (!bytes || bytes <= 0) return 'tamanho desconhecido'
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    let value = bytes
+    let unitIndex = 0
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024
+      unitIndex++
+    }
+    const rounded = unitIndex === 0 ? Math.round(value) : parseFloat(value.toFixed(value >= 10 ? 0 : 1))
+    return `${rounded} ${units[unitIndex]}`
+  }
+
+  const mediaCounts = mediaPrompt
+    ? {
+        total: mediaPrompt.files.length,
+        video: mediaPrompt.files.filter(file => file.mimeType.toLowerCase().startsWith('video')).length,
+        audio: mediaPrompt.files.filter(file => file.mimeType.toLowerCase().startsWith('audio')).length
+      }
+    : null
   
   const [editForm, setEditForm] = useState<NewCourseForm>({
     title: '',
@@ -515,12 +550,55 @@ export default function CoursesPage() {
     if (!driveUrl || !selectedCourse) return
     
     setError(null)
+    setMediaPrompt(null)
     
     try {
+      setInspectingDrive(true)
+      const response = await fetch('/api/import-from-drive', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          driveUrl,
+          courseId: selectedCourse.id,
+          dryRun: true
+        })
+      })
+
+      const result: { error?: string; mediaFiles?: MediaFileSummary[] } = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result?.error || 'Erro ao analisar a pasta do Google Drive')
+      }
+
+      const mediaFiles: MediaFileSummary[] = Array.isArray(result?.mediaFiles) ? result.mediaFiles : []
+      if (mediaFiles.length > 0) {
+        setMediaPrompt({ files: mediaFiles })
+        console.log('[CoursesPage] Media files detected before import', mediaFiles.length)
+        return
+      }
+
       await startImport(driveUrl, selectedCourse.id)
-      console.log('[CoursesPage] Import started successfully')
+      console.log('[CoursesPage] Import started successfully (no media detected)')
     } catch (error: any) {
-      console.error('[CoursesPage] Failed to start import:', error)
+      console.error('[CoursesPage] Failed to inspect/import:', error)
+      setError(error.message || 'Erro ao iniciar importação')
+    } finally {
+      setInspectingDrive(false)
+    }
+  }
+
+  const confirmMediaImport = async (includeMedia: boolean) => {
+    if (!driveUrl || !selectedCourse) return
+    setMediaPrompt(null)
+    setError(null)
+
+    try {
+      await startImport(driveUrl, selectedCourse.id, { includeMedia })
+      console.log('[CoursesPage] Import started with media option', includeMedia)
+    } catch (error: any) {
+      console.error('[CoursesPage] Failed to start import with media option:', error)
       setError(error.message || 'Erro ao iniciar importação')
     }
   }
@@ -926,6 +1004,82 @@ export default function CoursesPage() {
               </div>
             </form>
           </Card>
+          {mediaPrompt && (
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4">
+              <Card className="w-full max-w-xl space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
+                    <Video className="w-5 h-5" />
+                    Arquivos de mídia detectados
+                  </h3>
+                  <button
+                    onClick={() => setMediaPrompt(null)}
+                    className="text-gold-400 hover:text-gold-200 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <p className="text-sm text-gold-200 space-y-1">
+                  <span>
+                    Encontramos <span className="font-semibold">{mediaCounts?.total ?? 0}</span> arquivos de áudio ou vídeo nesta pasta.
+                  </span>
+                  <span className="block text-gold-400 text-xs">
+                    {mediaCounts ? `${mediaCounts.video} vídeo(s) • ${mediaCounts.audio} áudio(s)` : ''}
+                  </span>
+                  <span className="block">
+                    Deseja importá-los junto com o restante do conteúdo?
+                  </span>
+                </p>
+
+                <div className="bg-navy-900/60 border border-navy-700 rounded-lg max-h-48 overflow-y-auto">
+                  <ul className="divide-y divide-navy-800">
+                    {mediaPrompt.files.slice(0, 8).map((file, index) => {
+                      const isVideo = file.mimeType.toLowerCase().startsWith('video')
+                      const isAudio = file.mimeType.toLowerCase().startsWith('audio')
+                      const label = isVideo ? 'Vídeo' : isAudio ? 'Áudio' : 'Mídia'
+                      return (
+                        <li key={`${file.moduleName}-${file.subjectName}-${file.itemName}-${index}`} className="p-3 text-sm">
+                          <p className="text-gold-100 font-medium flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy-800 text-gold-300">{label}</span>
+                            {file.itemName}
+                          </p>
+                          <p className="text-xs text-gold-400">{file.moduleName} • {file.subjectName}</p>
+                          <p className="text-xs text-gold-500">{file.mimeType} • {formatBytes(file.sizeBytes)}</p>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {mediaPrompt.files.length > 8 && (
+                    <div className="p-3 text-xs text-gold-300/80">
+                      + {mediaPrompt.files.length - 8} arquivos adicionais
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => confirmMediaImport(false)}
+                    className="flex-1"
+                    disabled={importingFromDrive}
+                  >
+                    Ignorar mídias
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => confirmMediaImport(true)}
+                    className="flex-1"
+                    disabled={importingFromDrive}
+                  >
+                    Importar mídias
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          )}
         </div>
       )}
       
@@ -1501,6 +1655,7 @@ export default function CoursesPage() {
                   setShowDriveImportModal(false)
                   setDriveUrl('')
                   setError(null)
+                  setMediaPrompt(null)
                 }}
                 className="text-gold-400 hover:text-gold-200 transition-colors"
               >
@@ -1520,7 +1675,7 @@ export default function CoursesPage() {
                   Importando para: <span className="font-semibold">{selectedCourse.title}</span>
                 </p>
               </div>
-              
+
               <div>
                 <label htmlFor="driveUrl" className="block text-sm font-medium text-gold-300 mb-2">
                   URL da pasta do Google Drive
@@ -1576,6 +1731,7 @@ export default function CoursesPage() {
                     setShowDriveImportModal(false)
                     setDriveUrl('')
                     setError(null)
+                    setMediaPrompt(null)
                   }}
                   className="flex-1"
                 >
@@ -1586,10 +1742,10 @@ export default function CoursesPage() {
                     type="button"
                     variant="primary"
                     onClick={handleDriveImport}
-                    disabled={!driveUrl}
+                    disabled={!driveUrl || inspectingDrive}
                     className="flex-1"
                   >
-                    Importar
+                    {inspectingDrive ? 'Verificando pasta...' : 'Importar'}
                   </Button>
                 )}
               </div>

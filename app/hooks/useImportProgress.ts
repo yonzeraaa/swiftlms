@@ -175,9 +175,13 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
   }, [])
 
   // Iniciar importação
-  const startImport = useCallback(async (driveUrl: string, courseId: string) => {
+  const startImport = useCallback(async (
+    driveUrl: string,
+    courseId: string,
+    options: { includeMedia?: boolean } = {}
+  ) => {
     console.log('[useImportProgress] Starting import', { driveUrl, courseId })
-    
+
     setIsImporting(true)
     setProgress({
       currentStep: 'Iniciando importação...',
@@ -202,7 +206,8 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
         },
         body: JSON.stringify({
           driveUrl,
-          courseId
+          courseId,
+          includeMedia: options.includeMedia !== false
         })
       })
 
