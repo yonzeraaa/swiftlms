@@ -9,6 +9,7 @@ import path from 'path'
 import os from 'os'
 import fs from 'fs'
 import { pipeline } from 'stream/promises'
+import { uploadFileWithTus } from '@/lib/storage/tusUpload'
 
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 type DriveClient = drive_v3.Drive
@@ -20,6 +21,9 @@ const RATE_LIMIT_INTERVAL_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_INTERV
 const MAX_RATE_LIMIT_BACKOFF_MS = 8_000
 const MAX_DOC_EXPORT_BYTES = Number(process.env.GOOGLE_DRIVE_MAX_EXPORT_BYTES ?? 25 * 1024 * 1024)
 const DRIVE_IMPORT_BUCKET = process.env.DRIVE_IMPORT_BUCKET ?? 'drive-imports'
+const SUPABASE_TUS_THRESHOLD_BYTES = Number(process.env.SUPABASE_TUS_THRESHOLD_BYTES ?? 50 * 1024 * 1024)
+const DRIVE_DOWNLOAD_REQUEST_TIMEOUT_MS = Number(process.env.GOOGLE_DRIVE_DOWNLOAD_REQUEST_TIMEOUT_MS ?? 90_000)
+const DRIVE_STREAM_TIMEOUT_MS = Number(process.env.GOOGLE_DRIVE_STREAM_TIMEOUT_MS ?? 180_000)
 
 let rateLimitChain: Promise<void> = Promise.resolve()
 let lastDriveRequestTimestamp = 0
@@ -27,6 +31,47 @@ let storageBucketInitialized = false
 
 async function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function streamWithTimeout(
+  source: NodeJS.ReadableStream,
+  destination: NodeJS.WritableStream,
+  label: string,
+  timeoutMs: number
+) {
+  let timeout: NodeJS.Timeout | undefined
+  let settled = false
+
+  const cleanup = () => {
+    if (timeout) {
+      clearTimeout(timeout)
+      timeout = undefined
+    }
+    settled = true
+  }
+
+  return await new Promise<void>((resolve, reject) => {
+    timeout = setTimeout(() => {
+      if (settled) return
+      const timeoutError = new TimeoutError(label, timeoutMs)
+      // Garantir que os streams sejam interrompidos para evitar vazamentos
+      source.destroy(timeoutError)
+      if (typeof (destination as any)?.destroy === 'function') {
+        (destination as any).destroy(timeoutError)
+      }
+      reject(timeoutError)
+    }, timeoutMs)
+
+    pipeline(source, destination)
+      .then(() => {
+        cleanup()
+        resolve()
+      })
+      .catch(error => {
+        cleanup()
+        reject(error)
+      })
+  })
 }
 
 async function enforceDriveRateLimit() {
@@ -77,12 +122,12 @@ function getDriveFileSizeBytes(file: drive_v3.Schema$File | undefined): number {
   return Number.isFinite(raw) ? Math.max(raw, 0) : 0
 }
 
-function slugifyForStorage(value: string) {
+export function slugifyForStorage(value: string) {
   const normalized = normalizeForMatching(value)
   return normalized.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'item'
 }
 
-async function ensureStorageBucketExists(supabase: SupabaseClient<Database>, job?: ImportJobContext) {
+export async function ensureStorageBucketExists(supabase: SupabaseClient<Database>, job?: ImportJobContext) {
   if (storageBucketInitialized) return
   const { data, error } = await supabase.storage.getBucket(DRIVE_IMPORT_BUCKET)
   if (error || !data) {
@@ -138,21 +183,74 @@ async function uploadLargeDriveFile(options: {
   const tempFile = path.join(tempDir, `${fileId}.${extension}`)
 
   try {
-    const response = exportMimeType
-      ? await drive.files.export({ fileId, mimeType: exportMimeType }, { responseType: 'stream' })
-      : await drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' })
+    if (job) {
+      await logJob(job, 'info', 'Baixando arquivo grande do Google Drive', {
+        moduleName,
+        subjectName,
+        itemName,
+        fileId,
+        exportMimeType: exportMimeType ?? null,
+        originalMimeType: originalMimeType ?? null,
+      })
+    }
+
+    const label = exportMimeType
+      ? `drive.files.export (${fileId})`
+      : `drive.files.get (${fileId})`
+
+    const response = await executeWithRetries(
+      label,
+      () =>
+        exportMimeType
+          ? drive.files.export({ fileId, mimeType: exportMimeType }, { responseType: 'stream' })
+          : drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' }),
+      { timeoutMs: DRIVE_DOWNLOAD_REQUEST_TIMEOUT_MS }
+    )
+
+    const downloadStream = response.data as NodeJS.ReadableStream | undefined
+    if (!downloadStream) {
+      throw new Error(`Stream não retornada pelo Google Drive para ${fileId}`)
+    }
 
     const writeStream = fs.createWriteStream(tempFile)
-    await pipeline(response.data as NodeJS.ReadableStream, writeStream)
+    await streamWithTimeout(
+      downloadStream,
+      writeStream,
+      `download ${itemName}`,
+      DRIVE_STREAM_TIMEOUT_MS
+    )
 
     const contentType = exportMimeType ?? originalMimeType ?? 'application/octet-stream'
+    const fileStats = await fs.promises.stat(tempFile)
+    const downloadedSize = fileStats.size
+    const shouldUseTus = downloadedSize >= SUPABASE_TUS_THRESHOLD_BYTES
 
-    const { error: uploadError } = await supabase.storage
-      .from(DRIVE_IMPORT_BUCKET)
-      .upload(storagePath, fs.createReadStream(tempFile), { contentType, upsert: true })
+    let uploadMethod: 'tus' | 'standard' = 'standard'
 
-    if (uploadError) {
-      throw uploadError
+    if (shouldUseTus) {
+      await uploadFileWithTus({
+        bucket: DRIVE_IMPORT_BUCKET,
+        objectPath: storagePath,
+        filePath: tempFile,
+        contentType,
+        metadata: {
+          courseId,
+          moduleName,
+          subjectName,
+          fileId,
+          itemName,
+          provider: 'google'
+        }
+      })
+      uploadMethod = 'tus'
+    } else {
+      const { error: uploadError } = await supabase.storage
+        .from(DRIVE_IMPORT_BUCKET)
+        .upload(storagePath, fs.createReadStream(tempFile), { contentType, upsert: true })
+
+      if (uploadError) {
+        throw uploadError
+      }
     }
 
     const { data: publicUrlData } = supabase.storage.from(DRIVE_IMPORT_BUCKET).getPublicUrl(storagePath)
@@ -167,7 +265,9 @@ async function uploadLargeDriveFile(options: {
         subjectName,
         fileId,
         itemName,
-        contentType
+        contentType,
+        uploadMethod,
+        sizeBytes: downloadedSize
       })
     }
 
@@ -241,16 +341,16 @@ async function executeWithRetries<T>(
   throw error instanceof Error ? error : new Error(`Falha ao executar ${label}`)
 }
 
-function ensureName(value: string | null | undefined, fallback: string) {
+export function ensureName(value: string | null | undefined, fallback: string) {
   const trimmed = value?.trim()
   return trimmed && trimmed.length > 0 ? trimmed : fallback
 }
 
-function removeDiacritics(value: string) {
+export function removeDiacritics(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 }
 
-function normalizeForMatching(value: string) {
+export function normalizeForMatching(value: string) {
   return removeDiacritics(value).toLowerCase()
 }
 
@@ -285,7 +385,7 @@ async function listFolderContents(
   return files
 }
 
-function isTestFile(title: string) {
+export function isTestFile(title: string) {
   const normalizedTitle = normalizeForMatching(title)
 
   if (!normalizedTitle) {
@@ -295,16 +395,16 @@ function isTestFile(title: string) {
   return /\bteste\b/.test(normalizedTitle)
 }
 
-function formatTitle(rawName: string) {
+export function formatTitle(rawName: string) {
   return rawName.replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-function generateCode(prefix: string, index: number) {
+export function generateCode(prefix: string, index: number) {
   return `${prefix}${String(index).padStart(2, '0')}`
 }
 
 
-function generateSubjectCode(moduleName: string, subjectName: string) {
+export function generateSubjectCode(moduleName: string, subjectName: string) {
   const base = normalizeForMatching(`${moduleName} ${subjectName}`)
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
@@ -312,14 +412,14 @@ function generateSubjectCode(moduleName: string, subjectName: string) {
   return code ? `SUB_${code}` : `SUB_${Date.now()}`
 }
 
-interface ExistingSubjectInfo {
+export interface ExistingSubjectInfo {
   id: string
   name: string
   code?: string | null
   moduleId?: string
 }
 
-interface ExistingCourseState {
+export interface ExistingCourseState {
   modulesByName: Map<string, { id: string; title: string }>
   subjectsByModuleId: Map<string, Map<string, ExistingSubjectInfo>>
   subjectsByCode: Map<string, ExistingSubjectInfo>
@@ -327,7 +427,7 @@ interface ExistingCourseState {
   existingTestUrls: Set<string>
 }
 
-async function loadExistingCourseState(supabase: any, courseId: string): Promise<ExistingCourseState | null> {
+export async function loadExistingCourseState(supabase: any, courseId: string): Promise<ExistingCourseState | null> {
   try {
     const modulesByName = new Map<string, { id: string; title: string }>()
     const subjectsByModuleId = new Map<string, Map<string, ExistingSubjectInfo>>()
@@ -433,7 +533,7 @@ async function loadExistingCourseState(supabase: any, courseId: string): Promise
 }
 
 // Função para atualizar progresso no Supabase
-async function updateImportProgress(
+export async function updateImportProgress(
   supabase: any,
   importId: string,
   userId: string,
@@ -702,7 +802,7 @@ Path tentado: ${absolutePath}`
   return drive
 }
 
-interface CourseStructure {
+export interface CourseStructure {
   modules: {
     name: string
     order: number
@@ -1327,7 +1427,7 @@ async function parseGoogleDriveFolder(
   }
 }
 
-async function importToDatabase(
+export async function importToDatabase(
   structure: CourseStructure,
   courseId: string,
   supabase: any,
@@ -1748,10 +1848,12 @@ async function processImportInBackground(
   userId: string,
   folderId: string,
   jobId?: string,
+  jobProvider?: string,
   supabaseClient?: SupabaseClient<Database>
 ) {
   const supabase = supabaseClient ?? createAdminClient()
-  const jobContext = jobId ? { jobId, supabase } : undefined
+  const provider = jobProvider ?? 'google'
+  const jobContext = jobId ? { jobId, supabase, provider } : undefined
   
   try {
     console.log(`[IMPORT-BACKGROUND] Iniciando processamento em background para ${importId}`)
@@ -1934,19 +2036,33 @@ export async function POST(req: NextRequest) {
     console.log(`[IMPORT] Iniciando importação com ID: ${importId}`)
     
     // Criar job de importação
-    const { data: jobRecord } = await supabase
-      .from('drive_import_jobs')
+    const provider = 'google'
+    const sourceMetadata = { driveUrl, folderId }
+
+    const { data: jobRecord, error: jobError } = await supabase
+      .from('file_import_jobs')
       .insert({
         user_id: user.id,
         course_id: courseId,
-        folder_id: folderId,
+        source_identifier: folderId,
+        provider,
+        source_type: 'google_drive_folder',
+        source_metadata: sourceMetadata as unknown as Json,
         status: 'queued',
         metadata: { importId }
       })
       .select()
       .single()
 
-    const jobContext = jobRecord ? { jobId: jobRecord.id, supabase } : undefined
+    if (jobError) {
+      console.error('[IMPORT] Falha ao criar job de importação', jobError)
+      return NextResponse.json(
+        { error: 'Não foi possível iniciar o job de importação' },
+        { status: 500 }
+      )
+    }
+
+    const jobContext = jobRecord ? { jobId: jobRecord.id, supabase, provider } : undefined
     await logJob(jobContext, 'info', 'Job criado', { importId })
     
     // Inicializar progresso no Supabase
@@ -1973,7 +2089,8 @@ export async function POST(req: NextRequest) {
           importId,
           user.id,
           folderId,
-          jobRecord?.id
+          jobRecord?.id,
+          provider
         )
       } catch (error) {
         console.error('[IMPORT] Erro no processamento em background:', error)
@@ -2003,12 +2120,13 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-type ImportJobContext = {
+export type ImportJobContext = {
   jobId: string
   supabase: SupabaseClient<Database>
+  provider: string
 }
 
-async function logJob(
+export async function logJob(
   job: ImportJobContext | undefined,
   level: 'info' | 'warn' | 'error',
   message: string,
@@ -2017,32 +2135,35 @@ async function logJob(
   if (!job) return
   try {
     const contextJson: Json | null = context ? (context as unknown as Json) : null
-    await job.supabase.from('drive_import_logs').insert({
+    await job.supabase.from('file_import_logs').insert({
       job_id: job.jobId,
       level,
       message,
       context: contextJson,
+      provider: job.provider,
     })
-    await job.supabase.from('drive_import_events').insert({
+    await job.supabase.from('file_import_events').insert({
       job_id: job.jobId,
       level,
       message,
       context: contextJson,
+      provider: job.provider,
     })
   } catch (error) {
     console.error('[IMPORT][LOG] Falha ao registrar log', level, message, context, error)
   }
 }
 
-async function updateJob(
+export async function updateJob(
   job: ImportJobContext | undefined,
-  updates: Partial<Database['public']['Tables']['drive_import_jobs']['Update']>
+  updates: Partial<Database['public']['Tables']['file_import_jobs']['Update']>
 ) {
   if (!job) return
   try {
+    const payload = job.provider ? { ...updates, provider: job.provider } : updates
     await job.supabase
-      .from('drive_import_jobs')
-      .update(updates)
+      .from('file_import_jobs')
+      .update(payload)
       .eq('id', job.jobId)
   } catch (error) {
     console.error('[IMPORT][JOB] Falha ao atualizar job', job.jobId, updates, error)
