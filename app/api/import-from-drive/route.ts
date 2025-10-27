@@ -74,7 +74,12 @@ async function enforceDriveRateLimit(cost: number = DEFAULT_REQUEST_COST) {
   const normalizedCost = Math.max(DEFAULT_REQUEST_COST, Number.isFinite(cost) ? cost : DEFAULT_REQUEST_COST)
   const clampedCost = Math.min(normalizedCost, Math.max(DEFAULT_REQUEST_COST, RATE_LIMIT_BUCKET_CAPACITY))
   rateLimitChain = rateLimitChain.then(async () => {
+    const start = Date.now()
     await driveRateLimitBucket.consume(clampedCost)
+    const waited = Date.now() - start
+    if (waited > 1_000) {
+      console.log(`[GOOGLE][RATE_LIMIT] Espera de ${Math.round(waited)}ms para consumir ${clampedCost} tokens`)
+    }
   })
   await rateLimitChain
 }
