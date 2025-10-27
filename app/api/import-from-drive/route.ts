@@ -17,8 +17,14 @@ type DriveClient = drive_v3.Drive
 const DEFAULT_RETRY_ATTEMPTS = 6
 const DEFAULT_RETRY_DELAY_MS = 300
 const DEFAULT_ACTION_TIMEOUT_MS = 60_000
-const RATE_LIMIT_INTERVAL_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_INTERVAL_MS ?? 2000)
-const MAX_RATE_LIMIT_BACKOFF_MS = 8_000
+const RATE_LIMIT_WINDOW_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_WINDOW_MS ?? 100_000)
+const RATE_LIMIT_BUCKET_CAPACITY = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_TOKENS ?? 300)
+const DEFAULT_REQUEST_COST = Number(process.env.GOOGLE_DRIVE_DEFAULT_REQUEST_COST ?? 1)
+const LIST_REQUEST_COST = Number(process.env.GOOGLE_DRIVE_LIST_COST ?? 10)
+const EXPORT_REQUEST_COST = Number(process.env.GOOGLE_DRIVE_EXPORT_COST ?? 10)
+const DOWNLOAD_REQUEST_COST = Number(process.env.GOOGLE_DRIVE_DOWNLOAD_COST ?? 3)
+const RATE_LIMIT_COOLDOWN_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_COOLDOWN_MS ?? 30_000)
+const MAX_RATE_LIMIT_BACKOFF_MS = Number(process.env.GOOGLE_DRIVE_MAX_RATE_LIMIT_BACKOFF_MS ?? 30_000)
 const MAX_DOC_EXPORT_BYTES = Number(process.env.GOOGLE_DRIVE_MAX_EXPORT_BYTES ?? 25 * 1024 * 1024)
 const DRIVE_IMPORT_BUCKET = process.env.DRIVE_IMPORT_BUCKET ?? 'drive-imports'
 const SUPABASE_TUS_THRESHOLD_BYTES = Number(process.env.SUPABASE_TUS_THRESHOLD_BYTES ?? 50 * 1024 * 1024)
@@ -26,12 +32,52 @@ const DRIVE_DOWNLOAD_REQUEST_TIMEOUT_MS = Number(process.env.GOOGLE_DRIVE_DOWNLO
 const DRIVE_STREAM_TIMEOUT_MS = Number(process.env.GOOGLE_DRIVE_STREAM_TIMEOUT_MS ?? 180_000)
 
 let rateLimitChain: Promise<void> = Promise.resolve()
-let lastDriveRequestTimestamp = 0
 let storageBucketInitialized = false
 
 async function wait(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
+
+class TokenBucket {
+  private readonly capacity: number
+  private readonly refillIntervalMs: number
+  private tokens: number
+  private lastRefill: number
+
+  constructor(capacity: number, refillIntervalMs: number) {
+    this.capacity = Math.max(1, Number.isFinite(capacity) ? capacity : 1)
+    this.refillIntervalMs = Math.max(1_000, Number.isFinite(refillIntervalMs) ? refillIntervalMs : 60_000)
+    this.tokens = this.capacity
+    this.lastRefill = Date.now()
+  }
+
+  async consume(cost: number) {
+    const required = Math.max(0, Number.isFinite(cost) ? cost : 0)
+    if (required === 0) return
+
+    while (true) {
+      this.refill()
+      if (this.tokens >= required) {
+        this.tokens -= required
+        return
+      }
+      const elapsed = Date.now() - this.lastRefill
+      const waitMs = Math.max(200, this.refillIntervalMs - elapsed)
+      await wait(waitMs)
+    }
+  }
+
+  private refill() {
+    const now = Date.now()
+    const elapsed = now - this.lastRefill
+    if (elapsed < this.refillIntervalMs) return
+
+    this.tokens = this.capacity
+    this.lastRefill = now
+  }
+}
+
+const driveRateLimitBucket = new TokenBucket(RATE_LIMIT_BUCKET_CAPACITY, RATE_LIMIT_WINDOW_MS)
 
 async function streamWithTimeout(
   source: NodeJS.ReadableStream,
@@ -76,14 +122,11 @@ async function streamWithTimeout(
   })
 }
 
-async function enforceDriveRateLimit() {
+async function enforceDriveRateLimit(cost: number = DEFAULT_REQUEST_COST) {
+  const normalizedCost = Math.max(DEFAULT_REQUEST_COST, Number.isFinite(cost) ? cost : DEFAULT_REQUEST_COST)
+  const clampedCost = Math.min(normalizedCost, Math.max(DEFAULT_REQUEST_COST, RATE_LIMIT_BUCKET_CAPACITY))
   rateLimitChain = rateLimitChain.then(async () => {
-    const now = Date.now()
-    const elapsed = now - lastDriveRequestTimestamp
-    if (elapsed < RATE_LIMIT_INTERVAL_MS) {
-      await wait(RATE_LIMIT_INTERVAL_MS - elapsed)
-    }
-    lastDriveRequestTimestamp = Date.now()
+    await driveRateLimitBucket.consume(clampedCost)
   })
   await rateLimitChain
 }
@@ -234,13 +277,17 @@ async function uploadLargeDriveFile(options: {
       ? `drive.files.export (${fileId})`
       : `drive.files.get (${fileId})`
 
+    const requestCost = exportMimeType ? EXPORT_REQUEST_COST : DOWNLOAD_REQUEST_COST
     const response = await executeWithRetries(
       label,
       () =>
         exportMimeType
           ? drive.files.export({ fileId, mimeType: exportMimeType }, { responseType: 'stream' })
           : drive.files.get({ fileId, alt: 'media' }, { responseType: 'stream' }),
-      { timeoutMs: DRIVE_DOWNLOAD_REQUEST_TIMEOUT_MS }
+      {
+        timeoutMs: DRIVE_DOWNLOAD_REQUEST_TIMEOUT_MS,
+        rateLimitCost: requestCost
+      }
     )
 
     const downloadStream = response.data as NodeJS.ReadableStream | undefined
@@ -338,15 +385,23 @@ async function withTimeout<T>(label: string, action: () => Promise<T>, timeoutMs
   })
 }
 
+interface RetryOptions {
+  retries?: number
+  delayMs?: number
+  timeoutMs?: number
+  rateLimitCost?: number
+}
+
 async function executeWithRetries<T>(
   label: string,
   action: () => Promise<T>,
-  options: { retries?: number; delayMs?: number; timeoutMs?: number } = {}
+  options: RetryOptions = {}
 ): Promise<T> {
   const {
     retries = DEFAULT_RETRY_ATTEMPTS,
     delayMs = DEFAULT_RETRY_DELAY_MS,
-    timeoutMs = DEFAULT_ACTION_TIMEOUT_MS
+    timeoutMs = DEFAULT_ACTION_TIMEOUT_MS,
+    rateLimitCost = DEFAULT_REQUEST_COST
   } = options
 
   let attempt = 0
@@ -354,7 +409,7 @@ async function executeWithRetries<T>(
 
   while (attempt < retries) {
     try {
-      await enforceDriveRateLimit()
+      await enforceDriveRateLimit(rateLimitCost)
       return await withTimeout(label, action, timeoutMs)
     } catch (err) {
       error = err
@@ -364,12 +419,15 @@ async function executeWithRetries<T>(
       const computedDelay = rateLimited
         ? Math.min(MAX_RATE_LIMIT_BACKOFF_MS, Math.max(delayMs, exponentialDelay))
         : Math.max(delayMs, delayMs * attempt)
+      const waitDuration = rateLimited
+        ? Math.max(RATE_LIMIT_COOLDOWN_MS, computedDelay)
+        : computedDelay
       console.warn(
         `[IMPORT][RETRY] ${label} falhou (tentativa ${attempt}/${retries})${rateLimited ? ' - rate limited' : ''}`,
         err
       )
       if (attempt < retries) {
-        await wait(computedDelay)
+        await wait(waitDuration)
       }
     }
   }
@@ -408,7 +466,8 @@ async function listFolderContents(
           pageSize: 1000,
           orderBy: 'name',
           pageToken
-        })
+        }),
+      { rateLimitCost: LIST_REQUEST_COST }
     )
 
     if (response.data.files) {
@@ -760,7 +819,11 @@ async function authenticateGoogleDrive(): Promise<DriveClient> {
       // Testar a conexão fazendo uma chamada simples
       try {
         console.log('[GOOGLE_AUTH] Testando conexão com o Google Drive...')
-        await executeWithRetries('drive.files.list (ping)', () => drive.files.list({ pageSize: 1 }))
+        await executeWithRetries(
+          'drive.files.list (ping)',
+          () => drive.files.list({ pageSize: 1 }),
+          { rateLimitCost: LIST_REQUEST_COST }
+        )
         console.log('[GOOGLE_AUTH] Teste de conexão bem-sucedido')
       } catch (testError) {
         console.error('[GOOGLE_AUTH] Falha no teste de conexão:', testError)
@@ -1253,7 +1316,7 @@ async function parseGoogleDriveFolder(
                             fileId: lessonItem.id!,
                             mimeType: 'text/plain'
                           }),
-                        { timeoutMs: 15000, retries: 2 }
+                        { timeoutMs: 15000, retries: 2, rateLimitCost: EXPORT_REQUEST_COST }
                       )
                       const rawContent = typeof exported.data === 'string' ? exported.data : ''
                       if (rawContent.trim().length > 0) {
@@ -1406,7 +1469,7 @@ async function parseGoogleDriveFolder(
                             fileId: lessonItem.id!,
                             mimeType: 'text/plain'
                           }),
-                        { timeoutMs: 15000, retries: 2 }
+                        { timeoutMs: 15000, retries: 2, rateLimitCost: EXPORT_REQUEST_COST }
                       )
                       lesson.content = (content.data as string) ?? ''
                     } else if (mimeType === 'application/vnd.google-apps.presentation') {
@@ -1427,7 +1490,7 @@ async function parseGoogleDriveFolder(
                             fileId: lessonItem.id!,
                             mimeType: 'text/plain'
                           }),
-                        { timeoutMs: 15000, retries: 2 }
+                        { timeoutMs: 15000, retries: 2, rateLimitCost: EXPORT_REQUEST_COST }
                       )
                       lesson.content = (content.data as string) ?? ''
                     } else {
