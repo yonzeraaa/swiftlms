@@ -46,14 +46,25 @@ class TokenBucket {
     const required = Math.max(0, Number.isFinite(cost) ? cost : 0)
     if (required === 0) return
 
+    let waitAccumulated = 0
+
     while (true) {
       this.refill()
       if (this.tokens >= required) {
         this.tokens -= required
+        if (waitAccumulated > 0) {
+          console.log(
+            `[GOOGLE][RATE_LIMIT] Tokens disponíveis novamente após aguardar ${waitAccumulated}ms (custo ${required}, capacidade ${this.capacity}).`
+          )
+        }
         return
       }
       const elapsed = Date.now() - this.lastRefill
       const waitMs = Math.max(200, this.refillIntervalMs - elapsed)
+      waitAccumulated += waitMs
+      console.log(
+        `[GOOGLE][RATE_LIMIT] Tokens insuficientes (${this.tokens}/${required}). Aguardando ${waitMs}ms (acumulado ${waitAccumulated}ms) para renovar a janela.`
+      )
       await wait(waitMs)
     }
   }
@@ -74,12 +85,7 @@ async function enforceDriveRateLimit(cost: number = DEFAULT_REQUEST_COST) {
   const normalizedCost = Math.max(DEFAULT_REQUEST_COST, Number.isFinite(cost) ? cost : DEFAULT_REQUEST_COST)
   const clampedCost = Math.min(normalizedCost, Math.max(DEFAULT_REQUEST_COST, RATE_LIMIT_BUCKET_CAPACITY))
   rateLimitChain = rateLimitChain.then(async () => {
-    const start = Date.now()
     await driveRateLimitBucket.consume(clampedCost)
-    const waited = Date.now() - start
-    if (waited > 1_000) {
-      console.log(`[GOOGLE][RATE_LIMIT] Espera de ${Math.round(waited)}ms para consumir ${clampedCost} tokens`)
-    }
   })
   await rateLimitChain
 }
