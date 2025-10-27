@@ -1850,12 +1850,10 @@ async function processImportInBackground(
   userId: string,
   folderId: string,
   jobId?: string,
-  jobProvider?: string,
   supabaseClient?: SupabaseClient<Database>
 ) {
   const supabase = supabaseClient ?? createAdminClient()
-  const provider = jobProvider ?? 'google'
-  const jobContext = jobId ? { jobId, supabase, provider } : undefined
+  const jobContext = jobId ? { jobId, supabase } : undefined
   
   try {
     console.log(`[IMPORT-BACKGROUND] Iniciando processamento em background para ${importId}`)
@@ -2038,18 +2036,12 @@ export async function POST(req: NextRequest) {
     console.log(`[IMPORT] Iniciando importação com ID: ${importId}`)
     
     // Criar job de importação
-    const provider = 'google'
-    const sourceMetadata = { driveUrl, folderId }
-
     const { data: jobRecord, error: jobError } = await supabase
-      .from('file_import_jobs')
+      .from('drive_import_jobs')
       .insert({
         user_id: user.id,
         course_id: courseId,
-        source_identifier: folderId,
-        provider,
-        source_type: 'google_drive_folder',
-        source_metadata: sourceMetadata as unknown as Json,
+        folder_id: folderId,
         status: 'queued',
         metadata: { importId }
       })
@@ -2064,7 +2056,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const jobContext = jobRecord ? { jobId: jobRecord.id, supabase, provider } : undefined
+    const jobContext = jobRecord ? { jobId: jobRecord.id, supabase } : undefined
     await logJob(jobContext, 'info', 'Job criado', { importId })
     
     // Inicializar progresso no Supabase
@@ -2091,8 +2083,7 @@ export async function POST(req: NextRequest) {
           importId,
           user.id,
           folderId,
-          jobRecord?.id,
-          provider
+          jobRecord?.id
         )
       } catch (error) {
         console.error('[IMPORT] Erro no processamento em background:', error)
@@ -2125,7 +2116,6 @@ export async function POST(req: NextRequest) {
 type ImportJobContext = {
   jobId: string
   supabase: SupabaseClient<Database>
-  provider: string
 }
 
 async function logJob(
@@ -2137,19 +2127,17 @@ async function logJob(
   if (!job) return
   try {
     const contextJson: Json | null = context ? (context as unknown as Json) : null
-    await job.supabase.from('file_import_logs').insert({
+    await job.supabase.from('drive_import_logs').insert({
       job_id: job.jobId,
       level,
       message,
       context: contextJson,
-      provider: job.provider,
     })
-    await job.supabase.from('file_import_events').insert({
+    await job.supabase.from('drive_import_events').insert({
       job_id: job.jobId,
       level,
       message,
       context: contextJson,
-      provider: job.provider,
     })
   } catch (error) {
     console.error('[IMPORT][LOG] Falha ao registrar log', level, message, context, error)
@@ -2158,14 +2146,13 @@ async function logJob(
 
 async function updateJob(
   job: ImportJobContext | undefined,
-  updates: Partial<Database['public']['Tables']['file_import_jobs']['Update']>
+  updates: Partial<Database['public']['Tables']['drive_import_jobs']['Update']>
 ) {
   if (!job) return
   try {
-    const payload = job.provider ? { ...updates, provider: job.provider } : updates
     await job.supabase
-      .from('file_import_jobs')
-      .update(payload)
+      .from('drive_import_jobs')
+      .update(updates)
       .eq('id', job.jobId)
   } catch (error) {
     console.error('[IMPORT][JOB] Falha ao atualizar job', job.jobId, updates, error)
