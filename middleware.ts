@@ -259,7 +259,11 @@ export async function middleware(request: NextRequest) {
   }
 
   // Authentication check for API routes
-  if (isAPI && !session && !request.nextUrl.pathname.startsWith('/api/auth/')) {
+  // Exceções: /api/auth/*, /api/inngest (webhook do Inngest), /api/debug-env (debug)
+  if (isAPI && !session &&
+      !request.nextUrl.pathname.startsWith('/api/auth/') &&
+      !request.nextUrl.pathname.startsWith('/api/inngest') &&
+      !request.nextUrl.pathname.startsWith('/api/debug-env')) {
     return NextResponse.json(
       { error: 'Unauthorized - Authentication required' },
       { status: 401 }
