@@ -8,6 +8,7 @@ import type { Database, Json } from '@/lib/database.types'
 import { parseAnswerKeyFromText, type ParsedAnswerKeyEntry } from '../tests/utils/answer-key'
 import fs from 'fs'
 import path from 'path'
+import { randomUUID } from 'crypto'
 
 export const maxDuration = 300
 
@@ -2213,6 +2214,7 @@ export async function POST(req: NextRequest) {
 
     const { driveUrl, courseId, includeMedia, dryRun } = await req.json()
     const includeMediaFlag = includeMedia !== false
+    const progressToken = randomUUID().replace(/-/g, '')
 
     if (!driveUrl || !courseId) {
       return NextResponse.json(
@@ -2261,6 +2263,7 @@ export async function POST(req: NextRequest) {
         metadata: {
           importId,
           includeMedia: includeMediaFlag,
+          progressToken,
           resume_state: {
             moduleIndex: 0,
             subjectIndex: 0,
@@ -2310,7 +2313,8 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         folderId,
         jobId: jobRecord?.id,
-        includeMedia: includeMediaFlag
+        includeMedia: includeMediaFlag,
+        progressToken,
       }
     })
     
@@ -2322,6 +2326,7 @@ export async function POST(req: NextRequest) {
         : 'Importação iniciada (arquivos de mídia serão ignorados).',
       importId,
       jobId: jobRecord?.id ?? null,
+      progressToken,
       status: 'processing'
     }, {
       status: 202, // HTTP 202 Accepted - processamento assíncrono

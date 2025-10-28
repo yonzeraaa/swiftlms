@@ -49,6 +49,8 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const mountedRef = useRef(true)
+  const jobIdRef = useRef<string | null>(null)
+  const progressTokenRef = useRef<string | null>(null)
 
   // Função para buscar progresso
   const fetchProgress = useCallback(async (id: string) => {
@@ -57,7 +59,16 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
     try {
       console.log(`[useImportProgress] Fetching progress for: ${id}`)
       
-      const response = await fetch(`/api/import-from-drive-status?importId=${id}`)
+      const params = new URLSearchParams({ importId: id })
+      if (jobIdRef.current) params.set('jobId', jobIdRef.current)
+      if (progressTokenRef.current) params.set('token', progressTokenRef.current)
+
+      const response = await fetch(`/api/import-from-drive-status?${params.toString()}`, {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+        },
+      })
       
       if (!response.ok) {
         let errorMessage = 'Erro ao buscar progresso'
@@ -129,6 +140,8 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
           console.log('[useImportProgress] Import completed')
           stopPolling()
           setIsImporting(false)
+          jobIdRef.current = null
+          progressTokenRef.current = null
           if (onComplete) onComplete()
         }
       }
@@ -243,6 +256,8 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
 
       if (result.importId) {
         console.log('[useImportProgress] Import started with ID:', result.importId)
+        jobIdRef.current = result.jobId ?? null
+        progressTokenRef.current = result.progressToken ?? null
         setImportId(result.importId)
         startPolling(result.importId)
         return result.importId
@@ -263,6 +278,8 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
     stopPolling()
     setIsImporting(false)
     setImportId(null)
+    jobIdRef.current = null
+    progressTokenRef.current = null
     setProgress({
       currentStep: '',
       totalModules: 0,
