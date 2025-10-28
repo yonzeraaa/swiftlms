@@ -1327,6 +1327,11 @@ async function parseGoogleDriveFolder(
 
         console.log(`[IMPORT][SCAN]   Processando ${remainingValidSubjects} disciplinas válidas`)
 
+        const requiredSubjectsTotal = processedSubjects + remainingValidSubjects
+        if (totalSubjects < requiredSubjectsTotal) {
+          totalSubjects = requiredSubjectsTotal
+        }
+
         await logJob(job, 'info', 'Disciplinas listadas', {
           moduleName,
           moduleCode,
@@ -1567,6 +1572,15 @@ async function parseGoogleDriveFolder(
                   initialLessonOrder += 1
                 }
               }
+            }
+
+            const pendingItems = isResumeSubject
+              ? Math.max(classifiedAssets.length - resumeItemIndex, 0)
+              : classifiedAssets.length
+
+            const requiredLessonsTotal = processedLessons + pendingItems
+            if (totalLessons < requiredLessonsTotal) {
+              totalLessons = requiredLessonsTotal
             }
 
             const subject = {
