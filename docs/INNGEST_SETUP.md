@@ -139,6 +139,34 @@ Dashboard do Inngest mostra:
 3. Veja qual step falhou
 4. Se necessário, pode fazer retry manual
 
+### Job reinicia do zero (retry automático)
+
+Se o job está reiniciando do zero repetidamente, provavelmente está ocorrendo timeout:
+
+**Sintomas:**
+- Job começa a processar
+- Trava em um item aleatório por alguns minutos
+- Depois reinicia do zero
+- Pode acontecer várias vezes no mesmo job
+
+**Causa:**
+- Timeout em operações do Google Drive (listagem de pastas grandes, exportação de arquivos grandes)
+- Sistema automaticamente faz retry quando detecta timeout
+
+**Solução:**
+1. Verifique os logs do Inngest para confirmar se há mensagem de `TIMEOUT`
+2. Os timeouts foram aumentados para 5 minutos (antes eram 60 segundos)
+3. Se ainda assim ocorrer timeout, você pode aumentar ainda mais nas variáveis de ambiente:
+
+```bash
+# No Vercel, adicione estas variáveis (valores em milissegundos):
+GOOGLE_DRIVE_DEFAULT_TIMEOUT_MS=600000   # 10 minutos
+GOOGLE_DRIVE_LIST_TIMEOUT_MS=600000      # 10 minutos para listagens
+GOOGLE_DRIVE_EXPORT_TIMEOUT_MS=360000    # 6 minutos para exports
+```
+
+4. Após adicionar as variáveis, faça redeploy no Vercel
+
 ### Como resetar jobs travados antigos
 
 Execute no Supabase SQL Editor:

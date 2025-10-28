@@ -14,7 +14,10 @@ type DriveClient = drive_v3.Drive
 
 const DEFAULT_RETRY_ATTEMPTS = 6
 const DEFAULT_RETRY_DELAY_MS = 300
-const DEFAULT_ACTION_TIMEOUT_MS = 60_000
+// Aumentado de 60s para 5min para evitar timeout em operações longas
+const DEFAULT_ACTION_TIMEOUT_MS = Number(process.env.GOOGLE_DRIVE_DEFAULT_TIMEOUT_MS ?? 300_000) // 5 minutos
+const LIST_FOLDER_TIMEOUT_MS = Number(process.env.GOOGLE_DRIVE_LIST_TIMEOUT_MS ?? 300_000) // 5 minutos para listagens
+const EXPORT_FILE_TIMEOUT_MS = Number(process.env.GOOGLE_DRIVE_EXPORT_TIMEOUT_MS ?? 180_000) // 3 minutos para exports
 const RATE_LIMIT_WINDOW_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_WINDOW_MS ?? 100_000)
 const RATE_LIMIT_BUCKET_CAPACITY = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_TOKENS ?? 300)
 const DEFAULT_REQUEST_COST = Number(process.env.GOOGLE_DRIVE_DEFAULT_REQUEST_COST ?? 1)
@@ -211,10 +214,16 @@ async function executeWithRetries<T>(
   while (attempt < retries) {
     try {
       await enforceDriveRateLimit(rateLimitCost)
-      return await withTimeout(label, action, timeoutMs)
+      console.log(`[DRIVE][EXEC] Executando ${label} (tentativa ${attempt + 1}/${retries}, timeout: ${timeoutMs}ms)`)
+      const startTime = Date.now()
+      const result = await withTimeout(label, action, timeoutMs)
+      const duration = Date.now() - startTime
+      console.log(`[DRIVE][EXEC] ✓ ${label} concluído em ${duration}ms`)
+      return result
     } catch (err) {
       error = err
       attempt += 1
+      const isTimeout = err instanceof TimeoutError
       const rateLimited = isRateLimitError(err)
       const exponentialDelay = delayMs * Math.pow(2, attempt)
       const computedDelay = rateLimited
@@ -224,15 +233,17 @@ async function executeWithRetries<T>(
         ? Math.max(RATE_LIMIT_COOLDOWN_MS, computedDelay)
         : computedDelay
       console.warn(
-        `[IMPORT][RETRY] ${label} falhou (tentativa ${attempt}/${retries})${rateLimited ? ' - rate limited' : ''}`,
+        `[IMPORT][RETRY] ${label} falhou (tentativa ${attempt}/${retries})${rateLimited ? ' - rate limited' : isTimeout ? ' - TIMEOUT' : ''}`,
         err
       )
       if (attempt < retries) {
+        console.log(`[IMPORT][RETRY] Aguardando ${waitDuration}ms antes de tentar novamente...`)
         await wait(waitDuration)
       }
     }
   }
 
+  console.error(`[IMPORT][RETRY] ${label} falhou após ${retries} tentativas. Erro final:`, error)
   throw error instanceof Error ? error : new Error(`Falha ao executar ${label}`)
 }
 
@@ -257,6 +268,8 @@ async function listFolderContents(
   const files: drive_v3.Schema$File[] = []
   let pageToken: string | undefined
 
+  console.log(`[DRIVE][LIST] Listando conteúdo da pasta ${folderId}...`)
+
   do {
     const response = await executeWithRetries(
       `drive.files.list (${folderId})`,
@@ -268,16 +281,18 @@ async function listFolderContents(
           orderBy: 'name',
           pageToken
         }),
-      { rateLimitCost: LIST_REQUEST_COST }
+      { rateLimitCost: LIST_REQUEST_COST, timeoutMs: LIST_FOLDER_TIMEOUT_MS }
     )
 
     if (response.data.files) {
       files.push(...response.data.files)
+      console.log(`[DRIVE][LIST] Pasta ${folderId}: ${response.data.files.length} itens encontrados (total: ${files.length})`)
     }
 
     pageToken = response.data.nextPageToken ?? undefined
   } while (pageToken)
 
+  console.log(`[DRIVE][LIST] Listagem completa da pasta ${folderId}: ${files.length} itens no total`)
   return files
 }
 
@@ -1108,7 +1123,7 @@ async function parseGoogleDriveFolder(
                             fileId: lessonItem.id!,
                             mimeType: 'text/plain'
                           }),
-                        { timeoutMs: 15000, retries: 2, rateLimitCost: EXPORT_REQUEST_COST }
+                        { timeoutMs: EXPORT_FILE_TIMEOUT_MS, retries: 3, rateLimitCost: EXPORT_REQUEST_COST }
                       )
                       const rawContent = typeof exported.data === 'string' ? exported.data : ''
                       if (rawContent.trim().length > 0) {
