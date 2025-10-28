@@ -1145,10 +1145,49 @@ async function parseGoogleDriveFolder(
 
           discoveredSubjects++
 
-          // Contar aulas da disciplina
           const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
           const directFiles = subjectAssets.filter(a => a.mimeType !== FOLDER_MIME_TYPE)
-          discoveredLessons += directFiles.length
+          const nestedFolders = subjectAssets.filter(a => a.mimeType === FOLDER_MIME_TYPE)
+          const forcedTestIds = new Set<string>()
+          const aggregatedAssets: drive_v3.Schema$File[] = [...directFiles]
+
+          for (const nestedFolder of nestedFolders) {
+            const folderName = ensureName(nestedFolder.name, 'Subpasta')
+            const nestedItems = await listFolderContents(drive, nestedFolder.id!, '')
+            const nestedFiles = nestedItems.filter(item => item.mimeType !== FOLDER_MIME_TYPE)
+
+            if (isTestFolderName(folderName)) {
+              for (const nestedItem of nestedFiles) {
+                if (nestedItem.id) {
+                  forcedTestIds.add(nestedItem.id)
+                }
+              }
+            }
+
+            aggregatedAssets.push(...nestedFiles)
+          }
+
+          const classifiedForCount = aggregatedAssets
+            .map(asset => {
+              const itemName = asset.name || 'Arquivo sem nome'
+              const baseName = (asset.name || '').replace(SUPPORTED_FILE_EXTENSION_REGEX, '')
+              const formattedTitle = formatTitle(baseName || itemName)
+              const parsedLesson = parseStructuredName(baseName || itemName, LESSON_CODE_REGEX)
+              const lessonCode = parsedLesson?.code ?? null
+              const forcedTest = asset.id ? forcedTestIds.has(asset.id) : false
+              const mimeType = (asset.mimeType || '').toLowerCase()
+              const isFormTest = mimeType === 'application/vnd.google-apps.form'
+              const keywordTest = isTestFile(formattedTitle)
+              const treatAsTest = forcedTest || isFormTest || keywordTest
+              const matchesSubjectPrefix = lessonCode ? lessonCode.startsWith(parsedSubject.code) : false
+
+              if (treatAsTest) return 'test'
+              if (matchesSubjectPrefix) return 'lesson'
+              return null
+            })
+            .filter(Boolean)
+
+          discoveredLessons += classifiedForCount.length
         }
       }
 
@@ -1209,16 +1248,22 @@ async function parseGoogleDriveFolder(
 
       if (item.mimeType === 'application/vnd.google-apps.folder') {
         const moduleCode = moduleInfo.parsed.code
-        const moduleName = ensureName(item.name, `Módulo ${moduleIndex + 1}`)
+        const moduleRawName = ensureName(item.name, `Módulo ${moduleIndex + 1}`)
+        const moduleDisplayName =
+          moduleInfo.parsed.name.length > 0 ? `${moduleCode} - ${moduleInfo.parsed.name}` : moduleCode
+        const moduleName = moduleDisplayName
         const courseModule = {
           originalIndex: moduleIndex,
-          name: moduleName,
+          name: moduleDisplayName,
           code: moduleCode,
           order: moduleIndex + 1,
           subjects: [] as any[]
         }
-        const normalizedModuleName = normalizeForMatching(moduleName)
-        const existingModuleInfo = existingState?.modulesByName.get(normalizedModuleName)
+        const normalizedModuleName = normalizeForMatching(moduleDisplayName)
+        const normalizedRawModuleName = normalizeForMatching(moduleRawName)
+        const existingModuleInfo =
+          existingState?.modulesByName.get(normalizedModuleName) ??
+          existingState?.modulesByName.get(normalizedRawModuleName)
         const moduleAlreadyImported = Boolean(existingModuleInfo)
         const existingModuleId = existingModuleInfo?.id
         const existingSubjectsForModule = existingModuleId
@@ -1244,19 +1289,25 @@ async function parseGoogleDriveFolder(
         }
 
         const subjectEntries = subjects.map((candidate, index) => {
-          const subjectDisplayName = ensureName(candidate.name, `${moduleName} - Disciplina ${index + 1}`)
-          const parsed = parseStructuredName(subjectDisplayName, SUBJECT_CODE_REGEX)
+          const subjectRawName = ensureName(candidate.name, `${moduleName} - Disciplina ${index + 1}`)
+          const parsed = parseStructuredName(subjectRawName, SUBJECT_CODE_REGEX)
+          const subjectDisplayName = parsed
+            ? parsed.name.length > 0
+              ? `${parsed.code} - ${parsed.name}`
+              : parsed.code
+            : subjectRawName
 
           if (parsed) {
             console.log(`[IMPORT][SCAN]   ✓ Disciplina válida: "${subjectDisplayName}" → Código: ${parsed.code}`)
           } else {
-            const warningMessage = `Disciplina '${subjectDisplayName}' ignorada - não corresponde ao padrão (esperado: mín. 2 letras + 4 dígitos, ex: DLA0201)`
+            const warningMessage = `Disciplina '${subjectRawName}' ignorada - não corresponde ao padrão (esperado: mín. 2 letras + 4 dígitos, ex: DLA0201)`
             options.warnings?.push(warningMessage)
             console.warn(`[IMPORT][SCAN]   ✗ ${warningMessage}`)
           }
 
           return {
             item: candidate,
+            rawName: subjectRawName,
             displayName: subjectDisplayName,
             parsed,
             originalIndex: index,
@@ -1275,10 +1326,6 @@ async function parseGoogleDriveFolder(
         }, 0)
 
         console.log(`[IMPORT][SCAN]   Processando ${remainingValidSubjects} disciplinas válidas`)
-        // totalSubjects já foi contado na fase de discovery (se não for resume)
-        if (isResume) {
-          totalSubjects += remainingValidSubjects
-        }
 
         await logJob(job, 'info', 'Disciplinas listadas', {
           moduleName,
@@ -1321,10 +1368,12 @@ async function parseGoogleDriveFolder(
           }
 
           if (subjectItem.mimeType === FOLDER_MIME_TYPE) {
+            const subjectRawName = subjectEntry.rawName ?? subjectEntry.displayName
             const subjectName = subjectEntry.displayName
-            const subjectReadableName = parsedSubject.name.length > 0 ? parsedSubject.name : subjectName
+            const subjectReadableName = parsedSubject.name.length > 0 ? parsedSubject.name : subjectRawName
             const subjectCode = parsedSubject.code
             const normalizedSubjectName = normalizeForMatching(subjectName)
+            const normalizedSubjectRawName = normalizeForMatching(subjectRawName)
             const normalizedReadableName = normalizeForMatching(subjectReadableName)
             let existingSubjectEntry = existingState?.subjectsByCode.get(subjectCode)
             if (existingSubjectEntry && existingSubjectEntry.moduleId !== existingModuleId) {
@@ -1333,6 +1382,7 @@ async function parseGoogleDriveFolder(
             if (!existingSubjectEntry) {
               existingSubjectEntry =
                 existingSubjectsForModule?.get(normalizedSubjectName) ??
+                existingSubjectsForModule?.get(normalizedSubjectRawName) ??
                 existingSubjectsForModule?.get(normalizedReadableName)
             }
             const existingSubjectId = existingSubjectEntry?.id
@@ -1341,6 +1391,7 @@ async function parseGoogleDriveFolder(
               moduleName,
               moduleCode,
               subjectName,
+              subjectRawName,
               subjectCode,
               folderId: subjectItem.id,
             })
@@ -1492,7 +1543,7 @@ async function parseGoogleDriveFolder(
                 }
               }
 
-              const warningMessage = `Arquivo '${formattedTitle}' ignorado em '${subjectName}' - esperado código de aula iniciando com ${subjectCode}`
+              const warningMessage = `Arquivo '${formattedTitle}' ignorado em '${subjectRawName}' - esperado código de aula iniciando com ${subjectCode}`
               options.warnings?.push(warningMessage)
               console.warn(`    ${warningMessage}`)
               return null
@@ -1516,15 +1567,6 @@ async function parseGoogleDriveFolder(
                   initialLessonOrder += 1
                 }
               }
-            }
-
-            const pendingAssetsCount = isResumeSubject
-              ? Math.max(classifiedAssets.length - resumeItemIndex, 0)
-              : classifiedAssets.length
-
-            // totalLessons já foi contado na fase de discovery (se não for resume)
-            if (isResume) {
-              totalLessons += pendingAssetsCount
             }
 
             const subject = {
@@ -1566,21 +1608,23 @@ async function parseGoogleDriveFolder(
             })
 
             // Processamento em lotes para evitar timeout
-            const BATCH_SIZE = 5 // Processar 5 aulas por vez
+            const BATCH_SIZE = 5 // Processar 5 itens por vez
             const DELAY_BETWEEN_BATCHES = 25 // Delay curto entre lotes para reduzir uso da API
             
             let lessonOrder = initialLessonOrder
             let testOrder = initialTestOrder
-            const validLessons = lessonAssets
+            const validItems = classifiedAssets
+            const startIndex = isResumeSubject ? resumeItemIndex : 0
             
-            // Processar aulas em lotes
-            for (let batchStart = 0; batchStart < validLessons.length; batchStart += BATCH_SIZE) {
-              const batch = validLessons.slice(batchStart, Math.min(batchStart + BATCH_SIZE, validLessons.length))
+            for (let batchStart = startIndex; batchStart < validItems.length; batchStart += BATCH_SIZE) {
+              const batchEnd = Math.min(batchStart + BATCH_SIZE, validItems.length)
+              const batch = validItems.slice(batchStart, batchEnd)
+              const batchNumber = Math.floor((batchStart - startIndex) / BATCH_SIZE) + 1
               
-              console.log(`      Processando lote ${Math.floor(batchStart / BATCH_SIZE) + 1}: ${batch.length} aulas`)
+              console.log(`      Processando lote ${batchNumber}: ${batch.length} itens`)
               
-              // Processar aulas do lote
-              for (const lessonItem of batch) {
+              for (const entry of batch) {
+                const lessonItem = entry.asset
                 const itemName = lessonItem.name || 'Arquivo sem nome'
                 console.log(`      Processando arquivo: ${itemName} (${lessonItem.mimeType})`)
 
@@ -1597,18 +1641,16 @@ async function parseGoogleDriveFolder(
                 })
 
                 const mimeType = (lessonItem.mimeType || '').toLowerCase()
-                const driveLink = `https://drive.google.com/file/d/${lessonItem.id}/view`
-                const fileExtensions = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
-                const baseName = (lessonItem.name || '').replace(fileExtensions, '')
-                const formattedTitle = formatTitle(baseName || itemName)
-                const forcedTest = lessonItem.id ? forcedTestIds.has(lessonItem.id) : false
-                const isFormTest = (lessonItem.mimeType || '').toLowerCase() === 'application/vnd.google-apps.form'
-                const isTest = forcedTest || isFormTest || isTestFile(formattedTitle)
-
+                const driveLink = lessonItem.id ? `https://drive.google.com/file/d/${lessonItem.id}/view?usp=drivesdk` : ''
                 const fileSizeBytes = getDriveFileSizeBytes(lessonItem)
-                let completedLabel: string
+                let completedLabel = entry.formattedTitle
 
-                if (isTest) {
+                if (!driveLink) {
+                  console.warn(`        Arquivo sem ID detectado, ignorando: ${itemName}`)
+                  continue
+                }
+
+                if (entry.type === 'test') {
                   if (existingState?.existingTestUrls?.has(driveLink)) {
                     console.log(`      Teste já importado detectado: '${itemName}', pulando.`)
                     processedLessons++
@@ -1628,8 +1670,8 @@ async function parseGoogleDriveFolder(
                   }
 
                   testOrder += 1
-                  const normalizedOriginalName = (baseName || itemName).trim()
-                  const testName = normalizedOriginalName.length > 0 ? normalizedOriginalName : `Teste ${testOrder}`
+                  const testNameBase = entry.readableName.length > 0 ? entry.readableName : entry.formattedTitle
+                  const testName = testNameBase.length > 0 ? testNameBase : `Teste ${testOrder}`
 
                   let extractedAnswerKey: ParsedAnswerKeyEntry[] | undefined
                   let requiresManualAnswerKey = true
@@ -1644,7 +1686,9 @@ async function parseGoogleDriveFolder(
                       if (job) {
                         await logJob(job, 'info', 'Exportando gabarito do teste', {
                           moduleName,
+                          moduleCode,
                           subjectName,
+                          subjectCode,
                           fileId: lessonItem.id,
                           itemName,
                           sizeBytes: fileSizeBytes || null
@@ -1668,7 +1712,9 @@ async function parseGoogleDriveFolder(
                           if (job) {
                             await logJob(job, 'info', 'Gabarito extraído automaticamente', {
                               moduleName,
+                              moduleCode,
                               subjectName,
+                              subjectCode,
                               fileId: lessonItem.id,
                               itemName,
                               questions: parsed.length
@@ -1681,7 +1727,9 @@ async function parseGoogleDriveFolder(
                       if (job) {
                         await logJob(job, 'warn', 'Falha ao extrair gabarito automaticamente', {
                           moduleName,
+                          moduleCode,
                           subjectName,
+                          subjectCode,
                           fileId: lessonItem.id,
                           itemName,
                           sizeBytes: fileSizeBytes || null,
@@ -1692,7 +1740,9 @@ async function parseGoogleDriveFolder(
                   } else if (lessonItem.mimeType === 'application/vnd.google-apps.document' && job) {
                     await logJob(job, 'info', 'Gabarito não extraído automaticamente (arquivo acima do limite)', {
                       moduleName,
+                      moduleCode,
                       subjectName,
+                      subjectCode,
                       fileId: lessonItem.id,
                       itemName,
                       sizeBytes: fileSizeBytes || null,
@@ -1702,6 +1752,7 @@ async function parseGoogleDriveFolder(
 
                   subject.tests.push({
                     name: testName,
+                    code: entry.code,
                     order: testOrder,
                     contentType: 'test',
                     contentUrl: driveLink,
@@ -1745,11 +1796,9 @@ async function parseGoogleDriveFolder(
                     contentType = 'video'
                   }
 
-                  const codeMatch = baseName.match(/^([A-Z0-9]+)[-_ ]+(.+)$/)
-                  const lessonCode = codeMatch ? codeMatch[1] : generateCode('A', lessonOrder + 1)
-                  const lessonName = codeMatch
-                    ? codeMatch[2].trim()
-                    : formattedTitle || `Aula ${lessonOrder + 1}`
+                  const lessonCode = entry.code ?? `${subjectCode}${String(lessonOrder + 1).padStart(2, '0')}`
+                  const lessonNameBase = entry.readableName.length > 0 ? entry.readableName : entry.formattedTitle
+                  const lessonName = lessonNameBase.length > 0 ? lessonNameBase : `Aula ${lessonOrder + 1}`
 
                   const lesson: any = {
                     name: lessonName,
@@ -1758,10 +1807,10 @@ async function parseGoogleDriveFolder(
                     content: undefined as string | undefined,
                     contentType,
                     contentUrl: driveLink,
-                    description: `Aula ${lessonCode}: ${lessonName}`
+                    description: lessonCode ? `Aula ${lessonCode}: ${lessonName}` : `Aula: ${lessonName}`
                   }
                   lessonOrder += 1
-                  completedLabel = lesson.name
+                  completedLabel = lesson.code ? `${lesson.code} - ${lesson.name}` : lesson.name
 
                   if (mimeType === 'application/vnd.google-apps.document' || mimeType === 'application/vnd.google-apps.presentation') {
                     lesson.content = ''
@@ -1770,7 +1819,9 @@ async function parseGoogleDriveFolder(
                     if (job) {
                       await logJob(job, 'info', 'Conteúdo mantido no Google Drive', {
                         moduleName,
+                        moduleCode,
                         subjectName,
+                        subjectCode,
                         fileId: lessonItem.id,
                         itemName,
                         mimeType,
@@ -1783,7 +1834,7 @@ async function parseGoogleDriveFolder(
 
                   subject.lessons.push(lesson)
                   existingState?.existingLessonUrls?.add(driveLink)
-                  console.log(`      Aula adicionada: '${lesson.name}' (tipo: ${lessonItem.mimeType})`)
+                  console.log(`      Aula adicionada: '${lesson.code ? `${lesson.code} - ` : ''}${lesson.name}' (tipo: ${lessonItem.mimeType})`)
                 }
 
                 processedLessons++
@@ -1801,15 +1852,14 @@ async function parseGoogleDriveFolder(
                   errors: []
                 })
               }
-              
-              // Delay pequeno entre lotes para evitar sobrecarga
-              if (batchStart + BATCH_SIZE < validLessons.length) {
+
+              if (batchEnd < validItems.length) {
                 console.log(`      Aguardando ${DELAY_BETWEEN_BATCHES}ms antes do próximo lote...`)
                 await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES))
               }
             }
             
-            console.log(`    Total de aulas processadas para '${subject.name}': ${subject.lessons.length}`)
+            console.log(`    Total processado para '${subject.name}': ${subject.lessons.length} aulas e ${subject.tests.length} testes`)
 
             const subjectHasNewContent = subject.lessons.length > 0 || subject.tests.length > 0
             const subjectIsNew = !existingSubjectId
