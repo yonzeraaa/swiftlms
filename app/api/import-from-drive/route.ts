@@ -897,12 +897,14 @@ interface CourseStructure {
     name: string
     code?: string
     order: number
+    skip?: boolean
     subjects: {
       originalIndex: number
       name: string
       code?: string
       existingId?: string
       order: number
+      skip?: boolean
       lessons: {
         name: string
         code?: string
@@ -1881,7 +1883,23 @@ async function parseGoogleDriveFolder(
             if (subjectHasNewContent || subjectIsNew) {
               courseModule.subjects.push(subject)
             } else {
-              console.log(`    Nenhum item novo encontrado para '${subject.name}', pulando disciplina.`)
+              const shouldForceSkipSubject =
+                resumeState !== null &&
+                moduleIndex === resumeModuleIndex &&
+                resumeSubjectIndex !== null &&
+                subjectIndex === resumeSubjectIndex
+
+              if (shouldForceSkipSubject) {
+                console.log(`    Disciplina '${subject.name}' já concluída anteriormente. Avançando estado de resume.`)
+                courseModule.subjects.push({
+                  ...subject,
+                  lessons: [],
+                  tests: [],
+                  skip: true,
+                })
+              } else {
+                console.log(`    Nenhum item novo encontrado para '${subject.name}', pulando disciplina.`)
+              }
             }
 
             processedSubjects++
@@ -1908,7 +1926,20 @@ async function parseGoogleDriveFolder(
         if (moduleHasNewContent || !moduleAlreadyImported) {
           structure.modules.push(courseModule)
         } else {
-          console.log(`  Nenhum conteúdo novo encontrado para o módulo '${courseModule.name}', pulando.`)
+          const shouldForceSkipModule =
+            resumeState !== null &&
+            moduleIndex === resumeModuleIndex
+
+          if (shouldForceSkipModule) {
+            console.log(`  Módulo '${courseModule.name}' já concluído anteriormente. Avançando estado de resume.`)
+            structure.modules.push({
+              ...courseModule,
+              subjects: [],
+              skip: true,
+            })
+          } else {
+            console.log(`  Nenhum conteúdo novo encontrado para o módulo '${courseModule.name}', pulando.`)
+          }
         }
         processedModules++
         
@@ -2028,6 +2059,21 @@ async function importToDatabase(
       const moduleOriginalIndex = moduleData.originalIndex ?? (resumeModuleIndex + moduleIdx)
       await persistResume({ moduleIndex: moduleOriginalIndex, subjectIndex: 0, itemIndex: 0 })
 
+      if (moduleData.skip) {
+        console.log(`Módulo ${moduleData.name} marcado como concluído anteriormente. Avançando resume.`)
+        processedModules++
+        results.skipped.modules++
+        await persistResume({
+          moduleIndex: moduleOriginalIndex + 1,
+          subjectIndex: 0,
+          itemIndex: 0,
+        })
+        if (shouldYield()) {
+          return { status: 'partial', resumeState: currentResumeState, results }
+        }
+        continue
+      }
+
       await updateDatabaseProgress(
         `Verificando módulo ${moduleIdx + 1}/${structure.modules.length}`,
         `Módulo: ${moduleData.name}`
@@ -2081,6 +2127,21 @@ async function importToDatabase(
         const isResumingSubject =
           moduleOriginalIndex === resumeModuleIndex && subjectOriginalIndex === resumeSubjectIndex
         let subjectItemIndex = isResumingSubject ? resumeItemIndex : 0
+
+        if (subjectData.skip) {
+          console.log(`Disciplina ${subjectData.name} marcada como concluída anteriormente. Avançando resume.`)
+          processedSubjects++
+          results.skipped.subjects++
+          await persistResume({
+            moduleIndex: moduleOriginalIndex,
+            subjectIndex: subjectOriginalIndex + 1,
+            itemIndex: 0,
+          })
+          if (shouldYield()) {
+            return { status: 'partial', resumeState: currentResumeState, results }
+          }
+          continue
+        }
 
         await persistResume({
           moduleIndex: moduleOriginalIndex,
