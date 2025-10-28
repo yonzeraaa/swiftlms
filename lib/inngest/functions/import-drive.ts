@@ -8,11 +8,10 @@ type ImportEventPayload = {
   userId: string
   folderId: string
   jobId?: string
-  includeMedia?: boolean
 }
 
 async function handleImportEvent({ event, step }: { event: { data: ImportEventPayload }; step: any }) {
-  const { driveUrl, courseId, importId, userId, folderId, jobId, includeMedia = true } = event.data
+  const { driveUrl, courseId, importId, userId, folderId, jobId } = event.data
 
   const { processImportInBackground } = await import('@/app/api/import-from-drive/route')
   const supabase = createAdminClient()
@@ -25,7 +24,6 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
       userId,
       folderId,
       jobId,
-      includeMedia,
       supabase
     )
   })
@@ -38,7 +36,6 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
       userId,
       folderId,
       jobId,
-      includeMedia,
     })
 
     return {

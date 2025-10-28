@@ -228,41 +228,6 @@ interface MediaFileInfo {
   sizeBytes: number | null
 }
 
-interface MediaCounts {
-  total: number
-  video: number
-  audio: number
-}
-
-interface SubjectSummary {
-  name: string
-  lessonCount: number
-  testCount: number
-  sampleLessons: string[]
-  sampleTests: string[]
-  mediaCount: MediaCounts
-}
-
-interface ModuleSummary {
-  name: string
-  subjectCount: number
-  lessonCount: number
-  testCount: number
-  mediaCount: MediaCounts
-  subjects: SubjectSummary[]
-}
-
-interface CourseStructureSummary {
-  totals: {
-    modules: number
-    subjects: number
-    lessons: number
-    tests: number
-    media: MediaCounts
-  }
-  modules: ModuleSummary[]
-}
-
 class TimeoutError extends Error {
   constructor(label: string, timeoutMs: number) {
     super(`Timeout após ${timeoutMs}ms ao executar ${label}`)
@@ -889,7 +854,6 @@ function extractDriveFolderId(url: string): string | null {
 }
 
 interface ParseOptions {
-  includeMedia?: boolean
   collectMedia?: boolean
   mediaFiles?: MediaFileInfo[]
   resumeState?: ImportResumeState | null
@@ -947,7 +911,6 @@ async function parseGoogleDriveFolder(
   options: ParseOptions = {}
 ): Promise<ParseResult> {
   const structure: CourseStructure = { modules: [] }
-  const includeMedia = options.includeMedia !== false
   const resumeState = options.resumeState ?? null
   const resumeModuleIndex = resumeState?.moduleIndex ?? 0
   const progressSnapshot = options.progressSnapshot ?? createProgressSnapshot(null)
@@ -1124,15 +1087,12 @@ async function parseGoogleDriveFolder(
 
             const addLessonAsset = (asset: drive_v3.Schema$File) => {
               if (!asset?.id) return
-              if (!includeMedia && isMediaFile(asset)) return
               if (seenLessonIds.has(asset.id)) return
               seenLessonIds.add(asset.id)
               lessonAssets.push(asset)
             }
 
-            const baseLessonAssets = includeMedia
-              ? lessons
-              : lessons.filter(asset => !isMediaFile(asset))
+            const baseLessonAssets = lessons
 
             baseLessonAssets.forEach(addLessonAsset)
 
@@ -1240,25 +1200,12 @@ async function parseGoogleDriveFolder(
               errors: []
             })
 
-            const ignoredMediaCount = !includeMedia ? collectedMediaIds.size : 0
-
-            if (ignoredMediaCount > 0) {
-              console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos importáveis (${ignoredMediaCount} mídias ignoradas)`)        
-              if (job) {
-                await logJob(job, 'info', 'Arquivos de mídia ignorados nesta disciplina', {
-                  moduleName,
-                  subjectName,
-                  ignoredMediaCount,
-                })
-              }
-            } else {
-              console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos detectados`)
-            }
+            console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos detectados`)
 
             await logJob(job, 'info', 'Itens da disciplina listados', {
               moduleName,
               subjectName,
-              lessonsFound: lessonAssets.length + ignoredMediaCount,
+              lessonsFound: lessonAssets.length,
               nestedFolders: nestedFolders.length,
             })
 
@@ -1567,112 +1514,6 @@ async function parseGoogleDriveFolder(
   } catch (error) {
     console.error('Erro ao processar pasta do Google Drive:', error)
     throw error
-  }
-}
-
-function createMediaCounts(): MediaCounts {
-  return {
-    total: 0,
-    video: 0,
-    audio: 0,
-  }
-}
-
-function accumulateMediaCounts(target: MediaCounts, mimeType: string | null | undefined) {
-  target.total += 1
-  const normalized = (mimeType || '').toLowerCase()
-  if (normalized.startsWith('video/')) {
-    target.video += 1
-  } else if (normalized.startsWith('audio/')) {
-    target.audio += 1
-  }
-}
-
-function cloneMediaCounts(source: MediaCounts | undefined): MediaCounts {
-  if (!source) {
-    return createMediaCounts()
-  }
-  return {
-    total: source.total,
-    video: source.video,
-    audio: source.audio,
-  }
-}
-
-function buildStructureSummary(structure: CourseStructure, mediaFiles: MediaFileInfo[]): CourseStructureSummary {
-  const totalsMedia = createMediaCounts()
-  const mediaByModule = new Map<string, MediaCounts>()
-  const mediaBySubject = new Map<string, MediaCounts>()
-
-  const getModuleCounts = (moduleName: string) => {
-    if (!mediaByModule.has(moduleName)) {
-      mediaByModule.set(moduleName, createMediaCounts())
-    }
-    return mediaByModule.get(moduleName)!
-  }
-
-  const getSubjectCounts = (moduleName: string, subjectName: string) => {
-    const key = `${moduleName}::${subjectName}`
-    if (!mediaBySubject.has(key)) {
-      mediaBySubject.set(key, createMediaCounts())
-    }
-    return mediaBySubject.get(key)!
-  }
-
-  for (const media of mediaFiles) {
-    accumulateMediaCounts(totalsMedia, media.mimeType)
-    accumulateMediaCounts(getModuleCounts(media.moduleName), media.mimeType)
-    accumulateMediaCounts(getSubjectCounts(media.moduleName, media.subjectName), media.mimeType)
-  }
-
-  let totalSubjects = 0
-  let totalLessons = 0
-  let totalTests = 0
-
-  const modulesSummary: ModuleSummary[] = structure.modules.map(module => {
-    let moduleLessonCount = 0
-    let moduleTestCount = 0
-
-    const subjectSummaries: SubjectSummary[] = module.subjects.map(subject => {
-      totalSubjects += 1
-      moduleLessonCount += subject.lessons.length
-      moduleTestCount += subject.tests.length
-      totalLessons += subject.lessons.length
-      totalTests += subject.tests.length
-
-      const subjectMediaCounts = cloneMediaCounts(getSubjectCounts(module.name, subject.name))
-
-      return {
-        name: subject.name,
-        lessonCount: subject.lessons.length,
-        testCount: subject.tests.length,
-        sampleLessons: subject.lessons.slice(0, 3).map((lesson: any) => lesson.name),
-        sampleTests: subject.tests.slice(0, 3).map((test: any) => test.name),
-        mediaCount: subjectMediaCounts,
-      }
-    })
-
-    const moduleMediaCounts = cloneMediaCounts(getModuleCounts(module.name))
-
-    return {
-      name: module.name,
-      subjectCount: module.subjects.length,
-      lessonCount: moduleLessonCount,
-      testCount: moduleTestCount,
-      mediaCount: moduleMediaCounts,
-      subjects: subjectSummaries,
-    }
-  })
-
-  return {
-    totals: {
-      modules: structure.modules.length,
-      subjects: totalSubjects,
-      lessons: totalLessons,
-      tests: totalTests,
-      media: cloneMediaCounts(totalsMedia),
-    },
-    modules: modulesSummary,
   }
 }
 
@@ -2215,7 +2056,6 @@ export async function processImportInBackground(
   userId: string,
   folderId: string,
   jobId?: string,
-  includeMedia = true,
   supabaseClient?: SupabaseClient<Database>
 ) {
   const supabase = supabaseClient ?? createAdminClient()
@@ -2245,7 +2085,6 @@ export async function processImportInBackground(
         error: null,
       })
       await logJob(jobContext, 'info', 'Job iniciado', { importId, courseId })
-      await logJob(jobContext, 'info', includeMedia ? 'Arquivos de mídia serão importados' : 'Arquivos de mídia serão ignorados')
       await updateJob(jobContext, { current_step: 'Iniciando processamento' })
       await updateImportProgress(supabase, importId, userId, courseId, {
         phase: 'processing',
@@ -2256,9 +2095,7 @@ export async function processImportInBackground(
         processed_subjects: 0,
         total_lessons: 0,
         processed_lessons: 0,
-        current_item: includeMedia
-          ? 'Preparando para processar arquivos'
-          : 'Preparando importação sem arquivos de mídia',
+        current_item: 'Preparando para processar arquivos',
         percentage: 0,
         errors: []
       }, jobContext)
@@ -2286,7 +2123,6 @@ export async function processImportInBackground(
       userId,
       jobContext,
       {
-        includeMedia,
         resumeState,
         progressSnapshot,
       }
@@ -2449,8 +2285,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const { driveUrl, courseId, includeMedia, dryRun } = await req.json()
-    const includeMediaFlag = includeMedia !== false
+    const { driveUrl, courseId } = await req.json()
     const progressToken = randomUUID().replace(/-/g, '')
 
     if (!driveUrl || !courseId) {
@@ -2473,46 +2308,6 @@ export async function POST(req: NextRequest) {
     const importId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     
     console.log(`[IMPORT] Iniciando importação com ID: ${importId}`)
-    
-    if (dryRun) {
-      const drive = await authenticateGoogleDrive()
-      const mediaFiles: MediaFileInfo[] = []
-      const warnings: string[] = []
-
-      const parseResult = await parseGoogleDriveFolder(
-        drive,
-        folderId,
-        courseId,
-        undefined,
-        undefined,
-        user.id,
-        undefined,
-        {
-          includeMedia: true,
-          collectMedia: true,
-          mediaFiles,
-          warnings,
-        }
-      )
-
-      const summary = buildStructureSummary(parseResult.structure, mediaFiles)
-
-      if (summary.totals.modules === 0) {
-        warnings.push('Nenhum módulo foi detectado na pasta fornecida. Verifique a estrutura da pasta.')
-      }
-
-      return NextResponse.json({
-        success: true,
-        summary,
-        mediaFiles,
-        warnings,
-      }, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-    }
 
     // Criar job de importação
     const { data: jobRecord, error: jobError } = await supabase
@@ -2524,7 +2319,6 @@ export async function POST(req: NextRequest) {
         status: 'queued',
         metadata: {
           importId,
-          includeMedia: includeMediaFlag,
           progressToken,
           resume_state: {
             moduleIndex: 0,
@@ -2545,7 +2339,7 @@ export async function POST(req: NextRequest) {
     }
 
     const jobContext = jobRecord ? { jobId: jobRecord.id, supabase } : undefined
-    await logJob(jobContext, 'info', 'Job criado', { importId, includeMedia: includeMediaFlag })
+    await logJob(jobContext, 'info', 'Job criado', { importId })
     
     // Inicializar progresso no Supabase
     await updateImportProgress(supabase, importId, user.id, courseId, {
@@ -2557,9 +2351,7 @@ export async function POST(req: NextRequest) {
       processed_subjects: 0,
       total_lessons: 0,
       processed_lessons: 0,
-      current_item: includeMediaFlag
-        ? 'Preparando processamento em background'
-        : 'Preparando importação sem arquivos de mídia',
+      current_item: 'Preparando processamento em background',
       percentage: 0,
       errors: []
     }, jobContext)
@@ -2575,7 +2367,6 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         folderId,
         jobId: jobRecord?.id,
-        includeMedia: includeMediaFlag,
         progressToken,
       }
     })
@@ -2583,9 +2374,7 @@ export async function POST(req: NextRequest) {
     // Retornar imediatamente com o ID da importação
     return NextResponse.json({
       success: true,
-      message: includeMediaFlag
-        ? 'Importação iniciada. Acompanhe o progresso em tempo real.'
-        : 'Importação iniciada (arquivos de mídia serão ignorados).',
+      message: 'Importação iniciada. Acompanhe o progresso em tempo real.',
       importId,
       jobId: jobRecord?.id ?? null,
       progressToken,
