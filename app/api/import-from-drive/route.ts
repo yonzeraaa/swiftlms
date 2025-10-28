@@ -1022,12 +1022,23 @@ async function parseGoogleDriveFolder(
   const resumeModuleIndex = resumeState?.moduleIndex ?? 0
   const progressSnapshot = options.progressSnapshot ?? createProgressSnapshot(null)
 
-  let totalModules = progressSnapshot.totalModules
-  let totalSubjects = progressSnapshot.totalSubjects
-  let totalLessons = progressSnapshot.totalLessons
-  let processedModules = progressSnapshot.processedModules
-  let processedSubjects = progressSnapshot.processedSubjects
-  let processedLessons = progressSnapshot.processedLessons
+  // Se NÃO for resume, resetar totais para forçar novo scan completo
+  // Isso evita usar totais incorretos de importações anteriores
+  const isResume = resumeState !== null
+
+  let totalModules = isResume ? progressSnapshot.totalModules : 0
+  let totalSubjects = isResume ? progressSnapshot.totalSubjects : 0
+  let totalLessons = isResume ? progressSnapshot.totalLessons : 0
+  let processedModules = isResume ? progressSnapshot.processedModules : 0
+  let processedSubjects = isResume ? progressSnapshot.processedSubjects : 0
+  let processedLessons = isResume ? progressSnapshot.processedLessons : 0
+
+  console.log(`[IMPORT][INIT] Modo: ${isResume ? 'RESUME' : 'NOVA IMPORTAÇÃO'}`)
+  if (!isResume) {
+    console.log(`[IMPORT][INIT] Totais resetados - iniciando scan completo`)
+  } else {
+    console.log(`[IMPORT][INIT] Continuando de: módulo ${resumeModuleIndex}, totais: ${totalModules}M/${totalSubjects}D/${totalLessons}A`)
+  }
   
   // Atualizar progresso se importId fornecido
   const updateProgress = async (progress: any) => {
