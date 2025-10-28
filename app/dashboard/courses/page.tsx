@@ -43,8 +43,45 @@ interface MediaFileSummary {
   sizeBytes: number | null
 }
 
-interface MediaPromptState {
-  files: MediaFileSummary[]
+interface MediaCounts {
+  total: number
+  video: number
+  audio: number
+}
+
+interface DriveSubjectSummary {
+  name: string
+  lessonCount: number
+  testCount: number
+  sampleLessons: string[]
+  sampleTests: string[]
+  mediaCount: MediaCounts
+}
+
+interface DriveModuleSummary {
+  name: string
+  subjectCount: number
+  lessonCount: number
+  testCount: number
+  mediaCount: MediaCounts
+  subjects: DriveSubjectSummary[]
+}
+
+interface DriveStructureSummary {
+  totals: {
+    modules: number
+    subjects: number
+    lessons: number
+    tests: number
+    media: MediaCounts
+  }
+  modules: DriveModuleSummary[]
+}
+
+interface DrivePreviewState {
+  summary: DriveStructureSummary
+  mediaFiles: MediaFileSummary[]
+  warnings: string[]
 }
 
 interface NewCourseForm {
@@ -87,7 +124,7 @@ export default function CoursesPage() {
   const [showDriveImportModal, setShowDriveImportModal] = useState(false)
   const [driveUrl, setDriveUrl] = useState('')
   const [inspectingDrive, setInspectingDrive] = useState(false)
-  const [mediaPrompt, setMediaPrompt] = useState<MediaPromptState | null>(null)
+  const [drivePreview, setDrivePreview] = useState<DrivePreviewState | null>(null)
   
   // Usar o novo hook de progresso
   const { 
@@ -136,11 +173,11 @@ export default function CoursesPage() {
     return `${rounded} ${units[unitIndex]}`
   }
 
-  const mediaCounts = mediaPrompt
+  const mediaCounts = drivePreview
     ? {
-        total: mediaPrompt.files.length,
-        video: mediaPrompt.files.filter(file => file.mimeType.toLowerCase().startsWith('video')).length,
-        audio: mediaPrompt.files.filter(file => file.mimeType.toLowerCase().startsWith('audio')).length
+        total: drivePreview.mediaFiles.length,
+        video: drivePreview.mediaFiles.filter(file => file.mimeType.toLowerCase().startsWith('video')).length,
+        audio: drivePreview.mediaFiles.filter(file => file.mimeType.toLowerCase().startsWith('audio')).length
       }
     : null
   
@@ -546,11 +583,19 @@ export default function CoursesPage() {
   // Limpar intervalo quando componente desmontar ou importação terminar
 
 
+interface DriveDryRunResponse {
+  success?: boolean
+  error?: string
+  summary?: DriveStructureSummary
+  mediaFiles?: MediaFileSummary[]
+  warnings?: string[]
+}
+
   const handleDriveImport = async () => {
     if (!driveUrl || !selectedCourse) return
     
     setError(null)
-    setMediaPrompt(null)
+    setDrivePreview(null)
     
     try {
       setInspectingDrive(true)
@@ -566,21 +611,23 @@ export default function CoursesPage() {
         })
       })
 
-      const result: { error?: string; mediaFiles?: MediaFileSummary[] } = await response.json()
+      const result: DriveDryRunResponse = await response.json()
 
       if (!response.ok) {
         throw new Error(result?.error || 'Erro ao analisar a pasta do Google Drive')
       }
 
-      const mediaFiles: MediaFileSummary[] = Array.isArray(result?.mediaFiles) ? result.mediaFiles : []
-      if (mediaFiles.length > 0) {
-        setMediaPrompt({ files: mediaFiles })
-        console.log('[CoursesPage] Media files detected before import', mediaFiles.length)
-        return
+      if (!result.summary) {
+        throw new Error('Não foi possível detectar a estrutura do curso nesta pasta')
       }
 
-      await startImport(driveUrl, selectedCourse.id)
-      console.log('[CoursesPage] Import started successfully (no media detected)')
+      setDrivePreview({
+        summary: result.summary,
+        mediaFiles: Array.isArray(result.mediaFiles) ? result.mediaFiles : [],
+        warnings: Array.isArray(result.warnings) ? result.warnings.filter(Boolean) : [],
+      })
+
+      console.log('[CoursesPage] Estrutura detectada no Google Drive', result.summary.totals)
     } catch (error: any) {
       console.error('[CoursesPage] Failed to inspect/import:', error)
       setError(error.message || 'Erro ao iniciar importação')
@@ -589,14 +636,14 @@ export default function CoursesPage() {
     }
   }
 
-  const confirmMediaImport = async (includeMedia: boolean) => {
+  const startDriveImportWithMedia = async (includeMedia: boolean) => {
     if (!driveUrl || !selectedCourse) return
-    setMediaPrompt(null)
     setError(null)
 
     try {
       await startImport(driveUrl, selectedCourse.id, { includeMedia })
       console.log('[CoursesPage] Import started with media option', includeMedia)
+      setDrivePreview(null)
     } catch (error: any) {
       console.error('[CoursesPage] Failed to start import with media option:', error)
       setError(error.message || 'Erro ao iniciar importação')
@@ -1580,7 +1627,7 @@ export default function CoursesPage() {
                   setShowDriveImportModal(false)
                   setDriveUrl('')
                   setError(null)
-                  setMediaPrompt(null)
+                  setDrivePreview(null)
                 }}
                 className="text-gold-400 hover:text-gold-200 transition-colors"
               >
@@ -1656,7 +1703,7 @@ export default function CoursesPage() {
                     setShowDriveImportModal(false)
                     setDriveUrl('')
                     setError(null)
-                    setMediaPrompt(null)
+                    setDrivePreview(null)
                   }}
                   className="flex-1"
                 >
@@ -1677,78 +1724,159 @@ export default function CoursesPage() {
             </div>
           </Card>
         </div>
-        {mediaPrompt && (
+        {drivePreview && (
           <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[10001] p-4">
-            <Card className="w-full max-w-xl space-y-4">
+            <Card className="w-full max-w-3xl space-y-5">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
-                  <Video className="w-5 h-5" />
-                  Arquivos de mídia detectados
-                </h3>
+                <div>
+                  <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
+                    <BookOpen className="w-5 h-5" />
+                    Conteúdo detectado na pasta
+                  </h3>
+                  <p className="text-xs text-gold-300">Revise o resumo antes de iniciar a importação.</p>
+                </div>
                 <button
-                  onClick={() => setMediaPrompt(null)}
+                  onClick={() => setDrivePreview(null)}
                   className="text-gold-400 hover:text-gold-200 transition-colors"
+                  aria-label="Fechar resumo da importação"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <p className="text-sm text-gold-200 space-y-1">
-                <span>
-                  Encontramos <span className="font-semibold">{mediaCounts?.total ?? 0}</span> arquivos de áudio ou vídeo nesta pasta.
-                </span>
-                <span className="block text-gold-400 text-xs">
-                  {mediaCounts ? `${mediaCounts.video} vídeo(s) • ${mediaCounts.audio} áudio(s)` : ''}
-                </span>
-                <span className="block">
-                  Deseja importá-los junto com o restante do conteúdo?
-                </span>
-              </p>
-
-              <div className="bg-navy-900/60 border border-navy-700 rounded-lg max-h-48 overflow-y-auto">
-                <ul className="divide-y divide-navy-800">
-                  {mediaPrompt.files.slice(0, 8).map((file, index) => {
-                    const isVideo = file.mimeType.toLowerCase().startsWith('video')
-                    const isAudio = file.mimeType.toLowerCase().startsWith('audio')
-                    const label = isVideo ? 'Vídeo' : isAudio ? 'Áudio' : 'Mídia'
-                    return (
-                      <li key={`${file.moduleName}-${file.subjectName}-${file.itemName}-${index}`} className="p-3 text-sm">
-                        <p className="text-gold-100 font-medium flex items-center gap-2">
-                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy-800 text-gold-300">{label}</span>
-                          {file.itemName}
-                        </p>
-                        <p className="text-xs text-gold-400">{file.moduleName} • {file.subjectName}</p>
-                        <p className="text-xs text-gold-500">{file.mimeType} • {formatBytes(file.sizeBytes)}</p>
-                      </li>
-                    )
-                  })}
-                </ul>
-                {mediaPrompt.files.length > 8 && (
-                  <div className="p-3 text-xs text-gold-300/80">
-                    + {mediaPrompt.files.length - 8} arquivos adicionais
+              {drivePreview.warnings.length > 0 && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg space-y-2">
+                  <div className="flex items-center gap-2 text-yellow-300 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    Possíveis ajustes encontrados durante a análise
                   </div>
+                  <ul className="text-xs text-yellow-200/90 list-disc list-inside space-y-1">
+                    {drivePreview.warnings.map((warning, index) => (
+                      <li key={`warning-${index}`}>{warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-navy-900/60 border border-navy-700 rounded-lg p-3">
+                  <p className="text-xs text-gold-400 uppercase tracking-wide">Módulos</p>
+                  <p className="text-2xl font-semibold text-gold-100">{drivePreview.summary.totals.modules}</p>
+                </div>
+                <div className="bg-navy-900/60 border border-navy-700 rounded-lg p-3">
+                  <p className="text-xs text-gold-400 uppercase tracking-wide">Disciplinas</p>
+                  <p className="text-2xl font-semibold text-gold-100">{drivePreview.summary.totals.subjects}</p>
+                </div>
+                <div className="bg-navy-900/60 border border-navy-700 rounded-lg p-3">
+                  <p className="text-xs text-gold-400 uppercase tracking-wide">Aulas</p>
+                  <p className="text-2xl font-semibold text-gold-100">{drivePreview.summary.totals.lessons}</p>
+                </div>
+                <div className="bg-navy-900/60 border border-navy-700 rounded-lg p-3">
+                  <p className="text-xs text-gold-400 uppercase tracking-wide">Testes</p>
+                  <p className="text-2xl font-semibold text-gold-100">{drivePreview.summary.totals.tests}</p>
+                </div>
+              </div>
+
+              <div className="bg-navy-900/60 border border-navy-700 rounded-lg max-h-64 overflow-y-auto p-4 space-y-4">
+                {drivePreview.summary.modules.length === 0 ? (
+                  <p className="text-sm text-gold-200">
+                    Nenhum módulo foi encontrado. Verifique se a pasta segue o padrão esperado (Módulo &gt; Disciplina &gt; Arquivos).
+                  </p>
+                ) : (
+                  drivePreview.summary.modules.map(module => (
+                    <div key={`module-summary-${module.name}`} className="space-y-2 border-b border-navy-800 pb-3 last:border-b-0 last:pb-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                        <p className="text-sm font-semibold text-gold-100">{module.name}</p>
+                        <p className="text-xs text-gold-400">
+                          {module.subjectCount} disciplinas • {module.lessonCount} aulas • {module.testCount} testes
+                        </p>
+                      </div>
+                      <ul className="text-xs text-gold-300 space-y-1 ml-1">
+                        {module.subjects.slice(0, 4).map(subject => (
+                          <li key={`subject-summary-${module.name}-${subject.name}`}>
+                            <span className="font-medium text-gold-200">{subject.name}</span>
+                            <span className="text-gold-400"> — {subject.lessonCount} aulas • {subject.testCount} testes</span>
+                          </li>
+                        ))}
+                        {module.subjects.length > 4 && (
+                          <li className="text-gold-500/80">+ {module.subjects.length - 4} disciplinas adicionais</li>
+                        )}
+                      </ul>
+                    </div>
+                  ))
                 )}
               </div>
 
+              {drivePreview.mediaFiles.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm text-gold-200 space-y-1">
+                    <span>
+                      Encontramos <span className="font-semibold">{mediaCounts?.total ?? 0}</span> arquivos de áudio ou vídeo nesta pasta.
+                    </span>
+                    <span className="block text-gold-400 text-xs">
+                      {mediaCounts ? `${mediaCounts.video} vídeo(s) • ${mediaCounts.audio} áudio(s)` : ''}
+                    </span>
+                  </p>
+                  <div className="bg-navy-900/60 border border-navy-700 rounded-lg max-h-40 overflow-y-auto">
+                    <ul className="divide-y divide-navy-800">
+                      {drivePreview.mediaFiles.slice(0, 8).map((file, index) => {
+                        const isVideo = file.mimeType.toLowerCase().startsWith('video')
+                        const isAudio = file.mimeType.toLowerCase().startsWith('audio')
+                        const label = isVideo ? 'Vídeo' : isAudio ? 'Áudio' : 'Mídia'
+                        return (
+                          <li key={`${file.moduleName}-${file.subjectName}-${file.itemName}-${index}`} className="p-3 text-sm">
+                            <p className="text-gold-100 font-medium flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-navy-800 text-gold-300">{label}</span>
+                              {file.itemName}
+                            </p>
+                            <p className="text-xs text-gold-400">{file.moduleName} • {file.subjectName}</p>
+                            <p className="text-xs text-gold-500">{file.mimeType} • {formatBytes(file.sizeBytes)}</p>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                    {drivePreview.mediaFiles.length > 8 && (
+                      <div className="p-3 text-xs text-gold-300/80">
+                        + {drivePreview.mediaFiles.length - 8} arquivos adicionais
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {drivePreview.summary.totals.modules === 0 && (
+                <p className="text-xs text-yellow-300">Nenhum módulo foi detectado. Ajuste a estrutura antes de importar.</p>
+              )}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => confirmMediaImport(false)}
+                  onClick={() => setDrivePreview(null)}
                   className="flex-1"
                   disabled={importingFromDrive}
                 >
-                  Ignorar mídias
+                  Voltar
                 </Button>
                 <Button
                   type="button"
                   variant="primary"
-                  onClick={() => confirmMediaImport(true)}
+                  onClick={() => startDriveImportWithMedia(false)}
                   className="flex-1"
-                  disabled={importingFromDrive}
+                  disabled={importingFromDrive || drivePreview.summary.totals.modules === 0}
                 >
-                  Importar mídias
+                  {drivePreview.mediaFiles.length > 0 ? 'Importar sem mídias' : 'Iniciar importação'}
                 </Button>
+                {drivePreview.mediaFiles.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => startDriveImportWithMedia(true)}
+                    className="flex-1"
+                    disabled={importingFromDrive || drivePreview.summary.totals.modules === 0}
+                  >
+                    Importar mídias
+                  </Button>
+                )}
               </div>
             </Card>
           </div>

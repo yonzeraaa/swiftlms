@@ -31,6 +31,66 @@ const MAX_RATE_LIMIT_BACKOFF_MS = Number(process.env.GOOGLE_DRIVE_MAX_RATE_LIMIT
 const MAX_DOC_EXPORT_BYTES = Number(process.env.GOOGLE_DRIVE_MAX_EXPORT_BYTES ?? 25 * 1024 * 1024)
 const SUPPORTED_FILE_EXTENSION_REGEX = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
 
+const TEST_KEYWORDS = [
+  'teste',
+  'test',
+  'quiz',
+  'avaliacao',
+  'avaliacaofinal',
+  'avaliacaoparcial',
+  'avaliacaodiagnostica',
+  'avaliacao',
+  'avaliacoes',
+  'prova',
+  'provas',
+  'assessment',
+  'assessments',
+  'exam',
+  'exame',
+  'exames',
+  'simulado',
+  'simulados',
+  'gabarito',
+  'checklist',
+  'avaliacaointermediaria',
+  'avaliacaocontinuada',
+]
+
+const TEST_FOLDER_KEYWORDS = [
+  'teste',
+  'testes',
+  'test',
+  'tests',
+  'quiz',
+  'quizzes',
+  'avaliacao',
+  'avaliacoes',
+  'prova',
+  'provas',
+  'assessment',
+  'assessments',
+  'exam',
+  'exames',
+  'simulado',
+  'simulados',
+]
+
+const LESSON_FOLDER_KEYWORDS = [
+  'aulas',
+  'lessons',
+  'conteudo',
+  'conteudos',
+  'conteúdo',
+  'materiais',
+  'materials',
+  'slides',
+  'apresentacoes',
+  'apresentações',
+  'arquivos',
+  'conteudo extra',
+  'complementares',
+]
+
 let rateLimitChain: Promise<void> = Promise.resolve()
 
 async function wait(ms: number) {
@@ -168,6 +228,41 @@ interface MediaFileInfo {
   sizeBytes: number | null
 }
 
+interface MediaCounts {
+  total: number
+  video: number
+  audio: number
+}
+
+interface SubjectSummary {
+  name: string
+  lessonCount: number
+  testCount: number
+  sampleLessons: string[]
+  sampleTests: string[]
+  mediaCount: MediaCounts
+}
+
+interface ModuleSummary {
+  name: string
+  subjectCount: number
+  lessonCount: number
+  testCount: number
+  mediaCount: MediaCounts
+  subjects: SubjectSummary[]
+}
+
+interface CourseStructureSummary {
+  totals: {
+    modules: number
+    subjects: number
+    lessons: number
+    tests: number
+    media: MediaCounts
+  }
+  modules: ModuleSummary[]
+}
+
 class TimeoutError extends Error {
   constructor(label: string, timeoutMs: number) {
     super(`Timeout após ${timeoutMs}ms ao executar ${label}`)
@@ -264,6 +359,16 @@ function normalizeForMatching(value: string) {
   return removeDiacritics(value).toLowerCase()
 }
 
+function matchesKeyword(value: string | null | undefined, keywords: string[]) {
+  if (!value) return false
+  const normalized = normalizeForMatching(value)
+  return keywords.some(keyword => normalized.includes(keyword))
+}
+
+function isTestFolderName(name: string) {
+  return matchesKeyword(name, TEST_FOLDER_KEYWORDS)
+}
+
 async function listFolderContents(
   drive: DriveClient,
   folderId: string,
@@ -301,13 +406,7 @@ async function listFolderContents(
 }
 
 function isTestFile(title: string) {
-  const normalizedTitle = normalizeForMatching(title)
-
-  if (!normalizedTitle) {
-    return false
-  }
-
-  return /\bteste\b/.test(normalizedTitle)
+  return matchesKeyword(title, TEST_KEYWORDS)
 }
 
 function formatTitle(rawName: string) {
@@ -795,6 +894,7 @@ interface ParseOptions {
   mediaFiles?: MediaFileInfo[]
   resumeState?: ImportResumeState | null
   progressSnapshot?: ProgressSnapshot
+  warnings?: string[]
 }
 
 interface ImportResumeState {
@@ -834,47 +934,6 @@ function createProgressSnapshot(progress?: {
     totalSubjects: progress?.total_subjects ?? 0,
     totalLessons: progress?.total_lessons ?? 0,
   }
-}
-
-async function findMediaFiles(
-  drive: DriveClient,
-  folderId: string
-): Promise<MediaFileInfo[]> {
-  const mediaFiles: MediaFileInfo[] = []
-  const moduleFolders = await listFolderContents(
-    drive,
-    folderId,
-    `and mimeType = '${FOLDER_MIME_TYPE}'`
-  )
-
-  for (let moduleIndex = 0; moduleIndex < moduleFolders.length; moduleIndex++) {
-    const moduleFolder = moduleFolders[moduleIndex]
-    if (moduleFolder.mimeType !== FOLDER_MIME_TYPE) continue
-    const moduleName = ensureName(moduleFolder.name, `Módulo ${moduleIndex + 1}`)
-
-    const subjectCandidates = await listFolderContents(drive, moduleFolder.id!, '')
-    const subjectFolders = subjectCandidates.filter(candidate => candidate.mimeType === FOLDER_MIME_TYPE)
-
-    for (let subjectIndex = 0; subjectIndex < subjectFolders.length; subjectIndex++) {
-      const subjectFolder = subjectFolders[subjectIndex]
-      const subjectName = ensureName(subjectFolder.name, `${moduleName} - Disciplina ${subjectIndex + 1}`)
-
-      const assets = await listFolderContents(drive, subjectFolder.id!, '')
-      for (const asset of assets) {
-        if (asset.mimeType === FOLDER_MIME_TYPE) continue
-        if (!isMediaFile(asset)) continue
-        mediaFiles.push({
-          moduleName,
-          subjectName,
-          itemName: ensureName(asset.name, 'Arquivo sem nome'),
-          mimeType: asset.mimeType ?? 'desconhecido',
-          sizeBytes: getDriveFileSizeBytes(asset) || null
-        })
-      }
-    }
-  }
-
-  return mediaFiles
 }
 
 async function parseGoogleDriveFolder(
@@ -981,7 +1040,9 @@ async function parseGoogleDriveFolder(
         const remainingSubjects = Math.max(subjects.length - subjectResumeStart, 0)
 
         if (strayFiles.length > 0) {
-          console.warn(`  Arquivos soltos ignorados em '${courseModule.name}':`, strayFiles.map(file => file.name))
+          const warningMessage = `Arquivos soltos ignorados em '${courseModule.name}': ${strayFiles.map(file => ensureName(file.name, 'Arquivo sem nome')).join(', ')}`
+          options.warnings?.push(warningMessage)
+          console.warn(`  ${warningMessage}`)
         }
 
         console.log(`  Módulo '${moduleName}': ${subjects.length} disciplinas encontradas`)
@@ -1037,23 +1098,43 @@ async function parseGoogleDriveFolder(
             const lessons = subjectAssets.filter(asset => asset.mimeType !== FOLDER_MIME_TYPE)
             const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
 
-            const mediaAssets = lessons.filter(isMediaFile)
-            if (options.collectMedia && mediaAssets.length > 0 && options.mediaFiles) {
-              for (const mediaAsset of mediaAssets) {
-                options.mediaFiles.push({
-                  moduleName,
-                  subjectName,
-                  itemName: ensureName(mediaAsset.name, 'Arquivo sem nome'),
-                  mimeType: mediaAsset.mimeType ?? 'desconhecido',
-                  sizeBytes: getDriveFileSizeBytes(mediaAsset) || null
-                })
-              }
+            const collectedMediaIds = new Set<string>()
+            const registerMediaAsset = (asset: drive_v3.Schema$File) => {
+              if (!options.collectMedia || !options.mediaFiles) return
+              if (!asset?.id) return
+              if (collectedMediaIds.has(asset.id)) return
+              if (!isMediaFile(asset)) return
+              collectedMediaIds.add(asset.id)
+              options.mediaFiles.push({
+                moduleName,
+                subjectName,
+                itemName: ensureName(asset.name, 'Arquivo sem nome'),
+                mimeType: asset.mimeType ?? 'desconhecido',
+                sizeBytes: getDriveFileSizeBytes(asset) || null
+              })
             }
 
-            const filteredLessonAssets = includeMedia
+            for (const mediaAsset of lessons) {
+              registerMediaAsset(mediaAsset)
+            }
+
+            const forcedTestIds = new Set<string>()
+            const seenLessonIds = new Set<string>()
+            const lessonAssets: drive_v3.Schema$File[] = []
+
+            const addLessonAsset = (asset: drive_v3.Schema$File) => {
+              if (!asset?.id) return
+              if (!includeMedia && isMediaFile(asset)) return
+              if (seenLessonIds.has(asset.id)) return
+              seenLessonIds.add(asset.id)
+              lessonAssets.push(asset)
+            }
+
+            const baseLessonAssets = includeMedia
               ? lessons
               : lessons.filter(asset => !isMediaFile(asset))
-            let lessonAssets = filteredLessonAssets
+
+            baseLessonAssets.forEach(addLessonAsset)
 
             const isResumeSubject = Boolean(
               resumeState &&
@@ -1066,7 +1147,7 @@ async function parseGoogleDriveFolder(
             let initialTestOrder = 0
 
             if (isResumeSubject && resumeItemIndex > 0) {
-              const processedItems = filteredLessonAssets.slice(0, resumeItemIndex)
+              const processedItems = lessonAssets.slice(0, resumeItemIndex)
               for (const processedItem of processedItems) {
                 const processedName = processedItem.name || 'Arquivo sem nome'
                 const baseProcessedName = (processedItem.name || '').replace(SUPPORTED_FILE_EXTENSION_REGEX, '')
@@ -1077,7 +1158,61 @@ async function parseGoogleDriveFolder(
                   initialLessonOrder += 1
                 }
               }
-              lessonAssets = filteredLessonAssets.slice(resumeItemIndex)
+            }
+
+            for (const nestedFolder of nestedFolders) {
+              const folderName = ensureName(nestedFolder.name, 'Subpasta')
+
+              if (isTestFolderName(folderName)) {
+                await logJob(job, 'info', 'Subpasta de testes detectada', {
+                  moduleName,
+                  subjectName,
+                  folderName,
+                })
+                const nestedItems = await listFolderContents(drive, nestedFolder.id!, '')
+                for (const nestedItem of nestedItems) {
+                  if (nestedItem.mimeType === FOLDER_MIME_TYPE) {
+                    const warningMessage = `Subpasta adicional encontrada dentro da pasta de testes "${folderName}" em ${subjectName}`
+                    options.warnings?.push(warningMessage)
+                    console.warn(`    ${warningMessage}`)
+                    continue
+                  }
+                  registerMediaAsset(nestedItem)
+                  if (nestedItem.id) {
+                    forcedTestIds.add(nestedItem.id)
+                  }
+                  addLessonAsset(nestedItem)
+                }
+                continue
+              }
+
+              const treatAsLessons = matchesKeyword(folderName, LESSON_FOLDER_KEYWORDS)
+              if (treatAsLessons) {
+                await logJob(job, 'info', 'Subpasta de aulas detectada', {
+                  moduleName,
+                  subjectName,
+                  folderName,
+                })
+              } else {
+                const warningMessage = `Subpasta '${folderName}' encontrada em '${subjectName}' - conteúdo será tratado como aulas`
+                options.warnings?.push(warningMessage)
+                console.warn(`    ${warningMessage}`)
+              }
+
+              const nestedItems = await listFolderContents(drive, nestedFolder.id!, '')
+              const nestedFiles = nestedItems.filter(item => item.mimeType !== FOLDER_MIME_TYPE)
+              const deeperFolders = nestedItems.filter(item => item.mimeType === FOLDER_MIME_TYPE)
+
+              for (const nestedFile of nestedFiles) {
+                registerMediaAsset(nestedFile)
+                addLessonAsset(nestedFile)
+              }
+
+              if (deeperFolders.length > 0) {
+                const warningMessage = `Pastas adicionais encontradas dentro de '${folderName}' (${deeperFolders.length})`
+                options.warnings?.push(warningMessage)
+                console.warn(`    ${warningMessage}`)
+              }
             }
 
             totalLessons += lessonAssets.length
@@ -1105,33 +1240,27 @@ async function parseGoogleDriveFolder(
               errors: []
             })
 
-            if (nestedFolders.length > 0) {
-            console.warn(
-              `    Pastas aninhadas ignoradas em '${subjectName}':`,
-              nestedFolders.map(folder => ensureName(folder.name, 'Pasta sem título'))
-            )
-          }
+            const ignoredMediaCount = !includeMedia ? collectedMediaIds.size : 0
 
-        const skippedMediaCount = lessons.length - filteredLessonAssets.length
-        if (!includeMedia && skippedMediaCount > 0) {
-          console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos importáveis (${skippedMediaCount} mídias ignoradas)`)        
-          if (job) {
-            await logJob(job, 'info', 'Arquivos de mídia ignorados nesta disciplina', {
+            if (ignoredMediaCount > 0) {
+              console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos importáveis (${ignoredMediaCount} mídias ignoradas)`)        
+              if (job) {
+                await logJob(job, 'info', 'Arquivos de mídia ignorados nesta disciplina', {
+                  moduleName,
+                  subjectName,
+                  ignoredMediaCount,
+                })
+              }
+            } else {
+              console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos detectados`)
+            }
+
+            await logJob(job, 'info', 'Itens da disciplina listados', {
               moduleName,
               subjectName,
-              ignoredMediaCount: skippedMediaCount
+              lessonsFound: lessonAssets.length + ignoredMediaCount,
+              nestedFolders: nestedFolders.length,
             })
-          }
-        } else {
-          console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos detectados`)
-        }
-
-        await logJob(job, 'info', 'Itens da disciplina listados', {
-          moduleName,
-          subjectName,
-          lessonsFound: lessons.length,
-          nestedFolders: nestedFolders.length,
-        })
 
             // Processamento em lotes para evitar timeout
             const BATCH_SIZE = 5 // Processar 5 aulas por vez
@@ -1169,7 +1298,9 @@ async function parseGoogleDriveFolder(
                 const fileExtensions = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
                 const baseName = (lessonItem.name || '').replace(fileExtensions, '')
                 const formattedTitle = formatTitle(baseName || itemName)
-                const isTest = isTestFile(formattedTitle)
+                const forcedTest = lessonItem.id ? forcedTestIds.has(lessonItem.id) : false
+                const isFormTest = (lessonItem.mimeType || '').toLowerCase() === 'application/vnd.google-apps.form'
+                const isTest = forcedTest || isFormTest || isTestFile(formattedTitle)
 
                 const fileSizeBytes = getDriveFileSizeBytes(lessonItem)
                 let completedLabel: string
@@ -1436,6 +1567,112 @@ async function parseGoogleDriveFolder(
   } catch (error) {
     console.error('Erro ao processar pasta do Google Drive:', error)
     throw error
+  }
+}
+
+function createMediaCounts(): MediaCounts {
+  return {
+    total: 0,
+    video: 0,
+    audio: 0,
+  }
+}
+
+function accumulateMediaCounts(target: MediaCounts, mimeType: string | null | undefined) {
+  target.total += 1
+  const normalized = (mimeType || '').toLowerCase()
+  if (normalized.startsWith('video/')) {
+    target.video += 1
+  } else if (normalized.startsWith('audio/')) {
+    target.audio += 1
+  }
+}
+
+function cloneMediaCounts(source: MediaCounts | undefined): MediaCounts {
+  if (!source) {
+    return createMediaCounts()
+  }
+  return {
+    total: source.total,
+    video: source.video,
+    audio: source.audio,
+  }
+}
+
+function buildStructureSummary(structure: CourseStructure, mediaFiles: MediaFileInfo[]): CourseStructureSummary {
+  const totalsMedia = createMediaCounts()
+  const mediaByModule = new Map<string, MediaCounts>()
+  const mediaBySubject = new Map<string, MediaCounts>()
+
+  const getModuleCounts = (moduleName: string) => {
+    if (!mediaByModule.has(moduleName)) {
+      mediaByModule.set(moduleName, createMediaCounts())
+    }
+    return mediaByModule.get(moduleName)!
+  }
+
+  const getSubjectCounts = (moduleName: string, subjectName: string) => {
+    const key = `${moduleName}::${subjectName}`
+    if (!mediaBySubject.has(key)) {
+      mediaBySubject.set(key, createMediaCounts())
+    }
+    return mediaBySubject.get(key)!
+  }
+
+  for (const media of mediaFiles) {
+    accumulateMediaCounts(totalsMedia, media.mimeType)
+    accumulateMediaCounts(getModuleCounts(media.moduleName), media.mimeType)
+    accumulateMediaCounts(getSubjectCounts(media.moduleName, media.subjectName), media.mimeType)
+  }
+
+  let totalSubjects = 0
+  let totalLessons = 0
+  let totalTests = 0
+
+  const modulesSummary: ModuleSummary[] = structure.modules.map(module => {
+    let moduleLessonCount = 0
+    let moduleTestCount = 0
+
+    const subjectSummaries: SubjectSummary[] = module.subjects.map(subject => {
+      totalSubjects += 1
+      moduleLessonCount += subject.lessons.length
+      moduleTestCount += subject.tests.length
+      totalLessons += subject.lessons.length
+      totalTests += subject.tests.length
+
+      const subjectMediaCounts = cloneMediaCounts(getSubjectCounts(module.name, subject.name))
+
+      return {
+        name: subject.name,
+        lessonCount: subject.lessons.length,
+        testCount: subject.tests.length,
+        sampleLessons: subject.lessons.slice(0, 3).map((lesson: any) => lesson.name),
+        sampleTests: subject.tests.slice(0, 3).map((test: any) => test.name),
+        mediaCount: subjectMediaCounts,
+      }
+    })
+
+    const moduleMediaCounts = cloneMediaCounts(getModuleCounts(module.name))
+
+    return {
+      name: module.name,
+      subjectCount: module.subjects.length,
+      lessonCount: moduleLessonCount,
+      testCount: moduleTestCount,
+      mediaCount: moduleMediaCounts,
+      subjects: subjectSummaries,
+    }
+  })
+
+  return {
+    totals: {
+      modules: structure.modules.length,
+      subjects: totalSubjects,
+      lessons: totalLessons,
+      tests: totalTests,
+      media: cloneMediaCounts(totalsMedia),
+    },
+    modules: modulesSummary,
   }
 }
 
@@ -2239,11 +2476,36 @@ export async function POST(req: NextRequest) {
     
     if (dryRun) {
       const drive = await authenticateGoogleDrive()
-      const mediaFiles = await findMediaFiles(drive, folderId)
+      const mediaFiles: MediaFileInfo[] = []
+      const warnings: string[] = []
+
+      const parseResult = await parseGoogleDriveFolder(
+        drive,
+        folderId,
+        courseId,
+        undefined,
+        undefined,
+        user.id,
+        undefined,
+        {
+          includeMedia: true,
+          collectMedia: true,
+          mediaFiles,
+          warnings,
+        }
+      )
+
+      const summary = buildStructureSummary(parseResult.structure, mediaFiles)
+
+      if (summary.totals.modules === 0) {
+        warnings.push('Nenhum módulo foi detectado na pasta fornecida. Verifique a estrutura da pasta.')
+      }
+
       return NextResponse.json({
-        hasMedia: mediaFiles.length > 0,
-        totalMediaFiles: mediaFiles.length,
-        mediaFiles
+        success: true,
+        summary,
+        mediaFiles,
+        warnings,
       }, {
         status: 200,
         headers: {
