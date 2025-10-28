@@ -1,41 +1,76 @@
 import { inngest } from '../client'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-export const importFromDrive = inngest.createFunction(
-  {
-    id: 'import-from-google-drive',
-    name: 'Import Course Content from Google Drive',
-    // Retry automático em caso de falha
-    retries: 3,
-  },
-  { event: 'drive/import.requested' },
-  async ({ event, step }) => {
-    const { driveUrl, courseId, importId, userId, folderId, jobId, includeMedia = true } = event.data
+type ImportEventPayload = {
+  driveUrl: string
+  courseId: string
+  importId: string
+  userId: string
+  folderId: string
+  jobId?: string
+  includeMedia?: boolean
+}
 
-    // Importar a função de processamento
-    // NOTA: A função processImportInBackground precisa ser exportada do route handler
-    const { processImportInBackground } = await import('@/app/api/import-from-drive/route')
+async function handleImportEvent({ event, step }: { event: { data: ImportEventPayload }; step: any }) {
+  const { driveUrl, courseId, importId, userId, folderId, jobId, includeMedia = true } = event.data
 
-    const supabase = createAdminClient()
+  const { processImportInBackground } = await import('@/app/api/import-from-drive/route')
+  const supabase = createAdminClient()
 
-    // Executar o processamento com step para logging e retry granular
-    await step.run('process-google-drive-import', async () => {
-      await processImportInBackground(
-        driveUrl,
-        courseId,
-        importId,
-        userId,
-        folderId,
-        jobId,
-        includeMedia,
-        supabase
-      )
+  const result = await step.run('process-google-drive-import', async () => {
+    return await processImportInBackground(
+      driveUrl,
+      courseId,
+      importId,
+      userId,
+      folderId,
+      jobId,
+      includeMedia,
+      supabase
+    )
+  })
+
+  if (result.status === 'partial') {
+    await step.sendEvent('drive/import.continue', {
+      driveUrl,
+      courseId,
+      importId,
+      userId,
+      folderId,
+      jobId,
+      includeMedia,
     })
 
     return {
       importId,
-      status: 'completed',
-      message: `Importação ${importId} concluída com sucesso`
+      status: 'partial',
+      message: 'Chunk de importação concluído; próxima execução agendada.'
     }
   }
+
+  return {
+    importId,
+    status: 'completed',
+    message: `Importação ${importId} concluída com sucesso`
+  }
+}
+
+export const importFromDrive = inngest.createFunction(
+  {
+    id: 'import-from-google-drive',
+    name: 'Import Course Content from Google Drive',
+    retries: 3,
+  },
+  { event: 'drive/import.requested' },
+  handleImportEvent
+)
+
+export const continueImportFromDrive = inngest.createFunction(
+  {
+    id: 'continue-import-from-google-drive',
+    name: 'Continue Google Drive Import',
+    retries: 3,
+  },
+  { event: 'drive/import.continue' },
+  handleImportEvent
 )

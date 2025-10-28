@@ -9,6 +9,8 @@ import { parseAnswerKeyFromText, type ParsedAnswerKeyEntry } from '../tests/util
 import fs from 'fs'
 import path from 'path'
 
+export const maxDuration = 300
+
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 type DriveClient = drive_v3.Drive
 
@@ -26,6 +28,7 @@ const EXPORT_REQUEST_COST = Number(process.env.GOOGLE_DRIVE_EXPORT_COST ?? 10)
 const RATE_LIMIT_COOLDOWN_MS = Number(process.env.GOOGLE_DRIVE_RATE_LIMIT_COOLDOWN_MS ?? 30_000)
 const MAX_RATE_LIMIT_BACKOFF_MS = Number(process.env.GOOGLE_DRIVE_MAX_RATE_LIMIT_BACKOFF_MS ?? 30_000)
 const MAX_DOC_EXPORT_BYTES = Number(process.env.GOOGLE_DRIVE_MAX_EXPORT_BYTES ?? 25 * 1024 * 1024)
+const SUPPORTED_FILE_EXTENSION_REGEX = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a|wav|avi|mov|zip|rar|png|jpg|jpeg|gif|svg|html?|css|js|json|xml|csv|odt|ods|odp)$/i
 
 let rateLimitChain: Promise<void> = Promise.resolve()
 
@@ -719,9 +722,11 @@ Path tentado: ${absolutePath}`
 
 interface CourseStructure {
   modules: {
+    originalIndex: number
     name: string
     order: number
     subjects: {
+      originalIndex: number
       name: string
       code?: string
       existingId?: string
@@ -750,6 +755,19 @@ interface CourseStructure {
   }[]
 }
 
+interface ParseResult {
+  structure: CourseStructure
+  totalModules: number
+}
+
+interface ImportRuntimeOptions {
+  startTime: number
+  maxRuntimeMs: number
+  resumeState: ImportResumeState | null
+  jobMetadata: Record<string, unknown>
+  progressSnapshot: ProgressSnapshot
+}
+
 function extractDriveFolderId(url: string): string | null {
   const patterns = [
     /\/folders\/([a-zA-Z0-9-_]+)/,
@@ -774,6 +792,47 @@ interface ParseOptions {
   includeMedia?: boolean
   collectMedia?: boolean
   mediaFiles?: MediaFileInfo[]
+  resumeState?: ImportResumeState | null
+  progressSnapshot?: ProgressSnapshot
+}
+
+interface ImportResumeState {
+  moduleIndex: number
+  subjectIndex: number
+  itemIndex: number
+}
+
+interface ProgressSnapshot {
+  processedModules: number
+  processedSubjects: number
+  processedLessons: number
+  totalModules: number
+  totalSubjects: number
+  totalLessons: number
+}
+
+interface ImportChunkResult {
+  status: 'completed' | 'partial'
+  resumeState: ImportResumeState | null
+  results: ReturnType<typeof createEmptyResults>
+}
+
+function createProgressSnapshot(progress?: {
+  processed_modules: number | null
+  processed_subjects: number | null
+  processed_lessons: number | null
+  total_modules: number | null
+  total_subjects: number | null
+  total_lessons: number | null
+} | null): ProgressSnapshot {
+  return {
+    processedModules: progress?.processed_modules ?? 0,
+    processedSubjects: progress?.processed_subjects ?? 0,
+    processedLessons: progress?.processed_lessons ?? 0,
+    totalModules: progress?.total_modules ?? 0,
+    totalSubjects: progress?.total_subjects ?? 0,
+    totalLessons: progress?.total_lessons ?? 0,
+  }
 }
 
 async function findMediaFiles(
@@ -826,16 +885,19 @@ async function parseGoogleDriveFolder(
   userId?: string,
   job?: ImportJobContext,
   options: ParseOptions = {}
-): Promise<CourseStructure> {
+): Promise<ParseResult> {
   const structure: CourseStructure = { modules: [] }
   const includeMedia = options.includeMedia !== false
-  
-  let totalModules = 0
-  let totalSubjects = 0  
-  let totalLessons = 0
-  let processedModules = 0
-  let processedSubjects = 0
-  let processedLessons = 0
+  const resumeState = options.resumeState ?? null
+  const resumeModuleIndex = resumeState?.moduleIndex ?? 0
+  const progressSnapshot = options.progressSnapshot ?? createProgressSnapshot(null)
+
+  let totalModules = progressSnapshot.totalModules
+  let totalSubjects = progressSnapshot.totalSubjects
+  let totalLessons = progressSnapshot.totalLessons
+  let processedModules = progressSnapshot.processedModules
+  let processedSubjects = progressSnapshot.processedSubjects
+  let processedLessons = progressSnapshot.processedLessons
   
   // Atualizar progresso se importId fornecido
   const updateProgress = async (progress: any) => {
@@ -862,7 +924,7 @@ async function parseGoogleDriveFolder(
     )
 
     console.log(`Processando ${items.length} módulos na pasta principal`)
-    totalModules = items.length
+    totalModules = Math.max(totalModules, items.length)
     
     // Atualizar progresso inicial
     await updateProgress({
@@ -886,9 +948,14 @@ async function parseGoogleDriveFolder(
     for (let moduleIndex = 0; moduleIndex < items.length; moduleIndex++) {
       const item = items[moduleIndex]
       
+      if (resumeState && moduleIndex < resumeModuleIndex) {
+        continue
+      }
+
       if (item.mimeType === 'application/vnd.google-apps.folder') {
         const moduleName = ensureName(item.name, `Módulo ${moduleIndex + 1}`)
         const courseModule = {
+          originalIndex: moduleIndex,
           name: moduleName,
           order: moduleIndex + 1,
           subjects: [] as any[]
@@ -909,13 +976,15 @@ async function parseGoogleDriveFolder(
         const subjectCandidates = await listFolderContents(drive, item.id!, '')
         const subjects = subjectCandidates.filter(candidate => candidate.mimeType === FOLDER_MIME_TYPE)
         const strayFiles = subjectCandidates.filter(candidate => candidate.mimeType !== FOLDER_MIME_TYPE)
+        const subjectResumeStart = resumeState && moduleIndex === resumeModuleIndex ? resumeState.subjectIndex : 0
+        const remainingSubjects = Math.max(subjects.length - subjectResumeStart, 0)
 
         if (strayFiles.length > 0) {
           console.warn(`  Arquivos soltos ignorados em '${courseModule.name}':`, strayFiles.map(file => file.name))
         }
 
         console.log(`  Módulo '${moduleName}': ${subjects.length} disciplinas encontradas`)
-        totalSubjects += subjects.length
+        totalSubjects += remainingSubjects
 
         await logJob(job, 'info', 'Disciplinas listadas', {
           moduleName,
@@ -937,6 +1006,9 @@ async function parseGoogleDriveFolder(
         })
 
         for (let subjectIndex = 0; subjectIndex < subjects.length; subjectIndex++) {
+          if (subjectIndex < subjectResumeStart) {
+            continue
+          }
           const subjectItem = subjects[subjectIndex]
           
           if (subjectItem.mimeType === FOLDER_MIME_TYPE) {
@@ -960,33 +1032,60 @@ async function parseGoogleDriveFolder(
               folderId: subjectItem.id,
             })
 
-        const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
-        const lessons = subjectAssets.filter(asset => asset.mimeType !== FOLDER_MIME_TYPE)
-        const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
+            const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
+            const lessons = subjectAssets.filter(asset => asset.mimeType !== FOLDER_MIME_TYPE)
+            const nestedFolders = subjectAssets.filter(asset => asset.mimeType === FOLDER_MIME_TYPE)
 
-        const mediaAssets = lessons.filter(isMediaFile)
-        if (options.collectMedia && mediaAssets.length > 0 && options.mediaFiles) {
-          for (const mediaAsset of mediaAssets) {
-            options.mediaFiles.push({
-              moduleName,
-              subjectName,
-              itemName: ensureName(mediaAsset.name, 'Arquivo sem nome'),
-              mimeType: mediaAsset.mimeType ?? 'desconhecido',
-              sizeBytes: getDriveFileSizeBytes(mediaAsset) || null
-            })
-          }
-        }
+            const mediaAssets = lessons.filter(isMediaFile)
+            if (options.collectMedia && mediaAssets.length > 0 && options.mediaFiles) {
+              for (const mediaAsset of mediaAssets) {
+                options.mediaFiles.push({
+                  moduleName,
+                  subjectName,
+                  itemName: ensureName(mediaAsset.name, 'Arquivo sem nome'),
+                  mimeType: mediaAsset.mimeType ?? 'desconhecido',
+                  sizeBytes: getDriveFileSizeBytes(mediaAsset) || null
+                })
+              }
+            }
 
-        const lessonAssets = includeMedia
-          ? lessons
-          : lessons.filter(asset => !isMediaFile(asset))
+            const filteredLessonAssets = includeMedia
+              ? lessons
+              : lessons.filter(asset => !isMediaFile(asset))
+            let lessonAssets = filteredLessonAssets
 
-        totalLessons += lessonAssets.length
+            const isResumeSubject = Boolean(
+              resumeState &&
+              moduleIndex === resumeModuleIndex &&
+              subjectIndex === subjectResumeStart
+            )
+            const resumeItemIndex = isResumeSubject ? (resumeState?.itemIndex ?? 0) : 0
 
-        const subject = {
-          name: subjectName,
-          code: subjectCode,
-          existingId: existingSubjectId,
+            let initialLessonOrder = 0
+            let initialTestOrder = 0
+
+            if (isResumeSubject && resumeItemIndex > 0) {
+              const processedItems = filteredLessonAssets.slice(0, resumeItemIndex)
+              for (const processedItem of processedItems) {
+                const processedName = processedItem.name || 'Arquivo sem nome'
+                const baseProcessedName = (processedItem.name || '').replace(SUPPORTED_FILE_EXTENSION_REGEX, '')
+                const formattedProcessedName = formatTitle(baseProcessedName || processedName)
+                if (isTestFile(formattedProcessedName)) {
+                  initialTestOrder += 1
+                } else {
+                  initialLessonOrder += 1
+                }
+              }
+              lessonAssets = filteredLessonAssets.slice(resumeItemIndex)
+            }
+
+            totalLessons += lessonAssets.length
+
+            const subject = {
+              originalIndex: subjectIndex,
+              name: subjectName,
+              code: subjectCode,
+              existingId: existingSubjectId,
               order: subjectIndex + 1,
               lessons: [] as any[],
               tests: [] as any[]
@@ -1012,7 +1111,7 @@ async function parseGoogleDriveFolder(
             )
           }
 
-        const skippedMediaCount = lessons.length - lessonAssets.length
+        const skippedMediaCount = lessons.length - filteredLessonAssets.length
         if (!includeMedia && skippedMediaCount > 0) {
           console.log(`    Disciplina '${subjectName}': ${lessonAssets.length} arquivos importáveis (${skippedMediaCount} mídias ignoradas)`)        
           if (job) {
@@ -1037,8 +1136,8 @@ async function parseGoogleDriveFolder(
             const BATCH_SIZE = 5 // Processar 5 aulas por vez
             const DELAY_BETWEEN_BATCHES = 25 // Delay curto entre lotes para reduzir uso da API
             
-            let lessonOrder = 0
-            let testOrder = 0
+            let lessonOrder = initialLessonOrder
+            let testOrder = initialTestOrder
             const validLessons = lessonAssets
             
             // Processar aulas em lotes
@@ -1332,23 +1431,15 @@ async function parseGoogleDriveFolder(
       }
     }
 
-    return structure
+    return { structure, totalModules }
   } catch (error) {
     console.error('Erro ao processar pasta do Google Drive:', error)
     throw error
   }
 }
 
-async function importToDatabase(
-  structure: CourseStructure,
-  courseId: string,
-  supabase: any,
-  importId?: string,
-  userId?: string,
-  user?: any,
-  job?: ImportJobContext
-) {
-  const results = {
+function createEmptyResults() {
+  return {
     modules: 0,
     subjects: 0,
     lessons: 0,
@@ -1359,18 +1450,62 @@ async function importToDatabase(
       lessons: 0,
       tests: 0
     },
-    errors: [] as string[]
+    errors: [] as string[],
+  }
+}
+
+async function importToDatabase(
+  structure: CourseStructure,
+  courseId: string,
+  supabase: any,
+  importId?: string,
+  userId?: string,
+  user?: any,
+  job?: ImportJobContext,
+  options?: ImportRuntimeOptions
+): Promise<ImportChunkResult> {
+  const results = createEmptyResults()
+  const startTime = options?.startTime ?? Date.now()
+  const maxRuntimeMs = options?.maxRuntimeMs ?? 45_000
+  const resumeState = options?.resumeState ?? null
+  const jobMetadata = options?.jobMetadata ?? {}
+  const progressSnapshot = options?.progressSnapshot ?? createProgressSnapshot(null)
+
+  let processedModules = progressSnapshot.processedModules
+  let processedSubjects = progressSnapshot.processedSubjects
+  let processedLessons = progressSnapshot.processedLessons
+
+  const shouldYield = () => Date.now() - startTime >= maxRuntimeMs
+
+  const resumeModuleIndex = resumeState?.moduleIndex ?? 0
+  const resumeSubjectIndex = resumeState?.subjectIndex ?? 0
+  const resumeItemIndex = resumeState?.itemIndex ?? 0
+
+  let currentResumeState: ImportResumeState = resumeState ?? {
+    moduleIndex: resumeModuleIndex,
+    subjectIndex: resumeSubjectIndex,
+    itemIndex: resumeItemIndex,
+  }
+
+  const persistResume = async (state: ImportResumeState) => {
+    currentResumeState = state
+    await updateResumeState(job, jobMetadata, state)
   }
 
   // Função para atualizar progresso durante importação
-  const updateDatabaseProgress = async (step: string, item: string) => {
+  const updateDatabaseProgress = async (
+    step: string,
+    item: string,
+    extra?: Record<string, string | number | boolean | null>
+  ) => {
     if (importId && supabase && userId) {
       await updateImportProgress(supabase, importId, userId, courseId, {
         current_step: step,
-        current_item: item
+        current_item: item,
+        ...extra,
       }, job)
     }
-    await logJob(job, 'info', step, { item })
+    await logJob(job, 'info', step, { item, ...extra })
   }
   
   try {
@@ -1391,7 +1526,9 @@ async function importToDatabase(
     // Importar módulos
     for (let moduleIdx = 0; moduleIdx < structure.modules.length; moduleIdx++) {
       const moduleData = structure.modules[moduleIdx]
-      
+      const moduleOriginalIndex = moduleData.originalIndex ?? (resumeModuleIndex + moduleIdx)
+      await persistResume({ moduleIndex: moduleOriginalIndex, subjectIndex: 0, itemIndex: 0 })
+
       await updateDatabaseProgress(
         `Verificando módulo ${moduleIdx + 1}/${structure.modules.length}`,
         `Módulo: ${moduleData.name}`
@@ -1423,7 +1560,7 @@ async function importToDatabase(
           .insert({
             title: moduleData.name,
             course_id: courseId,
-            order_index: startModuleIndex + moduleIdx,
+            order_index: startModuleIndex + results.modules,
             is_required: true
           })
           .select()
@@ -1441,7 +1578,17 @@ async function importToDatabase(
       // Importar disciplinas do módulo
       for (let subjectIdx = 0; subjectIdx < moduleData.subjects.length; subjectIdx++) {
         const subjectData = moduleData.subjects[subjectIdx]
-        
+        const subjectOriginalIndex = subjectData.originalIndex ?? subjectIdx
+        const isResumingSubject =
+          moduleOriginalIndex === resumeModuleIndex && subjectOriginalIndex === resumeSubjectIndex
+        let subjectItemIndex = isResumingSubject ? resumeItemIndex : 0
+
+        await persistResume({
+          moduleIndex: moduleOriginalIndex,
+          subjectIndex: subjectOriginalIndex,
+          itemIndex: subjectItemIndex,
+        })
+
         await updateDatabaseProgress(
           `Salvando disciplina ${subjectIdx + 1}/${moduleData.subjects.length} do módulo ${moduleIdx + 1}`,
           `Disciplina: ${subjectData.name}`
@@ -1562,6 +1709,16 @@ async function importToDatabase(
           if (existingLesson) {
             console.log(`Aula já existe: ${fullTitle}, pulando...`)
             results.skipped.lessons++
+            processedLessons++
+            subjectItemIndex += 1
+            await persistResume({
+              moduleIndex: moduleOriginalIndex,
+              subjectIndex: subjectOriginalIndex,
+              itemIndex: subjectItemIndex,
+            })
+            if (shouldYield()) {
+              return { status: 'partial', resumeState: currentResumeState, results }
+            }
             continue
           }
           
@@ -1613,6 +1770,16 @@ async function importToDatabase(
           }
           
           results.lessons++
+          processedLessons++
+          subjectItemIndex += 1
+          await persistResume({
+            moduleIndex: moduleOriginalIndex,
+            subjectIndex: subjectOriginalIndex,
+            itemIndex: subjectItemIndex,
+          })
+          if (shouldYield()) {
+            return { status: 'partial', resumeState: currentResumeState, results }
+          }
         }
 
         // Processar testes detectados na disciplina
@@ -1631,11 +1798,21 @@ async function importToDatabase(
             `Teste: ${testTitle}`
           )
 
-          if (!testData.contentUrl) {
-            results.skipped.tests++
-            results.errors.push(`Teste ${testTitle} ignorado: link do Drive ausente`)
-            continue
+        if (!testData.contentUrl) {
+          results.skipped.tests++
+          results.errors.push(`Teste ${testTitle} ignorado: link do Drive ausente`)
+          processedLessons++
+          subjectItemIndex += 1
+          await persistResume({
+            moduleIndex: moduleOriginalIndex,
+            subjectIndex: subjectOriginalIndex,
+            itemIndex: subjectItemIndex,
+          })
+          if (shouldYield()) {
+            return { status: 'partial', resumeState: currentResumeState, results }
           }
+          continue
+        }
 
           const { data: existingTest } = await supabase
             .from('tests')
@@ -1644,9 +1821,9 @@ async function importToDatabase(
             .eq('google_drive_url', testData.contentUrl)
             .maybeSingle()
 
-          if (existingTest) {
-            console.log(`Teste já existente para URL ${testData.contentUrl}, verificando atualizações de gabarito...`)
-            const hasAnswerKey = Array.isArray(testData.answerKey) && testData.answerKey.length > 0
+        if (existingTest) {
+          console.log(`Teste já existente para URL ${testData.contentUrl}, verificando atualizações de gabarito...`)
+          const hasAnswerKey = Array.isArray(testData.answerKey) && testData.answerKey.length > 0
 
             if (hasAnswerKey && testData.answerKey) {
               const answerKeyRows = testData.answerKey
@@ -1689,9 +1866,19 @@ async function importToDatabase(
               }
             }
 
-            results.skipped.tests++
-            continue
+          results.skipped.tests++
+          processedLessons++
+          subjectItemIndex += 1
+          await persistResume({
+            moduleIndex: moduleOriginalIndex,
+            subjectIndex: subjectOriginalIndex,
+            itemIndex: subjectItemIndex,
+          })
+          if (shouldYield()) {
+            return { status: 'partial', resumeState: currentResumeState, results }
           }
+          continue
+        }
 
           const hasAnswerKey = Array.isArray(testData.answerKey) && testData.answerKey.length > 0
 
@@ -1740,12 +1927,42 @@ async function importToDatabase(
             results.errors.push(`Teste ${testTitle} importado sem gabarito detectado automaticamente. Configure o gabarito manualmente e ative o teste quando estiver pronto.`)
           }
 
-          results.tests++
+        results.tests++
+        processedLessons++
+        subjectItemIndex += 1
+        await persistResume({
+          moduleIndex: moduleOriginalIndex,
+          subjectIndex: subjectOriginalIndex,
+          itemIndex: subjectItemIndex,
+        })
+        if (shouldYield()) {
+          return { status: 'partial', resumeState: currentResumeState, results }
         }
+      }
+
+      processedSubjects++
+      await persistResume({
+        moduleIndex: moduleOriginalIndex,
+        subjectIndex: subjectOriginalIndex + 1,
+        itemIndex: 0,
+      })
+      if (shouldYield()) {
+        return { status: 'partial', resumeState: currentResumeState, results }
+      }
       } // Fim do loop de subjects
+
+      processedModules++
+      await persistResume({
+        moduleIndex: moduleOriginalIndex + 1,
+        subjectIndex: 0,
+        itemIndex: 0,
+      })
+      if (shouldYield()) {
+        return { status: 'partial', resumeState: currentResumeState, results }
+      }
     } // Fim do loop de modules
     
-    return results
+    return { status: 'completed', resumeState: null, results }
   } catch (error) {
     console.error('Erro ao importar para o banco de dados:', error)
     throw error
@@ -1765,46 +1982,64 @@ export async function processImportInBackground(
 ) {
   const supabase = supabaseClient ?? createAdminClient()
   const jobContext = jobId ? { jobId, supabase } : undefined
-  
+  const startTime = Date.now()
+  const maxRuntimeMs = Number(process.env.GOOGLE_DRIVE_IMPORT_CHUNK_MAX_MS ?? 45_000)
+
   try {
-    console.log(`[IMPORT-BACKGROUND] Iniciando processamento em background para ${importId}`)
-    await updateJob(jobContext, {
-      status: 'indexing',
-      started_at: new Date().toISOString(),
-      error: null,
-    })
-    await logJob(jobContext, 'info', 'Job iniciado', { importId, courseId })
-    await logJob(jobContext, 'info', includeMedia ? 'Arquivos de mídia serão importados' : 'Arquivos de mídia serão ignorados')
-    
-    // Autenticar com Google Drive
+    let jobMetadata = await loadJobMetadata(jobContext)
+    const resumeState = (jobMetadata?.resume_state as ImportResumeState | null) ?? null
+
+    const { data: progressRow } = await supabase
+      .from('import_progress')
+      .select('processed_modules, processed_subjects, processed_lessons, total_modules, total_subjects, total_lessons')
+      .eq('id', importId)
+      .maybeSingle()
+
+    const progressSnapshot = createProgressSnapshot(progressRow ?? null)
+    const isFirstRun = !resumeState && progressSnapshot.processedModules === 0 && progressSnapshot.processedSubjects === 0 && progressSnapshot.processedLessons === 0
+
+    console.log(`[IMPORT-BACKGROUND] Iniciando chunk de importação ${importId}`)
+
+    if (isFirstRun) {
+      await updateJob(jobContext, {
+        status: 'indexing',
+        started_at: new Date().toISOString(),
+        error: null,
+      })
+      await logJob(jobContext, 'info', 'Job iniciado', { importId, courseId })
+      await logJob(jobContext, 'info', includeMedia ? 'Arquivos de mídia serão importados' : 'Arquivos de mídia serão ignorados')
+      await updateJob(jobContext, { current_step: 'Iniciando processamento' })
+      await updateImportProgress(supabase, importId, userId, courseId, {
+        phase: 'processing',
+        current_step: 'Iniciando processamento',
+        total_modules: 0,
+        processed_modules: 0,
+        total_subjects: 0,
+        processed_subjects: 0,
+        total_lessons: 0,
+        processed_lessons: 0,
+        current_item: includeMedia
+          ? 'Preparando para processar arquivos'
+          : 'Preparando importação sem arquivos de mídia',
+        percentage: 0,
+        errors: []
+      }, jobContext)
+    } else {
+      await updateJob(jobContext, {
+        status: 'processing',
+        current_step: resumeState
+          ? 'Retomando importação em andamento'
+          : 'Processando conteúdo adicional'
+      })
+      await logJob(jobContext, 'info', 'Retomando importação', { importId, resumeState })
+    }
+
     console.log(`[IMPORT-BACKGROUND] Autenticando Google Drive...`)
     const drive = await authenticateGoogleDrive()
-    
-    await updateJob(jobContext, {
-      status: 'indexing',
-    })
     await logJob(jobContext, 'info', 'Autenticação concluída')
-    
-    // Atualizar progresso inicial
-    await updateJob(jobContext, { current_step: 'Iniciando processamento' })
-    await updateImportProgress(supabase, importId, userId, courseId, {
-      phase: 'processing',
-      current_step: 'Iniciando processamento',
-      total_modules: 0,
-      processed_modules: 0,
-      total_subjects: 0,
-      processed_subjects: 0,
-      total_lessons: 0,
-      processed_lessons: 0,
-      current_item: 'Preparando para processar arquivos',
-      percentage: 0,
-      errors: []
-    }, jobContext)
-    
-    // FASE 2: Processar estrutura da pasta
+
     console.log(`[IMPORT-BACKGROUND] === FASE 2: Processando conteúdo ===`)
-    await updateJob(jobContext, { status: 'processing', current_step: 'Processando conteúdo' })
-    const structure = await parseGoogleDriveFolder(
+    const parseResult = await parseGoogleDriveFolder(
       drive,
       folderId,
       courseId,
@@ -1812,43 +2047,89 @@ export async function processImportInBackground(
       supabase,
       userId,
       jobContext,
-      { includeMedia }
+      {
+        includeMedia,
+        resumeState,
+        progressSnapshot,
+      }
     )
 
-    if (structure.modules.length === 0) {
-      await updateImportProgress(supabase, importId, userId, courseId, {
-        current_step: 'Erro: Nenhum módulo encontrado',
-        current_item: 'Verifique se a pasta contém a estrutura correta',
-        errors: ['Nenhum módulo encontrado na pasta especificada'],
-        completed: true,
-        percentage: 0
-      }, jobContext)
+    if (parseResult.structure.modules.length === 0) {
+      if (!resumeState && parseResult.totalModules === 0) {
+        await updateImportProgress(supabase, importId, userId, courseId, {
+          current_step: 'Erro: Nenhum módulo encontrado',
+          current_item: 'Verifique se a pasta contém a estrutura correta',
+          errors: ['Nenhum módulo encontrado na pasta especificada'],
+          completed: true,
+          percentage: 0
+        }, jobContext)
+        await updateJob(jobContext, {
+          status: 'failed',
+          error: 'Nenhum módulo encontrado',
+          finished_at: new Date().toISOString(),
+        })
+        return { status: 'completed', resumeState: null, results: createEmptyResults() }
+      }
+
+      // Nada mais para processar - finalizar
+      await clearResumeState(jobContext, jobMetadata)
       await updateJob(jobContext, {
-        status: 'failed',
-        error: 'Nenhum módulo encontrado',
+        status: 'completed',
+        current_step: 'Importação concluída',
         finished_at: new Date().toISOString(),
       })
-      return
+      await logJob(jobContext, 'info', 'Importação concluída', { importId, resumeState, note: 'Nada restante para processar' })
+      return { status: 'completed', resumeState: null, results: createEmptyResults() }
     }
 
-    // FASE 3: Importar para o banco de dados
     console.log(`[IMPORT-BACKGROUND] === FASE 3: Salvando no banco ===`)
     await updateJob(jobContext, { status: 'saving', current_step: 'Salvando no banco de dados' })
-    const results = await importToDatabase(structure, courseId, supabase, importId, userId, undefined, jobContext)
 
-    // Atualizar progresso final
+    const importChunk = await importToDatabase(
+      parseResult.structure,
+      courseId,
+      supabase,
+      importId,
+      userId,
+      undefined,
+      jobContext,
+      {
+        startTime,
+        maxRuntimeMs,
+        resumeState,
+        jobMetadata,
+        progressSnapshot,
+      }
+    )
+
+    if (importChunk.status === 'partial') {
+      await updateJob(jobContext, {
+        status: 'processing',
+        current_step: 'Execução parcial agendada para continuar',
+        metadata: jobMetadata as Json,
+      })
+      await logJob(jobContext, 'info', 'Chunk parcial processado', {
+        resumeState: importChunk.resumeState,
+        elapsed_ms: Date.now() - startTime,
+      })
+      return importChunk
+    }
+
+    await clearResumeState(jobContext, jobMetadata)
+
+    const results = importChunk.results
     const totalImported = results.modules + results.subjects + results.lessons + results.tests
     const totalSkipped =
       results.skipped.modules +
       results.skipped.subjects +
       results.skipped.lessons +
       results.skipped.tests
-    
+
     let summaryMessage = `${results.modules} módulos, ${results.subjects} disciplinas, ${results.lessons} aulas e ${results.tests} testes importados`
     if (totalSkipped > 0) {
       summaryMessage += ` (${totalSkipped} itens já existiam e foram pulados)`
     }
-    
+
     const totalLessonLikeItems =
       results.lessons +
       results.tests +
@@ -1875,14 +2156,16 @@ export async function processImportInBackground(
       finished_at: new Date().toISOString(),
       current_step: 'Importação concluída',
       error: null,
+      metadata: jobMetadata as Json,
     })
     await logJob(jobContext, 'info', 'Importação concluída', {
       summaryMessage,
       totalImported,
       totalSkipped,
     })
-    
+
     console.log(`[IMPORT-BACKGROUND] Importação concluída com sucesso: ${importId}`)
+    return { status: 'completed', resumeState: null, results }
 
   } catch (error: any) {
     console.error(`[IMPORT-BACKGROUND] Erro na importação ${importId}:`, error)
@@ -1893,21 +2176,16 @@ export async function processImportInBackground(
       finished_at: new Date().toISOString(),
       current_step: 'Erro na importação',
     })
-    
-    // Atualizar progresso com erro
+
     await updateImportProgress(supabase, importId, userId, courseId, {
       current_step: 'Erro na importação',
-      total_modules: 0,
-      processed_modules: 0,
-      total_subjects: 0,
-      processed_subjects: 0,
-      total_lessons: 0,
-      processed_lessons: 0,
       current_item: error.message || 'Erro desconhecido',
       errors: [error.message || 'Erro ao processar importação'],
       completed: true,
       percentage: 0
     }, jobContext)
+
+    return { status: 'completed', resumeState: null, results: createEmptyResults() }
   }
 }
 
@@ -1980,7 +2258,15 @@ export async function POST(req: NextRequest) {
         course_id: courseId,
         folder_id: folderId,
         status: 'queued',
-        metadata: { importId, includeMedia: includeMediaFlag }
+        metadata: {
+          importId,
+          includeMedia: includeMediaFlag,
+          resume_state: {
+            moduleIndex: 0,
+            subjectIndex: 0,
+            itemIndex: 0,
+          } satisfies ImportResumeState,
+        }
       })
       .select()
       .single()
@@ -2096,6 +2382,62 @@ async function updateJob(
       .eq('id', job.jobId)
   } catch (error) {
     console.error('[IMPORT][JOB] Falha ao atualizar job', job.jobId, updates, error)
+  }
+}
+
+async function loadJobMetadata(job: ImportJobContext | undefined) {
+  if (!job) return {}
+  try {
+    const { data, error } = await job.supabase
+      .from('drive_import_jobs')
+      .select('metadata')
+      .eq('id', job.jobId)
+      .single()
+
+    if (error) {
+      console.error('[IMPORT][JOB] Falha ao carregar metadata do job', job.jobId, error)
+      return {}
+    }
+
+    const metadata = (data?.metadata as Record<string, unknown>) ?? {}
+    return { ...metadata }
+  } catch (error) {
+    console.error('[IMPORT][JOB] Erro inesperado ao carregar metadata do job', job?.jobId, error)
+    return {}
+  }
+}
+
+async function persistJobMetadata(
+  job: ImportJobContext | undefined,
+  metadata: Record<string, unknown>
+) {
+  if (!job) return
+  try {
+    await job.supabase
+      .from('drive_import_jobs')
+      .update({ metadata: metadata as Json })
+      .eq('id', job.jobId)
+  } catch (error) {
+    console.error('[IMPORT][JOB] Falha ao persistir metadata', job.jobId, metadata, error)
+  }
+}
+
+async function updateResumeState(
+  job: ImportJobContext | undefined,
+  metadata: Record<string, unknown>,
+  state: ImportResumeState
+) {
+  metadata.resume_state = state
+  await persistJobMetadata(job, metadata)
+}
+
+async function clearResumeState(
+  job: ImportJobContext | undefined,
+  metadata: Record<string, unknown>
+) {
+  if (metadata.resume_state) {
+    delete metadata.resume_state
+    await persistJobMetadata(job, metadata)
   }
 }
 
