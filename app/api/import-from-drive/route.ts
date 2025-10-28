@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse, after } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { inngest } from '@/lib/inngest/client'
 import { google, type drive_v3 } from 'googleapis'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
@@ -1737,7 +1738,7 @@ async function importToDatabase(
 }
 
 // Função para processamento assíncrono em background
-async function processImportInBackground(
+export async function processImportInBackground(
   driveUrl: string,
   courseId: string,
   importId: string,
@@ -1997,20 +1998,18 @@ export async function POST(req: NextRequest) {
       errors: []
     }, jobContext)
     
-    // Iniciar processamento em background (não aguardar resposta)
-    after(async () => {
-      try {
-        await processImportInBackground(
-          driveUrl,
-          courseId,
-          importId,
-          user.id,
-          folderId,
-          jobRecord?.id,
-          includeMediaFlag
-        )
-      } catch (error) {
-        console.error('[IMPORT] Erro no processamento em background:', error)
+    // Disparar evento Inngest para processamento em background
+    // O Inngest garante execução confiável com timeout de até 4 horas
+    await inngest.send({
+      name: 'drive/import.requested',
+      data: {
+        driveUrl,
+        courseId,
+        importId,
+        userId: user.id,
+        folderId,
+        jobId: jobRecord?.id,
+        includeMedia: includeMediaFlag
       }
     })
     
