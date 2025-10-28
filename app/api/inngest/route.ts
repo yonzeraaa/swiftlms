@@ -8,4 +8,5 @@ export const { GET, POST, PUT } = serve({
   functions: [
     importFromDrive,
   ],
+  signingKey: process.env.INNGEST_SIGNING_KEY,
 })
