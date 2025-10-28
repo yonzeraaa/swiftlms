@@ -611,13 +611,24 @@ interface DriveDryRunResponse {
         })
       })
 
-      const result: DriveDryRunResponse = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result?.error || 'Erro ao analisar a pasta do Google Drive')
+      const responseText = await response.text()
+      let result: DriveDryRunResponse | null = null
+      if (responseText.trim()) {
+        try {
+          result = JSON.parse(responseText)
+        } catch (parseError) {
+          console.error('[CoursesPage] Failed to parse dry-run response:', parseError)
+          console.error('[CoursesPage] Response text:', responseText.substring(0, 500))
+          throw new Error('Erro ao processar resposta do servidor. Verifique as credenciais e tente novamente.')
+        }
       }
 
-      if (!result.summary) {
+      if (!response.ok) {
+        const serverError = result?.error || response.statusText || 'Erro ao analisar a pasta do Google Drive'
+        throw new Error(serverError)
+      }
+
+      if (!result?.summary) {
         throw new Error('Não foi possível detectar a estrutura do curso nesta pasta')
       }
 
