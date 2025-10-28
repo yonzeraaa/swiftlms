@@ -1107,11 +1107,14 @@ async function parseGoogleDriveFolder(
 
     // FASE 1: DISCOVERY - Contar todos os itens antes de processar
     if (!isResume) {
-      console.log(`[IMPORT][DISCOVERY] Iniciando scan completo para contar itens...`)
+      console.log(`╔══════════════════════════════════════════╗`)
+      console.log(`║   FASE DISCOVERY - CONTANDO ITENS       ║`)
+      console.log(`║   Modo: NOVA IMPORTAÇÃO                  ║`)
+      console.log(`╚══════════════════════════════════════════╝`)
       await updateProgress({
         phase: 'scanning',
-        current_step: 'Descobrindo estrutura da pasta',
-        current_item: 'Contando módulos, disciplinas e aulas...',
+        current_step: 'FASE 1: Descobrindo estrutura',
+        current_item: 'Contando módulos, disciplinas e aulas antes de processar...',
         total_modules: 0,
         processed_modules: 0,
         total_subjects: 0,
@@ -1152,19 +1155,22 @@ async function parseGoogleDriveFolder(
       totalSubjects = discoveredSubjects
       totalLessons = discoveredLessons
 
-      console.log(`[IMPORT][DISCOVERY] Descoberta completa: ${totalModules}M/${totalSubjects}D/${totalLessons}A`)
+      console.log(`╔══════════════════════════════════════════╗`)
+      console.log(`║   DISCOVERY COMPLETA!                   ║`)
+      console.log(`║   Total: ${totalModules}M / ${totalSubjects}D / ${totalLessons}A           ║`)
+      console.log(`╚══════════════════════════════════════════╝`)
 
       // Atualizar progresso com totais descobertos
       await updateProgress({
         phase: 'processing',
-        current_step: 'Preparando para processar',
+        current_step: 'FASE 2: Iniciando processamento',
         total_modules: totalModules,
         processed_modules: 0,
         total_subjects: totalSubjects,
         processed_subjects: 0,
         total_lessons: totalLessons,
         processed_lessons: 0,
-        current_item: `Encontrados ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} arquivos`,
+        current_item: `✓ Encontrados ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} arquivos`,
         errors: []
       })
     } else {
