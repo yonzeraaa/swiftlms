@@ -1101,23 +1101,87 @@ async function parseGoogleDriveFolder(
 
     console.log(`[IMPORT][SCAN] Processando ${remainingValidModules} módulos válidos`)
 
-    // Atualizar progresso inicial
-    await updateProgress({
-      phase: 'processing',
-      current_step: 'Iniciando processamento',
-      total_modules: totalModules,
-      processed_modules: processedModules,
-      total_subjects: totalSubjects,
-      processed_subjects: processedSubjects,
-      total_lessons: totalLessons,
-      processed_lessons: processedLessons,
-      current_item: 'Preparando importação...',
-      errors: []
-    })
-
     const existingState = supabase && courseId
       ? await loadExistingCourseState(supabase, courseId)
       : null
+
+    // FASE 1: DISCOVERY - Contar todos os itens antes de processar
+    if (!isResume) {
+      console.log(`[IMPORT][DISCOVERY] Iniciando scan completo para contar itens...`)
+      await updateProgress({
+        phase: 'scanning',
+        current_step: 'Descobrindo estrutura da pasta',
+        current_item: 'Contando módulos, disciplinas e aulas...',
+        total_modules: 0,
+        processed_modules: 0,
+        total_subjects: 0,
+        processed_subjects: 0,
+        total_lessons: 0,
+        processed_lessons: 0,
+        errors: []
+      })
+
+      let discoveredSubjects = 0
+      let discoveredLessons = 0
+
+      for (let moduleIndex = 0; moduleIndex < items.length; moduleIndex++) {
+        const item = items[moduleIndex]
+        const moduleInfo = moduleInfoCache[moduleIndex]
+
+        if (!moduleInfo?.parsed) continue
+
+        // Contar disciplinas do módulo
+        const subjectCandidates = await listFolderContents(drive, item.id!, '')
+        const subjects = subjectCandidates.filter(c => c.mimeType === FOLDER_MIME_TYPE)
+
+        for (const subjectItem of subjects) {
+          const subjectName = ensureName(subjectItem.name, `Disciplina`)
+          const parsedSubject = parseStructuredName(subjectName, SUBJECT_CODE_REGEX)
+
+          if (!parsedSubject) continue
+
+          discoveredSubjects++
+
+          // Contar aulas da disciplina
+          const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
+          const directFiles = subjectAssets.filter(a => a.mimeType !== FOLDER_MIME_TYPE)
+          discoveredLessons += directFiles.length
+        }
+      }
+
+      totalSubjects = discoveredSubjects
+      totalLessons = discoveredLessons
+
+      console.log(`[IMPORT][DISCOVERY] Descoberta completa: ${totalModules}M/${totalSubjects}D/${totalLessons}A`)
+
+      // Atualizar progresso com totais descobertos
+      await updateProgress({
+        phase: 'processing',
+        current_step: 'Preparando para processar',
+        total_modules: totalModules,
+        processed_modules: 0,
+        total_subjects: totalSubjects,
+        processed_subjects: 0,
+        total_lessons: totalLessons,
+        processed_lessons: 0,
+        current_item: `Encontrados ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} arquivos`,
+        errors: []
+      })
+    } else {
+      // Se for resume, atualizar progresso com totais salvos
+      await updateProgress({
+        phase: 'processing',
+        current_step: 'Continuando importação',
+        total_modules: totalModules,
+        processed_modules: processedModules,
+        total_subjects: totalSubjects,
+        processed_subjects: processedSubjects,
+        total_lessons: totalLessons,
+        processed_lessons: processedLessons,
+        current_item: 'Preparando importação...',
+        errors: []
+      })
+    }
 
     // Processar módulos (pastas de primeiro nível)
     for (let moduleIndex = 0; moduleIndex < items.length; moduleIndex++) {
@@ -1205,7 +1269,10 @@ async function parseGoogleDriveFolder(
         }, 0)
 
         console.log(`[IMPORT][SCAN]   Processando ${remainingValidSubjects} disciplinas válidas`)
-        totalSubjects += remainingValidSubjects
+        // totalSubjects já foi contado na fase de discovery (se não for resume)
+        if (isResume) {
+          totalSubjects += remainingValidSubjects
+        }
 
         await logJob(job, 'info', 'Disciplinas listadas', {
           moduleName,
@@ -1448,7 +1515,11 @@ async function parseGoogleDriveFolder(
             const pendingAssetsCount = isResumeSubject
               ? Math.max(classifiedAssets.length - resumeItemIndex, 0)
               : classifiedAssets.length
-            totalLessons += pendingAssetsCount
+
+            // totalLessons já foi contado na fase de discovery (se não for resume)
+            if (isResume) {
+              totalLessons += pendingAssetsCount
+            }
 
             const subject = {
               originalIndex: subjectIndex,
