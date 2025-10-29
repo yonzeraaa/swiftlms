@@ -703,6 +703,8 @@ async function updateImportProgress(
         total_subjects: progress.total_subjects ?? null,
         processed_lessons: progress.processed_lessons ?? null,
         total_lessons: progress.total_lessons ?? null,
+        processed_tests: progress.processed_tests ?? null,
+        total_tests: progress.total_tests ?? null,
         current_item: progress.current_item ?? null,
         completed: progress.completed ?? false
       })
@@ -980,9 +982,11 @@ interface ProgressSnapshot {
   processedModules: number
   processedSubjects: number
   processedLessons: number
+  processedTests: number
   totalModules: number
   totalSubjects: number
   totalLessons: number
+  totalTests: number
 }
 
 interface ImportChunkResult {
@@ -995,17 +999,21 @@ function createProgressSnapshot(progress?: {
   processed_modules: number | null
   processed_subjects: number | null
   processed_lessons: number | null
+  processed_tests: number | null
   total_modules: number | null
   total_subjects: number | null
   total_lessons: number | null
+  total_tests: number | null
 } | null): ProgressSnapshot {
   return {
     processedModules: progress?.processed_modules ?? 0,
     processedSubjects: progress?.processed_subjects ?? 0,
     processedLessons: progress?.processed_lessons ?? 0,
+    processedTests: progress?.processed_tests ?? 0,
     totalModules: progress?.total_modules ?? 0,
     totalSubjects: progress?.total_subjects ?? 0,
     totalLessons: progress?.total_lessons ?? 0,
+    totalTests: progress?.total_tests ?? 0,
   }
 }
 
@@ -1031,27 +1039,31 @@ async function parseGoogleDriveFolder(
   let totalModules = isResume ? progressSnapshot.totalModules : 0
   let totalSubjects = isResume ? progressSnapshot.totalSubjects : 0
   let totalLessons = isResume ? progressSnapshot.totalLessons : 0
+  let totalTests = isResume ? progressSnapshot.totalTests : 0
   let processedModules = isResume ? progressSnapshot.processedModules : 0
   let processedSubjects = isResume ? progressSnapshot.processedSubjects : 0
   let processedLessons = isResume ? progressSnapshot.processedLessons : 0
+  let processedTests = isResume ? progressSnapshot.processedTests : 0
 
   console.log(`[IMPORT][INIT] Modo: ${isResume ? 'RESUME' : 'NOVA IMPORTAÇÃO'}`)
   if (!isResume) {
     console.log(`[IMPORT][INIT] Totais resetados - iniciando scan completo`)
   } else {
-    console.log(`[IMPORT][INIT] Continuando de: módulo ${resumeModuleIndex}, totais: ${totalModules}M/${totalSubjects}D/${totalLessons}A`)
+    console.log(`[IMPORT][INIT] Continuando de: módulo ${resumeModuleIndex}, totais: ${totalModules}M/${totalSubjects}D/${totalLessons}A/${totalTests}T`)
   }
   
   // Atualizar progresso se importId fornecido
   const updateProgress = async (progress: any) => {
     if (importId && supabase && userId && courseId) {
-      // Garantir que processed_lessons seja usado corretamente
+      // Garantir que processed_lessons e processed_tests sejam usados corretamente
       const processedLessonsValue = progress.processed_lessons !== undefined ? progress.processed_lessons : processedLessons
+      const processedTestsValue = progress.processed_tests !== undefined ? progress.processed_tests : processedTests
       const fullProgress = {
         ...progress,
         processed_lessons: processedLessonsValue,
-        percentage: totalModules + totalSubjects + totalLessons > 0 
-          ? Math.round(((processedModules + processedSubjects + processedLessonsValue) / (totalModules + totalSubjects + totalLessons)) * 100)
+        processed_tests: processedTestsValue,
+        percentage: totalModules + totalSubjects + totalLessons + totalTests > 0
+          ? Math.round(((processedModules + processedSubjects + processedLessonsValue + processedTestsValue) / (totalModules + totalSubjects + totalLessons + totalTests)) * 100)
           : 0
       }
       console.log(`[PROGRESS] Atualizando progresso:`, fullProgress)
@@ -1116,18 +1128,21 @@ async function parseGoogleDriveFolder(
       await updateProgress({
         phase: 'scanning',
         current_step: 'FASE 1: Descobrindo estrutura',
-        current_item: 'Contando módulos, disciplinas e aulas antes de processar...',
+        current_item: 'Contando módulos, disciplinas, aulas e testes antes de processar...',
         total_modules: 0,
         processed_modules: 0,
         total_subjects: 0,
         processed_subjects: 0,
         total_lessons: 0,
         processed_lessons: 0,
+        total_tests: 0,
+        processed_tests: 0,
         errors: []
       })
 
       let discoveredSubjects = 0
       let discoveredLessons = 0
+      let discoveredTests = 0
 
       for (let moduleIndex = 0; moduleIndex < items.length; moduleIndex++) {
         const item = items[moduleIndex]
@@ -1189,16 +1204,22 @@ async function parseGoogleDriveFolder(
             })
             .filter(Boolean)
 
-          discoveredLessons += classifiedForCount.length
+          // Contar testes e aulas separadamente
+          const testsCount = classifiedForCount.filter(type => type === 'test').length
+          const lessonsCount = classifiedForCount.filter(type => type === 'lesson').length
+
+          discoveredTests += testsCount
+          discoveredLessons += lessonsCount
         }
       }
 
       totalSubjects = discoveredSubjects
       totalLessons = discoveredLessons
+      totalTests = discoveredTests
 
       console.log(`╔══════════════════════════════════════════╗`)
       console.log(`║   DISCOVERY COMPLETA!                   ║`)
-      console.log(`║   Total: ${totalModules}M / ${totalSubjects}D / ${totalLessons}A           ║`)
+      console.log(`║   Total: ${totalModules}M / ${totalSubjects}D / ${totalLessons}A / ${totalTests}T ║`)
       console.log(`╚══════════════════════════════════════════╝`)
 
       // Atualizar progresso com totais descobertos
@@ -1211,7 +1232,9 @@ async function parseGoogleDriveFolder(
         processed_subjects: 0,
         total_lessons: totalLessons,
         processed_lessons: 0,
-        current_item: `✓ Encontrados ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} arquivos`,
+        total_tests: totalTests,
+        processed_tests: 0,
+        current_item: `✓ Encontrados ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} aulas, ${totalTests} testes`,
         errors: []
       })
     } else {
@@ -2004,6 +2027,7 @@ async function importToDatabase(
   let processedModules = progressSnapshot.processedModules
   let processedSubjects = progressSnapshot.processedSubjects
   let processedLessons = progressSnapshot.processedLessons
+  let processedTests = progressSnapshot.processedTests
 
   const shouldYield = () => Date.now() - startTime >= maxRuntimeMs
 
@@ -2029,9 +2053,14 @@ async function importToDatabase(
     extra?: Record<string, string | number | boolean | null>
   ) => {
     if (importId && supabase && userId) {
+      // Sempre inclui contadores atuais para persistir no banco
       await updateImportProgress(supabase, importId, userId, courseId, {
         current_step: step,
         current_item: item,
+        processed_modules: processedModules,
+        processed_subjects: processedSubjects,
+        processed_lessons: processedLessons,
+        processed_tests: processedTests,
         ...extra,
       }, job)
     }
@@ -2063,6 +2092,11 @@ async function importToDatabase(
         console.log(`Módulo ${moduleData.name} marcado como concluído anteriormente. Avançando resume.`)
         processedModules++
         results.skipped.modules++
+        // Persistir contador atualizado no banco
+        await updateDatabaseProgress(
+          `Módulo ${moduleIdx + 1}/${structure.modules.length} já processado`,
+          `Módulo: ${moduleData.name} (pulado)`
+        )
         await persistResume({
           moduleIndex: moduleOriginalIndex + 1,
           subjectIndex: 0,
@@ -2132,6 +2166,11 @@ async function importToDatabase(
           console.log(`Disciplina ${subjectData.name} marcada como concluída anteriormente. Avançando resume.`)
           processedSubjects++
           results.skipped.subjects++
+          // Persistir contador atualizado no banco
+          await updateDatabaseProgress(
+            `Disciplina ${subjectIdx + 1}/${moduleData.subjects.length} já processada`,
+            `Disciplina: ${subjectData.name} (pulada)`
+          )
           await persistResume({
             moduleIndex: moduleOriginalIndex,
             subjectIndex: subjectOriginalIndex + 1,
@@ -2270,6 +2309,11 @@ async function importToDatabase(
             console.log(`Aula já existe: ${fullTitle}, pulando...`)
             results.skipped.lessons++
             processedLessons++
+            // Persistir contador atualizado no banco
+            await updateDatabaseProgress(
+              `Aula ${processedLessons} já existe`,
+              `Aula: ${fullTitle} (pulada)`
+            )
             subjectItemIndex += 1
             await persistResume({
               moduleIndex: moduleOriginalIndex,
@@ -2331,6 +2375,11 @@ async function importToDatabase(
           
           results.lessons++
           processedLessons++
+          // Persistir contador atualizado no banco
+          await updateDatabaseProgress(
+            `Aula ${processedLessons} importada`,
+            `Aula: ${lessonData.name}`
+          )
           subjectItemIndex += 1
           await persistResume({
             moduleIndex: moduleOriginalIndex,
@@ -2361,7 +2410,12 @@ async function importToDatabase(
         if (!testData.contentUrl) {
           results.skipped.tests++
           results.errors.push(`Teste ${testTitle} ignorado: link do Drive ausente`)
-          processedLessons++
+          processedTests++
+          // Persistir contador atualizado no banco
+          await updateDatabaseProgress(
+            `Teste ${processedTests} sem link`,
+            `Teste: ${testTitle} (ignorado - sem link)`
+          )
           subjectItemIndex += 1
           await persistResume({
             moduleIndex: moduleOriginalIndex,
@@ -2427,7 +2481,12 @@ async function importToDatabase(
             }
 
           results.skipped.tests++
-          processedLessons++
+          processedTests++
+          // Persistir contador atualizado no banco
+          await updateDatabaseProgress(
+            `Teste ${processedTests} já existe`,
+            `Teste: ${testTitle} (pulado)`
+          )
           subjectItemIndex += 1
           await persistResume({
             moduleIndex: moduleOriginalIndex,
@@ -2488,7 +2547,12 @@ async function importToDatabase(
           }
 
         results.tests++
-        processedLessons++
+        processedTests++
+        // Persistir contador atualizado no banco
+        await updateDatabaseProgress(
+          `Teste ${processedTests} importado`,
+          `Teste: ${testTitle}`
+        )
         subjectItemIndex += 1
         await persistResume({
           moduleIndex: moduleOriginalIndex,
@@ -2501,6 +2565,11 @@ async function importToDatabase(
       }
 
       processedSubjects++
+      // Persistir contador atualizado no banco
+      await updateDatabaseProgress(
+        `Disciplina ${processedSubjects} concluída`,
+        `Disciplina: ${subjectData.name}`
+      )
       await persistResume({
         moduleIndex: moduleOriginalIndex,
         subjectIndex: subjectOriginalIndex + 1,
@@ -2512,6 +2581,11 @@ async function importToDatabase(
       } // Fim do loop de subjects
 
       processedModules++
+      // Persistir contador atualizado no banco
+      await updateDatabaseProgress(
+        `Módulo ${processedModules} concluído`,
+        `Módulo: ${moduleData.name}`
+      )
       await persistResume({
         moduleIndex: moduleOriginalIndex + 1,
         subjectIndex: 0,
@@ -2550,11 +2624,11 @@ export async function processImportInBackground(
 
     const { data: progressRow } = await supabase
       .from('import_progress')
-      .select('processed_modules, processed_subjects, processed_lessons, total_modules, total_subjects, total_lessons')
+      .select('processed_modules, processed_subjects, processed_lessons, processed_tests, total_modules, total_subjects, total_lessons, total_tests')
       .eq('id', importId)
       .maybeSingle()
 
-    const progressSnapshot = createProgressSnapshot(progressRow ?? null)
+    const progressSnapshot = createProgressSnapshot(progressRow as any ?? null)
     const isFirstRun = !resumeState && progressSnapshot.processedModules === 0 && progressSnapshot.processedSubjects === 0 && progressSnapshot.processedLessons === 0
 
     console.log(`[IMPORT-BACKGROUND] Iniciando chunk de importação ${importId}`)
