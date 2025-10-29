@@ -308,7 +308,8 @@ export const continueImportFromDrive = inngest.createFunction(
       // Timeout de 3min30s por worker (força encerramento antes do Vercel timeout)
       finish: '3m30s',
     },
-    idempotency: `continue-import-{{event.data.jobId}}-{{event.data.importId}}`, // Previne workers duplicados
+    // Removida idempotency para permitir múltiplos workers do mesmo job
+    // A concurrency já garante que apenas 1 worker execute por vez
     concurrency: [
       {
         key: `import-job-{{event.data.jobId}}`,
