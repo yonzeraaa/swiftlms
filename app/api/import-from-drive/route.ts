@@ -3625,3 +3625,324 @@ async function updateItemStatusByDriveFileId(
     console.error('[TRACKING] Erro ao atualizar item por drive_file_id:', error)
   }
 }
+
+/**
+ * PHASE 1: DISCOVERY
+ * Fase que descobre a estrutura completa da pasta do Google Drive
+ * e conta todos os módulos, disciplinas, aulas e testes.
+ * Esta fase deve executar em < 1 minuto.
+ */
+export async function runDiscoveryPhase(
+  drive: drive_v3.Drive,
+  folderId: string,
+  courseId: string,
+  importId: string,
+  userId: string,
+  job: ImportJobContext | undefined,
+  supabase: any
+) {
+  console.log(`[DISCOVERY] Iniciando fase de descoberta`)
+
+  const updateProgress = async (progress: any) => {
+    if (importId && supabase && userId && courseId) {
+      await updateImportProgress(supabase, importId, userId, courseId, progress, job)
+    }
+  }
+
+  await updateProgress({
+    phase: 'scanning',
+    current_step: 'FASE 1: Descobrindo estrutura',
+    current_item: 'Contando módulos, disciplinas, aulas e testes...',
+    total_modules: 0,
+    total_subjects: 0,
+    total_lessons: 0,
+    total_tests: 0,
+    errors: []
+  })
+
+  try {
+    const items = await listFolderContents(
+      drive,
+      folderId,
+      `and mimeType = '${FOLDER_MIME_TYPE}'`
+    )
+
+    console.log(`[DISCOVERY] Encontradas ${items.length} pastas na raiz`)
+
+    let discoveredModules = 0
+    let discoveredSubjects = 0
+    let discoveredLessons = 0
+    let discoveredTests = 0
+
+    for (let moduleIndex = 0; moduleIndex < items.length; moduleIndex++) {
+      // Check cancellation
+      const shouldCancel = await checkCancellationRequested(job)
+      if (shouldCancel) {
+        console.log('[DISCOVERY] Cancelamento solicitado')
+        return {
+          status: 'cancelled',
+          totalModules: discoveredModules,
+          totalSubjects: discoveredSubjects,
+          totalLessons: discoveredLessons,
+          totalTests: discoveredTests
+        }
+      }
+
+      const item = items[moduleIndex]
+      const displayName = ensureName(item.name, `Módulo ${moduleIndex + 1}`)
+      const parsed = parseStructuredName(displayName, MODULE_CODE_REGEX)
+
+      if (!parsed) continue
+
+      discoveredModules++
+
+      // Criar item de tracking para o módulo
+      const moduleItemId = await createImportItem(job, item, 'module', null)
+
+      // Contar disciplinas do módulo
+      const subjectCandidates = await listFolderContents(drive, item.id!, '')
+      const subjects = subjectCandidates.filter(c => c.mimeType === FOLDER_MIME_TYPE)
+
+      for (const subjectItem of subjects) {
+        const subjectName = ensureName(subjectItem.name, `Disciplina`)
+        const parsedSubject = parseStructuredName(subjectName, SUBJECT_CODE_REGEX)
+
+        if (!parsedSubject) continue
+
+        // Criar item de tracking para a disciplina
+        await createImportItem(job, subjectItem, 'subject', item.id)
+
+        discoveredSubjects++
+
+        const subjectAssets = await listFolderContents(drive, subjectItem.id!, '')
+        const directFiles = subjectAssets.filter(a => a.mimeType !== FOLDER_MIME_TYPE)
+        const nestedFolders = subjectAssets.filter(a => a.mimeType === FOLDER_MIME_TYPE)
+        const forcedTestIds = new Set<string>()
+        const aggregatedAssets: drive_v3.Schema$File[] = [...directFiles]
+
+        for (const nestedFolder of nestedFolders) {
+          const folderName = ensureName(nestedFolder.name, 'Subpasta')
+          const nestedItems = await listFolderContents(drive, nestedFolder.id!, '')
+          const nestedFiles = nestedItems.filter(item => item.mimeType !== FOLDER_MIME_TYPE)
+
+          if (isTestFolderName(folderName)) {
+            for (const nestedItem of nestedFiles) {
+              if (nestedItem.id) {
+                forcedTestIds.add(nestedItem.id)
+              }
+            }
+          }
+
+          aggregatedAssets.push(...nestedFiles)
+        }
+
+        // Classificar assets
+        for (const asset of aggregatedAssets) {
+          const itemName = asset.name || 'Arquivo sem nome'
+          const baseName = (asset.name || '').replace(SUPPORTED_FILE_EXTENSION_REGEX, '')
+          const formattedTitle = formatTitle(baseName || itemName)
+          const parsedLesson = parseStructuredName(baseName || itemName, LESSON_CODE_REGEX)
+          const lessonCode = parsedLesson?.code ?? null
+          const forcedTest = asset.id ? forcedTestIds.has(asset.id) : false
+          const mimeType = (asset.mimeType || '').toLowerCase()
+          const isFormTest = mimeType === 'application/vnd.google-apps.form'
+          const keywordTest = isTestFile(formattedTitle)
+          const treatAsTest = forcedTest || isFormTest || keywordTest
+          const matchesSubjectPrefix = lessonCode ? lessonCode.startsWith(parsedSubject.code) : false
+
+          let itemType: 'lesson' | 'test' | null = null
+          if (treatAsTest) {
+            itemType = 'test'
+            discoveredTests++
+          } else if (matchesSubjectPrefix) {
+            itemType = 'lesson'
+            discoveredLessons++
+          }
+
+          // Criar item de tracking durante Discovery
+          if (itemType) {
+            await createImportItem(job, asset, itemType, subjectItem.id)
+          }
+        }
+      }
+    }
+
+    console.log(`[DISCOVERY] Completa: ${discoveredModules}M / ${discoveredSubjects}D / ${discoveredLessons}A / ${discoveredTests}T`)
+
+    await updateProgress({
+      phase: 'processing',
+      current_step: 'FASE 2: Iniciando processamento',
+      total_modules: discoveredModules,
+      total_subjects: discoveredSubjects,
+      total_lessons: discoveredLessons,
+      total_tests: discoveredTests,
+      current_item: `✓ Encontrados ${discoveredModules} módulos, ${discoveredSubjects} disciplinas, ${discoveredLessons} aulas, ${discoveredTests} testes`,
+      errors: []
+    })
+
+    return {
+      status: 'completed',
+      totalModules: discoveredModules,
+      totalSubjects: discoveredSubjects,
+      totalLessons: discoveredLessons,
+      totalTests: discoveredTests
+    }
+  } catch (error) {
+    console.error('[DISCOVERY] Erro:', error)
+    throw error
+  }
+}
+
+/**
+ * PHASE 2: PROCESSING
+ * Fase que processa os arquivos do Google Drive em batches de módulos.
+ * Processa até maxModules módulos por chamada, retornando 'partial' se houver mais.
+ * Esta fase deve executar em < 2 minutos por batch.
+ */
+export async function runProcessingPhase(
+  drive: drive_v3.Drive,
+  driveUrl: string,
+  folderId: string,
+  courseId: string,
+  importId: string,
+  userId: string,
+  job: ImportJobContext | undefined,
+  supabase: any,
+  options: {
+    resumeState: any
+    discoveryTotals: any
+    maxModules: number
+  }
+) {
+  console.log(`[PROCESSING] Iniciando fase de processamento (máx ${options.maxModules} módulos)`)
+
+  // Por enquanto, delegar para a função existente
+  // Em uma refatoração futura, podemos extrair a lógica de processamento
+  // para processar apenas os módulos especificados
+  const result = await parseGoogleDriveFolder(
+    drive,
+    folderId,
+    courseId,
+    importId,
+    supabase,
+    userId,
+    job,
+    {
+      warnings: [],
+      resumeState: options.resumeState,
+      progressSnapshot: {
+        totalModules: options.discoveryTotals?.totalModules || 0,
+        totalSubjects: options.discoveryTotals?.totalSubjects || 0,
+        totalLessons: options.discoveryTotals?.totalLessons || 0,
+        totalTests: options.discoveryTotals?.totalTests || 0,
+        processedModules: 0,
+        processedSubjects: 0,
+        processedLessons: 0,
+        processedTests: 0,
+      },
+    }
+  )
+
+  // Se result for cancelled, retornar imediatamente
+  if (result.status === 'cancelled') {
+    return {
+      status: 'cancelled',
+      structure: result.structure,
+    }
+  }
+
+  // Verificar se há mais módulos para processar
+  const totalModules = result.totalModules || 0
+  const currentModuleIndex = options.resumeState?.moduleIndex || 0
+  const nextModuleIndex = currentModuleIndex + options.maxModules
+
+  if (nextModuleIndex < totalModules) {
+    console.log(`[PROCESSING] Parcial: processados ${nextModuleIndex} de ${totalModules} módulos`)
+    return {
+      status: 'partial',
+      structure: result.structure,
+      nextModuleIndex,
+      totalModules,
+    }
+  }
+
+  console.log(`[PROCESSING] Completa: todos os ${totalModules} módulos processados`)
+  return {
+    status: 'completed',
+    structure: result.structure,
+    totalModules,
+  }
+}
+
+/**
+ * PHASE 3: DATABASE IMPORT
+ * Fase que salva a estrutura processada no banco de dados.
+ * Esta fase deve executar em < 1-2 minutos.
+ */
+export async function runDatabaseImportPhase(
+  structure: CourseStructure,
+  courseId: string,
+  importId: string,
+  userId: string,
+  job: ImportJobContext | undefined,
+  supabase: any
+) {
+  console.log(`[DATABASE] Iniciando fase de importação para banco`)
+
+  const result = await importToDatabase(
+    structure,
+    courseId,
+    supabase,
+    importId,
+    userId,
+    undefined, // user
+    job,
+    {
+      startTime: Date.now(),
+      maxRuntimeMs: 120_000, // 2 minutos max
+      resumeState: null,
+      jobMetadata: {},
+      progressSnapshot: {
+        totalModules: 0,
+        totalSubjects: 0,
+        totalLessons: 0,
+        totalTests: 0,
+        processedModules: 0,
+        processedSubjects: 0,
+        processedLessons: 0,
+        processedTests: 0,
+      },
+    }
+  )
+
+  if (result.status === 'cancelled') {
+    console.log(`[DATABASE] Cancelada`)
+    return {
+      status: 'cancelled',
+      results: result.results,
+    }
+  }
+
+  if (result.status === 'partial') {
+    console.log(`[DATABASE] Parcial - ainda há dados para salvar`)
+    return {
+      status: 'partial',
+      results: result.results,
+      resumeState: result.resumeState,
+    }
+  }
+
+  console.log(`[DATABASE] Completa`)
+  return {
+    status: 'completed',
+    results: result.results,
+  }
+}
+
+/**
+ * Helper para criar cliente do Google Drive autenticado
+ * Exportado para uso no Inngest
+ */
+export async function getDriveClient(userId?: string): Promise<drive_v3.Drive> {
+  return await authenticateGoogleDrive()
+}
