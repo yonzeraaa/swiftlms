@@ -76,8 +76,20 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
 
   const isResume = resumeState !== null
   const currentPhase = resumeState?.phase || 'discovery'
+  const workflowStartTime = Date.now()
+  const MAX_WORKFLOW_DURATION_MS = 3.5 * 60 * 1000 // 3.5 minutos (deixa 30s de margem)
 
   console.log(`[INNGEST] Iniciando fase: ${currentPhase}, isResume: ${isResume}`)
+
+  // Helper para verificar se devemos encerrar e continuar em novo worker
+  const shouldYieldToNewWorker = () => {
+    const elapsed = Date.now() - workflowStartTime
+    const shouldYield = elapsed >= MAX_WORKFLOW_DURATION_MS
+    if (shouldYield) {
+      console.log(`[INNGEST] Tempo limite atingido (${elapsed}ms), agendando continuação`)
+    }
+    return shouldYield
+  }
 
   // STEP 1: DISCOVERY PHASE (apenas se não for resume ou se fase for 'discovery')
   let discoveryResult: any = null
@@ -123,15 +135,32 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
         })
         .eq('id', jobId)
     }
+
+    // Após Discovery, verificar se devemos continuar em novo worker
+    if (shouldYieldToNewWorker()) {
+      await step.sendEvent('drive/import.continue', {
+        driveUrl,
+        courseId,
+        importId,
+        userId,
+        folderId,
+        jobId,
+      })
+      return {
+        importId,
+        status: 'partial',
+        message: 'Discovery completa, continuando processamento em novo worker'
+      }
+    }
   }
 
   // STEP 2: PROCESSING PHASE
-  // Dividir em batches de módulos para evitar timeout
-  const MODULES_PER_STEP = 2 // Processar 2 módulos por step
+  // Processar 1 módulo por vez para garantir chunks pequenos
+  const MODULES_PER_CHUNK = 1
   const startModuleIndex = resumeState?.moduleIndex || 0
 
-  let processingResult: any = await step.run(`phase-2-processing-from-module-${startModuleIndex}`, async () => {
-    console.log(`[INNGEST STEP] Executando Processing Phase (módulos ${startModuleIndex}+)`)
+  let processingResult: any = await step.run(`phase-2-processing-module-${startModuleIndex}`, async () => {
+    console.log(`[INNGEST STEP] Executando Processing Phase (módulo ${startModuleIndex})`)
     const drive = await getDriveClient(userId)
 
     return await runProcessingPhase(
@@ -146,7 +175,7 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
       {
         resumeState,
         discoveryTotals: discoveryResult || resumeState?.discoveryResult,
-        maxModules: MODULES_PER_STEP,
+        maxModules: MODULES_PER_CHUNK,
       }
     )
   })
@@ -160,9 +189,9 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
     }
   }
 
-  // Se ainda há módulos para processar, agendar continuação
-  if (processingResult.status === 'partial') {
-    console.log(`[INNGEST] Processing parcial, agendando continuação`)
+  // Se ainda há módulos para processar OU atingimos tempo limite, agendar continuação
+  if (processingResult.status === 'partial' || shouldYieldToNewWorker()) {
+    console.log(`[INNGEST] Agendando continuação do processamento`)
 
     // VERIFICAÇÃO DE CANCELAMENTO antes de agendar
     if (jobId) {
@@ -194,7 +223,7 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
     return {
       importId,
       status: 'partial',
-      message: `Processing parcial: ${processingResult.nextModuleIndex} de ${processingResult.totalModules} módulos processados`
+      message: `Módulo ${startModuleIndex + 1} processado, continuando em novo worker`
     }
   }
 
@@ -237,8 +266,8 @@ export const importFromDrive = inngest.createFunction(
     timeouts: {
       // Sem limite de tempo para iniciar (pode ficar na fila)
       start: undefined,
-      // Timeout de 2 horas para completar a execução
-      finish: '2h',
+      // Timeout de 4 minutos por worker (compatível com Vercel Hobby 5min)
+      finish: '4m',
     },
   },
   { event: 'drive/import.requested' },
@@ -253,8 +282,8 @@ export const continueImportFromDrive = inngest.createFunction(
     timeouts: {
       // Sem limite de tempo para iniciar (pode ficar na fila)
       start: undefined,
-      // Timeout de 2 horas para completar a execução
-      finish: '2h',
+      // Timeout de 4 minutos por worker (compatível com Vercel Hobby 5min)
+      finish: '4m',
     },
   },
   { event: 'drive/import.continue' },
