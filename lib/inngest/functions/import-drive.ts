@@ -16,6 +16,24 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
   const { processImportInBackground } = await import('@/app/api/import-from-drive/route')
   const supabase = createAdminClient()
 
+  // VERIFICAÇÃO DE CANCELAMENTO: Checa antes de processar
+  if (jobId) {
+    const { data: job } = await supabase
+      .from('drive_import_jobs')
+      .select('cancellation_requested, status')
+      .eq('id', jobId)
+      .maybeSingle()
+
+    if ((job as any)?.cancellation_requested || (job as any)?.status === 'cancelled') {
+      console.log(`[INNGEST] Job ${jobId} foi cancelado, não processando`)
+      return {
+        importId,
+        status: 'cancelled',
+        message: 'Importação cancelada pelo usuário'
+      }
+    }
+  }
+
   const result = await step.run('process-google-drive-import', async () => {
     return await processImportInBackground(
       driveUrl,
@@ -28,7 +46,35 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
     )
   })
 
+  // Se a importação foi cancelada durante o processamento, não continuar
+  if (result.status === 'cancelled') {
+    console.log(`[INNGEST] Importação ${importId} cancelada durante processamento`)
+    return {
+      importId,
+      status: 'cancelled',
+      message: 'Importação cancelada pelo usuário durante processamento'
+    }
+  }
+
   if (result.status === 'partial') {
+    // VERIFICAÇÃO DE CANCELAMENTO: Checa antes de agendar próximo chunk
+    if (jobId) {
+      const { data: job } = await supabase
+        .from('drive_import_jobs')
+        .select('cancellation_requested, status')
+        .eq('id', jobId)
+        .maybeSingle()
+
+      if ((job as any)?.cancellation_requested || (job as any)?.status === 'cancelled') {
+        console.log(`[INNGEST] Job ${jobId} foi cancelado, não agendando próximo chunk`)
+        return {
+          importId,
+          status: 'cancelled',
+          message: 'Importação cancelada pelo usuário antes de agendar próximo chunk'
+        }
+      }
+    }
+
     await step.sendEvent('drive/import.continue', {
       driveUrl,
       courseId,

@@ -405,15 +405,37 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
   }, [startPolling, onError])
 
   // Cancelar importação
-  const cancelImport = useCallback(() => {
+  const cancelImport = useCallback(async () => {
     console.log('[useImportProgress] Cancelling import')
+
+    // NOVO: Chamar API de cancelamento
+    if (importId && jobIdRef.current) {
+      try {
+        console.log(`[useImportProgress] Enviando request de cancelamento para jobId=${jobIdRef.current}, importId=${importId}`)
+        const response = await fetch(
+          `/api/import-from-drive?jobId=${jobIdRef.current}&importId=${importId}`,
+          { method: 'DELETE' }
+        )
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          console.error('[useImportProgress] Falha ao cancelar importação:', errorText)
+        } else {
+          console.log('[useImportProgress] Cancelamento enviado com sucesso')
+        }
+      } catch (error) {
+        console.error('[useImportProgress] Erro ao cancelar importação:', error)
+      }
+    }
+
+    // Limpeza do estado local (UI)
     stopPolling()
     setIsImporting(false)
     setImportId(null)
     jobIdRef.current = null
     progressTokenRef.current = null
     setProgress({
-      currentStep: '',
+      currentStep: 'Cancelado pelo usuário',
       totalModules: 0,
       processedModules: 0,
       totalSubjects: 0,
@@ -422,15 +444,15 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
       processedLessons: 0,
       totalTests: 0,
       processedTests: 0,
-      currentItem: '',
+      currentItem: 'Importação cancelada',
       errors: [],
       warnings: [],
       percentage: 0,
-      completed: false,
-      phase: '',
+      completed: true,
+      phase: 'cancelled',
       startedAt: null
     })
-  }, [stopPolling])
+  }, [stopPolling, importId])
 
   // Cleanup ao desmontar
   useEffect(() => {

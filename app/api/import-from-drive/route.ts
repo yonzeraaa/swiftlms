@@ -933,7 +933,9 @@ interface CourseStructure {
 
 interface ParseResult {
   structure: CourseStructure
-  totalModules: number
+  totalModules?: number
+  status?: 'cancelled'
+  resumeState?: ImportResumeState | null
 }
 
 interface ImportRuntimeOptions {
@@ -990,7 +992,7 @@ interface ProgressSnapshot {
 }
 
 interface ImportChunkResult {
-  status: 'completed' | 'partial'
+  status: 'completed' | 'partial' | 'cancelled'
   resumeState: ImportResumeState | null
   results: ReturnType<typeof createEmptyResults>
 }
@@ -1017,6 +1019,40 @@ function createProgressSnapshot(progress?: {
   }
 }
 
+/**
+ * Verifica se o usuário solicitou o cancelamento da importação
+ * Consulta o banco de dados para verificar a flag cancellation_requested
+ *
+ * @param jobContext - Contexto do job com Supabase client e jobId
+ * @returns true se cancelamento foi solicitado, false caso contrário
+ */
+async function checkCancellationRequested(
+  jobContext: ImportJobContext | undefined
+): Promise<boolean> {
+  if (!jobContext) {
+    return false
+  }
+
+  try {
+    const { data: job, error } = await jobContext.supabase
+      .from('drive_import_jobs')
+      .select('cancellation_requested, status')
+      .eq('id', jobContext.jobId)
+      .maybeSingle()
+
+    if (error) {
+      console.error('[CANCEL_CHECK] Error checking cancellation:', error)
+      return false
+    }
+
+    // Retorna true se flag de cancelamento está ativa OU status é 'cancelled'
+    return (job as any)?.cancellation_requested === true || (job as any)?.status === 'cancelled'
+  } catch (error) {
+    console.error('[CANCEL_CHECK] Exception checking cancellation:', error)
+    return false
+  }
+}
+
 async function parseGoogleDriveFolder(
   drive: DriveClient,
   folderId: string,
@@ -1032,11 +1068,11 @@ async function parseGoogleDriveFolder(
   const resumeModuleIndex = resumeState?.moduleIndex ?? 0
   const progressSnapshot = options.progressSnapshot ?? createProgressSnapshot(null)
 
-  // Se NÃO for resume, resetar totais para forçar novo scan completo
-  // Isso evita usar totais incorretos de importações anteriores
-  // IMPORTANTE: Também considera resume se há QUALQUER progresso no banco
-  // Isso previne Discovery resetar contadores quando Inngest faz retry
-  const isResume = resumeState !== null ||
+  // Determina se é resume baseado APENAS em progresso real no banco
+  // Se há qualquer contador processado > 0, então há progresso = resume
+  // Isso garante que Discovery rode na primeira execução (quando tudo é 0)
+  // E que Discovery seja pulada quando há progresso (mesmo se resumeState for null)
+  const isResume =
     progressSnapshot.processedModules > 0 ||
     progressSnapshot.processedSubjects > 0 ||
     progressSnapshot.processedLessons > 0 ||
@@ -1257,6 +1293,8 @@ async function parseGoogleDriveFolder(
         processed_subjects: processedSubjects,
         total_lessons: totalLessons,
         processed_lessons: processedLessons,
+        total_tests: totalTests,
+        processed_tests: processedTests,
         current_item: 'Preparando importação...',
         errors: []
       })
@@ -1266,6 +1304,21 @@ async function parseGoogleDriveFolder(
     for (let moduleIndex = 0; moduleIndex < items.length; moduleIndex++) {
       const item = items[moduleIndex]
       const moduleInfo = moduleInfoCache[moduleIndex]
+
+      // VERIFICAÇÃO DE CANCELAMENTO: Checa se usuário cancelou a importação
+      const shouldCancel = await checkCancellationRequested(job)
+      if (shouldCancel) {
+        console.log('[IMPORT] Cancelamento solicitado pelo usuário, parando processamento de módulos')
+        return {
+          status: 'cancelled',
+          structure,
+          resumeState: {
+            moduleIndex,
+            subjectIndex: 0,
+            itemIndex: 0
+          }
+        }
+      }
 
       if (resumeState && moduleIndex < resumeModuleIndex) {
         continue
@@ -1393,6 +1446,21 @@ async function parseGoogleDriveFolder(
           const subjectItem = subjectEntry.item
           const subjectIndex = subjectEntry.originalIndex
           const parsedSubject = subjectEntry.parsed
+
+          // VERIFICAÇÃO DE CANCELAMENTO: Checa a cada disciplina
+          const shouldCancel = await checkCancellationRequested(job)
+          if (shouldCancel) {
+            console.log('[IMPORT] Cancelamento solicitado pelo usuário, parando processamento de disciplinas')
+            return {
+              status: 'cancelled',
+              structure,
+              resumeState: {
+                moduleIndex,
+                subjectIndex,
+                itemIndex: 0
+              }
+            }
+          }
 
           if (!parsedSubject) {
             await logJob(job, 'warn', 'Disciplina ignorada por nome inválido', {
@@ -1671,8 +1739,24 @@ async function parseGoogleDriveFolder(
             for (let batchStart = startIndex; batchStart < validItems.length; batchStart += BATCH_SIZE) {
               const batchEnd = Math.min(batchStart + BATCH_SIZE, validItems.length)
               const batch = validItems.slice(batchStart, batchEnd)
+
+              // VERIFICAÇÃO DE CANCELAMENTO: Checa a cada batch de itens
+              const shouldCancel = await checkCancellationRequested(job)
+              if (shouldCancel) {
+                console.log('[IMPORT] Cancelamento solicitado pelo usuário, parando processamento de items/batches')
+                return {
+                  status: 'cancelled',
+                  structure,
+                  resumeState: {
+                    moduleIndex,
+                    subjectIndex,
+                    itemIndex: batchStart
+                  }
+                }
+              }
+
               const batchNumber = Math.floor((batchStart - startIndex) / BATCH_SIZE) + 1
-              
+
               console.log(`      Processando lote ${batchNumber}: ${batch.length} itens`)
               
               for (const entry of batch) {
@@ -2099,6 +2183,22 @@ async function importToDatabase(
     for (let moduleIdx = 0; moduleIdx < structure.modules.length; moduleIdx++) {
       const moduleData = structure.modules[moduleIdx]
       const moduleOriginalIndex = moduleData.originalIndex ?? (resumeModuleIndex + moduleIdx)
+
+      // VERIFICAÇÃO DE CANCELAMENTO: Checa antes de importar cada módulo
+      const shouldCancel = await checkCancellationRequested(job)
+      if (shouldCancel) {
+        console.log('[IMPORT] Cancelamento solicitado pelo usuário, parando importação para banco')
+        await updateDatabaseProgress(
+          'Importação cancelada pelo usuário',
+          'Operação interrompida'
+        )
+        return {
+          status: 'cancelled',
+          resumeState: { moduleIndex: moduleOriginalIndex, subjectIndex: 0, itemIndex: 0 },
+          results
+        }
+      }
+
       await persistResume({ moduleIndex: moduleOriginalIndex, subjectIndex: 0, itemIndex: 0 })
 
       if (moduleData.skip) {
@@ -2840,6 +2940,100 @@ if (process.env.NODE_ENV === 'test') {
     listFolderContents,
     parseGoogleDriveFolder,
     importToDatabase,
+  }
+}
+
+/**
+ * DELETE endpoint - Cancela uma importação em andamento
+ * Define a flag cancellation_requested no banco para que os loops parem gracefully
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+
+    // Verificar autenticação
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+    }
+
+    // Extrair jobId e importId dos query params
+    const { searchParams } = new URL(req.url)
+    const jobId = searchParams.get('jobId')
+    const importId = searchParams.get('importId')
+
+    if (!jobId || !importId) {
+      return NextResponse.json(
+        { error: 'jobId e importId são obrigatórios' },
+        { status: 400 }
+      )
+    }
+
+    // Verificar se o job pertence ao usuário
+    const { data: job, error: jobError } = await supabase
+      .from('drive_import_jobs')
+      .select('id, user_id')
+      .eq('id', jobId)
+      .maybeSingle()
+
+    if (jobError || !job) {
+      return NextResponse.json(
+        { error: 'Job não encontrado' },
+        { status: 404 }
+      )
+    }
+
+    if (job.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'Você não tem permissão para cancelar este job' },
+        { status: 403 }
+      )
+    }
+
+    // Atualizar flag de cancelamento no job
+    const { error: updateJobError } = await supabase
+      .from('drive_import_jobs')
+      .update({
+        cancellation_requested: true,
+        cancelled_at: new Date().toISOString(),
+        status: 'cancelled'
+      } as any)
+      .eq('id', jobId)
+
+    if (updateJobError) {
+      console.error('[CANCEL] Erro ao atualizar job:', updateJobError)
+      return NextResponse.json(
+        { error: 'Erro ao cancelar importação' },
+        { status: 500 }
+      )
+    }
+
+    // Atualizar status da importação
+    const { error: updateImportError } = await supabase
+      .from('import_progress')
+      .update({
+        current_step: 'Cancelado pelo usuário',
+        current_item: 'Importação interrompida',
+        completed: true
+      })
+      .eq('id', importId)
+
+    if (updateImportError) {
+      console.error('[CANCEL] Erro ao atualizar import_progress:', updateImportError)
+    }
+
+    console.log(`[CANCEL] Cancelamento solicitado para job ${jobId} pelo usuário ${user.id}`)
+
+    return NextResponse.json({
+      success: true,
+      message: 'Cancelamento solicitado com sucesso'
+    })
+  } catch (error) {
+    console.error('[CANCEL] Erro ao processar cancelamento:', error)
+    return NextResponse.json(
+      { error: 'Erro interno ao processar cancelamento' },
+      { status: 500 }
+    )
   }
 }
 
