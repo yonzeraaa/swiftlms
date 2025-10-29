@@ -368,7 +368,8 @@ function parseStructuredName(rawName: string | null | undefined, pattern: RegExp
 async function listFolderContents(
   drive: DriveClient,
   folderId: string,
-  querySuffix: string
+  querySuffix: string,
+  jobContext?: ImportJobContext
 ) {
   const files: drive_v3.Schema$File[] = []
   let pageToken: string | undefined
@@ -376,6 +377,15 @@ async function listFolderContents(
   console.log(`[DRIVE][LIST] Listando conteúdo da pasta ${folderId}...`)
 
   do {
+    // Verificar cancelamento antes de cada página
+    if (jobContext) {
+      const cancelled = await checkCancellationRequested(jobContext)
+      if (cancelled) {
+        console.log('[DRIVE][LIST] Cancelamento detectado durante listagem de pasta')
+        throw new Error('IMPORT_CANCELLED')
+      }
+    }
+
     const response = await executeWithRetries(
       `drive.files.list (${folderId})`,
       () =>
@@ -1328,6 +1338,22 @@ async function parseGoogleDriveFolder(
         continue
       }
 
+      // VERIFICAÇÃO DE CANCELAMENTO: Antes de operações assíncronas longas
+      // O skip logic abaixo faz chamadas ao Google Drive que podem levar muito tempo
+      const shouldCancelBeforeSkipLogic = await checkCancellationRequested(job)
+      if (shouldCancelBeforeSkipLogic) {
+        console.log('[IMPORT] Cancelamento detectado antes de verificar módulo completamente processado')
+        return {
+          status: 'cancelled',
+          structure,
+          resumeState: {
+            moduleIndex,
+            subjectIndex: 0,
+            itemIndex: 0
+          }
+        }
+      }
+
       // Se estamos no módulo de resume mas ele já foi completamente processado,
       // precisamos pular para o próximo módulo
       if (resumeState && moduleIndex === resumeModuleIndex) {
@@ -1341,7 +1367,8 @@ async function parseGoogleDriveFolder(
             const subjectItems = await listFolderContents(
               drive,
               item.id ?? '',
-              `and mimeType = '${FOLDER_MIME_TYPE}'`
+              `and mimeType = '${FOLDER_MIME_TYPE}'`,
+              job  // Passar jobContext para permitir cancelamento durante listagem
             )
             const validSubjectsCount = subjectItems.filter(subItem => {
               const subjectDisplayName = ensureName(subItem.name, `Disciplina ${subjectItems.indexOf(subItem) + 1}`)
@@ -1350,6 +1377,10 @@ async function parseGoogleDriveFolder(
             }).length
             return validSubjectsCount
           } catch (error) {
+            // Se foi cancelado durante listFolderContents, propagar erro
+            if (error instanceof Error && error.message === 'IMPORT_CANCELLED') {
+              throw error
+            }
             console.error(`[RESUME] Erro ao contar disciplinas do módulo ${moduleIndex}:`, error)
             return 0
           }
@@ -2121,6 +2152,16 @@ async function parseGoogleDriveFolder(
 
     return { structure, totalModules }
   } catch (error) {
+    // Se foi cancelado, retornar status cancelled ao invés de lançar erro
+    if (error instanceof Error && error.message === 'IMPORT_CANCELLED') {
+      console.log('[IMPORT] Importação cancelada pelo usuário durante processamento')
+      return {
+        structure,
+        totalModules,
+        status: 'cancelled' as const,
+        resumeState: null
+      }
+    }
     console.error('Erro ao processar pasta do Google Drive:', error)
     throw error
   }
