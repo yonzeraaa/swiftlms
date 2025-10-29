@@ -3161,11 +3161,8 @@ export async function POST(req: NextRequest) {
         metadata: {
           importId,
           progressToken,
-          resume_state: {
-            moduleIndex: 0,
-            subjectIndex: 0,
-            itemIndex: 0,
-          } satisfies ImportResumeState,
+          // NÃO cria resume_state aqui - ele só deve existir quando há progresso real
+          // Criar resume_state prematuramente faz isResume=true incorretamente
         }
       })
       .select()
