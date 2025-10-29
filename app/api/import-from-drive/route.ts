@@ -1034,7 +1034,13 @@ async function parseGoogleDriveFolder(
 
   // Se NÃO for resume, resetar totais para forçar novo scan completo
   // Isso evita usar totais incorretos de importações anteriores
-  const isResume = resumeState !== null
+  // IMPORTANTE: Também considera resume se há QUALQUER progresso no banco
+  // Isso previne Discovery resetar contadores quando Inngest faz retry
+  const isResume = resumeState !== null ||
+    progressSnapshot.processedModules > 0 ||
+    progressSnapshot.processedSubjects > 0 ||
+    progressSnapshot.processedLessons > 0 ||
+    progressSnapshot.processedTests > 0
 
   let totalModules = isResume ? progressSnapshot.totalModules : 0
   let totalSubjects = isResume ? progressSnapshot.totalSubjects : 0
@@ -1106,12 +1112,14 @@ async function parseGoogleDriveFolder(
       return count + 1
     }, 0)
 
-    if (remainingValidModules > 0) {
-      const requiredModulesTotal = processedModules + remainingValidModules
-      if (totalModules < requiredModulesTotal) {
-        totalModules = requiredModulesTotal
-      }
-    }
+    // REMOVIDO: Não incrementa totalModules durante processamento
+    // totalModules deve ser fixo após Discovery phase
+    // if (remainingValidModules > 0) {
+    //   const requiredModulesTotal = processedModules + remainingValidModules
+    //   if (totalModules < requiredModulesTotal) {
+    //     totalModules = requiredModulesTotal
+    //   }
+    // }
 
     console.log(`[IMPORT][SCAN] Processando ${remainingValidModules} módulos válidos`)
 
@@ -1130,13 +1138,13 @@ async function parseGoogleDriveFolder(
         current_step: 'FASE 1: Descobrindo estrutura',
         current_item: 'Contando módulos, disciplinas, aulas e testes antes de processar...',
         total_modules: 0,
-        processed_modules: 0,
+        // NÃO reseta processed_modules - preserva progresso existente
         total_subjects: 0,
-        processed_subjects: 0,
+        // NÃO reseta processed_subjects - preserva progresso existente
         total_lessons: 0,
-        processed_lessons: 0,
+        // NÃO reseta processed_lessons - preserva progresso existente
         total_tests: 0,
-        processed_tests: 0,
+        // NÃO reseta processed_tests - preserva progresso existente
         errors: []
       })
 
@@ -1223,17 +1231,18 @@ async function parseGoogleDriveFolder(
       console.log(`╚══════════════════════════════════════════╝`)
 
       // Atualizar progresso com totais descobertos
+      // IMPORTANTE: NÃO resetamos processed_* para preservar progresso em caso de retry
       await updateProgress({
         phase: 'processing',
         current_step: 'FASE 2: Iniciando processamento',
         total_modules: totalModules,
-        processed_modules: 0,
+        // NÃO reseta processed_modules - preserva progresso existente
         total_subjects: totalSubjects,
-        processed_subjects: 0,
+        // NÃO reseta processed_subjects - preserva progresso existente
         total_lessons: totalLessons,
-        processed_lessons: 0,
+        // NÃO reseta processed_lessons - preserva progresso existente
         total_tests: totalTests,
-        processed_tests: 0,
+        // NÃO reseta processed_tests - preserva progresso existente
         current_item: `✓ Encontrados ${totalModules} módulos, ${totalSubjects} disciplinas, ${totalLessons} aulas, ${totalTests} testes`,
         errors: []
       })
@@ -1352,10 +1361,12 @@ async function parseGoogleDriveFolder(
 
         console.log(`[IMPORT][SCAN]   Processando ${remainingValidSubjects} disciplinas válidas`)
 
-        const requiredSubjectsTotal = processedSubjects + remainingValidSubjects
-        if (totalSubjects < requiredSubjectsTotal) {
-          totalSubjects = requiredSubjectsTotal
-        }
+        // REMOVIDO: Não incrementa totalSubjects durante processamento
+        // totalSubjects deve ser fixo após Discovery phase
+        // const requiredSubjectsTotal = processedSubjects + remainingValidSubjects
+        // if (totalSubjects < requiredSubjectsTotal) {
+        //   totalSubjects = requiredSubjectsTotal
+        // }
 
         await logJob(job, 'info', 'Disciplinas listadas', {
           moduleName,
@@ -1603,10 +1614,12 @@ async function parseGoogleDriveFolder(
               ? Math.max(classifiedAssets.length - resumeItemIndex, 0)
               : classifiedAssets.length
 
-            const requiredLessonsTotal = processedLessons + pendingItems
-            if (totalLessons < requiredLessonsTotal) {
-              totalLessons = requiredLessonsTotal
-            }
+            // REMOVIDO: Não incrementa totalLessons durante processamento
+            // totalLessons deve ser fixo após Discovery phase
+            // const requiredLessonsTotal = processedLessons + pendingItems
+            // if (totalLessons < requiredLessonsTotal) {
+            //   totalLessons = requiredLessonsTotal
+            // }
 
             const subject = {
               originalIndex: subjectIndex,
