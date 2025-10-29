@@ -1846,8 +1846,8 @@ async function parseGoogleDriveFolder(
             })
 
             // Processamento em lotes para evitar timeout
-            const BATCH_SIZE = 5 // Processar 5 itens por vez
-            const DELAY_BETWEEN_BATCHES = 25 // Delay curto entre lotes para reduzir uso da API
+            const BATCH_SIZE = 3 // Processar 3 itens por vez (otimizado para Vercel Hobby)
+            const DELAY_BETWEEN_BATCHES = 10 // Delay reduzido para processar mais rápido
             
             let lessonOrder = initialLessonOrder
             let testOrder = initialTestOrder
