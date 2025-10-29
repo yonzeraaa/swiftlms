@@ -77,7 +77,10 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
   const isResume = resumeState !== null
   const currentPhase = resumeState?.phase || 'discovery'
   const workflowStartTime = Date.now()
-  const MAX_WORKFLOW_DURATION_MS = 3 * 60 * 1000 // 3 minutos (deixa 1min de margem para cleanup)
+  // Timeout interno de 3min10s (190s)
+  // Margem de 20s antes do Inngest forçar timeout (finish: '3m30s')
+  // Vercel tem limite de 5min, mas queremos workers curtos para evitar problemas
+  const MAX_WORKFLOW_DURATION_MS = 190_000 // 3min10s
 
   console.log(`[INNGEST] Iniciando fase: ${currentPhase}, isResume: ${isResume}`)
   console.log(`[INNGEST] Tempo máximo por worker: ${MAX_WORKFLOW_DURATION_MS / 1000}s`)
@@ -139,13 +142,16 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
 
     // Após Discovery, verificar se devemos continuar em novo worker
     if (shouldYieldToNewWorker()) {
-      await step.sendEvent('drive/import.continue', {
-        driveUrl,
-        courseId,
-        importId,
-        userId,
-        folderId,
-        jobId,
+      await step.sendEvent('schedule-continue-worker', {
+        name: 'drive/import.continue',
+        data: {
+          driveUrl,
+          courseId,
+          importId,
+          userId,
+          folderId,
+          jobId,
+        }
       })
       return {
         importId,
@@ -218,13 +224,16 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
       }
     }
 
-    await step.sendEvent('drive/import.continue', {
-      driveUrl,
-      courseId,
-      importId,
-      userId,
-      folderId,
-      jobId,
+    await step.sendEvent('schedule-continue-worker', {
+      name: 'drive/import.continue',
+      data: {
+        driveUrl,
+        courseId,
+        importId,
+        userId,
+        folderId,
+        jobId,
+      }
     })
 
     return {
@@ -276,6 +285,13 @@ export const importFromDrive = inngest.createFunction(
       // Timeout de 3min30s por worker (força encerramento antes do Vercel timeout)
       finish: '3m30s',
     },
+    idempotency: `import-job-{{event.data.jobId}}`, // Previne workers duplicados
+    concurrency: [
+      {
+        key: `import-job-{{event.data.jobId}}`,
+        limit: 1, // Apenas 1 worker por job por vez
+      }
+    ],
   },
   { event: 'drive/import.requested' },
   handleImportEvent
@@ -292,6 +308,13 @@ export const continueImportFromDrive = inngest.createFunction(
       // Timeout de 3min30s por worker (força encerramento antes do Vercel timeout)
       finish: '3m30s',
     },
+    idempotency: `continue-import-{{event.data.jobId}}-{{event.data.importId}}`, // Previne workers duplicados
+    concurrency: [
+      {
+        key: `import-job-{{event.data.jobId}}`,
+        limit: 1, // Apenas 1 worker por job por vez
+      }
+    ],
   },
   { event: 'drive/import.continue' },
   handleImportEvent
