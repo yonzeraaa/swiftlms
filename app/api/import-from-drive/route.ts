@@ -1068,11 +1068,13 @@ async function parseGoogleDriveFolder(
   const resumeModuleIndex = resumeState?.moduleIndex ?? 0
   const progressSnapshot = options.progressSnapshot ?? createProgressSnapshot(null)
 
-  // Determina se é resume baseado APENAS em progresso real no banco
-  // Se há qualquer contador processado > 0, então há progresso = resume
-  // Isso garante que Discovery rode na primeira execução (quando tudo é 0)
-  // E que Discovery seja pulada quando há progresso (mesmo se resumeState for null)
+  // Determina se é resume baseado em:
+  // 1. Se existe resumeState salvo (significa que já iniciou processamento)
+  // 2. Se há qualquer contador processado > 0 (há progresso real)
+  // Isso garante que Discovery rode APENAS na primeira execução
+  // E que Discovery seja pulada em TODOS os retries/continues
   const isResume =
+    resumeState !== null ||
     progressSnapshot.processedModules > 0 ||
     progressSnapshot.processedSubjects > 0 ||
     progressSnapshot.processedLessons > 0 ||
@@ -1320,8 +1322,44 @@ async function parseGoogleDriveFolder(
         }
       }
 
+      // Skip de módulos anteriores ao ponto de resume
       if (resumeState && moduleIndex < resumeModuleIndex) {
+        console.log(`[RESUME] Pulando módulo ${moduleIndex} (resume em ${resumeModuleIndex})`)
         continue
+      }
+
+      // Se estamos no módulo de resume mas ele já foi completamente processado,
+      // precisamos pular para o próximo módulo
+      if (resumeState && moduleIndex === resumeModuleIndex) {
+        // Verificar se todas as disciplinas deste módulo já foram processadas
+        const resumeSubjectIndex = resumeState.subjectIndex ?? 0
+
+        // Contar quantas disciplinas válidas este módulo tem
+        // (precisamos fazer isso antes de saber se devemos pular)
+        const moduleSubjectsCount = await (async () => {
+          try {
+            const subjectItems = await listFolderContents(
+              drive,
+              item.id ?? '',
+              `and mimeType = '${FOLDER_MIME_TYPE}'`
+            )
+            const validSubjectsCount = subjectItems.filter(subItem => {
+              const subjectDisplayName = ensureName(subItem.name, `Disciplina ${subjectItems.indexOf(subItem) + 1}`)
+              const parsed = parseStructuredName(subjectDisplayName, SUBJECT_CODE_REGEX)
+              return Boolean(parsed)
+            }).length
+            return validSubjectsCount
+          } catch (error) {
+            console.error(`[RESUME] Erro ao contar disciplinas do módulo ${moduleIndex}:`, error)
+            return 0
+          }
+        })()
+
+        // Se resumeSubjectIndex >= número de disciplinas, o módulo foi completamente processado
+        if (resumeSubjectIndex >= moduleSubjectsCount) {
+          console.log(`[RESUME] Módulo ${moduleIndex} já completamente processado (${moduleSubjectsCount} disciplinas), pulando`)
+          continue
+        }
       }
 
       if (!moduleInfo?.parsed) {
