@@ -77,16 +77,17 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
   const isResume = resumeState !== null
   const currentPhase = resumeState?.phase || 'discovery'
   const workflowStartTime = Date.now()
-  const MAX_WORKFLOW_DURATION_MS = 3.5 * 60 * 1000 // 3.5 minutos (deixa 30s de margem)
+  const MAX_WORKFLOW_DURATION_MS = 3 * 60 * 1000 // 3 minutos (deixa 1min de margem para cleanup)
 
   console.log(`[INNGEST] Iniciando fase: ${currentPhase}, isResume: ${isResume}`)
+  console.log(`[INNGEST] Tempo máximo por worker: ${MAX_WORKFLOW_DURATION_MS / 1000}s`)
 
   // Helper para verificar se devemos encerrar e continuar em novo worker
   const shouldYieldToNewWorker = () => {
     const elapsed = Date.now() - workflowStartTime
     const shouldYield = elapsed >= MAX_WORKFLOW_DURATION_MS
     if (shouldYield) {
-      console.log(`[INNGEST] Tempo limite atingido (${elapsed}ms), agendando continuação`)
+      console.log(`[INNGEST] ⏰ Tempo limite atingido (${(elapsed / 1000).toFixed(1)}s), agendando continuação`)
     }
     return shouldYield
   }
@@ -160,10 +161,11 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
   const startModuleIndex = resumeState?.moduleIndex || 0
 
   let processingResult: any = await step.run(`phase-2-processing-module-${startModuleIndex}`, async () => {
-    console.log(`[INNGEST STEP] Executando Processing Phase (módulo ${startModuleIndex})`)
+    const stepStartTime = Date.now()
+    console.log(`[INNGEST STEP] ⚙️ Executando Processing Phase (módulo ${startModuleIndex})`)
     const drive = await getDriveClient(userId)
 
-    return await runProcessingPhase(
+    const result = await runProcessingPhase(
       drive,
       driveUrl,
       folderId,
@@ -176,8 +178,13 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
         resumeState,
         discoveryTotals: discoveryResult || resumeState?.discoveryResult,
         maxModules: MODULES_PER_CHUNK,
+        startTime: stepStartTime,
       }
     )
+
+    const elapsed = Date.now() - stepStartTime
+    console.log(`[INNGEST STEP] ✓ Processing concluído em ${(elapsed / 1000).toFixed(1)}s`)
+    return result
   })
 
   if (processingResult.status === 'cancelled') {
@@ -266,8 +273,8 @@ export const importFromDrive = inngest.createFunction(
     timeouts: {
       // Sem limite de tempo para iniciar (pode ficar na fila)
       start: undefined,
-      // Timeout de 4 minutos por worker (compatível com Vercel Hobby 5min)
-      finish: '4m',
+      // Timeout de 3min30s por worker (força encerramento antes do Vercel timeout)
+      finish: '3m30s',
     },
   },
   { event: 'drive/import.requested' },
@@ -282,8 +289,8 @@ export const continueImportFromDrive = inngest.createFunction(
     timeouts: {
       // Sem limite de tempo para iniciar (pode ficar na fila)
       start: undefined,
-      // Timeout de 4 minutos por worker (compatível com Vercel Hobby 5min)
-      finish: '4m',
+      // Timeout de 3min30s por worker (força encerramento antes do Vercel timeout)
+      finish: '3m30s',
     },
   },
   { event: 'drive/import.continue' },

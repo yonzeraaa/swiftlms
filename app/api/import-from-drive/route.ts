@@ -945,7 +945,7 @@ interface CourseStructure {
 interface ParseResult {
   structure: CourseStructure
   totalModules?: number
-  status?: 'cancelled'
+  status?: 'cancelled' | 'partial'
   resumeState?: ImportResumeState | null
 }
 
@@ -983,6 +983,8 @@ interface ParseOptions {
   resumeState?: ImportResumeState | null
   progressSnapshot?: ProgressSnapshot
   warnings?: string[]
+  startTime?: number
+  maxRuntimeMs?: number
 }
 
 interface ImportResumeState {
@@ -3812,13 +3814,15 @@ export async function runProcessingPhase(
     resumeState: any
     discoveryTotals: any
     maxModules: number
+    startTime?: number
   }
 ) {
-  console.log(`[PROCESSING] Iniciando fase de processamento (máx ${options.maxModules} módulos)`)
+  const phaseStartTime = options.startTime || Date.now()
+  const MAX_PROCESSING_TIME_MS = 3 * 60 * 1000 // 3 minutos para processamento
 
-  // Por enquanto, delegar para a função existente
-  // Em uma refatoração futura, podemos extrair a lógica de processamento
-  // para processar apenas os módulos especificados
+  console.log(`[PROCESSING] Iniciando fase de processamento (máx ${options.maxModules} módulos, timeout: 3min)`)
+
+  // Criar wrapper com timeout para parseGoogleDriveFolder
   const result = await parseGoogleDriveFolder(
     drive,
     folderId,
@@ -3840,14 +3844,31 @@ export async function runProcessingPhase(
         processedLessons: 0,
         processedTests: 0,
       },
+      // Passar startTime e maxRuntime para controle interno
+      startTime: phaseStartTime,
+      maxRuntimeMs: MAX_PROCESSING_TIME_MS,
     }
   )
+
+  const elapsedMs = Date.now() - phaseStartTime
+  console.log(`[PROCESSING] Tempo decorrido: ${(elapsedMs / 1000).toFixed(1)}s`)
 
   // Se result for cancelled, retornar imediatamente
   if (result.status === 'cancelled') {
     return {
       status: 'cancelled',
       structure: result.structure,
+    }
+  }
+
+  // Se parseGoogleDriveFolder retornou 'partial' por timeout interno, respeitar
+  if (result.status === 'partial') {
+    console.log(`[PROCESSING] Parcial: timeout interno atingido`)
+    return {
+      status: 'partial',
+      structure: result.structure,
+      nextModuleIndex: result.resumeState?.moduleIndex || 0,
+      totalModules: result.totalModules || 0,
     }
   }
 
