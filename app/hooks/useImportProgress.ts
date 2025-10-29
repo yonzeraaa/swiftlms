@@ -77,18 +77,30 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
           'Accept': 'application/json',
         },
       })
+      const contentType = response.headers.get('content-type') || ''
+      const responseText = await response.text()
+      const isJson = contentType.includes('application/json')
+      const looksLikeHtml = responseText.trim().startsWith('<')
       
       if (!response.ok) {
         let errorMessage = 'Erro ao buscar progresso'
-        try {
-          // Tentar parsear o erro apenas se há conteúdo na resposta
-          const responseText = await response.text()
-          if (responseText.trim()) {
+        if (responseText.trim() && isJson) {
+          try {
             const error = JSON.parse(responseText)
             errorMessage = error.error || errorMessage
+          } catch (parseError) {
+            console.warn('[useImportProgress] Failed to parse error response:', parseError)
           }
-        } catch (parseError) {
-          console.warn('[useImportProgress] Failed to parse error response:', parseError)
+        } else if (looksLikeHtml) {
+          console.warn('[useImportProgress] Non-JSON error response (possible security checkpoint or auth redirect). Status:', response.status)
+          if (response.status === 403) {
+            errorMessage = 'Acesso negado pela plataforma. Atualize a página e autentique-se novamente.'
+          } else if (response.status === 401) {
+            errorMessage = 'Sessão expirada. Faça login novamente para continuar.'
+          }
+        } else if (responseText.trim()) {
+          console.warn('[useImportProgress] Unexpected error payload:', responseText.substring(0, 200))
+          errorMessage = responseText.trim()
         }
         
         console.error('[useImportProgress] Error fetching progress:', errorMessage)
@@ -96,10 +108,19 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
         return
       }
 
-      // Verificar se a resposta tem conteúdo antes de tentar parsear
-      const responseText = await response.text()
       if (!responseText.trim()) {
         console.warn('[useImportProgress] Empty response received')
+        return
+      }
+
+      if (!isJson) {
+        console.error('[useImportProgress] Received non-JSON progress payload. First 200 chars:', responseText.substring(0, 200))
+        if (onError) {
+          const friendlyMessage = looksLikeHtml
+            ? 'Resposta inesperada do servidor (HTML). Atualize a página e tente novamente.'
+            : 'Resposta inesperada do servidor ao consultar o progresso.'
+          onError(friendlyMessage)
+        }
         return
       }
 
@@ -344,44 +365,58 @@ export function useImportProgress(options: UseImportProgressOptions = {}) {
       startedAt: null
     })
 
-    try {
-      const response = await fetch('/api/import-from-drive', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          driveUrl,
-          courseId
-        })
-      })
-
-      if (!response.ok) {
-        let errorMessage = 'Erro na importação'
-        try {
-          const responseText = await response.text()
-          if (responseText.trim()) {
-            const result = JSON.parse(responseText)
-            errorMessage = result.error || errorMessage
-          }
-        } catch (parseError) {
-          console.warn('[useImportProgress] Failed to parse error response:', parseError)
-          errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`
-        }
-        throw new Error(errorMessage)
-      }
-
-      // Verificar se a resposta tem conteúdo antes de tentar parsear
-      const responseText = await response.text()
-      if (!responseText.trim()) {
-        throw new Error('Resposta vazia do servidor')
-      }
-
-      let result
       try {
-        result = JSON.parse(responseText)
-      } catch (parseError) {
-        console.error('[useImportProgress] Failed to parse import response:', parseError)
+        const response = await fetch('/api/import-from-drive', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            driveUrl,
+            courseId
+          })
+        })
+        const contentType = response.headers.get('content-type') || ''
+        const responseText = await response.text()
+        const isJson = contentType.includes('application/json')
+        const looksLikeHtml = responseText.trim().startsWith('<')
+
+        if (!response.ok) {
+          let errorMessage = 'Erro na importação'
+          if (responseText.trim() && isJson) {
+            try {
+              const result = JSON.parse(responseText)
+              errorMessage = result.error || errorMessage
+            } catch (parseError) {
+              console.warn('[useImportProgress] Failed to parse error response:', parseError)
+              errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`
+            }
+          } else if (looksLikeHtml) {
+            console.warn('[useImportProgress] Non-JSON error response when starting import. Status:', response.status)
+            errorMessage =
+              response.status === 403
+                ? 'Acesso negado pela plataforma. Faça login novamente.'
+                : 'Resposta inesperada do servidor ao iniciar a importação.'
+          } else if (responseText.trim()) {
+            errorMessage = responseText.trim()
+          }
+          throw new Error(errorMessage)
+        }
+
+        if (!responseText.trim()) {
+          throw new Error('Resposta vazia do servidor')
+        }
+
+        if (!isJson) {
+          console.error('[useImportProgress] Received non-JSON payload ao iniciar importação. First 200 chars:', responseText.substring(0, 200))
+          throw new Error('Resposta inesperada ao iniciar importação. Atualize a página e tente novamente.')
+        }
+
+        let result
+        try {
+          result = JSON.parse(responseText)
+        } catch (parseError) {
+          console.error('[useImportProgress] Failed to parse import response:', parseError)
         console.error('[useImportProgress] Response text:', responseText.substring(0, 200))
         throw new Error('Erro ao processar resposta do servidor')
       }
