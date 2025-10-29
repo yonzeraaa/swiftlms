@@ -290,13 +290,8 @@ export const importFromDrive = inngest.createFunction(
       // Timeout de 3min30s por worker (força encerramento antes do Vercel timeout)
       finish: '3m30s',
     },
-    idempotency: 'event.data.jobId + "-initial"', // Previne workers duplicados
-    concurrency: [
-      {
-        key: 'event.data.jobId',
-        limit: 1, // Apenas 1 worker por job por vez
-      }
-    ],
+    idempotency: 'event.data.jobId + "-initial"', // Previne workers duplicados apenas do inicial
+    // REMOVIDO: concurrency - não é necessário para a função inicial
   },
   { event: 'drive/import.requested' },
   handleImportEvent
@@ -313,13 +308,8 @@ export const continueImportFromDrive = inngest.createFunction(
       // Timeout de 3min30s por worker (força encerramento antes do Vercel timeout)
       finish: '3m30s',
     },
-    // A concurrency garante que apenas 1 worker execute por vez
-    concurrency: [
-      {
-        key: 'event.data.jobId',
-        limit: 1, // Apenas 1 worker por job por vez
-      }
-    ],
+    // REMOVIDO: concurrency estava bloqueando a execução dos workers
+    // O Inngest gerencia a fila naturalmente sem necessidade de config explícita
   },
   // Event trigger explícito para garantir que o Inngest reconheça
   {
