@@ -985,6 +985,7 @@ interface ParseOptions {
   warnings?: string[]
   startTime?: number
   maxRuntimeMs?: number
+  checkTimeout?: () => boolean
 }
 
 interface ImportResumeState {
@@ -1383,13 +1384,28 @@ async function parseGoogleDriveFolder(
         }
       }
 
-      // VERIFICAÇÃO DE TIMEOUT: Checa a cada módulo
+      // VERIFICAÇÃO DE TIMEOUT DO WORKER: Checa se o worker inteiro atingiu timeout
+      if (options.checkTimeout?.()) {
+        console.log(`[IMPORT] ⏰ Timeout do worker atingido no módulo ${moduleIndex}, salvando progresso para próximo worker`)
+        return {
+          status: 'partial',
+          structure,
+          totalModules,
+          resumeState: {
+            moduleIndex,
+            subjectIndex: 0,
+            itemIndex: 0
+          }
+        }
+      }
+
+      // VERIFICAÇÃO DE TIMEOUT INTERNO: Checa a cada módulo
       const startTime = options.startTime
       const maxRuntimeMs = options.maxRuntimeMs
       if (startTime && maxRuntimeMs) {
         const elapsedMs = Date.now() - startTime
         if (elapsedMs >= maxRuntimeMs) {
-          console.log(`[IMPORT] ⏰ Timeout atingido no módulo ${moduleIndex} (${(elapsedMs / 1000).toFixed(1)}s), salvando progresso`)
+          console.log(`[IMPORT] ⏰ Timeout interno atingido no módulo ${moduleIndex} (${(elapsedMs / 1000).toFixed(1)}s), salvando progresso`)
           return {
             status: 'partial',
             structure,
@@ -3875,12 +3891,24 @@ export async function runProcessingPhase(
     discoveryTotals: any
     maxModules: number
     startTime?: number
+    checkTimeout?: () => boolean
   }
 ) {
   const phaseStartTime = options.startTime || Date.now()
   const MAX_PROCESSING_TIME_MS = 3 * 60 * 1000 // 3 minutos para processamento
 
   console.log(`[PROCESSING] Iniciando fase de processamento (máx ${options.maxModules} módulos, timeout: 3min)`)
+
+  // Verificar timeout antes de iniciar processamento
+  if (options.checkTimeout?.()) {
+    console.log(`[PROCESSING] ⏰ Timeout do worker atingido antes de iniciar processamento`)
+    return {
+      status: 'partial',
+      structure: { modules: [] },
+      nextModuleIndex: options.resumeState?.moduleIndex || 0,
+      totalModules: options.discoveryTotals?.totalModules || 0,
+    }
+  }
 
   // Criar wrapper com timeout para parseGoogleDriveFolder
   const result = await parseGoogleDriveFolder(
@@ -3907,6 +3935,7 @@ export async function runProcessingPhase(
       // Passar startTime e maxRuntime para controle interno
       startTime: phaseStartTime,
       maxRuntimeMs: MAX_PROCESSING_TIME_MS,
+      checkTimeout: options.checkTimeout,
     }
   )
 

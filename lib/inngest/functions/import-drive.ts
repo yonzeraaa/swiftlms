@@ -77,10 +77,10 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
   const isResume = resumeState !== null
   const currentPhase = resumeState?.phase || 'discovery'
   const workflowStartTime = Date.now()
-  // Timeout interno de 3min10s (190s)
-  // Margem de 20s antes do Inngest forçar timeout (finish: '3m30s')
+  // Timeout interno de 3min (180s)
+  // Margem de 30s antes do Inngest forçar timeout (finish: '3m30s')
   // Vercel tem limite de 5min, mas queremos workers curtos para evitar problemas
-  const MAX_WORKFLOW_DURATION_MS = 190_000 // 3min10s
+  const MAX_WORKFLOW_DURATION_MS = 180_000 // 3min exatos
 
   console.log(`[INNGEST] Iniciando fase: ${currentPhase}, isResume: ${isResume}`)
   console.log(`[INNGEST] Tempo máximo por worker: ${MAX_WORKFLOW_DURATION_MS / 1000}s`)
@@ -187,6 +187,7 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
         discoveryTotals: discoveryResult || resumeState?.discoveryResult,
         maxModules: MODULES_PER_CHUNK,
         startTime: stepStartTime,
+        checkTimeout: shouldYieldToNewWorker,
       }
     )
 
