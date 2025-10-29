@@ -989,6 +989,8 @@ interface ParseOptions {
 }
 
 interface ImportResumeState {
+  phase?: 'discovery' | 'processing' | 'database'
+  discoveryResult?: any
   moduleIndex: number
   subjectIndex: number
   itemIndex: number
