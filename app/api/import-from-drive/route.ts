@@ -33,6 +33,7 @@ const SUPPORTED_FILE_EXTENSION_REGEX = /\.(docx?|pdf|txt|pptx?|xlsx?|mp4|mp3|m4a
 
 const TEST_KEYWORDS = [
   'teste',
+  'testes',
   'test',
   'quiz',
   'avaliacao',
@@ -1196,6 +1197,7 @@ async function parseGoogleDriveFolder(
         errors: []
       })
 
+      let discoveredModules = 0
       let discoveredSubjects = 0
       let discoveredLessons = 0
       let discoveredTests = 0
@@ -1205,6 +1207,8 @@ async function parseGoogleDriveFolder(
         const moduleInfo = moduleInfoCache[moduleIndex]
 
         if (!moduleInfo?.parsed) continue
+
+        discoveredModules++
 
         // Criar item de tracking para o módulo
         const moduleItemId = await createImportItem(job, item, 'module', null)
@@ -1269,11 +1273,24 @@ async function parseGoogleDriveFolder(
               const treatAsTest = forcedTest || isFormTest || keywordTest
               const matchesSubjectPrefix = lessonCode ? lessonCode.startsWith(parsedSubject.code) : false
 
+              // DEBUG: Log detalhado de classificação
+              console.log(`[DEBUG] Arquivo: ${itemName}`)
+              console.log(`[DEBUG]   - formattedTitle: "${formattedTitle}"`)
+              console.log(`[DEBUG]   - keywordTest: ${keywordTest}`)
+              console.log(`[DEBUG]   - forcedTest: ${forcedTest}`)
+              console.log(`[DEBUG]   - isFormTest: ${isFormTest}`)
+              console.log(`[DEBUG]   - treatAsTest: ${treatAsTest}`)
+              console.log(`[DEBUG]   - matchesSubjectPrefix: ${matchesSubjectPrefix}`)
+
               let itemType: 'lesson' | 'test' | null = null
               if (treatAsTest) {
                 itemType = 'test'
+                console.log(`[DEBUG]   → Classificado como TESTE`)
               } else if (matchesSubjectPrefix) {
                 itemType = 'lesson'
+                console.log(`[DEBUG]   → Classificado como AULA`)
+              } else {
+                console.log(`[DEBUG]   → IGNORADO (sem código válido ou palavra-chave)`)
               }
 
               // Criar item de tracking durante Discovery
@@ -1300,6 +1317,7 @@ async function parseGoogleDriveFolder(
         }
       }
 
+      totalModules = discoveredModules
       totalSubjects = discoveredSubjects
       totalLessons = discoveredLessons
       totalTests = discoveredTests
