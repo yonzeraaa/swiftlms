@@ -290,10 +290,10 @@ export const importFromDrive = inngest.createFunction(
       // Timeout de 3min30s por worker (força encerramento antes do Vercel timeout)
       finish: '3m30s',
     },
-    idempotency: `import-job-{{event.data.jobId}}`, // Previne workers duplicados
+    idempotency: 'event.data.jobId + "-initial"', // Previne workers duplicados
     concurrency: [
       {
-        key: `import-job-{{event.data.jobId}}`,
+        key: 'event.data.jobId',
         limit: 1, // Apenas 1 worker por job por vez
       }
     ],
@@ -313,15 +313,20 @@ export const continueImportFromDrive = inngest.createFunction(
       // Timeout de 3min30s por worker (força encerramento antes do Vercel timeout)
       finish: '3m30s',
     },
-    // Removida idempotency para permitir múltiplos workers do mesmo job
-    // A concurrency já garante que apenas 1 worker execute por vez
+    // A concurrency garante que apenas 1 worker execute por vez
     concurrency: [
       {
-        key: `import-job-{{event.data.jobId}}`,
+        key: 'event.data.jobId',
         limit: 1, // Apenas 1 worker por job por vez
       }
     ],
   },
-  { event: 'drive/import.continue' },
-  handleImportEvent
+  // Event trigger explícito para garantir que o Inngest reconheça
+  {
+    event: 'drive/import.continue',
+  },
+  async ({ event, step }) => {
+    console.log(`[INNGEST] 🔄 Continue worker disparado! Event ID: ${event.id}, Job ID: ${event.data?.jobId}`)
+    return await handleImportEvent({ event: event as { data: ImportEventPayload }, step })
+  }
 )
