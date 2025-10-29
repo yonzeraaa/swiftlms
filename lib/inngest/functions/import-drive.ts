@@ -142,7 +142,7 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
 
     // Após Discovery, verificar se devemos continuar em novo worker
     if (shouldYieldToNewWorker()) {
-      await step.sendEvent('schedule-continue-worker', {
+      const { ids } = await step.sendEvent('schedule-continue-worker', {
         name: 'drive/import.continue',
         data: {
           driveUrl,
@@ -153,10 +153,12 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
           jobId,
         }
       })
+      console.log(`[INNGEST] ✅ Evento 'drive/import.continue' enviado com sucesso após Discovery. Event IDs: ${ids.join(', ')}`)
       return {
         importId,
         status: 'partial',
-        message: 'Discovery completa, continuando processamento em novo worker'
+        message: 'Discovery completa, continuando processamento em novo worker',
+        eventIds: ids
       }
     }
   }
@@ -224,7 +226,7 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
       }
     }
 
-    await step.sendEvent('schedule-continue-worker', {
+    const { ids } = await step.sendEvent('schedule-continue-worker', {
       name: 'drive/import.continue',
       data: {
         driveUrl,
@@ -236,10 +238,13 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
       }
     })
 
+    console.log(`[INNGEST] ✅ Evento 'drive/import.continue' enviado com sucesso. Event IDs: ${ids.join(', ')}`)
+
     return {
       importId,
       status: 'partial',
-      message: `Módulo ${startModuleIndex + 1} processado, continuando em novo worker`
+      message: `Módulo ${startModuleIndex + 1} processado, continuando em novo worker`,
+      eventIds: ids
     }
   }
 
