@@ -102,7 +102,13 @@ export const importFromDrive = inngest.createFunction(
   {
     id: 'import-from-google-drive',
     name: 'Import Course Content from Google Drive',
-    retries: 10, // Aumentado de 3 para 10 retries
+    retries: 10,
+    timeouts: {
+      // Sem limite de tempo para iniciar (pode ficar na fila)
+      start: undefined,
+      // Timeout de 2 horas para completar a execução
+      finish: '2h',
+    },
   },
   { event: 'drive/import.requested' },
   handleImportEvent
@@ -112,7 +118,13 @@ export const continueImportFromDrive = inngest.createFunction(
   {
     id: 'continue-import-from-google-drive',
     name: 'Continue Google Drive Import',
-    retries: 10, // Aumentado de 3 para 10 retries
+    retries: 10,
+    timeouts: {
+      // Sem limite de tempo para iniciar (pode ficar na fila)
+      start: undefined,
+      // Timeout de 2 horas para completar a execução
+      finish: '2h',
+    },
   },
   { event: 'drive/import.continue' },
   handleImportEvent
