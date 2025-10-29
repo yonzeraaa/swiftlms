@@ -1206,6 +1206,14 @@ async function parseGoogleDriveFolder(
 
         if (!moduleInfo?.parsed) continue
 
+        // Criar item de tracking para o módulo
+        const moduleItemId = await createImportItem(job, item, 'module', null)
+        if (moduleItemId) {
+          await logItemEvent(job, moduleItemId, 'info', 'Módulo descoberto durante Discovery phase', {
+            moduleName: moduleInfo.displayName
+          })
+        }
+
         // Contar disciplinas do módulo
         const subjectCandidates = await listFolderContents(drive, item.id!, '')
         const subjects = subjectCandidates.filter(c => c.mimeType === FOLDER_MIME_TYPE)
@@ -1215,6 +1223,14 @@ async function parseGoogleDriveFolder(
           const parsedSubject = parseStructuredName(subjectName, SUBJECT_CODE_REGEX)
 
           if (!parsedSubject) continue
+
+          // Criar item de tracking para a disciplina
+          const subjectItemId = await createImportItem(job, subjectItem, 'subject', item.id)
+          if (subjectItemId) {
+            await logItemEvent(job, subjectItemId, 'info', 'Disciplina descoberta durante Discovery phase', {
+              subjectName: parsedSubject.code
+            })
+          }
 
           discoveredSubjects++
 
@@ -1240,8 +1256,7 @@ async function parseGoogleDriveFolder(
             aggregatedAssets.push(...nestedFiles)
           }
 
-          const classifiedForCount = aggregatedAssets
-            .map(asset => {
+          const classifiedForCount = await Promise.all(aggregatedAssets.map(async (asset) => {
               const itemName = asset.name || 'Arquivo sem nome'
               const baseName = (asset.name || '').replace(SUPPORTED_FILE_EXTENSION_REGEX, '')
               const formattedTitle = formatTitle(baseName || itemName)
@@ -1254,11 +1269,27 @@ async function parseGoogleDriveFolder(
               const treatAsTest = forcedTest || isFormTest || keywordTest
               const matchesSubjectPrefix = lessonCode ? lessonCode.startsWith(parsedSubject.code) : false
 
-              if (treatAsTest) return 'test'
-              if (matchesSubjectPrefix) return 'lesson'
-              return null
-            })
-            .filter(Boolean)
+              let itemType: 'lesson' | 'test' | null = null
+              if (treatAsTest) {
+                itemType = 'test'
+              } else if (matchesSubjectPrefix) {
+                itemType = 'lesson'
+              }
+
+              // Criar item de tracking durante Discovery
+              if (itemType && subjectItemId) {
+                const assetItemId = await createImportItem(job, asset, itemType, subjectItem.id)
+                if (assetItemId) {
+                  await logItemEvent(job, assetItemId, 'info', `${itemType === 'test' ? 'Teste' : 'Aula'} descoberta durante Discovery`, {
+                    name: itemName,
+                    code: lessonCode
+                  })
+                }
+              }
+
+              return itemType
+            }))
+            .then(results => results.filter(Boolean))
 
           // Contar testes e aulas separadamente
           const testsCount = classifiedForCount.filter(type => type === 'test').length
@@ -1858,6 +1889,10 @@ async function parseGoogleDriveFolder(
                 if (entry.type === 'test') {
                   if (existingState?.existingTestUrls?.has(driveLink)) {
                     console.log(`      Teste já importado detectado: '${itemName}', pulando.`)
+                    // Marcar item como pulado no tracking
+                    if (lessonItem.id) {
+                      await updateItemStatusByDriveFileId(job, lessonItem.id, 'skipped')
+                    }
                     processedLessons++
                     await updateProgress({
                       current_step: `Item ${processedLessons}/${totalLessons} processado`,
@@ -1972,6 +2007,10 @@ async function parseGoogleDriveFolder(
                 } else {
                   if (existingState?.existingLessonUrls?.has(driveLink)) {
                     console.log(`      Aula já importada detectada: '${itemName}', pulando.`)
+                    // Marcar item como pulado no tracking
+                    if (lessonItem.id) {
+                      await updateItemStatusByDriveFileId(job, lessonItem.id, 'skipped')
+                    }
                     processedLessons++
                     await updateProgress({
                       current_step: `Item ${processedLessons}/${totalLessons} processado`,
@@ -2040,6 +2079,11 @@ async function parseGoogleDriveFolder(
                   subject.lessons.push(lesson)
                   existingState?.existingLessonUrls?.add(driveLink)
                   console.log(`      Aula adicionada: '${lesson.code ? `${lesson.code} - ` : ''}${lesson.name}' (tipo: ${lessonItem.mimeType})`)
+                }
+
+                // Marcar item como concluído no tracking
+                if (lessonItem.id) {
+                  await updateItemStatusByDriveFileId(job, lessonItem.id, 'completed')
                 }
 
                 processedLessons++
@@ -3362,4 +3406,204 @@ async function mapWithConcurrency<T, R>(
 
   await Promise.all(executing)
   return results
+}
+
+// ============================================================================
+// HELPER FUNCTIONS PARA TRACKING GRANULAR DE ITEMS
+// ============================================================================
+
+/**
+ * Cria um item de tracking no banco para um arquivo/pasta do Google Drive
+ * Status inicial: 'pending'
+ */
+async function createImportItem(
+  job: ImportJobContext | undefined,
+  driveFile: drive_v3.Schema$File,
+  itemType: 'module' | 'subject' | 'lesson' | 'test',
+  parentId?: string | null
+): Promise<string | null> {
+  if (!job) return null
+
+  try {
+    const { data, error } = await job.supabase
+      .from('drive_import_items')
+      .insert({
+        job_id: job.jobId,
+        drive_file_id: driveFile.id!,
+        parent_id: parentId ?? null,
+        name: driveFile.name ?? 'Item sem nome',
+        mime_type: driveFile.mimeType ?? null,
+        size_bytes: getDriveFileSizeBytes(driveFile),
+        kind: driveFile.kind ?? null,
+        item_type: itemType,
+        status: 'pending',
+        web_content_link: driveFile.webContentLink ?? null,
+        web_view_link: driveFile.webViewLink ?? null,
+      })
+      .select('id')
+      .single()
+
+    if (error) {
+      console.error('[TRACKING] Erro ao criar item:', error)
+      return null
+    }
+
+    return data?.id ?? null
+  } catch (error) {
+    console.error('[TRACKING] Exceção ao criar item:', error)
+    return null
+  }
+}
+
+/**
+ * Atualiza o status de um item de tracking
+ * Status possíveis: 'pending' | 'processing' | 'completed' | 'failed' | 'skipped'
+ */
+async function updateItemStatus(
+  job: ImportJobContext | undefined,
+  itemId: string,
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'skipped',
+  errorMessage?: string,
+  metadata?: Record<string, unknown>
+): Promise<void> {
+  if (!job || !itemId) return
+
+  try {
+    const updates: Database['public']['Tables']['drive_import_items']['Update'] = {
+      status,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (status === 'completed') {
+      updates.processed_at = new Date().toISOString()
+    }
+
+    if (errorMessage) {
+      updates.error = errorMessage
+    }
+
+    if (metadata) {
+      updates.metadata = metadata as Json
+    }
+
+    await job.supabase
+      .from('drive_import_items')
+      .update(updates)
+      .eq('id', itemId)
+  } catch (error) {
+    console.error('[TRACKING] Erro ao atualizar status do item:', error)
+  }
+}
+
+/**
+ * Registra um evento relacionado a um item específico
+ */
+async function logItemEvent(
+  job: ImportJobContext | undefined,
+  itemId: string | null,
+  level: 'info' | 'warn' | 'error',
+  message: string,
+  context?: Record<string, unknown>
+): Promise<void> {
+  if (!job) return
+
+  try {
+    const contextJson: Json | null = context ? (context as unknown as Json) : null
+    await job.supabase.from('drive_import_events').insert({
+      job_id: job.jobId,
+      item_id: itemId,
+      level,
+      message,
+      context: contextJson,
+    })
+  } catch (error) {
+    console.error('[TRACKING] Erro ao registrar evento do item:', error)
+  }
+}
+
+/**
+ * Atualiza informações de storage após upload bem-sucedido
+ */
+async function updateItemStorage(
+  job: ImportJobContext | undefined,
+  itemId: string,
+  storagePath: string,
+  storagePublicUrl: string,
+  storageBucket: string,
+  storageContentType: string
+): Promise<void> {
+  if (!job || !itemId) return
+
+  try {
+    await job.supabase
+      .from('drive_import_items')
+      .update({
+        storage_path: storagePath,
+        storage_public_url: storagePublicUrl,
+        storage_bucket: storageBucket,
+        storage_content_type: storageContentType,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', itemId)
+  } catch (error) {
+    console.error('[TRACKING] Erro ao atualizar storage do item:', error)
+  }
+}
+
+/**
+ * Incrementa o contador de tentativas de um item
+ */
+async function incrementItemAttempt(
+  job: ImportJobContext | undefined,
+  itemId: string
+): Promise<void> {
+  if (!job || !itemId) return
+
+  try {
+    const { data } = await job.supabase
+      .from('drive_import_items')
+      .select('attempt_count')
+      .eq('id', itemId)
+      .single()
+
+    const currentAttempts = data?.attempt_count ?? 0
+
+    await job.supabase
+      .from('drive_import_items')
+      .update({
+        attempt_count: currentAttempts + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', itemId)
+  } catch (error) {
+    console.error('[TRACKING] Erro ao incrementar tentativas do item:', error)
+  }
+}
+
+/**
+ * Busca e atualiza status de um item pelo drive_file_id
+ * Útil durante Processing phase onde temos drive_file_id mas não item_id
+ */
+async function updateItemStatusByDriveFileId(
+  job: ImportJobContext | undefined,
+  driveFileId: string,
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'skipped',
+  errorMessage?: string
+): Promise<void> {
+  if (!job || !driveFileId) return
+
+  try {
+    const { data: item } = await job.supabase
+      .from('drive_import_items')
+      .select('id')
+      .eq('job_id', job.jobId)
+      .eq('drive_file_id', driveFileId)
+      .maybeSingle()
+
+    if (item?.id) {
+      await updateItemStatus(job, item.id, status, errorMessage)
+    }
+  } catch (error) {
+    console.error('[TRACKING] Erro ao atualizar item por drive_file_id:', error)
+  }
 }
