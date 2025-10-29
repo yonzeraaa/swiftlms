@@ -28,6 +28,42 @@ async function getJobContext(supabase: any, jobId: string, importId: string, cou
   }
 }
 
+async function persistResumeState(
+  job:
+    | {
+        jobId: string
+        supabase: any
+        metadata: Record<string, unknown>
+      }
+    | undefined,
+  resumeState: Record<string, unknown>
+) {
+  if (!job) return
+  const metadata = {
+    ...(job.metadata || {}),
+    resume_state: resumeState,
+  }
+  await job.supabase.from('drive_import_jobs').update({ metadata }).eq('id', job.jobId)
+  job.metadata = metadata
+}
+
+async function clearResumeState(
+  job:
+    | {
+        jobId: string
+        supabase: any
+        metadata: Record<string, unknown>
+      }
+    | undefined
+) {
+  if (!job) return
+  if (!job.metadata || !('resume_state' in job.metadata)) return
+  const metadata = { ...(job.metadata as Record<string, unknown>) }
+  delete metadata.resume_state
+  await job.supabase.from('drive_import_jobs').update({ metadata }).eq('id', job.jobId)
+  job.metadata = metadata
+}
+
 async function handleImportEvent({ event, step }: { event: { data: ImportEventPayload }; step: any }) {
   const { driveUrl, courseId, importId, userId, folderId, jobId } = event.data
 
@@ -205,9 +241,41 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
     }
   }
 
+  const deriveResumeState = () => {
+    const discoverySnapshot = discoveryResult || resumeState?.discoveryResult || null
+    if (processingResult.status === 'partial' && processingResult.resumeState) {
+      return {
+        phase: 'processing',
+        discoveryResult: discoverySnapshot,
+        moduleIndex: processingResult.resumeState.moduleIndex ?? resumeState?.moduleIndex ?? 0,
+        subjectIndex: processingResult.resumeState.subjectIndex ?? 0,
+        itemIndex: processingResult.resumeState.itemIndex ?? 0,
+      }
+    }
+
+    const moduleIndexBase =
+      typeof processingResult.nextModuleIndex === 'number'
+        ? processingResult.nextModuleIndex
+        : (resumeState?.moduleIndex ?? 0) + MODULES_PER_CHUNK
+
+    return {
+      phase: 'processing',
+      discoveryResult: discoverySnapshot,
+      moduleIndex: moduleIndexBase,
+      subjectIndex: 0,
+      itemIndex: 0,
+    }
+  }
+
   // Se ainda há módulos para processar OU atingimos tempo limite, agendar continuação
   if (processingResult.status === 'partial' || shouldYieldToNewWorker()) {
     console.log(`[INNGEST] Agendando continuação do processamento`)
+
+    if (job) {
+      const resumePayload = deriveResumeState()
+      await persistResumeState(job, resumePayload)
+      resumeState = resumePayload
+    }
 
     // VERIFICAÇÃO DE CANCELAMENTO antes de agendar
     if (jobId) {
@@ -273,6 +341,7 @@ async function handleImportEvent({ event, step }: { event: { data: ImportEventPa
   }
 
   console.log(`[INNGEST] Importação concluída com sucesso`)
+  await clearResumeState(job)
   return {
     importId,
     status: 'completed',
