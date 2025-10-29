@@ -1383,6 +1383,26 @@ async function parseGoogleDriveFolder(
         }
       }
 
+      // VERIFICAÇÃO DE TIMEOUT: Checa a cada módulo
+      const startTime = options.startTime
+      const maxRuntimeMs = options.maxRuntimeMs
+      if (startTime && maxRuntimeMs) {
+        const elapsedMs = Date.now() - startTime
+        if (elapsedMs >= maxRuntimeMs) {
+          console.log(`[IMPORT] ⏰ Timeout atingido no módulo ${moduleIndex} (${(elapsedMs / 1000).toFixed(1)}s), salvando progresso`)
+          return {
+            status: 'partial',
+            structure,
+            totalModules,
+            resumeState: {
+              moduleIndex,
+              subjectIndex: 0,
+              itemIndex: 0
+            }
+          }
+        }
+      }
+
       // Skip de módulos anteriores ao ponto de resume
       if (resumeState && moduleIndex < resumeModuleIndex) {
         console.log(`[RESUME] Pulando módulo ${moduleIndex} (resume em ${resumeModuleIndex})`)
@@ -1578,6 +1598,26 @@ async function parseGoogleDriveFolder(
                 moduleIndex,
                 subjectIndex,
                 itemIndex: 0
+              }
+            }
+          }
+
+          // VERIFICAÇÃO DE TIMEOUT: Checa a cada disciplina
+          const startTime = options.startTime
+          const maxRuntimeMs = options.maxRuntimeMs
+          if (startTime && maxRuntimeMs) {
+            const elapsedMs = Date.now() - startTime
+            if (elapsedMs >= maxRuntimeMs) {
+              console.log(`[IMPORT] ⏰ Timeout atingido na disciplina (${(elapsedMs / 1000).toFixed(1)}s), salvando progresso`)
+              return {
+                status: 'partial',
+                structure,
+                totalModules,
+                resumeState: {
+                  moduleIndex,
+                  subjectIndex,
+                  itemIndex: 0
+                }
               }
             }
           }
@@ -1871,6 +1911,26 @@ async function parseGoogleDriveFolder(
                     moduleIndex,
                     subjectIndex,
                     itemIndex: batchStart
+                  }
+                }
+              }
+
+              // VERIFICAÇÃO DE TIMEOUT: Checa se deve retornar para evitar timeout
+              const startTime = options.startTime
+              const maxRuntimeMs = options.maxRuntimeMs
+              if (startTime && maxRuntimeMs) {
+                const elapsedMs = Date.now() - startTime
+                if (elapsedMs >= maxRuntimeMs) {
+                  console.log(`[IMPORT] ⏰ Timeout atingido (${(elapsedMs / 1000).toFixed(1)}s), salvando progresso`)
+                  return {
+                    status: 'partial',
+                    structure,
+                    totalModules,
+                    resumeState: {
+                      moduleIndex,
+                      subjectIndex,
+                      itemIndex: batchStart
+                    }
                   }
                 }
               }
