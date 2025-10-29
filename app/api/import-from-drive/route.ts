@@ -3897,6 +3897,17 @@ export async function runProcessingPhase(
   const phaseStartTime = options.startTime || Date.now()
   const MAX_PROCESSING_TIME_MS = 3 * 60 * 1000 // 3 minutos para processamento
 
+  const buildResumeState = (overrides: Partial<ImportResumeState> & { discoveryResult?: any } = {}) => {
+    const discoveryResult = overrides.discoveryResult ?? options.resumeState?.discoveryResult ?? options.discoveryTotals ?? null
+    return {
+      phase: 'processing',
+      discoveryResult,
+      moduleIndex: overrides.moduleIndex ?? options.resumeState?.moduleIndex ?? 0,
+      subjectIndex: overrides.subjectIndex ?? options.resumeState?.subjectIndex ?? 0,
+      itemIndex: overrides.itemIndex ?? options.resumeState?.itemIndex ?? 0,
+    }
+  }
+
   console.log(`[PROCESSING] Iniciando fase de processamento (máx ${options.maxModules} módulos, timeout: 3min)`)
 
   // Verificar timeout antes de iniciar processamento
@@ -3907,6 +3918,7 @@ export async function runProcessingPhase(
       structure: { modules: [] },
       nextModuleIndex: options.resumeState?.moduleIndex || 0,
       totalModules: options.discoveryTotals?.totalModules || 0,
+      resumeState: buildResumeState(),
     }
   }
 
@@ -3958,6 +3970,12 @@ export async function runProcessingPhase(
       structure: result.structure,
       nextModuleIndex: result.resumeState?.moduleIndex || 0,
       totalModules: result.totalModules || 0,
+      resumeState: buildResumeState({
+        moduleIndex: result.resumeState?.moduleIndex,
+        subjectIndex: result.resumeState?.subjectIndex,
+        itemIndex: result.resumeState?.itemIndex,
+        discoveryResult: result.resumeState?.discoveryResult,
+      }),
     }
   }
 
@@ -3973,6 +3991,11 @@ export async function runProcessingPhase(
       structure: result.structure,
       nextModuleIndex,
       totalModules,
+      resumeState: buildResumeState({
+        moduleIndex: nextModuleIndex,
+        subjectIndex: 0,
+        itemIndex: 0,
+      }),
     }
   }
 
