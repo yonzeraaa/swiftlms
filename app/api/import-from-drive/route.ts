@@ -3218,8 +3218,6 @@ export async function runImportJob(
   options: RunImportJobOptions
 ) {
   const maxRuntime = Math.min(options.maxRuntimeMs ?? BACKGROUND_MAX_RUNTIME_MS, BACKGROUND_MAX_RUNTIME_MS)
-  const start = Date.now()
-  let iteration = 0
 
   console.log('[IMPORT-RUNNER] Iniciando processamento em background', {
     importId: payload.importId,
@@ -3228,69 +3226,41 @@ export async function runImportJob(
   })
   await logRunnerEvent(payload, 'info', 'Runner iniciado', {
     maxRuntime,
-    iteration,
   })
 
-  while (true) {
-    const result = await processImportInBackground(
-      payload.driveUrl,
-      payload.courseId,
-      payload.importId,
-      payload.userId,
-      payload.folderId,
-      payload.jobId,
-      undefined
-    )
+  const result = await processImportInBackground(
+    payload.driveUrl,
+    payload.courseId,
+    payload.importId,
+    payload.userId,
+    payload.folderId,
+    payload.jobId,
+    undefined
+  )
 
-    if (result.status === 'partial') {
-      iteration += 1
-      const elapsed = Date.now() - start
-      console.log('[IMPORT-RUNNER] Chunk parcial concluído', {
-        importId: payload.importId,
-        iteration,
-        elapsed,
-      })
-      await logRunnerEvent(payload, 'info', 'Chunk parcial processado', {
-        iteration,
-        elapsed,
-      })
+  if (result.status === 'partial') {
+    console.log('[IMPORT-RUNNER] Chunk parcial concluído, agendando continuação', {
+      importId: payload.importId,
+    })
+    await logRunnerEvent(payload, 'info', 'Chunk parcial processado, reagendando continuação')
+    await enqueueImportContinuation(payload, options.baseUrl)
+    return
+  }
 
-      if (elapsed >= maxRuntime - BACKGROUND_SAFETY_MS) {
-        console.log('[IMPORT-RUNNER] Tempo limite atingido, reagendando continuação', {
-          importId: payload.importId,
-          elapsed,
-        })
-        await logRunnerEvent(payload, 'info', 'Tempo limite atingido, reagendando continuação', {
-          elapsed,
-        })
-        await enqueueImportContinuation(payload, options.baseUrl)
-        break
-      }
-
-      if (BACKGROUND_LOOP_DELAY_MS > 0) {
-        await wait(BACKGROUND_LOOP_DELAY_MS)
-      }
-      continue
-    }
-
-    if (result.status === 'cancelled') {
-      console.log('[IMPORT-RUNNER] Job cancelado pelo usuário', {
-        importId: payload.importId,
-        jobId: payload.jobId,
-      })
-      await logRunnerEvent(payload, 'info', 'Job cancelado pelo usuário')
-      break
-    }
-
-    console.log('[IMPORT-RUNNER] Job concluído', {
+  if (result.status === 'cancelled') {
+    console.log('[IMPORT-RUNNER] Job cancelado pelo usuário', {
       importId: payload.importId,
       jobId: payload.jobId,
     })
-    await logRunnerEvent(payload, 'info', 'Job concluído com sucesso', {
-      totalIterations: iteration,
-    })
-    break
+    await logRunnerEvent(payload, 'info', 'Job cancelado pelo usuário')
+    return
   }
+
+  console.log('[IMPORT-RUNNER] Job concluído', {
+    importId: payload.importId,
+    jobId: payload.jobId,
+  })
+  await logRunnerEvent(payload, 'info', 'Job concluído com sucesso')
 }
 
 async function enqueueImportContinuation(payload: ImportRunnerPayload, baseUrl: string) {
