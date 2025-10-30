@@ -10,7 +10,7 @@ import fs from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
 
-const DEFAULT_BACKGROUND_MAX_RUNTIME_MS = 14 * 60 * 1000 // 14 minutos
+const DEFAULT_BACKGROUND_MAX_RUNTIME_MS = 13 * 60 * 1000 // 13 minutos (abaixo do limite de 800s)
 const DEFAULT_BACKGROUND_SAFETY_MS = 60 * 1000 // 1 minuto
 const DEFAULT_BACKGROUND_LOOP_DELAY_MS = 1_500
 

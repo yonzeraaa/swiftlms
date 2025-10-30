@@ -16,7 +16,7 @@ GOOGLE_DRIVE_LIST_TIMEOUT_MS=180000       # 3 minutos
 GOOGLE_DRIVE_EXPORT_TIMEOUT_MS=120000     # 2 minutos
 
 # Configuração do runner em background (Vercel Pro)
-GOOGLE_DRIVE_BACKGROUND_MAX_RUNTIME_MS=780000   # 13 minutos (abaixo do limite de 15min)
+GOOGLE_DRIVE_BACKGROUND_MAX_RUNTIME_MS=780000   # 13 minutos (abaixo do limite de 13m20s do plano Pro)
 GOOGLE_DRIVE_BACKGROUND_SAFETY_MS=60000         # margem antes de reagendar
 GOOGLE_DRIVE_BACKGROUND_LOOP_DELAY_MS=1500      # espera entre chunks
 GOOGLE_DRIVE_RUNNER_SECRET=defina-um-token-unico

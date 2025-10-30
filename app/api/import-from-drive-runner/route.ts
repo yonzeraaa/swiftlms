@@ -3,7 +3,7 @@ import { waitUntil } from '@vercel/functions'
 import { runImportJob, type ImportRunnerPayload } from '@/app/api/import-from-drive/route'
 
 export const runtime = 'nodejs'
-export const maxDuration = 900
+export const maxDuration = 780
 
 export async function POST(request: NextRequest) {
   const payload = (await request.json()) as ImportRunnerPayload
