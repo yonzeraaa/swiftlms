@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { inngest } from '@/lib/inngest/client'
+import { waitUntil } from '@vercel/functions'
 import { google, type drive_v3 } from 'googleapis'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
@@ -10,7 +10,34 @@ import fs from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
 
-export const maxDuration = 300
+const DEFAULT_BACKGROUND_MAX_RUNTIME_MS = 14 * 60 * 1000 // 14 minutos
+const DEFAULT_BACKGROUND_SAFETY_MS = 60 * 1000 // 1 minuto
+const DEFAULT_BACKGROUND_LOOP_DELAY_MS = 1_500
+
+const BACKGROUND_MAX_RUNTIME_MS = (() => {
+  const raw = Number(process.env.GOOGLE_DRIVE_BACKGROUND_MAX_RUNTIME_MS ?? DEFAULT_BACKGROUND_MAX_RUNTIME_MS)
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return DEFAULT_BACKGROUND_MAX_RUNTIME_MS
+  }
+  return Math.min(raw, DEFAULT_BACKGROUND_MAX_RUNTIME_MS)
+})()
+
+const BACKGROUND_SAFETY_MS = (() => {
+  const raw = Number(process.env.GOOGLE_DRIVE_BACKGROUND_SAFETY_MS ?? DEFAULT_BACKGROUND_SAFETY_MS)
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return DEFAULT_BACKGROUND_SAFETY_MS
+  }
+  return raw
+})()
+
+const BACKGROUND_LOOP_DELAY_MS = (() => {
+  const raw = Number(process.env.GOOGLE_DRIVE_BACKGROUND_LOOP_DELAY_MS ?? DEFAULT_BACKGROUND_LOOP_DELAY_MS)
+  if (!Number.isFinite(raw) || raw < 0) {
+    return DEFAULT_BACKGROUND_LOOP_DELAY_MS
+  }
+  return raw
+})()
+const RUNNER_ENDPOINT_PATH = '/api/import-from-drive-runner'
 
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder'
 type DriveClient = drive_v3.Drive
@@ -3150,6 +3177,115 @@ export async function processImportInBackground(
   }
 }
 
+type RunImportJobOptions = {
+  baseUrl: string
+  maxRuntimeMs?: number
+}
+
+export type ImportRunnerPayload = {
+  driveUrl: string
+  courseId: string
+  importId: string
+  userId: string
+  folderId: string
+  jobId?: string
+  secret?: string | null
+}
+
+export async function runImportJob(
+  payload: ImportRunnerPayload,
+  options: RunImportJobOptions
+) {
+  const maxRuntime = Math.min(options.maxRuntimeMs ?? BACKGROUND_MAX_RUNTIME_MS, BACKGROUND_MAX_RUNTIME_MS)
+  const start = Date.now()
+  let iteration = 0
+
+  console.log('[IMPORT-RUNNER] Iniciando processamento em background', {
+    importId: payload.importId,
+    jobId: payload.jobId,
+    maxRuntime,
+  })
+
+  while (true) {
+    const result = await processImportInBackground(
+      payload.driveUrl,
+      payload.courseId,
+      payload.importId,
+      payload.userId,
+      payload.folderId,
+      payload.jobId,
+      undefined
+    )
+
+    if (result.status === 'partial') {
+      iteration += 1
+      const elapsed = Date.now() - start
+      console.log('[IMPORT-RUNNER] Chunk parcial concluído', {
+        importId: payload.importId,
+        iteration,
+        elapsed,
+      })
+
+      if (elapsed >= maxRuntime - BACKGROUND_SAFETY_MS) {
+        console.log('[IMPORT-RUNNER] Tempo limite atingido, reagendando continuação', {
+          importId: payload.importId,
+          elapsed,
+        })
+        await enqueueImportContinuation(payload, options.baseUrl)
+        break
+      }
+
+      if (BACKGROUND_LOOP_DELAY_MS > 0) {
+        await wait(BACKGROUND_LOOP_DELAY_MS)
+      }
+      continue
+    }
+
+    if (result.status === 'cancelled') {
+      console.log('[IMPORT-RUNNER] Job cancelado pelo usuário', {
+        importId: payload.importId,
+        jobId: payload.jobId,
+      })
+      break
+    }
+
+    console.log('[IMPORT-RUNNER] Job concluído', {
+      importId: payload.importId,
+      jobId: payload.jobId,
+    })
+    break
+  }
+}
+
+async function enqueueImportContinuation(payload: ImportRunnerPayload, baseUrl: string) {
+  try {
+    const targetUrl = `${baseUrl}${RUNNER_ENDPOINT_PATH}`
+    const response = await fetch(targetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(payload.secret ? { 'x-runner-secret': payload.secret } : {}),
+      },
+      body: JSON.stringify(payload),
+      cache: 'no-store',
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      console.error('[IMPORT-RUNNER] Falha ao reagendar continuação', {
+        status: response.status,
+        body: text.substring(0, 200),
+      })
+    } else {
+      console.log('[IMPORT-RUNNER] Continuação reagendada com sucesso', {
+        importId: payload.importId,
+      })
+    }
+  } catch (error) {
+    console.error('[IMPORT-RUNNER] Erro ao reagendar continuação', error)
+  }
+}
+
 if (process.env.NODE_ENV === 'test') {
   // @ts-expect-error - exposed only for Vitest suites
   globalThis.__IMPORT_FROM_DRIVE_TESTABLES = {
@@ -3334,20 +3470,26 @@ export async function POST(req: NextRequest) {
       errors: []
     }, jobContext)
     
-    // Disparar evento Inngest para processamento em background
-    // O Inngest garante execução confiável com timeout de até 4 horas
-    await inngest.send({
-      name: 'drive/import.requested',
-      data: {
-        driveUrl,
-        courseId,
-        importId,
-        userId: user.id,
-        folderId,
-        jobId: jobRecord?.id,
-        progressToken,
-      }
-    })
+    const url = new URL(req.url)
+    const baseUrl = `${url.protocol}//${url.host}`
+    const runnerPayload: ImportRunnerPayload = {
+      driveUrl,
+      courseId,
+      importId,
+      userId: user.id,
+      folderId,
+      jobId: jobRecord?.id ?? undefined,
+      secret: process.env.GOOGLE_DRIVE_RUNNER_SECRET ?? null,
+    }
+
+    waitUntil(
+      runImportJob(runnerPayload, {
+        baseUrl,
+        maxRuntimeMs: BACKGROUND_MAX_RUNTIME_MS,
+      }).catch(error => {
+        console.error('[IMPORT] Erro ao executar runner em background', error)
+      })
+    )
     
     // Retornar imediatamente com o ID da importação
     return NextResponse.json({

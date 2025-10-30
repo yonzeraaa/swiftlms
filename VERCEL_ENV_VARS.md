@@ -7,13 +7,19 @@ Adicione estas variáveis de ambiente no **Vercel Dashboard** (Settings > Enviro
 ### Otimizações para Google Drive Import
 
 ```bash
-# Chunk de 4 minutos (deixa 1min de buffer para timeout do Vercel Hobby de 5min)
-GOOGLE_DRIVE_IMPORT_CHUNK_MAX_MS=240000
+# Tempo máximo de execução por worker (limite atual ~2.5min)
+GOOGLE_DRIVE_IMPORT_CHUNK_MAX_MS=150000
 
 # Timeouts internos otimizados
 GOOGLE_DRIVE_DEFAULT_TIMEOUT_MS=180000    # 3 minutos
 GOOGLE_DRIVE_LIST_TIMEOUT_MS=180000       # 3 minutos
 GOOGLE_DRIVE_EXPORT_TIMEOUT_MS=120000     # 2 minutos
+
+# Configuração do runner em background (Vercel Pro)
+GOOGLE_DRIVE_BACKGROUND_MAX_RUNTIME_MS=780000   # 13 minutos (abaixo do limite de 15min)
+GOOGLE_DRIVE_BACKGROUND_SAFETY_MS=60000         # margem antes de reagendar
+GOOGLE_DRIVE_BACKGROUND_LOOP_DELAY_MS=1500      # espera entre chunks
+GOOGLE_DRIVE_RUNNER_SECRET=defina-um-token-unico
 ```
 
 ## Como Adicionar no Vercel
@@ -28,7 +34,7 @@ GOOGLE_DRIVE_EXPORT_TIMEOUT_MS=120000     # 2 minutos
 
 ## Explicação
 
-- **GOOGLE_DRIVE_IMPORT_CHUNK_MAX_MS**: Tempo máximo que cada chunk de importação pode executar. Configurado em 4 minutos para dar 1 minuto de margem antes do timeout do Vercel (5 minutos no plano Hobby).
+- **GOOGLE_DRIVE_IMPORT_CHUNK_MAX_MS**: Tempo máximo que cada chunk individual (discovery/processing/database) pode executar antes de salvar estado e reagendar.
 
 - **GOOGLE_DRIVE_DEFAULT_TIMEOUT_MS**: Timeout padrão para operações individuais do Google Drive API.
 
@@ -36,20 +42,10 @@ GOOGLE_DRIVE_EXPORT_TIMEOUT_MS=120000     # 2 minutos
 
 - **GOOGLE_DRIVE_EXPORT_TIMEOUT_MS**: Timeout para exportação de arquivos (Google Docs, Sheets, etc).
 
-## Upgrade do Inngest (Opcional)
+- **GOOGLE_DRIVE_BACKGROUND_MAX_RUNTIME_MS**: Tempo total disponível para o runner em background antes de reagendar uma nova execução.
 
-Se as importações ainda falharem por exceder o limite total do workflow do Inngest Free tier, considere:
+- **GOOGLE_DRIVE_BACKGROUND_SAFETY_MS**: Margem de segurança usada para agendar o próximo chunk antes de atingir o limite máximo.
 
-1. **Fazer upgrade para Inngest Cloud** (plano pago ~$20-50/mês)
-   - Remove limite de duração total do workflow
-   - Suporta importações de qualquer tamanho
+- **GOOGLE_DRIVE_BACKGROUND_LOOP_DELAY_MS**: Intervalo entre os chunks processados dentro do mesmo runner (evita hot loop).
 
-2. **Como fazer upgrade**:
-   - Acesse https://www.inngest.com/
-   - Faça login com sua conta
-   - Vá em Settings > Billing
-   - Escolha um plano pago
-
-3. **Após upgrade**:
-   - As importações poderão executar por horas sem limite
-   - Sistema de chunks continuará funcionando para resiliência
+- **GOOGLE_DRIVE_RUNNER_SECRET**: Token compartilhado para que apenas chamadas internas possam reagendar o runner (`/api/import-from-drive-runner`).
