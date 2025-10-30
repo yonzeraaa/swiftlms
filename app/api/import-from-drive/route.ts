@@ -982,6 +982,7 @@ interface ImportRuntimeOptions {
   resumeState: ImportResumeState | null
   jobMetadata: Record<string, unknown>
   progressSnapshot: ProgressSnapshot
+  checkTimeout?: () => boolean
 }
 
 function extractDriveFolderId(url: string): string | null {
@@ -2975,7 +2976,8 @@ export async function processImportInBackground(
   const supabase = supabaseClient ?? createAdminClient()
   const jobContext = jobId ? { jobId, supabase } : undefined
   const startTime = Date.now()
-  const maxRuntimeMs = Number(process.env.GOOGLE_DRIVE_IMPORT_CHUNK_MAX_MS ?? 45_000)
+  const rawRuntime = Number(process.env.GOOGLE_DRIVE_IMPORT_CHUNK_MAX_MS ?? 45_000)
+  const maxRuntimeMs = Number.isFinite(rawRuntime) && rawRuntime > 0 ? rawRuntime : 45_000
 
   try {
     let jobMetadata = await loadJobMetadata(jobContext)
@@ -3028,6 +3030,7 @@ export async function processImportInBackground(
     await logJob(jobContext, 'info', 'Autenticação concluída')
 
     console.log(`[IMPORT-BACKGROUND] === FASE 2: Processando conteúdo ===`)
+    const shouldYield = () => Date.now() - startTime >= maxRuntimeMs - BACKGROUND_SAFETY_MS
     const parseResult = await parseGoogleDriveFolder(
       drive,
       folderId,
@@ -3039,6 +3042,9 @@ export async function processImportInBackground(
       {
         resumeState,
         progressSnapshot,
+        startTime,
+        maxRuntimeMs,
+        checkTimeout: shouldYield,
       }
     )
 
@@ -3087,6 +3093,7 @@ export async function processImportInBackground(
         resumeState,
         jobMetadata,
         progressSnapshot,
+        checkTimeout: shouldYield,
       }
     )
 
