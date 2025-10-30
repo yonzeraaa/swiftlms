@@ -3192,6 +3192,27 @@ export type ImportRunnerPayload = {
   secret?: string | null
 }
 
+async function logRunnerEvent(
+  payload: ImportRunnerPayload,
+  level: 'info' | 'warn' | 'error',
+  message: string,
+  context?: Record<string, unknown>
+) {
+  if (!payload.jobId) return
+  try {
+    const supabase = createAdminClient()
+    const contextJson: Json | null = context ? (context as unknown as Json) : null
+    await supabase.from('drive_import_logs').insert({
+      job_id: payload.jobId,
+      level,
+      message,
+      context: contextJson,
+    })
+  } catch (error) {
+    console.error('[IMPORT-RUNNER] Falha ao registrar log', level, message, context, error)
+  }
+}
+
 export async function runImportJob(
   payload: ImportRunnerPayload,
   options: RunImportJobOptions
@@ -3204,6 +3225,10 @@ export async function runImportJob(
     importId: payload.importId,
     jobId: payload.jobId,
     maxRuntime,
+  })
+  await logRunnerEvent(payload, 'info', 'Runner iniciado', {
+    maxRuntime,
+    iteration,
   })
 
   while (true) {
@@ -3225,10 +3250,17 @@ export async function runImportJob(
         iteration,
         elapsed,
       })
+      await logRunnerEvent(payload, 'info', 'Chunk parcial processado', {
+        iteration,
+        elapsed,
+      })
 
       if (elapsed >= maxRuntime - BACKGROUND_SAFETY_MS) {
         console.log('[IMPORT-RUNNER] Tempo limite atingido, reagendando continuação', {
           importId: payload.importId,
+          elapsed,
+        })
+        await logRunnerEvent(payload, 'info', 'Tempo limite atingido, reagendando continuação', {
           elapsed,
         })
         await enqueueImportContinuation(payload, options.baseUrl)
@@ -3246,12 +3278,16 @@ export async function runImportJob(
         importId: payload.importId,
         jobId: payload.jobId,
       })
+      await logRunnerEvent(payload, 'info', 'Job cancelado pelo usuário')
       break
     }
 
     console.log('[IMPORT-RUNNER] Job concluído', {
       importId: payload.importId,
       jobId: payload.jobId,
+    })
+    await logRunnerEvent(payload, 'info', 'Job concluído com sucesso', {
+      totalIterations: iteration,
     })
     break
   }
@@ -3276,13 +3312,21 @@ async function enqueueImportContinuation(payload: ImportRunnerPayload, baseUrl: 
         status: response.status,
         body: text.substring(0, 200),
       })
+      await logRunnerEvent(payload, 'error', 'Falha ao reagendar continuação', {
+        status: response.status,
+        bodyPreview: text.substring(0, 200),
+      })
     } else {
       console.log('[IMPORT-RUNNER] Continuação reagendada com sucesso', {
         importId: payload.importId,
       })
+      await logRunnerEvent(payload, 'info', 'Continuação reagendada com sucesso')
     }
   } catch (error) {
     console.error('[IMPORT-RUNNER] Erro ao reagendar continuação', error)
+    await logRunnerEvent(payload, 'error', 'Erro ao reagendar continuação', {
+      error: error instanceof Error ? error.message : String(error),
+    })
   }
 }
 
