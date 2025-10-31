@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getParentPrefix } from '@/lib/drive-import-utils'
+import { parseAnswerKeyFromText } from '../../tests/utils/answer-key'
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     let databaseId: string | null = null
+    let answerKeyInfo: { success: boolean; questionCount?: number; error?: string } | undefined
 
     switch (itemType) {
       case 'module':
@@ -32,9 +34,12 @@ export async function POST(req: NextRequest) {
       case 'lesson':
         databaseId = await createOrUpdateLesson(supabase, { code, name: originalName, courseId, driveFileId, mimeType, parentSubjectId: parentDatabaseId })
         break
-      case 'test':
-        databaseId = await createOrUpdateTest(supabase, { name: originalName, code, courseId, driveFileId, parentSubjectId: parentDatabaseId })
+      case 'test': {
+        const result = await createOrUpdateTest(supabase, { name: originalName, code, courseId, driveFileId, parentSubjectId: parentDatabaseId })
+        databaseId = result.id
+        answerKeyInfo = result.answerKey
         break
+      }
       default:
         return NextResponse.json({
           error: 'Tipo não suportado',
@@ -42,19 +47,111 @@ export async function POST(req: NextRequest) {
         }, { status: 400 })
     }
 
-    return NextResponse.json({
+    const response: any = {
       success: true,
       itemType,
       code,
       name: originalName,
       databaseId
-    })
+    }
+
+    // Adicionar informações do gabarito se for um teste
+    if (answerKeyInfo) {
+      response.answerKey = answerKeyInfo
+    }
+
+    return NextResponse.json(response)
   } catch (error) {
     console.error('[import/drive] Erro:', error)
     return NextResponse.json({
       error: 'Erro ao processar item',
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
+  }
+}
+
+/**
+ * Extrai gabarito de um documento do Google Drive e salva no banco
+ */
+function extractGoogleDocumentId(url: string): string | null {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/)
+  return match ? match[1] : null
+}
+
+async function extractAndSaveAnswerKey(
+  supabase: any,
+  testId: string,
+  googleDriveUrl: string
+): Promise<{ success: boolean; questionCount?: number; error?: string }> {
+  try {
+    const docId = extractGoogleDocumentId(googleDriveUrl)
+    if (!docId) {
+      return { success: false, error: 'URL inválida' }
+    }
+
+    const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`
+
+    const response = await fetch(exportUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    })
+
+    if (!response.ok) {
+      return { success: false, error: 'Erro ao baixar documento' }
+    }
+
+    const content = await response.text()
+
+    if (!content.trim()) {
+      return { success: false, error: 'Documento sem conteúdo' }
+    }
+
+    const parsedAnswerKey = parseAnswerKeyFromText(content)
+
+    if (!parsedAnswerKey || parsedAnswerKey.length === 0) {
+      return { success: false, error: 'Gabarito não encontrado' }
+    }
+
+    // Deletar gabaritos antigos se existirem
+    await supabase
+      .from('test_answer_keys')
+      .delete()
+      .eq('test_id', testId)
+
+    // Inserir novo gabarito
+    const insertPayload = parsedAnswerKey.map(entry => ({
+      test_id: testId,
+      question_number: entry.questionNumber,
+      correct_answer: entry.correctAnswer,
+      points: entry.points ?? 10,
+      justification: entry.justification
+    }))
+
+    const { error: insertError } = await supabase
+      .from('test_answer_keys')
+      .insert(insertPayload)
+
+    if (insertError) {
+      console.error('[extractAndSaveAnswerKey] Erro ao salvar gabarito:', insertError)
+      return { success: false, error: 'Erro ao salvar gabarito' }
+    }
+
+    // Marcar teste como ativo
+    await supabase
+      .from('tests')
+      .update({
+        is_active: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', testId)
+
+    console.log(`[extractAndSaveAnswerKey] Gabarito extraído: ${parsedAnswerKey.length} questões`)
+    return { success: true, questionCount: parsedAnswerKey.length }
+
+  } catch (error) {
+    console.error('[extractAndSaveAnswerKey] Erro:', error)
+    return { success: false, error: 'Erro inesperado' }
   }
 }
 
@@ -498,5 +595,22 @@ async function createOrUpdateTest(
 
   if (error) throw error
 
-  return newTest.id
+  // Tentar extrair gabarito automaticamente
+  let answerKeyStatus: { success: boolean; questionCount?: number; error?: string } = {
+    success: false,
+    error: 'Não extraído'
+  }
+  if (driveUrl) {
+    answerKeyStatus = await extractAndSaveAnswerKey(supabase, newTest.id, driveUrl)
+    if (answerKeyStatus.success) {
+      console.log(`[createOrUpdateTest] Gabarito extraído automaticamente: ${answerKeyStatus.questionCount} questões`)
+    } else {
+      console.warn(`[createOrUpdateTest] Falha ao extrair gabarito: ${answerKeyStatus.error}`)
+    }
+  }
+
+  return {
+    id: newTest.id,
+    answerKey: answerKeyStatus
+  }
 }

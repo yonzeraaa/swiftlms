@@ -19,6 +19,11 @@ interface ProcessedItem extends DriveItem {
   parentId?: string | null
   children?: ProcessedItem[]
   isExpanded?: boolean
+  answerKey?: {
+    success: boolean
+    questionCount?: number
+    error?: string
+  }
 }
 
 declare global {
@@ -411,9 +416,16 @@ useEffect(() => {
       setItems(prev => updateItemInTree(prev, item.id, { status: 'uploading' }))
 
       try {
-        await uploadItem(item)
+        const result = await uploadItem(item)
 
-        setItems(prev => updateItemInTree(prev, item.id, { status: 'success' }))
+        const updateData: Partial<ProcessedItem> = { status: 'success' }
+
+        // Se for um teste e tiver informações do gabarito, adicionar
+        if (item.type === 'test' && result.answerKey) {
+          updateData.answerKey = result.answerKey
+        }
+
+        setItems(prev => updateItemInTree(prev, item.id, updateData))
       } catch (err) {
         setItems(prev => updateItemInTree(prev, item.id, {
           status: 'error',
@@ -497,6 +509,14 @@ useEffect(() => {
             </p>
             {item.error && (
               <p className="text-red-400 text-xs mt-1">{item.error}</p>
+            )}
+            {item.type === 'test' && item.status === 'success' && item.answerKey && (
+              <p className={`text-xs mt-1 ${item.answerKey.success ? 'text-green-400' : 'text-yellow-400'}`}>
+                {item.answerKey.success
+                  ? `✓ Gabarito extraído (${item.answerKey.questionCount} questões)`
+                  : `⚠ ${item.answerKey.error || 'Gabarito não encontrado'}`
+                }
+              </p>
             )}
           </div>
 
