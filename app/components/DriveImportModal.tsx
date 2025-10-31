@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Modal from './Modal'
 import Button from './Button'
 import { analyzeDriveItem, extractFolderId, type ItemType, type DriveItem } from '@/lib/drive-import-utils'
-import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronDown } from 'lucide-react'
 
 interface DriveImportModalProps {
   isOpen: boolean
@@ -16,6 +16,9 @@ interface DriveImportModalProps {
 interface ProcessedItem extends DriveItem {
   status: 'pending' | 'uploading' | 'success' | 'error'
   error?: string
+  parentId?: string | null
+  children?: ProcessedItem[]
+  isExpanded?: boolean
 }
 
 declare global {
@@ -119,6 +122,36 @@ useEffect(() => {
     setDriveUrl('')
   }
 
+  const flattenItems = (items: ProcessedItem[]): ProcessedItem[] => {
+    const result: ProcessedItem[] = []
+    const traverse = (items: ProcessedItem[]) => {
+      items.forEach(item => {
+        result.push(item)
+        if (item.children && item.children.length > 0) {
+          traverse(item.children)
+        }
+      })
+    }
+    traverse(items)
+    return result
+  }
+
+  const updateItemInTree = (items: ProcessedItem[], itemId: string, updates: Partial<ProcessedItem>): ProcessedItem[] => {
+    return items.map(item => {
+      if (item.id === itemId) {
+        return { ...item, ...updates }
+      }
+      if (item.children && item.children.length > 0) {
+        return { ...item, children: updateItemInTree(item.children, itemId, updates) }
+      }
+      return item
+    })
+  }
+
+  const toggleExpand = (itemId: string) => {
+    setItems(prev => updateItemInTree(prev, itemId, { isExpanded: !prev.find(it => it.id === itemId)?.isExpanded }))
+  }
+
   const handleAuthenticate = () => {
     if (!window.google) {
       setError('Google API não carregada')
@@ -155,7 +188,7 @@ useEffect(() => {
     tokenClientRef.current.requestAccessToken()
   }
 
-  const listFilesRecursively = async (folderId: string, allFiles: any[] = []): Promise<any[]> => {
+  const listFilesRecursively = async (folderId: string, parentId: string | null = null, allFiles: any[] = []): Promise<any[]> => {
     const response = await fetch(
       `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=files(id,name,mimeType)&pageSize=1000`,
       {
@@ -173,10 +206,10 @@ useEffect(() => {
     const files = data.files || []
 
     for (const file of files) {
-      allFiles.push(file)
+      allFiles.push({ ...file, parentId })
 
       if (file.mimeType === 'application/vnd.google-apps.folder') {
-        await listFilesRecursively(file.id, allFiles)
+        await listFilesRecursively(file.id, file.id, allFiles)
       }
     }
 
@@ -201,11 +234,31 @@ useEffect(() => {
       const processedItems: ProcessedItem[] = allFiles
         .map((file: any) => ({
           ...analyzeDriveItem(file),
-          status: 'pending' as const
+          status: 'pending' as const,
+          parentId: file.parentId,
+          children: [],
+          isExpanded: true
         }))
         .filter(item => item.type !== 'unknown')
 
-      setItems(processedItems)
+      const itemsMap = new Map<string, ProcessedItem>()
+      const rootItems: ProcessedItem[] = []
+
+      processedItems.forEach(item => {
+        itemsMap.set(item.id, item)
+      })
+
+      processedItems.forEach(item => {
+        if (item.parentId && itemsMap.has(item.parentId)) {
+          const parent = itemsMap.get(item.parentId)!
+          parent.children = parent.children || []
+          parent.children.push(item)
+        } else {
+          rootItems.push(item)
+        }
+      })
+
+      setItems(rootItems)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
@@ -296,7 +349,8 @@ useEffect(() => {
     setError(null)
 
     const typeOrder = { 'module': 1, 'subject': 2, 'lesson': 3, 'test': 4, 'unknown': 5 }
-    const sortedItems = [...items].sort((a, b) => typeOrder[a.type] - typeOrder[b.type])
+    const allFlatItems = flattenItems(items)
+    const sortedItems = [...allFlatItems].sort((a, b) => typeOrder[a.type] - typeOrder[b.type])
 
     for (let i = 0; i < sortedItems.length; i++) {
       if (cancelledRef.current) {
@@ -315,30 +369,19 @@ useEffect(() => {
       const item = sortedItems[i]
 
       if (item.type === 'unknown') continue
+      if (item.status === 'success') continue
 
-      const originalIndex = items.findIndex(it => it.id === item.id)
-      const currentStatus = items[originalIndex]?.status
-
-      if (currentStatus === 'success') continue
-
-      setItems(prev => prev.map((it, idx) =>
-        idx === originalIndex ? { ...it, status: 'uploading' } : it
-      ))
+      setItems(prev => updateItemInTree(prev, item.id, { status: 'uploading' }))
 
       try {
         await uploadItem(item)
 
-        setItems(prev => prev.map((it, idx) =>
-          idx === originalIndex ? { ...it, status: 'success' } : it
-        ))
+        setItems(prev => updateItemInTree(prev, item.id, { status: 'success' }))
       } catch (err) {
-        setItems(prev => prev.map((it, idx) =>
-          idx === originalIndex ? {
-            ...it,
-            status: 'error',
-            error: err instanceof Error ? err.message : 'Erro desconhecido'
-          } : it
-        ))
+        setItems(prev => updateItemInTree(prev, item.id, {
+          status: 'error',
+          error: err instanceof Error ? err.message : 'Erro desconhecido'
+        }))
       }
 
       await new Promise(resolve => setTimeout(resolve, 500))
@@ -347,7 +390,6 @@ useEffect(() => {
     setIsImporting(false)
     setIsPaused(false)
     setShowSuccess(true)
-    onImportComplete?.()
   }
 
   const getTypeIcon = (type: ItemType) => {
@@ -379,8 +421,61 @@ useEffect(() => {
     }
   }
 
-  const validItems = items.filter(item => item.type !== 'unknown')
-  const completedItems = items.filter(item => item.status === 'success').length
+  const allFlatItems = flattenItems(items)
+  const validItems = allFlatItems.filter(item => item.type !== 'unknown')
+  const completedItems = allFlatItems.filter(item => item.status === 'success').length
+
+  const renderTreeItem = (item: ProcessedItem, depth: number = 0): React.ReactElement => {
+    const hasChildren = item.children && item.children.length > 0
+    const isFolder = item.type === 'module' || item.type === 'subject'
+
+    return (
+      <div key={item.id}>
+        <div
+          className="flex items-center gap-2 p-2 bg-navy-700/50 rounded-lg border border-gold-500/20 hover:bg-navy-700/70 transition-colors"
+          style={{ marginLeft: `${depth * 24}px` }}
+        >
+          {hasChildren && (
+            <button
+              onClick={() => toggleExpand(item.id)}
+              className="p-1 hover:bg-navy-600 rounded transition-colors flex-shrink-0"
+            >
+              {item.isExpanded ? (
+                <ChevronDown className="w-4 h-4 text-gold-400" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-gold-400" />
+              )}
+            </button>
+          )}
+          {!hasChildren && <div className="w-6" />}
+
+          {getTypeIcon(item.type)}
+
+          <div className="flex-1 min-w-0">
+            <p className="text-gold-100 text-sm font-medium truncate">
+              {item.name}
+            </p>
+            <p className="text-gold-400 text-xs">
+              {getTypeLabel(item.type)} {item.code && `• ${item.code}`}
+            </p>
+            {item.error && (
+              <p className="text-red-400 text-xs mt-1">{item.error}</p>
+            )}
+          </div>
+
+          <div className="flex-shrink-0">
+            {getStatusIcon(item.status)}
+          </div>
+        </div>
+
+        {hasChildren && item.isExpanded && (
+          <div className="mt-1 space-y-1">
+            {item.children!.map(child => renderTreeItem(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <Modal
@@ -526,29 +621,8 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
-              {items.map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-3 p-3 bg-navy-700/50 rounded-lg border border-gold-500/20"
-                >
-                  {getTypeIcon(item.type)}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-gold-100 text-sm font-medium truncate">
-                      {item.name}
-                    </p>
-                    <p className="text-gold-400 text-xs">
-                      {getTypeLabel(item.type)} {item.code && `• ${item.code}`}
-                    </p>
-                    {item.error && (
-                      <p className="text-red-400 text-xs mt-1">{item.error}</p>
-                    )}
-                  </div>
-                  <div className="flex-shrink-0">
-                    {getStatusIcon(item.status)}
-                  </div>
-                </div>
-              ))}
+            <div className="max-h-96 overflow-y-auto space-y-1 pr-2">
+              {items.map(item => renderTreeItem(item))}
             </div>
           </div>
         )}
@@ -561,12 +635,12 @@ useEffect(() => {
               <div className="flex-1">
                 <p className="text-green-400 font-medium mb-2">Importação concluída com sucesso!</p>
                 <div className="text-green-300 text-sm space-y-1">
-                  <p>• {items.filter(it => it.type === 'module' && it.status === 'success').length} módulos importados</p>
-                  <p>• {items.filter(it => it.type === 'subject' && it.status === 'success').length} disciplinas importadas</p>
-                  <p>• {items.filter(it => it.type === 'lesson' && it.status === 'success').length} aulas importadas</p>
-                  <p>• {items.filter(it => it.type === 'test' && it.status === 'success').length} testes importados</p>
-                  {items.filter(it => it.status === 'error').length > 0 && (
-                    <p className="text-yellow-400 mt-2">⚠ {items.filter(it => it.status === 'error').length} itens falharam</p>
+                  <p>• {allFlatItems.filter(it => it.type === 'module' && it.status === 'success').length} módulos importados</p>
+                  <p>• {allFlatItems.filter(it => it.type === 'subject' && it.status === 'success').length} disciplinas importadas</p>
+                  <p>• {allFlatItems.filter(it => it.type === 'lesson' && it.status === 'success').length} aulas importadas</p>
+                  <p>• {allFlatItems.filter(it => it.type === 'test' && it.status === 'success').length} testes importados</p>
+                  {allFlatItems.filter(it => it.status === 'error').length > 0 && (
+                    <p className="text-yellow-400 mt-2">⚠ {allFlatItems.filter(it => it.status === 'error').length} itens falharam</p>
                   )}
                 </div>
               </div>

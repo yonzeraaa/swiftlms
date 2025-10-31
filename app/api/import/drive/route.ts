@@ -203,6 +203,34 @@ async function createOrUpdateSubject(
     }
   }
 
+  // Vincular ao curso
+  const { data: existingCourseLink } = await supabase
+    .from('course_subjects')
+    .select('id')
+    .eq('course_id', data.courseId)
+    .eq('subject_id', subjectId)
+    .single()
+
+  if (!existingCourseLink) {
+    const { data: courseOrderData } = await supabase
+      .from('course_subjects')
+      .select('order_index')
+      .eq('course_id', data.courseId)
+      .order('order_index', { ascending: false })
+      .limit(1)
+
+    const nextCourseOrder = courseOrderData?.[0]?.order_index ? courseOrderData[0].order_index + 1 : 1
+
+    await supabase
+      .from('course_subjects')
+      .insert({
+        course_id: data.courseId,
+        subject_id: subjectId,
+        order_index: nextCourseOrder,
+        is_required: true
+      })
+  }
+
   return subjectId
 }
 
