@@ -128,12 +128,20 @@ async function createOrUpdateSubject(
   // Buscar módulo pai
   let moduleId: string | null = null
   if (parentPrefix) {
-    const { data: parentModule } = await supabase
+    const { data: parentModule, error: moduleError } = await supabase
       .from('course_modules')
       .select('id')
       .eq('course_id', data.courseId)
       .ilike('title', `${parentPrefix}%`)
-      .single()
+      .maybeSingle()
+
+    if (moduleError && moduleError.code !== 'PGRST116') {
+      console.error(`[createOrUpdateSubject] Erro ao buscar módulo pai ${parentPrefix}:`, moduleError)
+    }
+
+    if (!parentModule) {
+      console.warn(`[createOrUpdateSubject] Módulo pai ${parentPrefix} não encontrado para disciplina ${data.code}`)
+    }
 
     moduleId = parentModule?.id || null
   }

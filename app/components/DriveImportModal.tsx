@@ -136,6 +136,24 @@ useEffect(() => {
     return result
   }
 
+  const sortItemsByCode = (items: ProcessedItem[]): ProcessedItem[] => {
+    return items.sort((a, b) => {
+      const codeA = a.code || ''
+      const codeB = b.code || ''
+      return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' })
+    })
+  }
+
+  const sortTreeRecursively = (items: ProcessedItem[]): ProcessedItem[] => {
+    const sorted = sortItemsByCode([...items])
+    return sorted.map(item => ({
+      ...item,
+      children: item.children && item.children.length > 0
+        ? sortTreeRecursively(item.children)
+        : item.children
+    }))
+  }
+
   const updateItemInTree = (items: ProcessedItem[], itemId: string, updates: Partial<ProcessedItem>): ProcessedItem[] => {
     return items.map(item => {
       if (item.id === itemId) {
@@ -258,7 +276,8 @@ useEffect(() => {
         }
       })
 
-      setItems(rootItems)
+      const sortedRootItems = sortTreeRecursively(rootItems)
+      setItems(sortedRootItems)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
