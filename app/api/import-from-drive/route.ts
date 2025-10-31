@@ -364,13 +364,7 @@ async function executeWithRetries<T>(
       attempt += 1
       const isTimeout = err instanceof TimeoutError
       const rateLimited = isRateLimitError(err)
-      const exponentialDelay = delayMs * Math.pow(2, attempt)
-      const computedDelay = rateLimited
-        ? Math.min(MAX_RATE_LIMIT_BACKOFF_MS, Math.max(delayMs, exponentialDelay))
-        : Math.max(delayMs, delayMs * attempt)
-      const waitDuration = rateLimited
-        ? Math.max(RATE_LIMIT_COOLDOWN_MS, computedDelay)
-        : computedDelay
+      const waitDuration = 10000 // 10 segundos fixos
       console.warn(
         `[IMPORT][RETRY] ${label} falhou (tentativa ${attempt}/${retries})${rateLimited ? ' - rate limited' : isTimeout ? ' - TIMEOUT' : ''}`,
         err
