@@ -39,11 +39,13 @@ export const developmentCSP = {
     'ws://localhost:*', // HMR websocket
     'http://localhost:*',
     'https://accounts.google.com',
-    'https://www.googleapis.com'
+    'https://www.googleapis.com',
+    'https://apis.google.com'
   ],
   'frame-src': [
     "'self'",
-    'https://accounts.google.com'
+    'https://accounts.google.com',
+    'https://content.googleapis.com'
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],
@@ -87,11 +89,13 @@ export const productionCSP = {
     'https://*.vercel.app',
     'wss://*.vercel.app',
     'https://accounts.google.com',
-    'https://www.googleapis.com'
+    'https://www.googleapis.com',
+    'https://apis.google.com'
   ],
   'frame-src': [
     "'self'",
-    'https://accounts.google.com'
+    'https://accounts.google.com',
+    'https://content.googleapis.com'
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],
