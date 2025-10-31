@@ -18,6 +18,7 @@ const DEFAULT_MAX_ITEMS_PER_CHUNK = 10
 const DEFAULT_CHUNK_RUNTIME_MS = 2.5 * 60 * 1000 // 2min30s por execução
 const MIN_CHUNK_RUNTIME_MS = 30 * 1000
 const DEFAULT_CONTINUATION_DELAY_MS = 1_000
+const LIST_CHUNK_RUNTIME_MS = 20_000
 const AUTO_ANSWER_KEY_ENABLED = (() => {
   const raw = process.env.GOOGLE_DRIVE_ENABLE_AUTO_ANSWER_KEY
   if (!raw) return false
@@ -3650,9 +3651,10 @@ export async function buildDriveImportTaskList(params: {
     {
       resumeState: cursor?.resumeState ?? null,
       startTime: Date.now(),
-      maxRuntimeMs: MAX_CHUNK_RUNTIME_MS,
+      maxRuntimeMs: Math.min(MAX_CHUNK_RUNTIME_MS, LIST_CHUNK_RUNTIME_MS),
       progressSnapshot: baseProgress,
       warnings: [],
+      itemBudget: Math.max(1, Math.floor(MAX_ITEMS_PER_CHUNK / 2)),
     }
   )
 
