@@ -34,6 +34,7 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
   const [isImporting, setIsImporting] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
   const [isCancelled, setIsCancelled] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
   const [items, setItems] = useState<ProcessedItem[]>([])
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -198,11 +199,11 @@ useEffect(() => {
       const allFiles = await listFilesRecursively(folderId)
 
       const processedItems: ProcessedItem[] = allFiles
-        .filter(file => file.mimeType !== 'application/vnd.google-apps.folder')
         .map((file: any) => ({
           ...analyzeDriveItem(file),
           status: 'pending' as const
         }))
+        .filter(item => item.type !== 'unknown')
 
       setItems(processedItems)
     } catch (err) {
@@ -345,6 +346,7 @@ useEffect(() => {
 
     setIsImporting(false)
     setIsPaused(false)
+    setShowSuccess(true)
     onImportComplete?.()
   }
 
@@ -547,6 +549,27 @@ useEffect(() => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {showSuccess && !isImporting && (
+          <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-green-400 font-medium mb-2">Importação concluída com sucesso!</p>
+                <div className="text-green-300 text-sm space-y-1">
+                  <p>• {items.filter(it => it.type === 'module' && it.status === 'success').length} módulos importados</p>
+                  <p>• {items.filter(it => it.type === 'subject' && it.status === 'success').length} disciplinas importadas</p>
+                  <p>• {items.filter(it => it.type === 'lesson' && it.status === 'success').length} aulas importadas</p>
+                  <p>• {items.filter(it => it.type === 'test' && it.status === 'success').length} testes importados</p>
+                  {items.filter(it => it.status === 'error').length > 0 && (
+                    <p className="text-yellow-400 mt-2">⚠ {items.filter(it => it.status === 'error').length} itens falharam</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
