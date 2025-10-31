@@ -25,6 +25,8 @@ declare global {
   }
 }
 
+const STORAGE_KEY = 'google_drive_token'
+
 export default function DriveImportModal({ isOpen, onClose, courseId, onImportComplete }: DriveImportModalProps) {
   const [driveUrl, setDriveUrl] = useState('')
   const [isAuthenticating, setIsAuthenticating] = useState(false)
@@ -33,10 +35,11 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
   const [items, setItems] = useState<ProcessedItem[]>([])
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isCheckingToken, setIsCheckingToken] = useState(true)
 
   const tokenClientRef = useRef<any>(null)
 
-  useEffect(() => {
+useEffect(() => {
     if (!isOpen) return
 
     const loadGoogleAPIs = () => {
@@ -71,6 +74,46 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
     return cleanup
   }, [isOpen])
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const checkSavedToken = async () => {
+      setIsCheckingToken(true)
+      const savedToken = localStorage.getItem(STORAGE_KEY)
+
+      if (savedToken) {
+        const isValid = await validateToken(savedToken)
+        if (isValid) {
+          setAccessToken(savedToken)
+        } else {
+          localStorage.removeItem(STORAGE_KEY)
+        }
+      }
+
+      setIsCheckingToken(false)
+    }
+
+    checkSavedToken()
+  }, [isOpen])
+
+  const validateToken = async (token: string): Promise<boolean> => {
+    try {
+      const response = await fetch('https://www.googleapis.com/drive/v3/about?fields=user', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      return response.ok
+    } catch {
+      return false
+    }
+  }
+
+  const handleDisconnect = () => {
+    setAccessToken(null)
+    localStorage.removeItem(STORAGE_KEY)
+    setItems([])
+    setDriveUrl('')
+  }
+
   const handleAuthenticate = () => {
     if (!window.google) {
       setError('Google API não carregada')
@@ -78,7 +121,6 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
     }
 
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
-    console.log('CLIENT_ID:', clientId, 'Length:', clientId?.length)
 
     if (!clientId) {
       setError('CLIENT_ID não configurado')
@@ -95,6 +137,7 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
         callback: (response: any) => {
           if (response.access_token) {
             setAccessToken(response.access_token)
+            localStorage.setItem(STORAGE_KEY, response.access_token)
             setIsAuthenticating(false)
           } else {
             setError('Falha na autenticação')
@@ -105,6 +148,34 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
     }
 
     tokenClientRef.current.requestAccessToken()
+  }
+
+  const listFilesRecursively = async (folderId: string, allFiles: any[] = []): Promise<any[]> => {
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=files(id,name,mimeType)&pageSize=1000`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      }
+    )
+
+    if (!response.ok) {
+      throw new Error('Erro ao listar arquivos')
+    }
+
+    const data = await response.json()
+    const files = data.files || []
+
+    for (const file of files) {
+      allFiles.push(file)
+
+      if (file.mimeType === 'application/vnd.google-apps.folder') {
+        await listFilesRecursively(file.id, allFiles)
+      }
+    }
+
+    return allFiles
   }
 
   const handleListItems = async () => {
@@ -120,24 +191,14 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
     setError(null)
 
     try {
-      const response = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=files(id,name,mimeType)&pageSize=1000`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`
-          }
-        }
-      )
+      const allFiles = await listFilesRecursively(folderId)
 
-      if (!response.ok) {
-        throw new Error('Erro ao listar arquivos')
-      }
-
-      const data = await response.json()
-      const processedItems: ProcessedItem[] = data.files.map((file: any) => ({
-        ...analyzeDriveItem(file),
-        status: 'pending' as const
-      }))
+      const processedItems: ProcessedItem[] = allFiles
+        .filter(file => file.mimeType !== 'application/vnd.google-apps.folder')
+        .map((file: any) => ({
+          ...analyzeDriveItem(file),
+          status: 'pending' as const
+        }))
 
       setItems(processedItems)
     } catch (err) {
@@ -272,8 +333,16 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
       size="xl"
     >
       <div className="space-y-6">
+        {/* Checking Token */}
+        {isCheckingToken && (
+          <div className="text-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-gold-400 mx-auto mb-3" />
+            <p className="text-gold-300 text-sm">Verificando autenticação...</p>
+          </div>
+        )}
+
         {/* Authentication */}
-        {!accessToken && (
+        {!isCheckingToken && !accessToken && (
           <div className="text-center py-8">
             <p className="text-gold-300 mb-4">
               Primeiro, autentique-se com sua conta Google
@@ -289,8 +358,20 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
         )}
 
         {/* URL Input */}
-        {accessToken && items.length === 0 && (
+        {!isCheckingToken && accessToken && items.length === 0 && (
           <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-green-400 text-sm flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4" />
+                Conectado ao Google Drive
+              </p>
+              <button
+                onClick={handleDisconnect}
+                className="text-red-400 hover:text-red-300 text-sm underline"
+              >
+                Desconectar
+              </button>
+            </div>
             <div>
               <label className="block text-gold-300 mb-2 text-sm font-medium">
                 URL da pasta do Google Drive
@@ -310,7 +391,7 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
               variant="primary"
               fullWidth
             >
-              Listar Itens
+              {isListing ? 'Explorando pastas...' : 'Listar Itens'}
             </Button>
           </div>
         )}
@@ -318,6 +399,20 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
         {/* Items List */}
         {items.length > 0 && (
           <div className="space-y-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <p className="text-green-400 text-sm flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Conectado
+                </p>
+                <button
+                  onClick={handleDisconnect}
+                  className="text-red-400 hover:text-red-300 text-xs underline"
+                >
+                  Desconectar
+                </button>
+              </div>
+            </div>
             <div className="flex items-center justify-between">
               <p className="text-gold-300 text-sm">
                 {validItems.length} itens encontrados {isImporting && `(${completedItems}/${validItems.length})`}
