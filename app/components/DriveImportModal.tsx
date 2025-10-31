@@ -77,12 +77,20 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
       return
     }
 
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    console.log('CLIENT_ID:', clientId, 'Length:', clientId?.length)
+
+    if (!clientId) {
+      setError('CLIENT_ID não configurado')
+      return
+    }
+
     setIsAuthenticating(true)
     setError(null)
 
     if (!tokenClientRef.current) {
       tokenClientRef.current = window.google.accounts.oauth2.initTokenClient({
-        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        client_id: clientId,
         scope: 'https://www.googleapis.com/auth/drive.readonly',
         callback: (response: any) => {
           if (response.access_token) {
