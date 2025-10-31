@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, BookMarked, UserMinus, Upload, FileText } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, BookMarked, UserMinus, Upload, FileText, FolderInput } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
 import { useAuth } from '../../providers/AuthProvider'
+import DriveImportModal from '../../components/DriveImportModal'
 
 interface Course {
   id: string
@@ -79,6 +80,7 @@ export default function CoursesPage() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
+  const [showDriveImportModal, setShowDriveImportModal] = useState(false)
   
   // Usar o contexto global de autenticação
   const { session, user, isLoading: authLoading, refreshSession } = useAuth()
@@ -1565,7 +1567,7 @@ export default function CoursesPage() {
               </div>
             </button>
             <button
-              type="button" 
+              type="button"
               onClick={() => {
                 console.log('Import Excel clicked for course:', dropdownCourse);
                 setSelectedCourse(dropdownCourse);
@@ -1579,6 +1581,23 @@ export default function CoursesPage() {
               <div className="flex items-center gap-3 text-left">
                 <Upload className="w-4 h-4 text-gold-400 flex-shrink-0" />
                 <span className="text-gold-200 text-left flex-1">Importar Estrutura (Excel)</span>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                console.log('Import Drive clicked for course:', dropdownCourse);
+                setSelectedCourse(dropdownCourse);
+                setShowDriveImportModal(true);
+                setOpenDropdown(null);
+                setDropdownCourse(null);
+                setDropdownPosition(null);
+              }}
+              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
+            >
+              <div className="flex items-center gap-3 text-left">
+                <FolderInput className="w-4 h-4 text-gold-400 flex-shrink-0" />
+                <span className="text-gold-200 text-left flex-1">Importar do Google Drive</span>
               </div>
             </button>
             <div className="border-t border-gold-500/20 mt-2 pt-2">
@@ -1601,6 +1620,19 @@ export default function CoursesPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Drive Import Modal */}
+      {selectedCourse && (
+        <DriveImportModal
+          isOpen={showDriveImportModal}
+          onClose={() => setShowDriveImportModal(false)}
+          courseId={selectedCourse.id}
+          onImportComplete={() => {
+            setShowDriveImportModal(false)
+            fetchCourses()
+          }}
+        />
       )}
     </div>
   )
