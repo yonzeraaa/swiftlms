@@ -14,6 +14,13 @@ const DEFAULT_BACKGROUND_MAX_RUNTIME_MS = 13 * 60 * 1000 // 13 minutos (abaixo d
 const DEFAULT_BACKGROUND_SAFETY_MS = 60 * 1000 // 1 minuto
 const DEFAULT_BACKGROUND_LOOP_DELAY_MS = 1_500
 const DEFAULT_MAX_ITEMS_PER_CHUNK = 10
+const DEFAULT_CHUNK_RUNTIME_MS = 2.5 * 60 * 1000 // 2min30s por execução
+const MIN_CHUNK_RUNTIME_MS = 30 * 1000
+const AUTO_ANSWER_KEY_ENABLED = (() => {
+  const raw = process.env.GOOGLE_DRIVE_ENABLE_AUTO_ANSWER_KEY
+  if (!raw) return false
+  return ['1', 'true', 'yes', 'on'].includes(raw.toLowerCase())
+})()
 
 const MAX_ITEMS_PER_CHUNK = (() => {
   const raw = Number(process.env.GOOGLE_DRIVE_MAX_ITEMS_PER_CHUNK ?? DEFAULT_MAX_ITEMS_PER_CHUNK)
@@ -21,6 +28,19 @@ const MAX_ITEMS_PER_CHUNK = (() => {
     return DEFAULT_MAX_ITEMS_PER_CHUNK
   }
   return Math.floor(raw)
+})()
+
+const MAX_CHUNK_RUNTIME_MS = (() => {
+  const raw = Number(process.env.GOOGLE_DRIVE_IMPORT_CHUNK_MAX_MS ?? DEFAULT_CHUNK_RUNTIME_MS)
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return DEFAULT_CHUNK_RUNTIME_MS
+  }
+  const upperBound = Math.max(MIN_CHUNK_RUNTIME_MS, DEFAULT_BACKGROUND_MAX_RUNTIME_MS - DEFAULT_BACKGROUND_SAFETY_MS)
+  const clamped = Math.max(MIN_CHUNK_RUNTIME_MS, Math.min(raw, upperBound))
+  if (clamped !== raw) {
+    console.log('[IMPORT][CONFIG] max chunk runtime clamp applied', { requested: raw, effective: clamped })
+  }
+  return clamped
 })()
 
 const BACKGROUND_MAX_RUNTIME_MS = (() => {
@@ -1224,6 +1244,29 @@ async function parseGoogleDriveFolder(
     return null
   }
 
+  const maybeYieldForTime = (
+    moduleIndex: number,
+    subjectIndex: number,
+    itemIndex: number
+  ): ParseResult | null => {
+    if (!options.checkTimeout?.()) {
+      return null
+    }
+    console.log(
+      `[IMPORT][TIME] Limite de tempo atingido durante parsing. Interrompendo no módulo ${moduleIndex}, disciplina ${subjectIndex}, item ${itemIndex}.`
+    )
+    return {
+      structure,
+      totalModules,
+      status: 'partial',
+      resumeState: {
+        moduleIndex,
+        subjectIndex,
+        itemIndex,
+      },
+    }
+  }
+
   console.log(`[IMPORT][INIT] Modo: ${isResume ? 'RESUME' : 'NOVA IMPORTAÇÃO'}`)
   if (!isResume) {
     console.log(`[IMPORT][INIT] Totais resetados - iniciando scan completo`)
@@ -1800,6 +1843,11 @@ async function parseGoogleDriveFolder(
             }
             const existingSubjectId = existingSubjectEntry?.id
 
+            const timeoutResultAtSubject = maybeYieldForTime(moduleIndex, subjectIndex, 0)
+            if (timeoutResultAtSubject) {
+              return timeoutResultAtSubject
+            }
+
             if (!existingSubjectId) {
               const budgetResult = consumeBudget(moduleIndex, subjectIndex, 0)
               if (budgetResult) {
@@ -2095,6 +2143,20 @@ async function parseGoogleDriveFolder(
               console.log(`      Processando lote ${batchNumber}: ${batch.length} itens`)
               
               for (const entry of batch) {
+                const timeoutResultDuringItem = maybeYieldForTime(moduleIndex, subjectIndex, subjectItemCursor)
+                if (timeoutResultDuringItem) {
+                  if (
+                    (subject.lessons.length > 0 || subject.tests.length > 0 || subject.existingId === undefined) &&
+                    !courseModule.subjects.includes(subject)
+                  ) {
+                    courseModule.subjects.push(subject)
+                  }
+                  if (!structure.modules.includes(courseModule)) {
+                    structure.modules.push(courseModule)
+                  }
+                  return timeoutResultDuringItem
+                }
+
                 const lessonItem = entry.asset
                 const itemName = lessonItem.name || 'Arquivo sem nome'
                 console.log(`      Processando arquivo: ${itemName} (${lessonItem.mimeType})`)
@@ -2170,8 +2232,22 @@ async function parseGoogleDriveFolder(
                     lessonItem.mimeType === 'application/vnd.google-apps.document' &&
                     fileSizeBytes <= MAX_DOC_EXPORT_BYTES
 
-                  if (canAttemptAutoAnswerKey) {
+                  if (AUTO_ANSWER_KEY_ENABLED && canAttemptAutoAnswerKey) {
                     try {
+                      const timeoutBeforeExport = maybeYieldForTime(moduleIndex, subjectIndex, subjectItemCursor)
+                      if (timeoutBeforeExport) {
+                        if (
+                          (subject.lessons.length > 0 || subject.tests.length > 0 || subject.existingId === undefined) &&
+                          !courseModule.subjects.includes(subject)
+                        ) {
+                          courseModule.subjects.push(subject)
+                        }
+                        if (!structure.modules.includes(courseModule)) {
+                          structure.modules.push(courseModule)
+                        }
+                        return timeoutBeforeExport
+                      }
+
                       console.log(`        Tentando extrair gabarito do Google Docs: ${itemName}`)
                       if (job) {
                         await logJob(job, 'info', 'Exportando gabarito do teste', {
@@ -2227,7 +2303,7 @@ async function parseGoogleDriveFolder(
                         })
                       }
                     }
-                  } else if (lessonItem.mimeType === 'application/vnd.google-apps.document' && job) {
+                  } else if (AUTO_ANSWER_KEY_ENABLED && lessonItem.mimeType === 'application/vnd.google-apps.document' && job) {
                     await logJob(job, 'info', 'Gabarito não extraído automaticamente (arquivo acima do limite)', {
                       moduleName,
                       moduleCode,
@@ -2237,6 +2313,15 @@ async function parseGoogleDriveFolder(
                       itemName,
                       sizeBytes: fileSizeBytes || null,
                       limitBytes: MAX_DOC_EXPORT_BYTES
+                    })
+                  } else if (!AUTO_ANSWER_KEY_ENABLED && job) {
+                    await logJob(job, 'info', 'Gabarito automático desativado por configuração', {
+                      moduleName,
+                      moduleCode,
+                      subjectName,
+                      subjectCode,
+                      fileId: lessonItem.id,
+                      itemName,
                     })
                   }
 
@@ -3145,8 +3230,7 @@ export async function processImportInBackground(
   const supabase = supabaseClient ?? createAdminClient()
   const jobContext = jobId ? { jobId, supabase } : undefined
   const startTime = Date.now()
-  const rawRuntime = Number(process.env.GOOGLE_DRIVE_IMPORT_CHUNK_MAX_MS ?? 45_000)
-  const maxRuntimeMs = Number.isFinite(rawRuntime) && rawRuntime > 0 ? rawRuntime : 45_000
+  const maxRuntimeMs = MAX_CHUNK_RUNTIME_MS
 
   try {
     let jobMetadata = await loadJobMetadata(jobContext)
@@ -3206,7 +3290,8 @@ export async function processImportInBackground(
     await logJob(jobContext, 'info', 'Autenticação concluída')
 
     console.log(`[IMPORT-BACKGROUND] === FASE 2: Processando conteúdo ===`)
-    const shouldYield = () => Date.now() - startTime >= maxRuntimeMs - BACKGROUND_SAFETY_MS
+    const yieldThreshold = Math.max(5_000, maxRuntimeMs - BACKGROUND_SAFETY_MS)
+    const shouldYield = () => Date.now() - startTime >= yieldThreshold
     const parseResult = await parseGoogleDriveFolder(
       drive,
       folderId,
@@ -4237,7 +4322,7 @@ export async function runProcessingPhase(
   }
 ) {
   const phaseStartTime = options.startTime || Date.now()
-  const MAX_PROCESSING_TIME_MS = 3 * 60 * 1000 // 3 minutos para processamento
+  const MAX_PROCESSING_TIME_MS = Math.min(MAX_CHUNK_RUNTIME_MS, 3 * 60 * 1000)
 
   console.log(`[PROCESSING] Iniciando fase de processamento (máx ${options.maxModules} módulos, timeout: 3min)`)
 
@@ -4352,7 +4437,7 @@ export async function runDatabaseImportPhase(
     job,
     {
       startTime: Date.now(),
-      maxRuntimeMs: 120_000, // 2 minutos max
+      maxRuntimeMs: Math.min(MAX_CHUNK_RUNTIME_MS, 120_000),
       resumeState: null,
       jobMetadata: {},
       progressSnapshot: {
