@@ -32,12 +32,16 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [isListing, setIsListing] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
+  const [isCancelled, setIsCancelled] = useState(false)
   const [items, setItems] = useState<ProcessedItem[]>([])
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isCheckingToken, setIsCheckingToken] = useState(true)
 
   const tokenClientRef = useRef<any>(null)
+  const pausedRef = useRef(false)
+  const cancelledRef = useRef(false)
 
 useEffect(() => {
     if (!isOpen) return
@@ -261,19 +265,60 @@ useEffect(() => {
     return response.json()
   }
 
+  const handlePause = () => {
+    setIsPaused(true)
+    pausedRef.current = true
+  }
+
+  const handleResume = () => {
+    setIsPaused(false)
+    pausedRef.current = false
+    handleImportAll()
+  }
+
+  const handleCancel = () => {
+    setIsCancelled(true)
+    cancelledRef.current = true
+    setIsImporting(false)
+    setIsPaused(false)
+  }
+
   const handleImportAll = async () => {
-    setIsImporting(true)
+    if (!isImporting) {
+      setIsImporting(true)
+      setIsPaused(false)
+      setIsCancelled(false)
+      pausedRef.current = false
+      cancelledRef.current = false
+    }
+
     setError(null)
 
     const typeOrder = { 'module': 1, 'subject': 2, 'lesson': 3, 'test': 4, 'unknown': 5 }
     const sortedItems = [...items].sort((a, b) => typeOrder[a.type] - typeOrder[b.type])
 
     for (let i = 0; i < sortedItems.length; i++) {
+      if (cancelledRef.current) {
+        setIsImporting(false)
+        return
+      }
+
+      while (pausedRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        if (cancelledRef.current) {
+          setIsImporting(false)
+          return
+        }
+      }
+
       const item = sortedItems[i]
 
       if (item.type === 'unknown') continue
 
       const originalIndex = items.findIndex(it => it.id === item.id)
+      const currentStatus = items[originalIndex]?.status
+
+      if (currentStatus === 'success') continue
 
       setItems(prev => prev.map((it, idx) =>
         idx === originalIndex ? { ...it, status: 'uploading' } : it
@@ -299,6 +344,7 @@ useEffect(() => {
     }
 
     setIsImporting(false)
+    setIsPaused(false)
     onImportComplete?.()
   }
 
@@ -425,17 +471,57 @@ useEffect(() => {
             <div className="flex items-center justify-between">
               <p className="text-gold-300 text-sm">
                 {validItems.length} itens encontrados {isImporting && `(${completedItems}/${validItems.length})`}
+                {isPaused && <span className="text-yellow-400 ml-2">• Pausado</span>}
+                {isCancelled && <span className="text-red-400 ml-2">• Cancelado</span>}
               </p>
-              {!isImporting && (
-                <Button
-                  onClick={handleImportAll}
-                  variant="success"
-                  size="sm"
-                  disabled={validItems.length === 0}
-                >
-                  Importar Todos
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {!isImporting && !isCancelled && (
+                  <Button
+                    onClick={handleImportAll}
+                    variant="success"
+                    size="sm"
+                    disabled={validItems.length === 0}
+                  >
+                    {completedItems > 0 ? 'Continuar Importação' : 'Importar Todos'}
+                  </Button>
+                )}
+                {isImporting && !isPaused && (
+                  <>
+                    <Button
+                      onClick={handlePause}
+                      variant="warning"
+                      size="sm"
+                    >
+                      Pausar
+                    </Button>
+                    <Button
+                      onClick={handleCancel}
+                      variant="danger"
+                      size="sm"
+                    >
+                      Cancelar
+                    </Button>
+                  </>
+                )}
+                {isPaused && (
+                  <>
+                    <Button
+                      onClick={handleResume}
+                      variant="success"
+                      size="sm"
+                    >
+                      Retomar
+                    </Button>
+                    <Button
+                      onClick={handleCancel}
+                      variant="danger"
+                      size="sm"
+                    >
+                      Cancelar
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="max-h-96 overflow-y-auto space-y-2 pr-2">

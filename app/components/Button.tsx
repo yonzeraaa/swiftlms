@@ -9,7 +9,7 @@ type MotionButtonProps = HTMLMotionProps<'button'> & ButtonHTMLAttributes<HTMLBu
 
 interface ButtonProps extends Omit<MotionButtonProps, 'onDrag' | 'onDragEnd' | 'onDragStart' | 'ref'> {
   children: ReactNode
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'gradient' | 'outline' | 'subtle' | 'success'
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'gradient' | 'outline' | 'subtle' | 'success' | 'warning'
   size?: 'sm' | 'md' | 'lg' | 'xs' | 'xl'
   isLoading?: boolean
   loading?: boolean // Alias para compatibilidade com PremiumButton
@@ -178,6 +178,15 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
       hover:shadow-lg
       shadow-md shadow-green-500/20
       before:bg-gradient-to-r before:from-green-400/20 before:to-transparent
+    `,
+    warning: `
+      bg-gradient-to-r from-yellow-500 to-yellow-600
+      hover:from-yellow-600 hover:to-yellow-700
+      text-navy-900
+      focus:ring-yellow-400 focus:ring-offset-navy-800
+      hover:shadow-lg
+      shadow-md shadow-yellow-500/20
+      before:bg-gradient-to-r before:from-yellow-400/20 before:to-transparent
     `
   }
   
