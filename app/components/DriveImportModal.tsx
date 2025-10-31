@@ -245,8 +245,15 @@ useEffect(() => {
     })
 
     if (!response.ok) {
-      const data = await response.json()
-      throw new Error(data.error || 'Erro ao importar')
+      let errorMessage = 'Erro ao importar'
+      try {
+        const data = await response.json()
+        errorMessage = data.error || errorMessage
+      } catch {
+        const text = await response.text()
+        errorMessage = text || `Erro HTTP ${response.status}`
+      }
+      throw new Error(errorMessage)
     }
 
     return response.json()
@@ -256,13 +263,18 @@ useEffect(() => {
     setIsImporting(true)
     setError(null)
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i]
+    const typeOrder = { 'module': 1, 'subject': 2, 'lesson': 3, 'test': 4, 'unknown': 5 }
+    const sortedItems = [...items].sort((a, b) => typeOrder[a.type] - typeOrder[b.type])
+
+    for (let i = 0; i < sortedItems.length; i++) {
+      const item = sortedItems[i]
 
       if (item.type === 'unknown') continue
 
+      const originalIndex = items.findIndex(it => it.id === item.id)
+
       setItems(prev => prev.map((it, idx) =>
-        idx === i ? { ...it, status: 'uploading' } : it
+        idx === originalIndex ? { ...it, status: 'uploading' } : it
       ))
 
       try {
@@ -274,11 +286,11 @@ useEffect(() => {
         await uploadItem(item, fileBlob)
 
         setItems(prev => prev.map((it, idx) =>
-          idx === i ? { ...it, status: 'success' } : it
+          idx === originalIndex ? { ...it, status: 'success' } : it
         ))
       } catch (err) {
         setItems(prev => prev.map((it, idx) =>
-          idx === i ? {
+          idx === originalIndex ? {
             ...it,
             status: 'error',
             error: err instanceof Error ? err.message : 'Erro desconhecido'
