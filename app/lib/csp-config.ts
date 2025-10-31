@@ -45,7 +45,8 @@ export const developmentCSP = {
   'frame-src': [
     "'self'",
     'https://accounts.google.com',
-    'https://content.googleapis.com'
+    'https://content.googleapis.com',
+    'https://drive.google.com'
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],
@@ -95,7 +96,8 @@ export const productionCSP = {
   'frame-src': [
     "'self'",
     'https://accounts.google.com',
-    'https://content.googleapis.com'
+    'https://content.googleapis.com',
+    'https://drive.google.com'
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],
