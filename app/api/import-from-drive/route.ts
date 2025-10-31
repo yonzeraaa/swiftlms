@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Database, Json } from '@/lib/database.types'
 import { parseAnswerKeyFromText, type ParsedAnswerKeyEntry } from '../tests/utils/answer-key'
+import type { DriveImportTask, DriveImportSummary } from '@/types/driveImport'
 import fs from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
@@ -3517,6 +3518,225 @@ export async function processImportInBackground(
 
     return { status: 'completed', resumeState: null, results: createEmptyResults() }
   }
+}
+
+function convertStructureToTasks(structure: CourseStructure) {
+  const tasks: DriveImportTask[] = []
+  const summary: DriveImportSummary = {
+    modules: 0,
+    subjects: 0,
+    lessons: 0,
+    tests: 0,
+  }
+
+  structure.modules.forEach((module, moduleIndex) => {
+    if (module.skip) {
+      return
+    }
+
+    const moduleInfo = {
+      originalIndex: module.originalIndex ?? moduleIndex,
+      name: module.name,
+      code: module.code,
+      order: module.order,
+    }
+
+    tasks.push({
+      id: randomUUID(),
+      type: 'module',
+      module: moduleInfo,
+    })
+    summary.modules += 1
+
+    module.subjects.forEach((subject, subjectIndex) => {
+      if (subject.skip) {
+        return
+      }
+
+      const subjectInfo = {
+        originalIndex: subject.originalIndex ?? subjectIndex,
+        name: subject.name,
+        code: subject.code,
+        order: subject.order,
+        existingId: subject.existingId,
+        moduleCode: module.code,
+      }
+
+      tasks.push({
+        id: randomUUID(),
+        type: 'subject',
+        module: moduleInfo,
+        subject: subjectInfo,
+      })
+      summary.subjects += 1
+
+      subject.lessons.forEach(lesson => {
+        tasks.push({
+          id: randomUUID(),
+          type: 'lesson',
+          module: moduleInfo,
+          subject: subjectInfo,
+          lesson: {
+            name: lesson.name,
+            code: lesson.code,
+            order: lesson.order,
+            content: lesson.content,
+            contentType: lesson.contentType,
+            contentUrl: lesson.contentUrl,
+            description: lesson.description,
+            questions: lesson.questions,
+          },
+        })
+        summary.lessons += 1
+      })
+
+      subject.tests.forEach(test => {
+        tasks.push({
+          id: randomUUID(),
+          type: 'test',
+          module: moduleInfo,
+          subject: subjectInfo,
+          test: {
+            name: test.name,
+            code: test.code,
+            order: test.order,
+            contentType: test.contentType,
+            contentUrl: test.contentUrl,
+            description: test.description,
+            answerKey: test.answerKey,
+            requiresManualAnswerKey: test.requiresManualAnswerKey,
+          },
+        })
+        summary.tests += 1
+      })
+    })
+  })
+
+  return { tasks, summary }
+}
+
+export async function buildDriveImportTaskList(params: {
+  driveUrl: string
+  courseId: string
+  userId: string
+}) {
+  const { driveUrl, courseId, userId } = params
+
+  const folderId = extractDriveFolderId(driveUrl)
+  if (!folderId) {
+    throw new Error('URL do Google Drive inválida')
+  }
+
+  const supabase = createAdminClient()
+  const drive = await authenticateGoogleDrive()
+
+  const parseResult = await parseGoogleDriveFolder(
+    drive,
+    folderId,
+    courseId,
+    undefined,
+    supabase,
+    userId,
+    undefined,
+    {
+      startTime: Date.now(),
+      maxRuntimeMs: MAX_CHUNK_RUNTIME_MS,
+      progressSnapshot: createProgressSnapshot(null),
+      warnings: [],
+    }
+  )
+
+  if (parseResult.status === 'partial') {
+    throw new Error('A listagem dos arquivos excedeu o tempo limite. Tente novamente com uma pasta menor ou reorganize os itens.')
+  }
+
+  const { tasks, summary } = convertStructureToTasks(parseResult.structure)
+  return { tasks, summary, folderId }
+}
+
+export async function processDriveImportTask(params: {
+  task: DriveImportTask
+  courseId: string
+  userId: string
+}) {
+  const { task, courseId, userId } = params
+  const supabase = createAdminClient()
+
+  const moduleData = {
+    originalIndex: task.module.originalIndex,
+    name: task.module.name,
+    code: task.module.code,
+    order: task.module.order,
+    subjects: [] as CourseStructure['modules'][number]['subjects'],
+  }
+
+  if (task.type !== 'module') {
+    if (!task.subject) {
+      throw new Error('Dados da disciplina ausentes na tarefa')
+    }
+
+    const subjectData = {
+      originalIndex: task.subject.originalIndex,
+      name: task.subject.name,
+      code: task.subject.code,
+      order: task.subject.order,
+      existingId: task.subject.existingId,
+      lessons: [] as CourseStructure['modules'][number]['subjects'][number]['lessons'],
+      tests: [] as CourseStructure['modules'][number]['subjects'][number]['tests'],
+    }
+
+    if (task.type === 'lesson') {
+      subjectData.lessons.push({
+        name: task.lesson.name,
+        code: task.lesson.code,
+        order: task.lesson.order,
+        content: task.lesson.content,
+        contentType: task.lesson.contentType,
+        contentUrl: task.lesson.contentUrl,
+        description: task.lesson.description,
+        questions: task.lesson.questions,
+      })
+    }
+
+    if (task.type === 'test') {
+      subjectData.tests.push({
+        name: task.test.name,
+        code: task.test.code,
+        order: task.test.order,
+        contentType: task.test.contentType,
+        contentUrl: task.test.contentUrl ?? '',
+        description: task.test.description,
+        answerKey: task.test.answerKey,
+        requiresManualAnswerKey: task.test.requiresManualAnswerKey,
+      })
+    }
+
+    moduleData.subjects.push(subjectData)
+  }
+
+  const structure: CourseStructure = {
+    modules: [moduleData],
+  }
+
+  const result = await importToDatabase(
+    structure,
+    courseId,
+    supabase,
+    undefined,
+    userId,
+    undefined,
+    undefined,
+    {
+      startTime: Date.now(),
+      maxRuntimeMs: MAX_CHUNK_RUNTIME_MS,
+      resumeState: null,
+      jobMetadata: {},
+      progressSnapshot: createProgressSnapshot(null),
+      checkTimeout: () => false,
+    }
+  )
+
+  return result
 }
 
 type RunImportJobOptions = {

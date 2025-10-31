@@ -7,11 +7,12 @@ import Button from '../../components/Button'
 import ImportProgress from '../../components/ImportProgress'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
-import { useImportProgress } from '../../hooks/useImportProgress'
+import type { ImportProgressData } from '../../hooks/useImportProgress'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
 import { useAuth } from '../../providers/AuthProvider'
+import type { DriveImportTask, DriveImportListResponse } from '@/types/driveImport'
 
 interface Course {
   id: string
@@ -85,22 +86,26 @@ export default function CoursesPage() {
   const [driveUrl, setDriveUrl] = useState('')
   const [inspectingDrive, setInspectingDrive] = useState(false)
   
-  // Usar o novo hook de progresso
-  const { 
-    progress: importProgress, 
-    isImporting: importingFromDrive, 
-    startImport, 
-    cancelImport
-  } = useImportProgress({
-    onComplete: () => {
-      console.log('[CoursesPage] Import completed successfully')
-      fetchCourses() // Recarregar cursos ap\u00f3s importa\u00e7\u00e3o
-    },
-    onError: (error) => {
-      console.error('[CoursesPage] Import error:', error)
-      setError(error)
-    }
+  const [driveProgress, setDriveProgress] = useState<ImportProgressData>({
+    currentStep: '',
+    totalModules: 0,
+    processedModules: 0,
+    totalSubjects: 0,
+    processedSubjects: 0,
+    totalLessons: 0,
+    processedLessons: 0,
+    totalTests: 0,
+    processedTests: 0,
+    currentItem: '',
+    errors: [],
+    warnings: [],
+    percentage: 0,
+    completed: false,
+    phase: '',
+    startedAt: null
   })
+  const [driveImporting, setDriveImporting] = useState(false)
+  const driveCancelRef = useRef(false)
   
   // Usar o contexto global de autenticação
   const { session, user, isLoading: authLoading, refreshSession } = useAuth()
@@ -535,18 +540,205 @@ export default function CoursesPage() {
   // Limpar intervalo quando componente desmontar ou importação terminar
 
 
+  const cancelDriveImport = () => {
+    if (!driveImporting) return
+    driveCancelRef.current = true
+    setDriveProgress(prev => ({
+      ...prev,
+      currentStep: 'Cancelando importação...'
+    }))
+  }
+
+  const describeTask = (task: DriveImportTask, nextIndexes: { modules: number; subjects: number; lessons: number; tests: number }, totals: { modules: number; subjects: number; lessons: number; tests: number }) => {
+    switch (task.type) {
+      case 'module':
+        return {
+          step: `Processando módulo ${Math.min(nextIndexes.modules, totals.modules)}/${totals.modules || 1}`,
+          item: `Módulo: ${task.module.name}`
+        }
+      case 'subject':
+        return {
+          step: `Processando disciplina ${Math.min(nextIndexes.subjects, totals.subjects)}/${totals.subjects || 1}`,
+          item: `Disciplina: ${task.subject?.name ?? ''}`
+        }
+      case 'lesson':
+        return {
+          step: `Processando aula ${Math.min(nextIndexes.lessons, totals.lessons)}/${totals.lessons || 1}`,
+          item: `Aula: ${task.lesson.name} (${task.subject?.name ?? ''})`
+        }
+      case 'test':
+        return {
+          step: `Processando teste ${Math.min(nextIndexes.tests, totals.tests)}/${totals.tests || 1}`,
+          item: `Teste: ${task.test.name} (${task.subject?.name ?? ''})`
+        }
+      default:
+        return {
+          step: 'Processando item',
+          item: 'Item do Drive'
+        }
+    }
+  }
+
   const handleDriveImport = async () => {
     if (!driveUrl || !selectedCourse) return
-    
+
     setError(null)
-    
+    driveCancelRef.current = false
+
     try {
       setInspectingDrive(true)
-      await startImport(driveUrl, selectedCourse.id)
-      console.log('[CoursesPage] Import started')
+      const params = new URLSearchParams({ driveUrl, courseId: selectedCourse.id })
+      const response = await fetch(`/api/import-from-drive/list?${params.toString()}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Erro ao listar arquivos do Drive')
+      }
+
+      const data = (await response.json()) as DriveImportListResponse
+
+      const totals = {
+        modules: data.summary.modules,
+        subjects: data.summary.subjects,
+        lessons: data.summary.lessons,
+        tests: data.summary.tests
+      }
+
+      const totalItems = totals.modules + totals.subjects + totals.lessons + totals.tests
+      const startedAt = new Date().toISOString()
+
+      setDriveProgress({
+        currentStep: totalItems > 0 ? 'Preparando importação...' : 'Nenhum item novo encontrado',
+        totalModules: totals.modules,
+        processedModules: 0,
+        totalSubjects: totals.subjects,
+        processedSubjects: 0,
+        totalLessons: totals.lessons,
+        processedLessons: 0,
+        totalTests: totals.tests,
+        processedTests: 0,
+        currentItem: '',
+        errors: [],
+        warnings: [],
+        percentage: totalItems === 0 ? 100 : 0,
+        completed: totalItems === 0,
+        phase: totalItems === 0 ? 'completed' : 'processing',
+        startedAt
+      })
+
+      if (totalItems === 0) {
+        setDriveImporting(false)
+        fetchCourses()
+        return
+      }
+
+      setDriveImporting(true)
+
+      const counters = { modules: 0, subjects: 0, lessons: 0, tests: 0 }
+
+      for (let index = 0; index < data.tasks.length; index++) {
+        if (driveCancelRef.current) {
+          setDriveImporting(false)
+          setDriveProgress(prev => ({
+            ...prev,
+            currentStep: 'Importação cancelada pelo usuário',
+            currentItem: '',
+            completed: true,
+            phase: 'cancelled'
+          }))
+          return
+        }
+
+        const task = data.tasks[index]
+        const nextIndexes = {
+          modules: counters.modules + (task.type === 'module' ? 1 : 0),
+          subjects: counters.subjects + (task.type === 'subject' ? 1 : 0),
+          lessons: counters.lessons + (task.type === 'lesson' ? 1 : 0),
+          tests: counters.tests + (task.type === 'test' ? 1 : 0)
+        }
+
+        const { step, item } = describeTask(task, nextIndexes, totals)
+        setDriveProgress(prev => ({
+          ...prev,
+          currentStep: step,
+          currentItem: item
+        }))
+
+        const itemResponse = await fetch('/api/import-from-drive/item', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            courseId: selectedCourse.id,
+            task
+          })
+        })
+
+        if (!itemResponse.ok) {
+          const errorData = await itemResponse.json().catch(() => ({}))
+          const message = errorData.error || `Falha ao importar ${item}`
+          setDriveProgress(prev => ({
+            ...prev,
+            currentStep: 'Erro durante importação',
+            errors: [...prev.errors, message],
+            completed: true,
+            phase: 'error'
+          }))
+          setDriveImporting(false)
+          setError(message)
+          return
+        }
+
+        const result = await itemResponse.json()
+        const importErrors: string[] = result?.results?.errors ?? []
+        if (importErrors.length > 0) {
+          setDriveProgress(prev => ({
+            ...prev,
+            warnings: [...prev.warnings, ...importErrors]
+          }))
+        }
+
+        if (task.type === 'module') counters.modules += 1
+        if (task.type === 'subject') counters.subjects += 1
+        if (task.type === 'lesson') counters.lessons += 1
+        if (task.type === 'test') counters.tests += 1
+
+        const processedTotal = counters.modules + counters.subjects + counters.lessons + counters.tests
+        const percentage = Math.round((processedTotal / totalItems) * 100)
+
+        setDriveProgress(prev => ({
+          ...prev,
+          processedModules: counters.modules,
+          processedSubjects: counters.subjects,
+          processedLessons: counters.lessons,
+          processedTests: counters.tests,
+          percentage
+        }))
+      }
+
+      setDriveProgress(prev => ({
+        ...prev,
+        currentStep: 'Importação concluída',
+        currentItem: '',
+        completed: true,
+        phase: 'completed',
+        percentage: 100
+      }))
+      setDriveImporting(false)
+      fetchCourses()
     } catch (error: any) {
-      console.error('[CoursesPage] Failed to start import:', error)
-      setError(error.message || 'Erro ao iniciar importação')
+      console.error('[CoursesPage] Failed to import items:', error)
+      const message = error?.message || 'Erro ao importar do Google Drive'
+      setError(message)
+      setDriveProgress(prev => ({
+        ...prev,
+        errors: [...prev.errors, message],
+        currentStep: 'Erro durante importação',
+        completed: true,
+        phase: 'error'
+      }))
+      setDriveImporting(false)
     } finally {
       setInspectingDrive(false)
     }
@@ -1585,11 +1777,11 @@ export default function CoursesPage() {
               </div>
               
               {/* Progress Display */}
-              {(importingFromDrive || importProgress.completed) && (
+              {(driveImporting || driveProgress.completed) && (
                 <ImportProgress
-                  isImporting={importingFromDrive}
-                  progress={importProgress}
-                  onCancel={cancelImport}
+                  isImporting={driveImporting}
+                  progress={driveProgress}
+                  onCancel={cancelDriveImport}
                 />
               )}
               
@@ -1598,8 +1790,8 @@ export default function CoursesPage() {
                   type="button"
                   variant="secondary"
                   onClick={() => {
-                    if (importingFromDrive) {
-                      cancelImport()
+                    if (driveImporting) {
+                      cancelDriveImport()
                     }
                     setShowDriveImportModal(false)
                     setDriveUrl('')
@@ -1607,9 +1799,9 @@ export default function CoursesPage() {
                   }}
                   className="flex-1"
                 >
-                  {importingFromDrive ? 'Cancelar' : 'Fechar'}
+                  {driveImporting ? 'Cancelar' : 'Fechar'}
                 </Button>
-                {!importingFromDrive && (
+                {!driveImporting && (
                   <Button
                     type="button"
                     variant="primary"
