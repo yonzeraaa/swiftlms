@@ -3311,7 +3311,27 @@ export async function processImportInBackground(
       }
     )
 
-    if (parseResult.structure.modules.length === 0) {
+    if (parseResult.status === 'cancelled') {
+      console.log(`[IMPORT-BACKGROUND] Importação cancelada na fase de parsing: ${importId}`)
+      await updateJob(jobContext, {
+        status: 'cancelled',
+        current_step: 'Importação cancelada pelo usuário',
+        finished_at: new Date().toISOString(),
+      })
+      await updateImportProgress(supabase, importId, userId, courseId, {
+        current_step: 'Importação cancelada',
+        current_item: 'Operação interrompida pelo usuário',
+        errors: ['Importação cancelada'],
+        completed: true,
+        phase: 'cancelled',
+        percentage: 0,
+      }, jobContext)
+      return { status: 'cancelled', resumeState: null, results: createEmptyResults() }
+    }
+
+    const parseWasPartial = parseResult.status === 'partial'
+
+    if (!parseWasPartial && parseResult.structure.modules.length === 0) {
       if (!resumeState && parseResult.totalModules === 0) {
         await updateImportProgress(supabase, importId, userId, courseId, {
           current_step: 'Erro: Nenhum módulo encontrado',
@@ -3346,8 +3366,31 @@ export async function processImportInBackground(
       return { status: 'completed', resumeState: null, results: createEmptyResults() }
     }
 
+    if (parseWasPartial && parseResult.structure.modules.length === 0) {
+      const resumeForNextRun = parseResult.resumeState ?? null
+      if (resumeForNextRun) {
+        jobMetadata.resume_state = resumeForNextRun
+        await persistJobMetadata(jobContext, jobMetadata)
+      }
+      await updateJob(jobContext, {
+        status: 'processing',
+        current_step: 'Execução parcial agendada para continuar',
+        metadata: jobMetadata as Json,
+      })
+      await logJob(jobContext, 'info', 'Parsing parcial sem itens para salvar', {
+        resumeState: resumeForNextRun,
+        elapsed_ms: Date.now() - startTime,
+      })
+      return { status: 'partial', resumeState: resumeForNextRun, results: createEmptyResults() }
+    }
+
     console.log(`[IMPORT-BACKGROUND] === FASE 3: Salvando no banco ===`)
     await updateJob(jobContext, { status: 'saving', current_step: 'Salvando no banco de dados' })
+
+    if (parseWasPartial && parseResult.resumeState) {
+      jobMetadata.resume_state = parseResult.resumeState
+      await persistJobMetadata(jobContext, jobMetadata)
+    }
 
     const importChunk = await importToDatabase(
       parseResult.structure,
@@ -3368,17 +3411,28 @@ export async function processImportInBackground(
       }
     )
 
-    if (importChunk.status === 'partial') {
+    const resumeForNextRun = importChunk.resumeState ?? parseResult.resumeState ?? null
+    const shouldContinue = parseWasPartial || importChunk.status === 'partial'
+
+    if (shouldContinue) {
+      if (resumeForNextRun) {
+        jobMetadata.resume_state = resumeForNextRun
+        await persistJobMetadata(jobContext, jobMetadata)
+      }
       await updateJob(jobContext, {
         status: 'processing',
         current_step: 'Execução parcial agendada para continuar',
         metadata: jobMetadata as Json,
       })
       await logJob(jobContext, 'info', 'Chunk parcial processado', {
-        resumeState: importChunk.resumeState,
+        resumeState: resumeForNextRun,
         elapsed_ms: Date.now() - startTime,
       })
-      return importChunk
+      return {
+        status: 'partial',
+        resumeState: resumeForNextRun,
+        results: importChunk.results,
+      }
     }
 
     await clearResumeState(jobContext, jobMetadata)
