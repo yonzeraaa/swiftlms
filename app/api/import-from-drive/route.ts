@@ -16,6 +16,7 @@ const DEFAULT_BACKGROUND_LOOP_DELAY_MS = 1_500
 const DEFAULT_MAX_ITEMS_PER_CHUNK = 10
 const DEFAULT_CHUNK_RUNTIME_MS = 2.5 * 60 * 1000 // 2min30s por execução
 const MIN_CHUNK_RUNTIME_MS = 30 * 1000
+const DEFAULT_CONTINUATION_DELAY_MS = 1_000
 const AUTO_ANSWER_KEY_ENABLED = (() => {
   const raw = process.env.GOOGLE_DRIVE_ENABLE_AUTO_ANSWER_KEY
   if (!raw) return false
@@ -65,6 +66,14 @@ const BACKGROUND_LOOP_DELAY_MS = (() => {
     return DEFAULT_BACKGROUND_LOOP_DELAY_MS
   }
   return raw
+})()
+const CONTINUATION_DELAY_MS = (() => {
+  const raw = Number(process.env.GOOGLE_DRIVE_RUNNER_DELAY_MS ?? DEFAULT_CONTINUATION_DELAY_MS)
+  if (!Number.isFinite(raw) || raw < 0) {
+    return DEFAULT_CONTINUATION_DELAY_MS
+  }
+  const upperBound = 10_000
+  return Math.min(raw, upperBound)
 })()
 const RUNNER_ENDPOINT_PATH = '/api/import-from-drive-runner'
 
@@ -3598,6 +3607,10 @@ export async function runImportJob(
 
 async function enqueueImportContinuation(payload: ImportRunnerPayload, baseUrl: string) {
   try {
+    if (CONTINUATION_DELAY_MS > 0) {
+      const jitter = Math.floor(Math.random() * Math.min(CONTINUATION_DELAY_MS, 500))
+      await wait(CONTINUATION_DELAY_MS + jitter)
+    }
     const targetUrl = `${baseUrl}${RUNNER_ENDPOINT_PATH}`
     const response = await fetch(targetUrl, {
       method: 'POST',
