@@ -228,20 +228,22 @@ useEffect(() => {
     }
   }
 
-  const uploadItem = async (item: ProcessedItem, fileBlob: Blob | null) => {
-    const formData = new FormData()
-
-    if (fileBlob) {
-      formData.append('file', fileBlob, item.name)
+  const uploadItem = async (item: ProcessedItem) => {
+    const payload = {
+      itemType: item.type,
+      code: item.code || '',
+      originalName: item.name,
+      courseId: courseId,
+      driveFileId: item.id,
+      mimeType: item.mimeType
     }
-    formData.append('itemType', item.type)
-    formData.append('code', item.code || '')
-    formData.append('originalName', item.name)
-    formData.append('courseId', courseId)
 
     const response = await fetch('/api/import/drive', {
       method: 'POST',
-      body: formData
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
     })
 
     if (!response.ok) {
@@ -278,12 +280,7 @@ useEffect(() => {
       ))
 
       try {
-        const needsFile = item.type === 'lesson' || item.type === 'test'
-        const fileBlob = needsFile && item.mimeType !== 'application/vnd.google-apps.folder'
-          ? await downloadFile(item.id)
-          : null
-
-        await uploadItem(item, fileBlob)
+        await uploadItem(item)
 
         setItems(prev => prev.map((it, idx) =>
           idx === originalIndex ? { ...it, status: 'success' } : it

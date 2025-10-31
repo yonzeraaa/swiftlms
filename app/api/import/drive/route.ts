@@ -6,19 +6,18 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient()
 
   try {
-    const formData = await req.formData()
+    const body = await req.json()
 
-    const file = formData.get('file') as File | null
-    const itemType = (formData.get('itemType') as string) || 'unknown'
-    const code = (formData.get('code') as string) || null
-    const originalName = (formData.get('originalName') as string) || ''
-    const courseId = (formData.get('courseId') as string) || null
+    const itemType = body.itemType || 'unknown'
+    const code = body.code || null
+    const originalName = body.originalName || ''
+    const courseId = body.courseId || null
+    const driveFileId = body.driveFileId || null
+    const mimeType = body.mimeType || null
 
     if (!courseId) {
       return NextResponse.json({ error: 'courseId é obrigatório' }, { status: 400 })
     }
-
-    const buffer = file ? Buffer.from(await file.arrayBuffer()) : null
 
     switch (itemType) {
       case 'module':
@@ -28,10 +27,10 @@ export async function POST(req: NextRequest) {
         await createOrUpdateSubject(supabase, { code, name: originalName, courseId })
         break
       case 'lesson':
-        await createOrUpdateLesson(supabase, { code, name: originalName, courseId, file: buffer })
+        await createOrUpdateLesson(supabase, { code, name: originalName, courseId, driveFileId, mimeType })
         break
       case 'test':
-        await createOrUpdateTest(supabase, { name: originalName, code, courseId, file: buffer })
+        await createOrUpdateTest(supabase, { name: originalName, code, courseId, driveFileId })
         break
       default:
         return NextResponse.json({
@@ -212,7 +211,7 @@ async function createOrUpdateSubject(
  */
 async function createOrUpdateLesson(
   supabase: any,
-  data: { code: string | null; name: string; courseId: string; file: Buffer | null }
+  data: { code: string | null; name: string; courseId: string; driveFileId: string | null; mimeType: string | null }
 ) {
   if (!data.code) {
     throw new Error('Código da aula não encontrado')
@@ -247,6 +246,11 @@ async function createOrUpdateLesson(
     moduleId = parentModule?.id || null
   }
 
+  const contentType = data.mimeType?.includes('video') ? 'video' : 'text'
+  const contentUrl = data.driveFileId
+    ? `https://drive.google.com/file/d/${data.driveFileId}/view`
+    : null
+
   // Buscar lesson existente
   const { data: existingLesson } = await supabase
     .from('lessons')
@@ -265,6 +269,8 @@ async function createOrUpdateLesson(
       .from('lessons')
       .update({
         title: data.name,
+        content_type: contentType,
+        content_url: contentUrl,
         updated_at: new Date().toISOString()
       })
       .eq('id', lessonId)
@@ -285,7 +291,8 @@ async function createOrUpdateLesson(
         module_id: moduleId,
         title: data.name,
         description: `Aula ${data.code}`,
-        content_type: 'text',
+        content_type: contentType,
+        content_url: contentUrl,
         order_index: nextOrder
       })
       .select('id')
@@ -314,11 +321,6 @@ async function createOrUpdateLesson(
     }
   }
 
-  // TODO: Upload do arquivo para storage
-  if (data.file) {
-    console.log(`[import/drive] Arquivo da aula ${data.name} (${data.file.length} bytes) - upload pendente`)
-  }
-
   return lessonId
 }
 
@@ -327,7 +329,7 @@ async function createOrUpdateLesson(
  */
 async function createOrUpdateTest(
   supabase: any,
-  data: { name: string; code: string | null; courseId: string; file: Buffer | null }
+  data: { name: string; code: string | null; courseId: string; driveFileId: string | null }
 ) {
   // Buscar módulo e disciplina baseado no código
   let moduleId: string | null = null
@@ -359,6 +361,10 @@ async function createOrUpdateTest(
     }
   }
 
+  const driveUrl = data.driveFileId
+    ? `https://drive.google.com/file/d/${data.driveFileId}/view`
+    : ''
+
   // Criar teste (sempre cria novo, não atualiza)
   const { data: newTest, error } = await supabase
     .from('tests')
@@ -368,7 +374,7 @@ async function createOrUpdateTest(
       subject_id: subjectId,
       title: data.name,
       description: `Teste importado: ${data.name}`,
-      google_drive_url: '', // TODO: armazenar URL original do Drive
+      google_drive_url: driveUrl,
       duration_minutes: 60,
       passing_score: 70,
       max_attempts: 3,
@@ -378,11 +384,6 @@ async function createOrUpdateTest(
     .single()
 
   if (error) throw error
-
-  // TODO: Upload do arquivo para storage
-  if (data.file) {
-    console.log(`[import/drive] Arquivo do teste ${data.name} (${data.file.length} bytes) - upload pendente`)
-  }
 
   return newTest.id
 }
