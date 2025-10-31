@@ -13,6 +13,15 @@ import { randomUUID } from 'crypto'
 const DEFAULT_BACKGROUND_MAX_RUNTIME_MS = 13 * 60 * 1000 // 13 minutos (abaixo do limite de 800s)
 const DEFAULT_BACKGROUND_SAFETY_MS = 60 * 1000 // 1 minuto
 const DEFAULT_BACKGROUND_LOOP_DELAY_MS = 1_500
+const DEFAULT_MAX_ITEMS_PER_CHUNK = 10
+
+const MAX_ITEMS_PER_CHUNK = (() => {
+  const raw = Number(process.env.GOOGLE_DRIVE_MAX_ITEMS_PER_CHUNK ?? DEFAULT_MAX_ITEMS_PER_CHUNK)
+  if (!Number.isFinite(raw) || raw < 1) {
+    return DEFAULT_MAX_ITEMS_PER_CHUNK
+  }
+  return Math.floor(raw)
+})()
 
 const BACKGROUND_MAX_RUNTIME_MS = (() => {
   const raw = Number(process.env.GOOGLE_DRIVE_BACKGROUND_MAX_RUNTIME_MS ?? DEFAULT_BACKGROUND_MAX_RUNTIME_MS)
@@ -655,6 +664,48 @@ async function loadExistingCourseState(supabase: any, courseId: string): Promise
   }
 }
 
+type ExistingContentSummary = {
+  modules: number
+  subjects: number
+  lessons: number
+  tests: number
+}
+
+async function prepareExistingContentSnapshot(
+  supabase: SupabaseClient<Database>,
+  courseId: string,
+  job: ImportJobContext | undefined,
+  jobMetadata: Record<string, unknown> | undefined
+): Promise<{ state: ExistingCourseState | null; summary: ExistingContentSummary | null }> {
+  const existingState = await loadExistingCourseState(supabase, courseId)
+
+  if (!existingState) {
+    return { state: null, summary: null }
+  }
+
+  const subjectsTotal = Array.from(existingState.subjectsByModuleId.values()).reduce(
+    (acc, map) => acc + map.size,
+    0
+  )
+
+  const summary: ExistingContentSummary = {
+    modules: existingState.modulesByName.size,
+    subjects: subjectsTotal,
+    lessons: existingState.existingLessonUrls.size,
+    tests: existingState.existingTestUrls.size,
+  }
+
+  console.log('[IMPORT][DUPLICATES] Snapshot de conteúdo existente carregado', summary)
+  await logJob(job, 'info', 'Snapshot de conteúdo existente carregado', summary)
+
+  if (job && jobMetadata && !('existing_snapshot_summary' in jobMetadata)) {
+    jobMetadata.existing_snapshot_summary = summary
+    await persistJobMetadata(job, jobMetadata)
+  }
+
+  return { state: existingState, summary }
+}
+
 // Função para atualizar progresso no Supabase
 async function updateImportProgress(
   supabase: any,
@@ -983,6 +1034,7 @@ interface ImportRuntimeOptions {
   jobMetadata: Record<string, unknown>
   progressSnapshot: ProgressSnapshot
   checkTimeout?: () => boolean
+  itemBudget?: number
 }
 
 function extractDriveFolderId(url: string): string | null {
@@ -1014,6 +1066,8 @@ interface ParseOptions {
   startTime?: number
   maxRuntimeMs?: number
   checkTimeout?: () => boolean
+  existingState?: ExistingCourseState | null
+  itemBudget?: number
 }
 
 interface ImportResumeState {
@@ -1131,6 +1185,45 @@ async function parseGoogleDriveFolder(
   let processedLessons = isResume ? progressSnapshot.processedLessons : 0
   let processedTests = isResume ? progressSnapshot.processedTests : 0
 
+  const rawItemBudget = options.itemBudget
+  let budgetRemaining =
+    typeof rawItemBudget === 'number' && Number.isFinite(rawItemBudget) && rawItemBudget >= 0
+      ? rawItemBudget
+      : Infinity
+  const budgetLabel =
+    typeof rawItemBudget === 'number' && Number.isFinite(rawItemBudget) && rawItemBudget >= 0
+      ? rawItemBudget
+      : '∞'
+
+  const consumeBudget = (
+    moduleIndex: number,
+    subjectIndex: number,
+    itemIndex: number
+  ): ParseResult | null => {
+    if (!Number.isFinite(budgetRemaining)) {
+      return null
+    }
+
+    if (budgetRemaining <= 0) {
+      console.log(
+        `[IMPORT][BUDGET] Limite de ${budgetLabel} itens atingido durante parsing. Interrompendo no módulo ${moduleIndex}, disciplina ${subjectIndex}, item ${itemIndex}.`
+      )
+      return {
+        structure,
+        totalModules,
+        status: 'partial',
+        resumeState: {
+          moduleIndex,
+          subjectIndex,
+          itemIndex,
+        },
+      }
+    }
+
+    budgetRemaining -= 1
+    return null
+  }
+
   console.log(`[IMPORT][INIT] Modo: ${isResume ? 'RESUME' : 'NOVA IMPORTAÇÃO'}`)
   if (!isResume) {
     console.log(`[IMPORT][INIT] Totais resetados - iniciando scan completo`)
@@ -1203,9 +1296,9 @@ async function parseGoogleDriveFolder(
 
     console.log(`[IMPORT][SCAN] Processando ${remainingValidModules} módulos válidos`)
 
-    const existingState = supabase && courseId
+    const existingState = options.existingState ?? (supabase && courseId
       ? await loadExistingCourseState(supabase, courseId)
-      : null
+      : null)
 
     // FASE 1: DISCOVERY - Contar todos os itens antes de processar
     if (!isResume) {
@@ -1540,6 +1633,13 @@ async function parseGoogleDriveFolder(
         const existingSubjectsForModule = existingModuleId
           ? existingState?.subjectsByModuleId.get(existingModuleId)
           : undefined
+
+        if (!moduleAlreadyImported) {
+          const budgetResult = consumeBudget(moduleIndex, 0, 0)
+          if (budgetResult) {
+            return budgetResult
+          }
+        }
         
         await logJob(job, 'info', 'Listando disciplinas do módulo', {
           moduleName,
@@ -1699,6 +1799,16 @@ async function parseGoogleDriveFolder(
                 existingSubjectsForModule?.get(normalizedReadableName)
             }
             const existingSubjectId = existingSubjectEntry?.id
+
+            if (!existingSubjectId) {
+              const budgetResult = consumeBudget(moduleIndex, subjectIndex, 0)
+              if (budgetResult) {
+                if (!structure.modules.includes(courseModule)) {
+                  structure.modules.push(courseModule)
+                }
+                return budgetResult
+              }
+            }
 
             await logJob(job, 'info', 'Listando itens da disciplina', {
               moduleName,
@@ -1939,6 +2049,7 @@ async function parseGoogleDriveFolder(
             let testOrder = initialTestOrder
             const validItems = classifiedAssets
             const startIndex = isResumeSubject ? resumeItemIndex : 0
+            let subjectItemCursor = startIndex
             
             for (let batchStart = startIndex; batchStart < validItems.length; batchStart += BATCH_SIZE) {
               const batchEnd = Math.min(batchStart + BATCH_SIZE, validItems.length)
@@ -2030,7 +2141,22 @@ async function parseGoogleDriveFolder(
                       phase: 'processing',
                       errors: []
                     })
+                    subjectItemCursor += 1
                     continue
+                  }
+
+                  const testBudgetResult = consumeBudget(moduleIndex, subjectIndex, subjectItemCursor)
+                  if (testBudgetResult) {
+                    if (
+                      (subject.lessons.length > 0 || subject.tests.length > 0 || subject.existingId === undefined) &&
+                      !courseModule.subjects.includes(subject)
+                    ) {
+                      courseModule.subjects.push(subject)
+                    }
+                    if (!structure.modules.includes(courseModule)) {
+                      structure.modules.push(courseModule)
+                    }
+                    return testBudgetResult
                   }
 
                   testOrder += 1
@@ -2148,7 +2274,22 @@ async function parseGoogleDriveFolder(
                       phase: 'processing',
                       errors: []
                     })
+                    subjectItemCursor += 1
                     continue
+                  }
+
+                  const lessonBudgetResult = consumeBudget(moduleIndex, subjectIndex, subjectItemCursor)
+                  if (lessonBudgetResult) {
+                    if (
+                      (subject.lessons.length > 0 || subject.tests.length > 0 || subject.existingId === undefined) &&
+                      !courseModule.subjects.includes(subject)
+                    ) {
+                      courseModule.subjects.push(subject)
+                    }
+                    if (!structure.modules.includes(courseModule)) {
+                      structure.modules.push(courseModule)
+                    }
+                    return lessonBudgetResult
                   }
 
                   let contentType = 'text'
@@ -2224,6 +2365,7 @@ async function parseGoogleDriveFolder(
                   phase: 'processing',
                   errors: []
                 })
+                subjectItemCursor += 1
               }
 
               if (batchEnd < validItems.length) {
@@ -2373,7 +2515,30 @@ async function importToDatabase(
   let processedLessons = progressSnapshot.processedLessons
   let processedTests = progressSnapshot.processedTests
 
-  const shouldYield = () => Date.now() - startTime >= maxRuntimeMs
+  const itemsPerChunk = options?.itemBudget ?? MAX_ITEMS_PER_CHUNK
+  let processedItemsThisRun = 0
+
+  const registerItemProcessed = () => {
+    if (itemsPerChunk > 0) {
+      processedItemsThisRun += 1
+    }
+  }
+
+  const timeExceeded = () => Date.now() - startTime >= maxRuntimeMs
+  const externalShouldYield = options?.checkTimeout
+
+  const shouldYield = () => {
+    if (externalShouldYield?.()) {
+      return true
+    }
+    if (timeExceeded()) {
+      return true
+    }
+    if (itemsPerChunk > 0 && processedItemsThisRun >= itemsPerChunk) {
+      return true
+    }
+    return false
+  }
 
   const resumeModuleIndex = resumeState?.moduleIndex ?? 0
   const resumeSubjectIndex = resumeState?.subjectIndex ?? 0
@@ -2511,6 +2676,7 @@ async function importToDatabase(
         }
 
         results.modules++
+        registerItemProcessed()
         createdModule = newModule
       }
 
@@ -2604,6 +2770,7 @@ async function importToDatabase(
           }
 
           results.subjects++
+          registerItemProcessed()
           subjectId = newSubject.id
         }
 
@@ -2734,6 +2901,7 @@ async function importToDatabase(
           }
           
           results.lessons++
+          registerItemProcessed()
           processedLessons++
           // Persistir contador atualizado no banco
           await updateDatabaseProgress(
@@ -2907,6 +3075,7 @@ async function importToDatabase(
           }
 
         results.tests++
+        registerItemProcessed()
         processedTests++
         // Persistir contador atualizado no banco
         await updateDatabaseProgress(
@@ -3025,6 +3194,13 @@ export async function processImportInBackground(
       await logJob(jobContext, 'info', 'Retomando importação', { importId, resumeState })
     }
 
+    const { state: existingContentState } = await prepareExistingContentSnapshot(
+      supabase,
+      courseId,
+      jobContext,
+      jobMetadata
+    )
+
     console.log(`[IMPORT-BACKGROUND] Autenticando Google Drive...`)
     const drive = await authenticateGoogleDrive()
     await logJob(jobContext, 'info', 'Autenticação concluída')
@@ -3045,6 +3221,8 @@ export async function processImportInBackground(
         startTime,
         maxRuntimeMs,
         checkTimeout: shouldYield,
+        itemBudget: MAX_ITEMS_PER_CHUNK,
+        existingState: existingContentState ?? undefined,
       }
     )
 
@@ -3094,6 +3272,7 @@ export async function processImportInBackground(
         jobMetadata,
         progressSnapshot,
         checkTimeout: shouldYield,
+        itemBudget: MAX_ITEMS_PER_CHUNK,
       }
     )
 
@@ -4099,6 +4278,7 @@ export async function runProcessingPhase(
       startTime: phaseStartTime,
       maxRuntimeMs: MAX_PROCESSING_TIME_MS,
       checkTimeout: options.checkTimeout,
+      itemBudget: MAX_ITEMS_PER_CHUNK,
     }
   )
 
@@ -4185,6 +4365,7 @@ export async function runDatabaseImportPhase(
         processedLessons: 0,
         processedTests: 0,
       },
+      itemBudget: MAX_ITEMS_PER_CHUNK,
     }
   )
 
