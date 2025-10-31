@@ -14,23 +14,26 @@ export async function POST(req: NextRequest) {
     const courseId = body.courseId || null
     const driveFileId = body.driveFileId || null
     const mimeType = body.mimeType || null
+    const parentDatabaseId = body.parentDatabaseId || null
 
     if (!courseId) {
       return NextResponse.json({ error: 'courseId é obrigatório' }, { status: 400 })
     }
 
+    let databaseId: string | null = null
+
     switch (itemType) {
       case 'module':
-        await createOrUpdateModule(supabase, { code, name: originalName, courseId })
+        databaseId = await createOrUpdateModule(supabase, { code, name: originalName, courseId })
         break
       case 'subject':
-        await createOrUpdateSubject(supabase, { code, name: originalName, courseId })
+        databaseId = await createOrUpdateSubject(supabase, { code, name: originalName, courseId, parentModuleId: parentDatabaseId })
         break
       case 'lesson':
-        await createOrUpdateLesson(supabase, { code, name: originalName, courseId, driveFileId, mimeType })
+        databaseId = await createOrUpdateLesson(supabase, { code, name: originalName, courseId, driveFileId, mimeType, parentSubjectId: parentDatabaseId })
         break
       case 'test':
-        await createOrUpdateTest(supabase, { name: originalName, code, courseId, driveFileId })
+        databaseId = await createOrUpdateTest(supabase, { name: originalName, code, courseId, driveFileId, parentSubjectId: parentDatabaseId })
         break
       default:
         return NextResponse.json({
@@ -43,7 +46,8 @@ export async function POST(req: NextRequest) {
       success: true,
       itemType,
       code,
-      name: originalName
+      name: originalName,
+      databaseId
     })
   } catch (error) {
     console.error('[import/drive] Erro:', error)
@@ -119,35 +123,40 @@ async function createOrUpdateModule(
  */
 async function createOrUpdateSubject(
   supabase: any,
-  data: { code: string | null; name: string; courseId: string }
+  data: { code: string | null; name: string; courseId: string; parentModuleId?: string | null }
 ) {
   if (!data.code) {
     throw new Error('Código da disciplina não encontrado')
   }
 
-  const parentPrefix = getParentPrefix(data.code)
+  // Usar o parentModuleId direto se fornecido, senão tentar buscar
+  let moduleId: string | null = data.parentModuleId || null
 
-  // Buscar módulo pai
-  let moduleId: string | null = null
-  if (parentPrefix) {
-    const { data: parentModule, error: moduleError } = await supabase
-      .from('course_modules')
-      .select('id, title')
-      .eq('course_id', data.courseId)
-      .ilike('title', `${parentPrefix}%`)
-      .maybeSingle()
+  if (!moduleId) {
+    // Fallback: tentar buscar por código (método antigo)
+    const parentPrefix = getParentPrefix(data.code)
+    if (parentPrefix) {
+      const { data: parentModule, error: moduleError } = await supabase
+        .from('course_modules')
+        .select('id, title')
+        .eq('course_id', data.courseId)
+        .ilike('title', `${parentPrefix}%`)
+        .maybeSingle()
 
-    if (moduleError && moduleError.code !== 'PGRST116') {
-      console.error(`[createOrUpdateSubject] Erro ao buscar módulo pai ${parentPrefix}:`, moduleError)
+      if (moduleError && moduleError.code !== 'PGRST116') {
+        console.error(`[createOrUpdateSubject] Erro ao buscar módulo pai ${parentPrefix}:`, moduleError)
+      }
+
+      if (!parentModule) {
+        console.warn(`[createOrUpdateSubject] Módulo pai ${parentPrefix} não encontrado para disciplina ${data.code}`)
+      } else {
+        console.log(`[createOrUpdateSubject] Módulo pai encontrado via busca: ${parentModule.title} (id: ${parentModule.id})`)
+      }
+
+      moduleId = parentModule?.id || null
     }
-
-    if (!parentModule) {
-      console.warn(`[createOrUpdateSubject] Módulo pai ${parentPrefix} não encontrado para disciplina ${data.code}`)
-    } else {
-      console.log(`[createOrUpdateSubject] Módulo pai encontrado: ${parentModule.title} (id: ${parentModule.id})`)
-    }
-
-    moduleId = parentModule?.id || null
+  } else {
+    console.log(`[createOrUpdateSubject] Usando parentModuleId direto: ${moduleId}`)
   }
 
   // Buscar disciplina existente
@@ -262,59 +271,77 @@ async function createOrUpdateSubject(
  */
 async function createOrUpdateLesson(
   supabase: any,
-  data: { code: string | null; name: string; courseId: string; driveFileId: string | null; mimeType: string | null }
+  data: { code: string | null; name: string; courseId: string; driveFileId: string | null; mimeType: string | null; parentSubjectId?: string | null }
 ) {
   if (!data.code) {
     throw new Error('Código da aula não encontrado')
   }
 
-  const parentPrefix = getParentPrefix(data.code)
-
-  // Buscar disciplina pai
-  let subjectId: string | null = null
-  if (parentPrefix) {
-    const { data: parentSubject, error: subjectError } = await supabase
-      .from('subjects')
-      .select('id, name')
-      .eq('code', parentPrefix)
-      .maybeSingle()
-
-    if (subjectError && subjectError.code !== 'PGRST116') {
-      console.error(`[createOrUpdateLesson] Erro ao buscar disciplina pai ${parentPrefix}:`, subjectError)
-    }
-
-    if (!parentSubject) {
-      console.warn(`[createOrUpdateLesson] Disciplina pai ${parentPrefix} não encontrada para aula ${data.code}`)
-    } else {
-      console.log(`[createOrUpdateLesson] Disciplina pai encontrada: ${parentSubject.name} (id: ${parentSubject.id})`)
-    }
-
-    subjectId = parentSubject?.id || null
-  }
-
-  // Buscar módulo (para vincular a lesson)
-  const modulePrefix = parentPrefix ? getParentPrefix(parentPrefix) : null
+  // Usar o parentSubjectId direto se fornecido
+  let subjectId: string | null = data.parentSubjectId || null
   let moduleId: string | null = null
 
-  if (modulePrefix) {
-    const { data: parentModule, error: moduleError } = await supabase
-      .from('course_modules')
-      .select('id, title')
-      .eq('course_id', data.courseId)
-      .ilike('title', `${modulePrefix}%`)
+  if (subjectId) {
+    console.log(`[createOrUpdateLesson] Usando parentSubjectId direto: ${subjectId}`)
+
+    // Buscar o moduleId da disciplina pai
+    const { data: parentSubject } = await supabase
+      .from('subjects')
+      .select('id, name, module_subjects!inner(module_id)')
+      .eq('id', subjectId)
       .maybeSingle()
 
-    if (moduleError && moduleError.code !== 'PGRST116') {
-      console.error(`[createOrUpdateLesson] Erro ao buscar módulo pai ${modulePrefix}:`, moduleError)
+    if (parentSubject && parentSubject.module_subjects && parentSubject.module_subjects.length > 0) {
+      moduleId = parentSubject.module_subjects[0].module_id
+      console.log(`[createOrUpdateLesson] Módulo encontrado via disciplina: ${moduleId}`)
+    }
+  } else {
+    // Fallback: tentar buscar por código (método antigo)
+    const parentPrefix = getParentPrefix(data.code)
+
+    if (parentPrefix) {
+      const { data: parentSubject, error: subjectError } = await supabase
+        .from('subjects')
+        .select('id, name')
+        .eq('code', parentPrefix)
+        .maybeSingle()
+
+      if (subjectError && subjectError.code !== 'PGRST116') {
+        console.error(`[createOrUpdateLesson] Erro ao buscar disciplina pai ${parentPrefix}:`, subjectError)
+      }
+
+      if (!parentSubject) {
+        console.warn(`[createOrUpdateLesson] Disciplina pai ${parentPrefix} não encontrada para aula ${data.code}`)
+      } else {
+        console.log(`[createOrUpdateLesson] Disciplina pai encontrada via busca: ${parentSubject.name} (id: ${parentSubject.id})`)
+      }
+
+      subjectId = parentSubject?.id || null
     }
 
-    if (!parentModule) {
-      console.warn(`[createOrUpdateLesson] Módulo pai ${modulePrefix} não encontrado para aula ${data.code}`)
-    } else {
-      console.log(`[createOrUpdateLesson] Módulo pai encontrado: ${parentModule.title} (id: ${parentModule.id})`)
-    }
+    // Buscar módulo (para vincular a lesson)
+    const modulePrefix = parentPrefix ? getParentPrefix(parentPrefix) : null
 
-    moduleId = parentModule?.id || null
+    if (modulePrefix) {
+      const { data: parentModule, error: moduleError } = await supabase
+        .from('course_modules')
+        .select('id, title')
+        .eq('course_id', data.courseId)
+        .ilike('title', `${modulePrefix}%`)
+        .maybeSingle()
+
+      if (moduleError && moduleError.code !== 'PGRST116') {
+        console.error(`[createOrUpdateLesson] Erro ao buscar módulo pai ${modulePrefix}:`, moduleError)
+      }
+
+      if (!parentModule) {
+        console.warn(`[createOrUpdateLesson] Módulo pai ${modulePrefix} não encontrado para aula ${data.code}`)
+      } else {
+        console.log(`[createOrUpdateLesson] Módulo pai encontrado via busca: ${parentModule.title} (id: ${parentModule.id})`)
+      }
+
+      moduleId = parentModule?.id || null
+    }
   }
 
   const contentType = data.mimeType?.includes('video') ? 'video' : 'text'
@@ -415,13 +442,13 @@ async function createOrUpdateLesson(
  */
 async function createOrUpdateTest(
   supabase: any,
-  data: { name: string; code: string | null; courseId: string; driveFileId: string | null }
+  data: { name: string; code: string | null; courseId: string; driveFileId: string | null; parentSubjectId?: string | null }
 ) {
   // Buscar módulo e disciplina baseado no código
   let moduleId: string | null = null
-  let subjectId: string | null = null
+  let subjectId: string | null = data.parentSubjectId || null
 
-  if (data.code) {
+  if (!subjectId && data.code) {
     const parentPrefix = getParentPrefix(data.code)
 
     if (parentPrefix) {

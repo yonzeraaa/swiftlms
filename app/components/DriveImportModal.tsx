@@ -46,9 +46,13 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
   const tokenClientRef = useRef<any>(null)
   const pausedRef = useRef(false)
   const cancelledRef = useRef(false)
+  const driveIdToDbIdMap = useRef<Map<string, string>>(new Map())
 
 useEffect(() => {
     if (!isOpen) return
+
+    // Limpar o Map quando o modal abre
+    driveIdToDbIdMap.current.clear()
 
     const loadGoogleAPIs = () => {
       const script1 = document.createElement('script')
@@ -306,13 +310,20 @@ useEffect(() => {
   }
 
   const uploadItem = async (item: ProcessedItem) => {
+    // Buscar o database ID do pai no Map
+    let parentDatabaseId: string | null = null
+    if (item.parentId) {
+      parentDatabaseId = driveIdToDbIdMap.current.get(item.parentId) || null
+    }
+
     const payload = {
       itemType: item.type,
       code: item.code || '',
       originalName: item.name,
       courseId: courseId,
       driveFileId: item.id,
-      mimeType: item.mimeType
+      mimeType: item.mimeType,
+      parentDatabaseId: parentDatabaseId
     }
 
     const response = await fetch('/api/import/drive', {
@@ -335,7 +346,14 @@ useEffect(() => {
       throw new Error(errorMessage)
     }
 
-    return response.json()
+    const result = await response.json()
+
+    // Salvar o database ID no Map para futuros filhos
+    if (result.databaseId) {
+      driveIdToDbIdMap.current.set(item.id, result.databaseId)
+    }
+
+    return result
   }
 
   const handlePause = () => {
