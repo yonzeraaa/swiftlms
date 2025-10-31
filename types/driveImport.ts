@@ -83,4 +83,21 @@ export interface DriveImportSummary {
 export interface DriveImportListResponse {
   summary: DriveImportSummary
   tasks: DriveImportTask[]
+  totals: DriveImportSummary
+  nextCursor?: string | null
+}
+
+export interface DriveImportListCursor {
+  resumeState: any
+  progressSnapshot: {
+    processedModules: number
+    processedSubjects: number
+    processedLessons: number
+    processedTests: number
+    totalModules: number
+    totalSubjects: number
+    totalLessons: number
+    totalTests: number
+  }
+  totals: DriveImportSummary
 }

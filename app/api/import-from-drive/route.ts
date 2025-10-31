@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Database, Json } from '@/lib/database.types'
 import { parseAnswerKeyFromText, type ParsedAnswerKeyEntry } from '../tests/utils/answer-key'
-import type { DriveImportTask, DriveImportSummary } from '@/types/driveImport'
+import type { DriveImportTask, DriveImportSummary, DriveImportListCursor } from '@/types/driveImport'
 import fs from 'fs'
 import path from 'path'
 import { randomUUID } from 'crypto'
@@ -1053,6 +1053,9 @@ interface CourseStructure {
 interface ParseResult {
   structure: CourseStructure
   totalModules?: number
+  totalSubjects?: number
+  totalLessons?: number
+  totalTests?: number
   status?: 'cancelled' | 'partial'
   resumeState?: ImportResumeState | null
 }
@@ -2555,7 +2558,7 @@ async function parseGoogleDriveFolder(
       }
     }
 
-    return { structure, totalModules }
+    return { structure, totalModules, totalSubjects, totalLessons, totalTests }
   } catch (error) {
     // Se foi cancelado, retornar status cancelled ao invés de lançar erro
     if (error instanceof Error && error.message === 'IMPORT_CANCELLED') {
@@ -2563,6 +2566,9 @@ async function parseGoogleDriveFolder(
       return {
         structure,
         totalModules,
+        totalSubjects,
+        totalLessons,
+        totalTests,
         status: 'cancelled' as const,
         resumeState: null
       }
@@ -3619,8 +3625,9 @@ export async function buildDriveImportTaskList(params: {
   driveUrl: string
   courseId: string
   userId: string
+  cursor?: DriveImportListCursor | null
 }) {
-  const { driveUrl, courseId, userId } = params
+  const { driveUrl, courseId, userId, cursor } = params
 
   const folderId = extractDriveFolderId(driveUrl)
   if (!folderId) {
@@ -3629,6 +3636,8 @@ export async function buildDriveImportTaskList(params: {
 
   const supabase = createAdminClient()
   const drive = await authenticateGoogleDrive()
+
+  const baseProgress = cursor?.progressSnapshot ?? createProgressSnapshot(null)
 
   const parseResult = await parseGoogleDriveFolder(
     drive,
@@ -3639,19 +3648,44 @@ export async function buildDriveImportTaskList(params: {
     userId,
     undefined,
     {
+      resumeState: cursor?.resumeState ?? null,
       startTime: Date.now(),
       maxRuntimeMs: MAX_CHUNK_RUNTIME_MS,
-      progressSnapshot: createProgressSnapshot(null),
+      progressSnapshot: baseProgress,
       warnings: [],
     }
   )
 
-  if (parseResult.status === 'partial') {
-    throw new Error('A listagem dos arquivos excedeu o tempo limite. Tente novamente com uma pasta menor ou reorganize os itens.')
+  const { tasks, summary } = convertStructureToTasks(parseResult.structure)
+
+  const totals = {
+    modules: parseResult.totalModules ?? cursor?.totals.modules ?? summary.modules,
+    subjects: parseResult.totalSubjects ?? cursor?.totals.subjects ?? summary.subjects,
+    lessons: parseResult.totalLessons ?? cursor?.totals.lessons ?? summary.lessons,
+    tests: parseResult.totalTests ?? cursor?.totals.tests ?? summary.tests,
   }
 
-  const { tasks, summary } = convertStructureToTasks(parseResult.structure)
-  return { tasks, summary, folderId }
+  const updatedProgress = {
+    processedModules: baseProgress.processedModules + summary.modules,
+    processedSubjects: baseProgress.processedSubjects + summary.subjects,
+    processedLessons: baseProgress.processedLessons + summary.lessons,
+    processedTests: baseProgress.processedTests + summary.tests,
+    totalModules: totals.modules,
+    totalSubjects: totals.subjects,
+    totalLessons: totals.lessons,
+    totalTests: totals.tests,
+  }
+
+  let nextCursor: DriveImportListCursor | null = null
+  if (parseResult.status === 'partial' && parseResult.resumeState) {
+    nextCursor = {
+      resumeState: parseResult.resumeState,
+      progressSnapshot: updatedProgress,
+      totals,
+    }
+  }
+
+  return { tasks, summary, totals, nextCursor }
 }
 
 export async function processDriveImportTask(params: {
