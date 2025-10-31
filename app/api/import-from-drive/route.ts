@@ -3330,6 +3330,13 @@ export async function processImportInBackground(
 
       // Nada mais para processar - finalizar
       await clearResumeState(jobContext, jobMetadata)
+      await updateImportProgress(supabase, importId, userId, courseId, {
+        current_step: 'Importação concluída',
+        current_item: 'Nenhum item restante para processar',
+        phase: 'completed',
+        completed: true,
+        percentage: 100,
+      }, jobContext)
       await updateJob(jobContext, {
         status: 'completed',
         current_step: 'Importação concluída',
@@ -3406,7 +3413,8 @@ export async function processImportInBackground(
       current_item: summaryMessage,
       errors: results.errors,
       completed: true,
-      percentage: 100
+      percentage: 100,
+      phase: 'completed'
     }, jobContext)
 
     await updateJob(jobContext, {
