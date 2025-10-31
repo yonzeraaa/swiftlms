@@ -8,16 +8,6 @@ const nextConfig = {
         hostname: 'mdzgnktlsmkjecdbermo.supabase.co',
         pathname: '/**',
       },
-      {
-        protocol: 'https',
-        hostname: '*.googleusercontent.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.googleapis.com',
-        pathname: '/**',
-      },
     ],
   },
   experimental: {

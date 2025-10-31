@@ -34,14 +34,11 @@ export const developmentCSP = {
     'https://mdzgnktlsmkjecdbermo.supabase.co',
     'wss://mdzgnktlsmkjecdbermo.supabase.co',
     'wss://mdzgnktlsmkjecdbermo.supabase.co/realtime/v1/websocket',
-    'https://docs.google.com',
     'ws://localhost:*', // HMR websocket
     'http://localhost:*'
   ],
   'frame-src': [
-    "'self'",
-    'https://docs.google.com',
-    'https://drive.google.com'
+    "'self'"
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],
@@ -54,9 +51,7 @@ export const productionCSP = {
   'script-src': [
     "'self'",
     "'unsafe-inline'", // Unfortunately required for Next.js runtime
-    'https://cdn.jsdelivr.net',
-    'https://*.googleapis.com',
-    'https://apis.google.com'
+    'https://cdn.jsdelivr.net'
   ],
   'style-src': [
     "'self'",
@@ -67,10 +62,7 @@ export const productionCSP = {
     "'self'",
     'data:',
     'blob:',
-    'https://mdzgnktlsmkjecdbermo.supabase.co',
-    'https://*.googleusercontent.com',
-    'https://*.googleapis.com',
-    'https://*.gstatic.com'
+    'https://mdzgnktlsmkjecdbermo.supabase.co'
   ],
   'font-src': [
     "'self'",
@@ -83,20 +75,13 @@ export const productionCSP = {
     'https://mdzgnktlsmkjecdbermo.supabase.co',
     'wss://mdzgnktlsmkjecdbermo.supabase.co',
     'wss://mdzgnktlsmkjecdbermo.supabase.co/realtime/v1/websocket',
-    'https://docs.google.com',
-    'https://play.google.com',
-    'https://*.googleapis.com',
-    'https://*.gstatic.com',
     'https://vercel.live',
     'https://vercel.com',
     'https://*.vercel.app',
     'wss://*.vercel.app'
   ],
   'frame-src': [
-    "'self'",
-    'https://docs.google.com',
-    'https://drive.google.com',
-    'https://accounts.google.com'
+    "'self'"
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],

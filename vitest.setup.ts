@@ -1,12 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 
 // Polyfills for Next.js APIs used in components/hooks during tests
-globalThis.fetch =
-  globalThis.fetch ??
-  ((...args: Parameters<typeof fetch>) =>
-    import('node-fetch').then(({ default: fetchFn }) =>
-      (fetchFn as unknown as typeof fetch)(...args)
-    ))
+// globalThis.fetch is now available in Node.js 18+
 
 class BroadcastChannelStub {
   name: string

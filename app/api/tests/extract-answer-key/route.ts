@@ -4,7 +4,11 @@ import {
   generateSampleAnswerKey,
   parseAnswerKeyFromText,
 } from '../utils/answer-key'
-import { extractGoogleDocumentId } from '../utils/drive'
+
+function extractGoogleDocumentId(url: string): string | null {
+  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/)
+  return match ? match[1] : null
+}
 
 export async function POST(request: NextRequest) {
   try {
