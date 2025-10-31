@@ -10,7 +10,9 @@ export const developmentCSP = {
     "'self'",
     "'unsafe-inline'", // Required for Next.js
     "'unsafe-eval'", // Required for HMR in development
-    'https://cdn.jsdelivr.net'
+    'https://cdn.jsdelivr.net',
+    'https://accounts.google.com',
+    'https://apis.google.com'
   ],
   'style-src': [
     "'self'",
@@ -35,10 +37,13 @@ export const developmentCSP = {
     'wss://mdzgnktlsmkjecdbermo.supabase.co',
     'wss://mdzgnktlsmkjecdbermo.supabase.co/realtime/v1/websocket',
     'ws://localhost:*', // HMR websocket
-    'http://localhost:*'
+    'http://localhost:*',
+    'https://accounts.google.com',
+    'https://www.googleapis.com'
   ],
   'frame-src': [
-    "'self'"
+    "'self'",
+    'https://accounts.google.com'
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],
@@ -51,7 +56,9 @@ export const productionCSP = {
   'script-src': [
     "'self'",
     "'unsafe-inline'", // Unfortunately required for Next.js runtime
-    'https://cdn.jsdelivr.net'
+    'https://cdn.jsdelivr.net',
+    'https://accounts.google.com',
+    'https://apis.google.com'
   ],
   'style-src': [
     "'self'",
@@ -78,10 +85,13 @@ export const productionCSP = {
     'https://vercel.live',
     'https://vercel.com',
     'https://*.vercel.app',
-    'wss://*.vercel.app'
+    'wss://*.vercel.app',
+    'https://accounts.google.com',
+    'https://www.googleapis.com'
   ],
   'frame-src': [
-    "'self'"
+    "'self'",
+    'https://accounts.google.com'
   ],
   'frame-ancestors': ["'none'"],
   'base-uri': ["'self'"],
