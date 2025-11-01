@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react'
 import Modal from './Modal'
 import Button from './Button'
 import { analyzeDriveItem, extractFolderId, type ItemType, type DriveItem } from '@/lib/drive-import-utils'
-import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronDown } from 'lucide-react'
+import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, ChevronsDown, ChevronsUp, BarChart3 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface DriveImportModalProps {
   isOpen: boolean
@@ -177,6 +178,28 @@ useEffect(() => {
 
   const toggleExpand = (itemId: string) => {
     setItems(prev => updateItemInTree(prev, itemId, { isExpanded: !prev.find(it => it.id === itemId)?.isExpanded }))
+  }
+
+  const expandAll = () => {
+    const updateAll = (items: ProcessedItem[]): ProcessedItem[] => {
+      return items.map(item => ({
+        ...item,
+        isExpanded: true,
+        children: item.children ? updateAll(item.children) : item.children
+      }))
+    }
+    setItems(prev => updateAll(prev))
+  }
+
+  const collapseAll = () => {
+    const updateAll = (items: ProcessedItem[]): ProcessedItem[] => {
+      return items.map(item => ({
+        ...item,
+        isExpanded: false,
+        children: item.children ? updateAll(item.children) : item.children
+      }))
+    }
+    setItems(prev => updateAll(prev))
   }
 
   const handleAuthenticate = () => {
@@ -461,6 +484,43 @@ useEffect(() => {
     }
   }
 
+  const getTypeBadgeColors = (type: ItemType) => {
+    switch (type) {
+      case 'module': return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+      case 'subject': return 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+      case 'lesson': return 'bg-green-500/20 text-green-300 border-green-500/30'
+      case 'test': return 'bg-orange-500/20 text-orange-300 border-orange-500/30'
+      default: return 'bg-gray-500/20 text-gray-300 border-gray-500/30'
+    }
+  }
+
+  const getItemStats = () => {
+    const stats = {
+      modules: { total: 0, completed: 0 },
+      subjects: { total: 0, completed: 0 },
+      lessons: { total: 0, completed: 0 },
+      tests: { total: 0, completed: 0 }
+    }
+
+    allFlatItems.forEach(item => {
+      if (item.type === 'module') {
+        stats.modules.total++
+        if (item.status === 'success') stats.modules.completed++
+      } else if (item.type === 'subject') {
+        stats.subjects.total++
+        if (item.status === 'success') stats.subjects.completed++
+      } else if (item.type === 'lesson') {
+        stats.lessons.total++
+        if (item.status === 'success') stats.lessons.completed++
+      } else if (item.type === 'test') {
+        stats.tests.total++
+        if (item.status === 'success') stats.tests.completed++
+      }
+    })
+
+    return stats
+  }
+
   const getStatusIcon = (status: ProcessedItem['status']) => {
     switch (status) {
       case 'uploading': return <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
@@ -476,61 +536,157 @@ useEffect(() => {
 
   const renderTreeItem = (item: ProcessedItem, depth: number = 0): React.ReactElement => {
     const hasChildren = item.children && item.children.length > 0
-    const isFolder = item.type === 'module' || item.type === 'subject'
+
+    // Classes base e status
+    const borderColors = {
+      module: 'border-l-blue-500',
+      subject: 'border-l-purple-500',
+      lesson: 'border-l-green-500',
+      test: 'border-l-orange-500',
+      unknown: 'border-l-gray-500'
+    }
+
+    const statusClasses = {
+      pending: 'opacity-60',
+      uploading: 'bg-blue-500/5 border-blue-500/40',
+      success: 'bg-green-500/5',
+      error: 'bg-red-500/5 border-red-500/40'
+    }
 
     return (
-      <div key={item.id}>
-        <div
-          className="flex items-center gap-2 p-2 bg-navy-700/50 rounded-lg border border-gold-500/20 hover:bg-navy-700/70 transition-colors"
+      <motion.div
+        key={item.id}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        <motion.div
+          className={`
+            flex items-center gap-3 p-3 rounded-lg border-l-4
+            bg-navy-700/50 border border-gold-500/20
+            hover:bg-navy-700/70 hover:shadow-md
+            transition-all duration-200
+            ${borderColors[item.type]}
+            ${statusClasses[item.status]}
+            ${item.status === 'uploading' ? 'animate-pulse' : ''}
+          `}
           style={{ marginLeft: `${depth * 24}px` }}
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.99 }}
         >
+          {/* Expand/Collapse button */}
           {hasChildren && (
-            <button
+            <motion.button
               onClick={() => toggleExpand(item.id)}
               className="p-1 hover:bg-navy-600 rounded transition-colors flex-shrink-0"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
-              {item.isExpanded ? (
+              <motion.div
+                initial={false}
+                animate={{ rotate: item.isExpanded ? 0 : -90 }}
+                transition={{ duration: 0.2 }}
+              >
                 <ChevronDown className="w-4 h-4 text-gold-400" />
-              ) : (
-                <ChevronRight className="w-4 h-4 text-gold-400" />
-              )}
-            </button>
+              </motion.div>
+            </motion.button>
           )}
           {!hasChildren && <div className="w-6" />}
 
-          {getTypeIcon(item.type)}
+          {/* Type icon */}
+          <div className="flex-shrink-0">
+            {getTypeIcon(item.type)}
+          </div>
 
-          <div className="flex-1 min-w-0">
-            <p className="text-gold-100 text-sm font-medium truncate">
-              {item.name}
-            </p>
-            <p className="text-gold-400 text-xs">
-              {getTypeLabel(item.type)} {item.code && `• ${item.code}`}
-            </p>
-            {item.error && (
-              <p className="text-red-400 text-xs mt-1">{item.error}</p>
-            )}
-            {item.type === 'test' && item.status === 'success' && item.answerKey && (
-              <p className={`text-xs mt-1 ${item.answerKey.success ? 'text-green-400' : 'text-yellow-400'}`}>
-                {item.answerKey.success
-                  ? `✓ Gabarito extraído (${item.answerKey.questionCount} questões)`
-                  : `⚠ ${item.answerKey.error || 'Gabarito não encontrado'}`
-                }
+          {/* Content */}
+          <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex items-center gap-2">
+              <p className="text-gold-100 text-sm font-medium truncate">
+                {item.name}
+              </p>
+              {/* Type badge */}
+              <span className={`
+                px-2 py-0.5 rounded-full text-xs font-medium border
+                ${getTypeBadgeColors(item.type)}
+              `}>
+                {getTypeLabel(item.type)}
+              </span>
+            </div>
+
+            {/* Code */}
+            {item.code && (
+              <p className="text-gold-400 text-xs font-mono">
+                {item.code}
               </p>
             )}
+
+            {/* Error message */}
+            {item.error && (
+              <motion.p
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-400 text-xs mt-1 flex items-center gap-1"
+              >
+                <AlertCircle className="w-3 h-3" />
+                {item.error}
+              </motion.p>
+            )}
+
+            {/* Answer key feedback for tests */}
+            {item.type === 'test' && item.status === 'success' && item.answerKey && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`
+                  text-xs px-2 py-1 rounded inline-flex items-center gap-1
+                  ${item.answerKey.success
+                    ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                    : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                  }
+                `}
+              >
+                {item.answerKey.success ? (
+                  <>
+                    <CheckCircle2 className="w-3 h-3" />
+                    Gabarito: {item.answerKey.questionCount} questões
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-3 h-3" />
+                    {item.answerKey.error || 'Gabarito não encontrado'}
+                  </>
+                )}
+              </motion.div>
+            )}
           </div>
 
+          {/* Status icon */}
           <div className="flex-shrink-0">
-            {getStatusIcon(item.status)}
+            <motion.div
+              initial={item.status === 'success' ? { scale: 0 } : {}}
+              animate={item.status === 'success' ? { scale: 1 } : {}}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            >
+              {getStatusIcon(item.status)}
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
 
-        {hasChildren && item.isExpanded && (
-          <div className="mt-1 space-y-1">
-            {item.children!.map(child => renderTreeItem(child, depth + 1))}
-          </div>
-        )}
-      </div>
+        {/* Children */}
+        <AnimatePresence>
+          {hasChildren && item.isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mt-1 space-y-1 overflow-hidden"
+            >
+              {item.children!.map(child => renderTreeItem(child, depth + 1))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     )
   }
 
@@ -608,6 +764,7 @@ useEffect(() => {
         {/* Items List */}
         {items.length > 0 && (
           <div className="space-y-4">
+            {/* Header with connection status */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <p className="text-green-400 text-sm flex items-center gap-2">
@@ -622,12 +779,160 @@ useEffect(() => {
                 </button>
               </div>
             </div>
+
+            {/* Pre-import Summary */}
+            {!isImporting && completedItems === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-navy-700/50 border border-gold-500/30 rounded-lg"
+              >
+                <div className="flex items-start gap-3">
+                  <BarChart3 className="w-5 h-5 text-gold-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-gold-300 font-medium mb-3">Resumo da Importação</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {getItemStats().modules.total > 0 && (
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                          <span className="text-gold-200 text-sm">
+                            {getItemStats().modules.total} {getItemStats().modules.total === 1 ? 'Módulo' : 'Módulos'}
+                          </span>
+                        </div>
+                      )}
+                      {getItemStats().subjects.total > 0 && (
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-purple-400"></div>
+                          <span className="text-gold-200 text-sm">
+                            {getItemStats().subjects.total} {getItemStats().subjects.total === 1 ? 'Disciplina' : 'Disciplinas'}
+                          </span>
+                        </div>
+                      )}
+                      {getItemStats().lessons.total > 0 && (
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                          <span className="text-gold-200 text-sm">
+                            {getItemStats().lessons.total} {getItemStats().lessons.total === 1 ? 'Aula' : 'Aulas'}
+                          </span>
+                        </div>
+                      )}
+                      {getItemStats().tests.total > 0 && (
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-orange-400"></div>
+                          <span className="text-gold-200 text-sm">
+                            {getItemStats().tests.total} {getItemStats().tests.total === 1 ? 'Teste' : 'Testes'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-gold-400 text-xs mt-3">
+                      ✓ Gabaritos serão extraídos automaticamente
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Statistics Cards (during/after import) */}
+            {(isImporting || completedItems > 0) && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-4 gap-3"
+              >
+                {[
+                  { type: 'modules', label: 'Módulos', icon: Folder, color: 'blue' },
+                  { type: 'subjects', label: 'Disciplinas', icon: BookOpen, color: 'purple' },
+                  { type: 'lessons', label: 'Aulas', icon: FileText, color: 'green' },
+                  { type: 'tests', label: 'Testes', icon: GraduationCap, color: 'orange' }
+                ].map(({ type, label, icon: Icon, color }) => {
+                  const stats = getItemStats()[type as keyof ReturnType<typeof getItemStats>]
+                  if (stats.total === 0) return null
+
+                  return (
+                    <div
+                      key={type}
+                      className={`
+                        p-3 rounded-lg border
+                        bg-${color}-500/10 border-${color}-500/30
+                      `}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Icon className={`w-4 h-4 text-${color}-400`} />
+                        <span className="text-xs text-gold-300">{label}</span>
+                      </div>
+                      <p className={`text-lg font-bold text-${color}-300`}>
+                        {stats.completed}/{stats.total}
+                      </p>
+                    </div>
+                  )
+                })}
+              </motion.div>
+            )}
+
+            {/* Progress Bar */}
+            {(isImporting || completedItems > 0) && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="space-y-2"
+              >
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gold-300">
+                    {completedItems} de {validItems.length} itens importados
+                  </span>
+                  <span className="text-gold-400 font-mono">
+                    {Math.round((completedItems / validItems.length) * 100)}%
+                  </span>
+                </div>
+                <div className="h-2 bg-navy-800 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(completedItems / validItems.length) * 100}%` }}
+                    transition={{ duration: 0.3 }}
+                    className={`h-full rounded-full ${
+                      completedItems === validItems.length
+                        ? 'bg-gradient-to-r from-green-500 to-green-600'
+                        : 'bg-gradient-to-r from-blue-500 to-blue-600'
+                    }`}
+                  />
+                </div>
+                {isPaused && (
+                  <p className="text-yellow-400 text-xs flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Importação pausada
+                  </p>
+                )}
+                {isCancelled && (
+                  <p className="text-red-400 text-xs flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Importação cancelada
+                  </p>
+                )}
+              </motion.div>
+            )}
+
+            {/* Action Buttons */}
             <div className="flex items-center justify-between">
-              <p className="text-gold-300 text-sm">
-                {validItems.length} itens encontrados {isImporting && `(${completedItems}/${validItems.length})`}
-                {isPaused && <span className="text-yellow-400 ml-2">• Pausado</span>}
-                {isCancelled && <span className="text-red-400 ml-2">• Cancelado</span>}
-              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={expandAll}
+                  variant="ghost"
+                  size="xs"
+                  icon={<ChevronsDown className="w-3 h-3" />}
+                >
+                  Expandir Todos
+                </Button>
+                <Button
+                  onClick={collapseAll}
+                  variant="ghost"
+                  size="xs"
+                  icon={<ChevronsUp className="w-3 h-3" />}
+                >
+                  Colapsar Todos
+                </Button>
+              </div>
+
               <div className="flex gap-2">
                 {!isImporting && !isCancelled && (
                   <Button
@@ -678,7 +983,8 @@ useEffect(() => {
               </div>
             </div>
 
-            <div className="max-h-96 overflow-y-auto space-y-1 pr-2">
+            {/* Items Tree */}
+            <div className="max-h-96 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
               {items.map(item => renderTreeItem(item))}
             </div>
           </div>
