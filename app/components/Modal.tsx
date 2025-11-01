@@ -128,16 +128,16 @@ export default function Modal({
           <div className="relative bg-navy-800 rounded-2xl shadow-2xl border border-gold-500/20 overflow-hidden">
             {/* Header */}
             {(title || showCloseButton) && (
-              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gold-500/20">
+              <div className="flex items-center justify-center p-4 sm:p-6 border-b border-gold-500/20 relative">
                 {title && (
-                  <h2 id="modal-title" className="text-lg sm:text-xl md:text-2xl font-bold text-gold">
+                  <h2 id="modal-title" className="text-lg sm:text-xl md:text-2xl font-bold text-gold text-center">
                     {title}
                   </h2>
                 )}
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="ml-auto text-gold-400 hover:text-gold-200 transition-colors p-1 rounded-lg hover:bg-gold-500/10"
+                    className="absolute right-4 sm:right-6 text-gold-400 hover:text-gold-200 transition-colors p-1 rounded-lg hover:bg-gold-500/10"
                     aria-label="Close modal"
                   >
                     <X className="w-5 h-5 sm:w-6 sm:h-6" />
