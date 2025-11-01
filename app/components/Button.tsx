@@ -206,11 +206,27 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
     xl: 'w-6 h-6'
   }
 
+  const spinnerColors = {
+    primary: 'border-navy-900',
+    warning: 'border-navy-900',
+    success: 'border-white',
+    danger: 'border-white',
+    gradient: 'border-white',
+    secondary: 'border-gold-500',
+    ghost: 'border-gold-500',
+    outline: 'border-gold-500',
+    subtle: 'border-gold-500'
+  }
+
   const buttonContent = (
     <>
       {actualLoading ? (
         <>
-          <Spinner size={size === 'xs' ? 'sm' : (size as any)} className="mr-1" />
+          <Spinner
+            size={size === 'xs' ? 'sm' : (size as any)}
+            className="mr-1"
+            colorClass={spinnerColors[variant]}
+          />
           <span className="sr-only">{t('common.loading')}</span>
           <span aria-hidden="true">{t('common.loading')}</span>
         </>

@@ -29,35 +29,35 @@ export default function StatCard({
       icon: 'bg-gold-500/10 text-gold-400',
       iconHover: 'group-hover:bg-gold-500/20',
       text: 'text-gold',
-      subtitle: 'text-gold-300'
+      subtitle: 'text-gold-200'
     },
     blue: {
       gradient: 'from-blue-500/20 to-blue-600/10',
       icon: 'bg-blue-500/10 text-blue-400',
       iconHover: 'group-hover:bg-blue-500/20',
       text: 'text-blue-400',
-      subtitle: 'text-blue-300'
+      subtitle: 'text-blue-200'
     },
     green: {
       gradient: 'from-green-500/20 to-green-600/10',
       icon: 'bg-green-500/10 text-green-400',
       iconHover: 'group-hover:bg-green-500/20',
       text: 'text-green-400',
-      subtitle: 'text-green-300'
+      subtitle: 'text-green-200'
     },
     purple: {
       gradient: 'from-purple-500/20 to-purple-600/10',
       icon: 'bg-purple-500/10 text-purple-400',
       iconHover: 'group-hover:bg-purple-500/20',
       text: 'text-purple-400',
-      subtitle: 'text-purple-300'
+      subtitle: 'text-purple-200'
     },
     red: {
       gradient: 'from-red-500/20 to-red-600/10',
       icon: 'bg-red-500/10 text-red-400',
       iconHover: 'group-hover:bg-red-500/20',
       text: 'text-red-400',
-      subtitle: 'text-red-300'
+      subtitle: 'text-red-200'
     }
   }
 
@@ -92,7 +92,7 @@ export default function StatCard({
             
             
             {subtitle && (
-              <p className="text-gold-400/60 text-xs mt-2">{subtitle}</p>
+              <p className="text-gold-200 text-xs mt-2">{subtitle}</p>
             )}
           </div>
           
