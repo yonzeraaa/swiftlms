@@ -132,6 +132,25 @@ useEffect(() => {
     setDriveUrl('')
   }
 
+  const resetModalState = () => {
+    setItems([])
+    setDriveUrl('')
+    setError(null)
+    setIsImporting(false)
+    setIsPaused(false)
+    setIsCancelled(false)
+    setShowSuccess(false)
+    pausedRef.current = false
+    cancelledRef.current = false
+    driveIdToDbIdMap.current.clear()
+  }
+
+  useEffect(() => {
+    if (!isOpen) {
+      resetModalState()
+    }
+  }, [isOpen])
+
   const flattenItems = (items: ProcessedItem[]): ProcessedItem[] => {
     const result: ProcessedItem[] = []
     const traverse = (items: ProcessedItem[]) => {
@@ -741,6 +760,33 @@ useEffect(() => {
               <label className="block text-gold-300 mb-2 text-sm font-medium">
                 URL da pasta do Google Drive
               </label>
+
+              {/* Estrutura esperada */}
+              <div className="mb-3 p-3 bg-navy-700/50 border border-gold-500/20 rounded-lg">
+                <p className="text-gold-300 text-xs font-medium mb-2">📋 Estrutura esperada:</p>
+                <div className="text-gold-400 text-xs space-y-1 font-mono">
+                  <div className="flex items-center gap-2">
+                    <Folder className="w-3 h-3 text-blue-400" />
+                    <span>Módulos (pastas raiz)</span>
+                  </div>
+                  <div className="flex items-center gap-2 ml-4">
+                    <BookOpen className="w-3 h-3 text-purple-400" />
+                    <span>└─ Disciplinas (subpastas)</span>
+                  </div>
+                  <div className="flex items-center gap-2 ml-8">
+                    <FileText className="w-3 h-3 text-green-400" />
+                    <span>└─ Aulas (arquivos PDF)</span>
+                  </div>
+                  <div className="flex items-center gap-2 ml-8">
+                    <GraduationCap className="w-3 h-3 text-orange-400" />
+                    <span>└─ Testes (arquivos PDF)</span>
+                  </div>
+                </div>
+                <p className="text-gold-400/70 text-xs mt-2">
+                  ℹ️ A hierarquia de pastas será respeitada automaticamente
+                </p>
+              </div>
+
               <input
                 type="text"
                 value={driveUrl}
