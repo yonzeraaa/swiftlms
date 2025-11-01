@@ -549,16 +549,16 @@ export default function StudentDashboard() {
 
       {/* Sequência de Estudo */}
       <Card title="Sequência de Estudo" subtitle={`${stats.currentStreak} dias consecutivos`}>
-        <div className="relative overflow-x-auto pb-2">
-          {/* Indicador de scroll para mobile */}
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-navy-800 to-transparent pointer-events-none md:hidden z-10" />
-          <div className="grid grid-cols-7 sm:grid-cols-14 md:grid-cols-21 lg:grid-cols-28 gap-1 mb-4 min-w-[280px]">
+        <div className="relative overflow-x-auto pb-2 -mx-2 px-2">
+          {/* Indicador de scroll para mobile/tablet */}
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-navy-800 to-transparent pointer-events-none lg:hidden z-10" />
+          <div className="grid grid-cols-7 gap-1 mb-4 w-fit mx-auto">
             {[...Array(28)].map((_, i) => {
               const isActive = i >= 28 - stats.currentStreak
               return (
                 <div
                   key={i}
-                  className={`aspect-square rounded ${
+                  className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded ${
                     isActive
                       ? 'bg-gradient-to-br from-gold-500 to-gold-600'
                       : 'bg-navy-800'

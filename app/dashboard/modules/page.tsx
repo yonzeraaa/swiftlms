@@ -126,13 +126,8 @@ function ModuleCard({
                   ${isDragging ? 'text-gold-400' : 'text-gold-500/30 group-hover:text-gold-500/50'}
                 `} />
               )}
-              <h3 className="text-lg sm:text-xl font-bold text-gold">
-                <span
-                  className="inline-block max-w-[180px] sm:max-w-[220px] md:max-w-[280px] lg:max-w-full truncate align-middle"
-                  title={module.title}
-                >
-                  {module.title}
-                </span>
+              <h3 className="text-lg sm:text-xl font-bold text-gold truncate pr-2" title={module.title}>
+                {module.title}
               </h3>
             </div>
             {showModuleCode && (
@@ -141,9 +136,9 @@ function ModuleCard({
               </p>
             )}
             {course && (
-              <p className="text-sm text-gold-400 mt-1 flex items-center gap-1 ml-7">
-                <BookOpen className="w-4 h-4" />
-                <span className="truncate inline-block max-w-[160px] sm:max-w-[200px] md:max-w-[240px] lg:max-w-full" title={course.title}>
+              <p className="text-sm text-gold-400 mt-1 flex items-center gap-1 ml-7 min-w-0">
+                <BookOpen className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate" title={course.title}>
                   {course.title}
                 </span>
               </p>
