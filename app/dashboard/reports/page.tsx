@@ -337,7 +337,7 @@ export default function ReportsPage() {
       headers: Object.keys(gradesByStudentSubject[0] || {}),
       data: gradesByStudentSubject.map(row => Object.values(row)),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
+        date: formatDate(new Date()),
         user: 'Sistema SwiftEDU'
       },
       formatting: {
@@ -678,7 +678,8 @@ export default function ReportsPage() {
           student: e.user?.full_name || 'Aluno desconhecido',
           email: e.user?.email || '',
           course: e.course?.title || 'Curso não definido',
-          date: e.enrolled_at ? new Date(e.enrolled_at).toLocaleDateString('pt-BR') : '',
+          date: e.enrolled_at ? formatDate(e.enrolled_at) : '',
+          enrolled_at: e.enrolled_at, // Manter data original para cálculos
           status: e.status === 'active' ? 'Ativo' : e.status === 'completed' ? 'Concluído' : 'Inativo',
           progress: progressPercentage,
           lessons_completed: completedLessons,
@@ -693,8 +694,8 @@ export default function ReportsPage() {
           student: e.user?.full_name || 'Aluno desconhecido',
           email: e.user?.email || '',
           course: e.course?.title || 'Curso não definido',
-          enrollment_date: e.enrolled_at ? new Date(e.enrolled_at).toLocaleDateString('pt-BR') : '',
-          completion_date: e.completed_at ? new Date(e.completed_at).toLocaleDateString('pt-BR') : '',
+          enrollment_date: e.enrolled_at ? formatDate(e.enrolled_at) : '',
+          completion_date: e.completed_at ? formatDate(e.completed_at) : '',
           final_grade: e.progress_percentage || 0,
           certificate: hasCertificate ? 'SIM' : 'NÃO',
           total_hours: 40 // Valor padrão, pode ser calculado baseado em dados reais
@@ -706,6 +707,28 @@ export default function ReportsPage() {
         setGeneratingReport(null)
         return
       }
+
+    // Calcular estatísticas temporais de matrículas
+    const now = Date.now()
+    const oneDayMs = 24 * 60 * 60 * 1000
+    const enrollmentStats = {
+      today: enrollmentData.filter((e: any) => {
+        if (!e.enrolled_at) return false
+        const enrollDate = new Date(e.enrolled_at).getTime()
+        const todayStart = new Date().setHours(0, 0, 0, 0)
+        return enrollDate >= todayStart
+      }).length,
+      last7Days: enrollmentData.filter((e: any) => {
+        if (!e.enrolled_at) return false
+        const enrollDate = new Date(e.enrolled_at).getTime()
+        return (now - enrollDate) <= 7 * oneDayMs
+      }).length,
+      last30Days: enrollmentData.filter((e: any) => {
+        if (!e.enrolled_at) return false
+        const enrollDate = new Date(e.enrolled_at).getTime()
+        return (now - enrollDate) <= 30 * oneDayMs
+      }).length
+    }
 
     // Criar exportador Excel
     const exporter = new ExcelExporter()
@@ -725,12 +748,20 @@ export default function ReportsPage() {
         e.total_lessons
       ]),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
-        period: `${new Date(dateRange.start).toLocaleDateString('pt-BR')} - ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`,
+        date: formatDate(new Date()),
+        period: `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`,
         user: 'Sistema SwiftEDU',
         filters: {
           'Status': 'Ativo',
           'Período': 'Último mês'
+        }
+      },
+      formatting: {
+        columns: {
+          5: { // Coluna de Progresso (%)
+            condition: (value: any) => typeof value === 'number' && value < 30,
+            font: { bold: true, color: '#721C24' } // Vermelho escuro para progresso baixo
+          }
         }
       }
     })
@@ -750,8 +781,8 @@ export default function ReportsPage() {
         c.total_hours
       ]),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
-        period: `${new Date(dateRange.start).toLocaleDateString('pt-BR')} - ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`,
+        date: formatDate(new Date()),
+        period: `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`,
         user: 'Sistema SwiftEDU'
       }
     })
@@ -772,6 +803,15 @@ export default function ReportsPage() {
     exporter.addSummarySheet('Resumo', {
       title: 'Resumo de Matrículas e Conclusões',
       sections: [
+        {
+          sectionTitle: 'Estatísticas Temporais de Matrículas',
+          metrics: [
+            { label: 'Matrículas Hoje', value: enrollmentStats.today },
+            { label: 'Matrículas nos Últimos 7 Dias', value: enrollmentStats.last7Days },
+            { label: 'Matrículas nos Últimos 30 Dias', value: enrollmentStats.last30Days },
+            { label: 'Taxa de Retenção (30 dias)', value: enrollmentData.length > 0 ? `${((enrollmentStats.last30Days / enrollmentData.length) * 100).toFixed(1)}%` : '0%' }
+          ]
+        },
         {
           sectionTitle: 'Estatísticas de Matrículas',
           metrics: [
@@ -809,7 +849,7 @@ export default function ReportsPage() {
     
     // Add headers
     csvContent += 'Relatório de Matrículas e Conclusões\n'
-    csvContent += `Período: ${new Date(dateRange.start).toLocaleDateString('pt-BR')} - ${new Date(dateRange.end).toLocaleDateString('pt-BR')}\n\n`
+    csvContent += `Período: ${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}\n\n`
     
     // Enrollments section
     csvContent += 'MATRÍCULAS\n'
@@ -1081,8 +1121,8 @@ export default function ReportsPage() {
         s.browser
       ]),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
-        period: `${new Date(dateRange.start).toLocaleDateString('pt-BR')} - ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`,
+        date: formatDate(new Date()),
+        period: `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`,
         user: 'Sistema SwiftEDU'
       }
     })
@@ -1099,7 +1139,7 @@ export default function ReportsPage() {
         d.avgDuration
       ]),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
+        date: formatDate(new Date()),
         user: 'Sistema SwiftEDU'
       }
     })
@@ -1118,7 +1158,7 @@ export default function ReportsPage() {
         c.totalDownloads
       ]),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
+        date: formatDate(new Date()),
         user: 'Sistema SwiftEDU'
       }
     })
@@ -1184,7 +1224,7 @@ export default function ReportsPage() {
     
     // Add headers
     csvContent += 'Relatório de Estatísticas de Acesso dos Alunos\n'
-    csvContent += `Período: ${new Date(dateRange.start).toLocaleDateString('pt-BR')} - ${new Date(dateRange.end).toLocaleDateString('pt-BR')}\n\n`
+    csvContent += `Período: ${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}\n\n`
     
     // Student access section
     csvContent += 'ESTATÍSTICAS POR ALUNO\n'
@@ -1283,8 +1323,8 @@ export default function ReportsPage() {
       headers: ['Métrica', 'Valor'],
       data: mainData.map(item => [item.metric, item.value]),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
-        period: `${new Date(dateRange.start).toLocaleDateString('pt-BR')} - ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`,
+        date: formatDate(new Date()),
+        period: `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`,
         user: 'Sistema SwiftEDU'
       }
     })
@@ -1299,7 +1339,7 @@ export default function ReportsPage() {
         `${Math.round((item.count / reportData.totalCourses) * 100)}%`
       ]),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
+        date: formatDate(new Date()),
         user: 'Sistema SwiftEDU'
       }
     })
@@ -1314,8 +1354,8 @@ export default function ReportsPage() {
         course.enrollments
       ]),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
-        period: `${new Date(dateRange.start).toLocaleDateString('pt-BR')} - ${new Date(dateRange.end).toLocaleDateString('pt-BR')}`,
+        date: formatDate(new Date()),
+        period: `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`,
         user: 'Sistema SwiftEDU'
       }
     })
@@ -1330,7 +1370,7 @@ export default function ReportsPage() {
           item.count
         ]),
         metadata: {
-          date: new Date().toLocaleDateString('pt-BR'),
+          date: formatDate(new Date()),
           user: 'Sistema SwiftEDU'
         }
       })

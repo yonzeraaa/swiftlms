@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, ChangeEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ExcelExporter } from '@/lib/excel-export'
+import { formatDate } from '@/lib/reports/formatters'
 import Card from './Card'
 import Button from './Button'
 import { Download, TrendingUp, BookOpen, Target, ChevronDown, ChevronUp, FileText, Scale } from 'lucide-react'
@@ -164,8 +165,8 @@ export default function StudentGradesReport({
           title: test.title,
           score,
           completed,
-          date: attempt?.submitted_at ? 
-            new Date(attempt.submitted_at).toLocaleDateString('pt-BR') : 
+          date: attempt?.submitted_at ?
+            formatDate(attempt.submitted_at) :
             undefined
         })
       })
@@ -412,7 +413,7 @@ export default function StudentGradesReport({
       headers: Object.keys(summaryData[0] || {}),
       data: summaryData.map(row => Object.values(row)),
       metadata: {
-        date: new Date().toLocaleDateString('pt-BR'),
+        date: formatDate(new Date()),
         user: userName || 'Aluno'
       },
       formatting: {
