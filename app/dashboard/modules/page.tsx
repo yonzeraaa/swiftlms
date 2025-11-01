@@ -104,15 +104,15 @@ function ModuleCard({
       )}
       
       <div className="space-y-4">
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
+        <div className="flex justify-between items-start gap-2">
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex items-center gap-2 min-w-0">
               <button
                 onClick={(e) => {
                   e.stopPropagation()
                   onToggleSelect(module.id)
                 }}
-                className="text-gold-400 hover:text-gold-200 transition-colors"
+                className="text-gold-400 hover:text-gold-200 transition-colors flex-shrink-0"
               >
                 {isSelected ? (
                   <CheckSquare className="w-5 h-5" />
@@ -122,11 +122,11 @@ function ModuleCard({
               </button>
               {showDragHandle && (
                 <GripVertical className={`
-                  w-5 h-5 transition-all duration-200
+                  w-5 h-5 transition-all duration-200 flex-shrink-0
                   ${isDragging ? 'text-gold-400' : 'text-gold-500/30 group-hover:text-gold-500/50'}
                 `} />
               )}
-              <h3 className="text-lg sm:text-xl font-bold text-gold truncate pr-2" title={module.title}>
+              <h3 className="text-lg sm:text-xl font-bold text-gold truncate min-w-0" title={module.title}>
                 {module.title}
               </h3>
             </div>
@@ -144,7 +144,7 @@ function ModuleCard({
               </p>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-shrink-0">
             <button
               onClick={(e) => {
                 e.stopPropagation()
