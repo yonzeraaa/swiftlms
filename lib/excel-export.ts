@@ -17,6 +17,11 @@ function formatNumber(value: number, decimals: number = 2): number {
 
 // Verificar se é número e converter se necessário
 function parseNumericValue(value: any, isPercentage: boolean = false): number | string {
+  // Preservar valores vazios, null ou undefined
+  if (value === '' || value === null || value === undefined) {
+    return value === '' ? '' : (value || '');
+  }
+
   if (typeof value === 'number') {
     // Se for porcentagem, manter como está (já em formato decimal ou inteiro)
     if (isPercentage && value <= 1) {
@@ -25,17 +30,22 @@ function parseNumericValue(value: any, isPercentage: boolean = false): number | 
     }
     return formatNumber(value);
   }
-  
+
   if (typeof value === 'string') {
+    // Não processar strings que parecem datas (contém /)
+    if (value.includes('/')) {
+      return value;
+    }
+
     // Remover símbolos de porcentagem
     const hasPercent = value.includes('%');
     const cleanValue = value.replace('%', '').trim();
-    
+
     // Tentar converter para número
     // Aceitar tanto vírgula quanto ponto como separador decimal
     const normalizedValue = cleanValue.replace(',', '.');
     const numericValue = parseFloat(normalizedValue);
-    
+
     if (!isNaN(numericValue)) {
       // Se o valor original tinha % ou é identificado como porcentagem
       // retornar o valor numérico direto (não dividir por 100)
@@ -45,7 +55,7 @@ function parseNumericValue(value: any, isPercentage: boolean = false): number | 
       return formatNumber(numericValue);
     }
   }
-  
+
   return value;
 }
 
@@ -111,13 +121,17 @@ export class ExcelExporter {
     formatting?: CellFormatting[]
   ) {
     if (!formatting || formatting.length === 0) return;
-    
+
+    // NOTA: Formatação de estilos (cores, fontes) requer xlsx-style ou XLSX Pro
+    // A versão gratuita da biblioteca XLSX (SheetJS) não suporta estilos de células
+    // Este código está preparado para quando a biblioteca for atualizada
+
     for (const format of formatting) {
       if (format.condition && format.condition(value)) {
         if (!worksheet[cellAddress].s) {
           worksheet[cellAddress].s = {};
         }
-        
+
         if (format.font) {
           worksheet[cellAddress].s.font = {
             bold: format.font.bold,
@@ -125,13 +139,13 @@ export class ExcelExporter {
             sz: format.font.size
           };
         }
-        
+
         if (format.fill) {
           worksheet[cellAddress].s.fill = {
             fgColor: { rgb: format.fill.color?.replace('#', '') }
           };
         }
-        
+
         if (format.numberFormat) {
           worksheet[cellAddress].s.numFmt = format.numberFormat;
         }
@@ -186,11 +200,18 @@ export class ExcelExporter {
     currentRow++;
     
     // Adicionar dados (converter valores numéricos)
-    const processedData = exportData.data.map(row => 
+    const processedData = exportData.data.map(row =>
       row.map((cell, index) => {
-        // Verificar se o cabeçalho contém indicação de porcentagem
         const header = exportData.headers[index]?.toLowerCase() || '';
-        const isPercentage = header.includes('taxa') || header.includes('porcentagem') || 
+
+        // Detectar se é coluna de data - preservar valor original
+        const isDateColumn = header.includes('data') || header.includes('date');
+        if (isDateColumn) {
+          return cell; // Preservar valor original de datas
+        }
+
+        // Verificar se o cabeçalho contém indicação de porcentagem
+        const isPercentage = header.includes('taxa') || header.includes('porcentagem') ||
                              header.includes('%') || header.includes('percentual');
         return parseNumericValue(cell, isPercentage);
       })
