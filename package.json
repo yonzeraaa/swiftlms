@@ -38,7 +38,7 @@
     "@types/react-dom": "^19.1.7",
     "@vercel/functions": "^3.1.4",
     "autoprefixer": "^10.4.21",
-    "canvas-confetti": "^1.9.3",
+    "canvas-confetti": "^1.9.4",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "dompurify": "^3.2.6",

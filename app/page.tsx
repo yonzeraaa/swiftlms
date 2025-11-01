@@ -3,8 +3,9 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle, Globe, BookOpen, MessageCircle } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle, Globe, BookOpen, MessageCircle, CheckCircle2, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import Logo from './components/Logo'
 import Button from './components/Button'
 import ContactModal from './components/ContactModal'
@@ -12,6 +13,7 @@ import ForgotPasswordModal from './components/ForgotPasswordModal'
 import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from './contexts/LanguageContext'
 import type { Language } from './contexts/LanguageContext'
+import { fadeInUp, staggerContainer, staggerItem, shake } from '@/lib/animation-presets'
 
 export default function LoginPage() {
   const { t, language, setLanguage } = useTranslation()
@@ -23,6 +25,8 @@ export default function LoginPage() {
   const [emailFocused, setEmailFocused] = useState(false)
   const [passwordFocused, setPasswordFocused] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+  const [showError, setShowError] = useState(false)
   const [contactModalOpen, setContactModalOpen] = useState(false)
   const [forgotPasswordModalOpen, setForgotPasswordModalOpen] = useState(false)
   const router = useRouter()
@@ -79,13 +83,17 @@ export default function LoginPage() {
         } else {
           setError(error.message || t('login.loginError'))
         }
+        setShowError(true)
         setIsLoading(false)
         return
       }
       
       if (data.user && data.session) {
         console.log('Login successful, user:', data.user.email)
-        
+
+        // Mostrar feedback de sucesso
+        setSuccess(true)
+
         // Sincronizar sessão com o servidor imediatamente após o login
         console.log('Sincronizando sessão com o servidor...')
         try {
@@ -137,20 +145,56 @@ export default function LoginPage() {
     } catch (err) {
       console.error('Login failed:', err)
       setError(t('login.unexpectedError'))
+      setShowError(true)
       setIsLoading(false)
     }
   }
+
+  // Floating particles component
+  const FloatingParticle = ({ delay, duration, x, y }: { delay: number; duration: number; x: string; y: string }) => (
+    <motion.div
+      className="absolute w-2 h-2 bg-gold-400/20 rounded-full blur-sm"
+      initial={{ opacity: 0, x: 0, y: 0 }}
+      animate={{
+        opacity: [0, 1, 0],
+        x: [0, parseFloat(x), parseFloat(x) * 1.5],
+        y: [0, parseFloat(y), parseFloat(y) * 2],
+      }}
+      transition={{
+        duration,
+        delay,
+        repeat: Infinity,
+        repeatDelay: 1
+      }}
+    />
+  )
 
   return (
     <div className="min-h-screen bg-pattern relative overflow-hidden">
       {/* Gradiente de fundo */}
       <div className="absolute inset-0 bg-gradient-to-br from-navy-600/50 via-navy-700/50 to-navy-900/50" />
-      
 
-      <div className="relative min-h-screen flex items-center justify-center px-4 py-8">
-        <div className="max-w-md w-full">
+      {/* Floating particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <FloatingParticle delay={0} duration={8} x="100" y="-200" />
+        <FloatingParticle delay={1} duration={10} x="-150" y="-180" />
+        <FloatingParticle delay={2} duration={9} x="200" y="-220" />
+        <FloatingParticle delay={3} duration={11} x="-100" y="-190" />
+        <FloatingParticle delay={1.5} duration={8.5} x="150" y="-210" />
+        <Sparkles className="absolute top-1/4 left-1/4 w-6 h-6 text-gold-400/10 animate-pulse" />
+        <Sparkles className="absolute top-2/3 right-1/3 w-4 h-4 text-gold-400/10 animate-pulse" style={{ animationDelay: '1s' }} />
+        <Sparkles className="absolute bottom-1/4 left-2/3 w-5 h-5 text-gold-400/10 animate-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+
+      <motion.div
+        className="relative min-h-screen flex items-center justify-center px-4 py-8"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div className="max-w-md w-full" variants={staggerItem}>
           {/* Language Selector - Above Login Card */}
-          <div className="flex justify-center mb-4">
+          <motion.div className="flex justify-center mb-4" variants={staggerItem}>
             <div className="flex items-center gap-2 bg-navy-800/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-gold-500/20">
               <Globe className="w-4 h-4 text-gold-400" />
               <select
@@ -164,9 +208,9 @@ export default function LoginPage() {
                 <option value="es-ES" className="bg-navy-800">Español (ES)</option>
               </select>
             </div>
-          </div>
+          </motion.div>
           {/* Card principal com glassmorphism e borda gradiente */}
-          <div className="glass-morphism border-gradient rounded-3xl shadow-2xl p-1">
+          <motion.div className="glass-morphism border-gradient rounded-3xl shadow-2xl p-1" variants={fadeInUp}>
             <div className="bg-navy-800/90 rounded-3xl p-8">
               {/* Header com logo */}
               <div className="text-center mb-4">
@@ -278,13 +322,38 @@ export default function LoginPage() {
                 </Button>
               </form>
 
-              {/* Error message */}
-              {error && (
-                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                  <p className="text-base text-red-400">{error}</p>
-                </div>
-              )}
+              {/* Success message */}
+              <AnimatePresence>
+                {success && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg flex items-center gap-2"
+                  >
+                    <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+                    <p className="text-base text-green-400">Login bem-sucedido! Redirecionando...</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Error message with shake animation */}
+              <AnimatePresence>
+                {error && showError && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    variants={shake}
+                    whileInView="shake"
+                    viewport={{ once: true }}
+                    className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2"
+                  >
+                    <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                    <p className="text-base text-red-400">{error}</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Botões centralizados */}
               <div className="mt-6 space-y-4">
@@ -326,9 +395,9 @@ export default function LoginPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
+          </motion.div>
+        </motion.div>
+      </motion.div>
       
       {/* Contact Modal */}
       <ContactModal 
