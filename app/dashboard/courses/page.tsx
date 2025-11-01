@@ -551,7 +551,7 @@ export default function CoursesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
             <BookOpen className="w-8 h-8 text-gold-400" />
             {t('courses.title')}
           </h1>
@@ -720,7 +720,7 @@ export default function CoursesPage() {
       )}
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -1155,7 +1155,7 @@ export default function CoursesPage() {
             
             <div className="space-y-6">
               {/* Course Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <h3 className="text-sm font-medium text-gold-400 mb-2">{t('courses.instructor')}</h3>
                   <p className="text-gold-200">

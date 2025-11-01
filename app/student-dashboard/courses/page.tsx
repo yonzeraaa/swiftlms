@@ -289,7 +289,7 @@ export default function ExploreCourses() {
       <FadeTransition>
         <div>
           <motion.h1 
-            className="text-3xl font-bold text-gold flex items-center gap-2"
+            className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2"
             initial={{ y: -20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5 }}
@@ -862,7 +862,7 @@ export default function ExploreCourses() {
               </div>
             </div>
             
-            <div className="p-6 space-y-6">
+            <div className="p-4 md:p-6 space-y-4 md:space-y-6">
               {/* Rating Filter */}
               <div>
                 <label className="block text-gold-300 mb-2">Avaliação Mínima</label>

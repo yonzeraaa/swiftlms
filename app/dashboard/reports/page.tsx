@@ -1452,7 +1452,7 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
             <BarChart3 className="w-8 h-8 text-gold-400" />
             {t('reports.title')}
           </h1>

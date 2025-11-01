@@ -602,7 +602,7 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
             <Users className="w-8 h-8 text-gold-400" />
             {t('users.title')}
           </h1>

@@ -338,7 +338,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Stats Grid Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           {[...Array(4)].map((_, i) => (
             <SkeletonStatCard key={i} />
           ))}
@@ -364,7 +364,7 @@ export default function StudentDashboard() {
       <Card variant="gradient" className="mb-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
               <Sparkles className="w-8 h-8 text-gold-400" />
               Meu Painel de Aprendizagem
             </h1>
@@ -377,7 +377,7 @@ export default function StudentDashboard() {
       </Card>
 
       {/* Stats Grid with Enhanced Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         <StatCard 
           {...statsCards[0]} 
           variant="gradient" 
@@ -460,8 +460,8 @@ export default function StudentDashboard() {
                     </div>
 
                     {/* Progress Details */}
-                    <div className="grid grid-cols-2 gap-4 mt-3">
-                      <div className="flex items-center gap-2 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+                      <div className="flex items-center gap-2 text-xs sm:text-sm">
                         <Clock className="w-4 h-4 text-gold-500/50" />
                         <div>
                           <span className="text-gold-400 font-medium">
@@ -470,7 +470,7 @@ export default function StudentDashboard() {
                           <span className="text-gold-500/60"> / {course.duration_hours}h</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2 text-xs sm:text-sm">
                         <Activity className="w-4 h-4 text-gold-500/50" />
                         <span className="text-gold-400">{formatTimeAgo(course.lastAccessed || '', t)}</span>
                       </div>
@@ -549,57 +549,61 @@ export default function StudentDashboard() {
 
       {/* Sequência de Estudo */}
       <Card title="Sequência de Estudo" subtitle={`${stats.currentStreak} dias consecutivos`}>
-        <div className="grid grid-cols-7 gap-1 mb-4">
-          {[...Array(28)].map((_, i) => {
-            const isActive = i >= 28 - stats.currentStreak
-            return (
-              <div
-                key={i}
-                className={`aspect-square rounded ${
-                  isActive 
-                    ? 'bg-gradient-to-br from-gold-500 to-gold-600' 
-                    : 'bg-navy-800'
-                }`}
-              />
-            )
-          })}
+        <div className="relative overflow-x-auto pb-2">
+          {/* Indicador de scroll para mobile */}
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-navy-800 to-transparent pointer-events-none md:hidden z-10" />
+          <div className="grid grid-cols-7 sm:grid-cols-14 md:grid-cols-21 lg:grid-cols-28 gap-1 mb-4 min-w-[280px]">
+            {[...Array(28)].map((_, i) => {
+              const isActive = i >= 28 - stats.currentStreak
+              return (
+                <div
+                  key={i}
+                  className={`aspect-square rounded ${
+                    isActive
+                      ? 'bg-gradient-to-br from-gold-500 to-gold-600'
+                      : 'bg-navy-800'
+                  }`}
+                />
+              )
+            })}
+          </div>
         </div>
-        <p className="text-sm text-gold-300 text-center">
+        <p className="text-xs sm:text-sm text-gold-300 text-center">
           Continue estudando para manter sua sequência!
         </p>
       </Card>
 
       {/* Additional Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Taxa de Conclusão</p>
-              <p className="text-2xl font-bold text-gold mt-1">
+              <p className="text-gold-300 text-xs sm:text-sm">Taxa de Conclusão</p>
+              <p className="text-xl sm:text-2xl font-bold text-gold mt-1">
                 {stats.enrolledCourses > 0 ? Math.round((stats.completedCourses / stats.enrolledCourses) * 100) : 0}%
               </p>
             </div>
-            <TrendingUp className="w-8 h-8 text-gold-500/30" />
+            <TrendingUp className="w-6 h-6 sm:w-8 sm:h-8 text-gold-500/30" />
           </div>
         </Card>
-        
+
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Próxima Aula</p>
-              <p className="text-2xl font-bold text-gold mt-1">--</p>
+              <p className="text-gold-300 text-xs sm:text-sm">Próxima Aula</p>
+              <p className="text-xl sm:text-2xl font-bold text-gold mt-1">--</p>
             </div>
-            <Calendar className="w-8 h-8 text-gold-500/30" />
+            <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-gold-500/30" />
           </div>
         </Card>
-        
+
         <Card>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gold-300 text-sm">Em Progresso</p>
-              <p className="text-2xl font-bold text-gold mt-1">{stats.enrolledCourses - stats.completedCourses}</p>
+              <p className="text-gold-300 text-xs sm:text-sm">Em Progresso</p>
+              <p className="text-xl sm:text-2xl font-bold text-gold mt-1">{stats.enrolledCourses - stats.completedCourses}</p>
             </div>
-            <Activity className="w-8 h-8 text-gold-500/30" />
+            <Activity className="w-6 h-6 sm:w-8 sm:h-8 text-gold-500/30" />
           </div>
         </Card>
       </div>

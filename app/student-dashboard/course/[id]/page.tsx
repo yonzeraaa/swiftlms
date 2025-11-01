@@ -709,14 +709,14 @@ export default function CoursePage() {
           Voltar
         </Button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-gold">{course.title}</h1>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">{course.title}</h1>
           <p className="text-gold-300 mt-1">{course.summary}</p>
         </div>
       </div>
 
       {/* Progress Overview */}
       <Card variant="gradient" className="mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
           <div className="flex items-center justify-center">
             <ProgressRing
               value={completedLessons}

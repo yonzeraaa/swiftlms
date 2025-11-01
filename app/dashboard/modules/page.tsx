@@ -126,9 +126,9 @@ function ModuleCard({
                   ${isDragging ? 'text-gold-400' : 'text-gold-500/30 group-hover:text-gold-500/50'}
                 `} />
               )}
-              <h3 className="text-xl font-bold text-gold">
+              <h3 className="text-lg sm:text-xl font-bold text-gold">
                 <span
-                  className="inline-block max-w-[220px] md:max-w-[260px] truncate align-middle"
+                  className="inline-block max-w-[180px] sm:max-w-[220px] md:max-w-[280px] lg:max-w-full truncate align-middle"
                   title={module.title}
                 >
                   {module.title}
@@ -143,7 +143,7 @@ function ModuleCard({
             {course && (
               <p className="text-sm text-gold-400 mt-1 flex items-center gap-1 ml-7">
                 <BookOpen className="w-4 h-4" />
-                <span className="truncate inline-block max-w-[200px]" title={course.title}>
+                <span className="truncate inline-block max-w-[160px] sm:max-w-[200px] md:max-w-[240px] lg:max-w-full" title={course.title}>
                   {course.title}
                 </span>
               </p>
@@ -180,7 +180,7 @@ function ModuleCard({
         )}
 
         <div className="flex items-center justify-between pt-4 border-t border-gold-500/20">
-          <div className="flex items-center gap-4 text-sm ml-7">
+          <div className="flex items-center flex-wrap gap-2 md:gap-4 text-xs sm:text-sm ml-7">
             <span className="text-gold-400">
               {stats.subjects} disciplina{stats.subjects !== 1 ? 's' : ''}
             </span>
@@ -199,8 +199,8 @@ function ModuleCard({
             </span>
             <span className={`
               px-2 py-0.5 rounded transition-all duration-200
-              ${isDragging 
-                ? 'bg-gold-500/30 text-gold-200 font-semibold' 
+              ${isDragging
+                ? 'bg-gold-500/30 text-gold-200 font-semibold'
                 : 'bg-navy-900/50 text-gold-400'
               }
             `}>
@@ -713,16 +713,16 @@ export default function ModulesPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       <Breadcrumbs className="mb-2" />
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
-            <Folder className="w-8 h-8" />
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
+            <Folder className="w-6 h-6 md:w-8 md:h-8" />
             Módulos
           </h1>
-          <p className="text-gold-300 mt-1">
+          <p className="text-sm sm:text-base text-gold-300 mt-1">
             Gerencie os módulos dos cursos. Arraste para reordenar.
           </p>
         </div>
@@ -758,25 +758,26 @@ export default function ModulesPage() {
 
       {/* Selection Actions Bar */}
       {selectedModules.size > 0 && (
-        <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg p-4 flex items-center justify-between">
+        <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg p-3 md:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-0 justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-gold-200 font-medium">
+            <span className="text-sm sm:text-base text-gold-200 font-medium">
               {selectedModules.size} {selectedModules.size === 1 ? 'módulo selecionado' : 'módulos selecionados'}
             </span>
             <button
               onClick={deselectAllModules}
-              className="text-gold-400 hover:text-gold-200 text-sm underline"
+              className="text-gold-400 hover:text-gold-200 text-xs sm:text-sm underline"
             >
               Desmarcar todos
             </button>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
             <Button
               variant="danger"
               size="sm"
               icon={<Trash className="w-4 h-4" />}
               onClick={handleBulkDelete}
               disabled={isDeleting}
+              className="w-full sm:w-auto"
             >
               {isDeleting ? 'Excluindo...' : 'Excluir Selecionados'}
             </Button>
@@ -787,7 +788,7 @@ export default function ModulesPage() {
       {/* Search and Filters */}
       <Card>
         <div className="space-y-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
               <input
@@ -801,7 +802,7 @@ export default function ModulesPage() {
             <select
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
-              className="px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full sm:w-auto px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
             >
               <option value="all">Todos os cursos</option>
               {courses.map(course => (
@@ -886,7 +887,7 @@ export default function ModulesPage() {
               items={sortedModules.map(m => m.id)}
               strategy={verticalListSortingStrategy}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                 {sortedModules.length > 0 ? (
                   sortedModules.map((module) => {
                     const course = courses.find(c => c.id === module.course_id)
@@ -937,7 +938,7 @@ export default function ModulesPage() {
             </DragOverlay>
           </DndContext>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
             {sortedModules.length > 0 ? (
               sortedModules.map((module) => {
                 const course = coursesById.get(module.course_id)
@@ -976,16 +977,16 @@ export default function ModulesPage() {
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-navy-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-navy-800 rounded-2xl max-w-md w-full p-6 border border-gold-500/20">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gold">
+          <div className="bg-navy-800 rounded-2xl max-w-[95vw] sm:max-w-md w-full p-4 sm:p-6 border border-gold-500/20 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-bold text-gold">
                 {editingModule ? 'Editar Módulo' : 'Novo Módulo'}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
                 className="text-gold-400 hover:text-gold-200 transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 

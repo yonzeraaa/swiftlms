@@ -562,7 +562,7 @@ export default function TestsManagementPage() {
       {/* Header com busca e filtros */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
         <div className="flex items-center gap-4 flex-wrap">
-          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
             <FileCheck className="w-8 h-8 text-gold-400" />
             {t('tests.title')}
           </h1>

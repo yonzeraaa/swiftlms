@@ -165,7 +165,7 @@ export default function CertificatesPage() {
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
             <Award className="w-8 h-8 text-gold-400" />
             Meus Certificados
           </h1>
@@ -204,12 +204,12 @@ export default function CertificatesPage() {
       </Card>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         <Card>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gold-300 text-sm">Certificados Aprovados</p>
-              <p className="text-3xl font-bold text-gold">{certificates.length}</p>
+              <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">{certificates.length}</p>
             </div>
             <Award className="w-10 h-10 text-gold-500/30" />
           </div>
@@ -219,7 +219,7 @@ export default function CertificatesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gold-300 text-sm">Aguardando Aprovação</p>
-              <p className="text-3xl font-bold text-gold">
+              <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
                 {certificateRequests.filter((r: any) => r.status === 'pending').length}
               </p>
             </div>
@@ -231,7 +231,7 @@ export default function CertificatesPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gold-300 text-sm">Horas Certificadas</p>
-              <p className="text-3xl font-bold text-gold">
+              <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
                 {certificates.reduce((sum, cert) => sum + (cert.course_hours || 0), 0)}h
               </p>
             </div>

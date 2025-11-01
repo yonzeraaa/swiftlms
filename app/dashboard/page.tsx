@@ -310,7 +310,7 @@ export default function DashboardPage() {
       <Card variant="gradient" className="mb-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
               <Sparkles className="w-8 h-8 text-gold-400 animate-pulse" />
               {t('dashboard.title')}
             </h1>
@@ -421,7 +421,7 @@ export default function DashboardPage() {
       </Card>
 
       {/* Additional Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         <Card>
           <div className="flex items-center justify-between">
             <div>

@@ -205,7 +205,7 @@ export default function ActivitiesPage() {
       <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gold">{t('activities.title')}</h1>
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">{t('activities.title')}</h1>
         <p className="text-gold-300 mt-1">{t('activities.subtitle')}</p>
       </div>
 
@@ -295,16 +295,16 @@ export default function ActivitiesPage() {
       </Card>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         <Card>
           <div className="text-center">
-            <p className="text-3xl font-bold text-gold">{filteredActivities.length}</p>
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">{filteredActivities.length}</p>
             <p className="text-gold-300 mt-1">{t('activities.totalActivities')}</p>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <p className="text-3xl font-bold text-gold">
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
               {filteredActivities.filter(a => a.action === 'user_created').length}
             </p>
             <p className="text-gold-300 mt-1">{t('activities.newUsers')}</p>
@@ -312,7 +312,7 @@ export default function ActivitiesPage() {
         </Card>
         <Card>
           <div className="text-center">
-            <p className="text-3xl font-bold text-gold">
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
               {filteredActivities.filter(a => a.action === 'enrolled_in_course' || a.action === 'student_enrolled').length}
             </p>
             <p className="text-gold-300 mt-1">{t('activities.enrollments')}</p>
@@ -320,7 +320,7 @@ export default function ActivitiesPage() {
         </Card>
         <Card>
           <div className="text-center">
-            <p className="text-3xl font-bold text-gold">
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
               {filteredActivities.filter(a => a.action === 'completed_course').length}
             </p>
             <p className="text-gold-300 mt-1">{t('activities.completions')}</p>

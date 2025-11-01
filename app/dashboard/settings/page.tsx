@@ -229,7 +229,7 @@ export default function SettingsPage() {
       <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gold flex items-center gap-2">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
           <SettingsIcon className="w-8 h-8 text-gold-400" />
           {t('settings.title')}
         </h1>
@@ -290,7 +290,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Form Fields */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
                 <label className="block text-sm font-medium text-gold-200 mb-2">
                   {t('settings.fullName')}
