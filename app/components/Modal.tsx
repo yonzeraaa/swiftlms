@@ -91,10 +91,10 @@ export default function Modal({
   }
 
   const sizeClasses = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl',
+    sm: 'max-w-sm sm:max-w-md mx-4 sm:mx-auto',
+    md: 'max-w-full sm:max-w-lg mx-4 sm:mx-auto',
+    lg: 'max-w-full sm:max-w-xl md:max-w-2xl mx-4 sm:mx-auto',
+    xl: 'max-w-full sm:max-w-2xl md:max-w-4xl mx-4 sm:mx-auto',
     full: 'max-w-full mx-4'
   }
 
@@ -128,9 +128,9 @@ export default function Modal({
           <div className="relative bg-navy-800 rounded-2xl shadow-2xl border border-gold-500/20 overflow-hidden">
             {/* Header */}
             {(title || showCloseButton) && (
-              <div className="flex items-center justify-between p-6 border-b border-gold-500/20">
+              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gold-500/20">
                 {title && (
-                  <h2 id="modal-title" className="text-2xl font-bold text-gold">
+                  <h2 id="modal-title" className="text-lg sm:text-xl md:text-2xl font-bold text-gold">
                     {title}
                   </h2>
                 )}
@@ -140,20 +140,20 @@ export default function Modal({
                     className="ml-auto text-gold-400 hover:text-gold-200 transition-colors p-1 rounded-lg hover:bg-gold-500/10"
                     aria-label="Close modal"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                 )}
               </div>
             )}
 
             {/* Body */}
-            <div className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+            <div className="p-4 sm:p-6 max-h-[calc(100vh-100px)] sm:max-h-[calc(100vh-200px)] overflow-y-auto">
               {children}
             </div>
 
             {/* Footer */}
             {footer && (
-              <div className="p-6 border-t border-gold-500/20 bg-navy-900/50">
+              <div className="p-4 sm:p-6 border-t border-gold-500/20 bg-navy-900/50">
                 {footer}
               </div>
             )}

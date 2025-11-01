@@ -301,7 +301,7 @@ export default function DataTable<T extends Record<string, any>>({
                   key={column.key as string}
                   className={`
                     text-left text-gold-300 font-medium
-                    ${compact ? 'px-4 py-2 text-sm' : 'px-6 py-4'}
+                    ${compact ? 'px-2 sm:px-4 py-2 text-xs sm:text-sm' : 'px-3 sm:px-6 py-3 sm:py-4 text-sm sm:text-base'}
                     ${column.sortable ? 'cursor-pointer hover:bg-navy-700/30 transition-colors' : ''}
                   `}
                   style={{ width: column.width }}

@@ -5,11 +5,11 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../providers/AuthProvider'
-import { 
-  LayoutDashboard, 
-  Users, 
-  BookOpen, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -33,6 +33,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../contexts/LanguageContext'
 import PageTransition from '../components/ui/PageTransition'
 import { motion, AnimatePresence } from 'framer-motion'
+import MobileDrawer from '../components/MobileDrawer'
 
 export default function DashboardLayout({
   children,
@@ -40,6 +41,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [hoveredItem, setHoveredItem] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [pendingCertificates, setPendingCertificates] = useState(0)
@@ -187,15 +189,27 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-pattern">
       <div className="absolute inset-0 bg-gradient-to-br from-navy-600/50 via-navy-700/50 to-navy-900/50" />
-      
-      
+
+      {/* Mobile Header */}
+      <div className="relative md:hidden bg-navy-900/95 backdrop-blur-md border-b border-gold-500/20 p-4 flex items-center justify-between">
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="p-2 hover:bg-navy-700 rounded-lg transition-colors"
+          aria-label="Abrir menu"
+        >
+          <Menu className="w-6 h-6 text-gold-400" />
+        </button>
+        <Logo width={100} height={40} />
+        <div className="w-10" /> {/* Spacer for centering */}
+      </div>
+
       <div className="relative flex h-screen">
-        {/* Sidebar */}
-        <motion.aside 
+        {/* Desktop Sidebar */}
+        <motion.aside
           initial={{ width: sidebarOpen ? 256 : 80 }}
           animate={{ width: sidebarOpen ? 256 : 80 }}
           transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="relative bg-navy-900/95 backdrop-blur-md border-r border-gold-500/20 flex-shrink-0"
+          className="hidden md:block relative bg-navy-900/95 backdrop-blur-md border-r border-gold-500/20 flex-shrink-0"
         >
           <div className="flex flex-col h-full p-4">
             {/* Logo e Toggle */}
@@ -396,13 +410,60 @@ export default function DashboardLayout({
           {/* Page Content with Animation */}
           <ErrorBoundary>
             <PageTransition>
-              <div className="p-8">
+              <div className="p-4 sm:p-6 md:p-8">
                 {children}
               </div>
             </PageTransition>
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Mobile Drawer */}
+      <MobileDrawer
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        title="Menu"
+      >
+        <nav className="space-y-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const active = isActive(item.href)
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`
+                  flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all
+                  ${active
+                    ? 'bg-gold-500/20 text-gold'
+                    : 'text-gold-300 hover:bg-navy-700 hover:text-gold-200'
+                  }
+                `}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm font-medium">{item.name}</span>
+              </Link>
+            )
+          })}
+
+          {/* Logout button in mobile menu */}
+          <button
+            onClick={() => {
+              setMobileMenuOpen(false)
+              handleLogout()
+            }}
+            disabled={loggingOut}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:bg-navy-700 transition-all disabled:opacity-50"
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            <span className="text-sm font-medium">
+              {loggingOut ? t('nav.loggingOut') : t('nav.logout')}
+            </span>
+          </button>
+        </nav>
+      </MobileDrawer>
     </div>
   )
 }
