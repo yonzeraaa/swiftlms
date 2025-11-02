@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, FileSpreadsheet, Trash2, Eye, Users, Award, BookOpen, Activity, MoreVertical, Sparkles, Download, Copy, Edit3 } from 'lucide-react'
+import { Plus, FileSpreadsheet, Trash2, Eye, Users, Award, BookOpen, Activity, MoreVertical, Download, Copy, Edit3 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../providers/AuthProvider'
 import TemplateUploadModal from './components/TemplateUploadModal'
@@ -124,45 +124,27 @@ export default function TemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs
-        items={[
-          { label: 'Dashboard', href: '/dashboard' },
-          { label: 'Templates Excel', href: '/dashboard/templates' },
-        ]}
-      />
+      <Breadcrumbs className="mb-2" />
 
-      {/* Banner Welcome/Hero */}
-      <Card variant="gradient" className="relative overflow-hidden" depth={4}>
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-gold-500/20 rounded-xl backdrop-blur-sm">
-              <FileSpreadsheet className="w-10 h-10 text-gold-400 animate-pulse" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gold-100 flex items-center gap-2">
-                Templates Excel
-                <Sparkles className="w-6 h-6 text-gold-400 animate-pulse" />
-              </h1>
-              <p className="text-gold-300/80 mt-1">
-                Gerencie e personalize seus templates de relatórios
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <span className="text-2xl font-bold text-gold-200">{templates.length}</span>
-            <span className="text-gold-400/60 text-sm">templates ativos</span>
-          </div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
+            <FileSpreadsheet className="w-8 h-8 text-gold-400" />
+            Templates Excel
+          </h1>
+          <p className="text-gold-300 mt-1">
+            Gerencie templates personalizados para relatórios
+          </p>
         </div>
         <Button
+          variant="primary"
+          icon={<Plus className="w-5 h-5" />}
           onClick={() => setShowUploadModal(true)}
-          variant="secondary"
-          className="mt-4 gap-2"
-          glow
         >
-          <Plus className="h-4 w-4" />
           Novo Template
         </Button>
-      </Card>
+      </div>
 
       {/* Filtros por categoria com ícones */}
       <div className="flex gap-2 flex-wrap">
