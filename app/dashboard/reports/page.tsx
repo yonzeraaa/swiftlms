@@ -17,6 +17,8 @@ import { Database } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { ExcelExporter, exportReportToExcel, PivotTableConfig, CellFormatting } from '@/lib/excel-export'
 import { formatNumber, formatPercentage, formatDate, formatCompactNumber } from '@/lib/reports/formatters'
+import { generateReportWithTemplate, getTemplatesForCategory } from '@/lib/use-template-for-report'
+import { fetchUsersData } from '@/lib/excel-template-mappers/users-mapper'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -35,6 +37,8 @@ interface ReportData {
   topCourses: { title: string; enrollments: number }[]
 }
 
+type ExcelTemplate = Database['public']['Tables']['excel_templates']['Row']
+
 export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
   const { t } = useTranslation()
@@ -44,11 +48,27 @@ export default function ReportsPage() {
     start: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   })
+  const [templates, setTemplates] = useState<ExcelTemplate[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     fetchReportData()
+    fetchTemplates()
   }, [dateRange])
+
+  const fetchTemplates = async () => {
+    const { data } = await supabase
+      .from('excel_templates')
+      .select('*')
+      .eq('is_active', true)
+      .order('name')
+
+    if (data) {
+      setTemplates(data)
+    }
+  }
 
   const fetchReportData = async () => {
     try {
@@ -1302,8 +1322,36 @@ export default function ReportsPage() {
   }
 
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     if (!reportData) return
+
+    // Se um template foi selecionado, usar o sistema de templates
+    if (selectedTemplate) {
+      try {
+        setGeneratingReport('template')
+        const blob = await generateReportWithTemplate('users', selectedTemplate)
+
+        if (blob) {
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `relatorio_swiftedu_${new Date().toISOString().split('T')[0]}.xlsx`
+          document.body.appendChild(a)
+          a.click()
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+        } else {
+          alert('Não foi possível gerar o relatório com o template selecionado. Usando exportação padrão.')
+          setSelectedTemplate(null)
+        }
+        setGeneratingReport(null)
+        return
+      } catch (error) {
+        console.error('Erro ao gerar relatório com template:', error)
+        alert('Erro ao gerar relatório com template. Usando exportação padrão.')
+        setGeneratingReport(null)
+      }
+    }
 
     // Criar exportador Excel
     const exporter = new ExcelExporter()
@@ -1742,14 +1790,27 @@ export default function ReportsPage() {
           </h1>
           <p className="text-gold-300 mt-1">{t('reports.subtitle')}</p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="primary" 
+        <div className="flex gap-2 items-center">
+          <select
+            value={selectedTemplate || ''}
+            onChange={(e) => setSelectedTemplate(e.target.value || null)}
+            className="px-4 py-2 bg-navy-900 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+          >
+            <option value="">Exportação Padrão</option>
+            <option disabled>─────────────</option>
+            {templates.filter(t => t.category === 'users').map((template) => (
+              <option key={template.id} value={template.id}>
+                {template.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="primary"
             icon={<Table className="w-5 h-5" />}
             onClick={exportToExcel}
             title="Exportar para Excel com tabelas dinâmicas"
           >
-            {t('reports.export')} Excel (Dinâmico)
+            {t('reports.export')} Excel {selectedTemplate ? '(Template)' : '(Dinâmico)'}
           </Button>
         </div>
       </div>
