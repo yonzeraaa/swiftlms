@@ -134,8 +134,9 @@ export async function POST(request: Request) {
 
     const requestsByType = requestRows.reduce(
       (acc, row) => {
-        if (row.certificate_type === 'technical' || row.certificate_type === 'lato-sensu') {
-          acc[row.certificate_type] = row
+        const certType = row.certificate_type
+        if (certType === 'technical' || certType === 'lato-sensu') {
+          acc[certType as CertificateType] = row
         }
         return acc
       },
@@ -151,8 +152,9 @@ export async function POST(request: Request) {
 
     const certificatesByType = certificateRows.reduce(
       (acc, row) => {
-        if (row.certificate_type === 'technical' || row.certificate_type === 'lato-sensu') {
-          acc[row.certificate_type] = row
+        const certType = row.certificate_type
+        if (certType === 'technical' || certType === 'lato-sensu') {
+          acc[certType as CertificateType] = row
         }
         return acc
       },

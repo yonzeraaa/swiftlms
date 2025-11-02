@@ -23,7 +23,6 @@ interface ExcelTemplate {
 }
 
 export default function TemplatesPage() {
-  const { t } = useTranslation()
   const { user } = useAuth()
   const [templates, setTemplates] = useState<ExcelTemplate[]>([])
   const [loading, setLoading] = useState(true)
@@ -142,7 +141,7 @@ export default function TemplatesPage() {
         {categories.map((cat) => (
           <Button
             key={cat.value}
-            variant={selectedCategory === cat.value ? 'default' : 'outline'}
+            variant={selectedCategory === cat.value ? 'primary' : 'outline'}
             size="sm"
             onClick={() => setSelectedCategory(cat.value)}
           >

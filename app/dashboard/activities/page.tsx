@@ -281,7 +281,7 @@ export default function ActivitiesPage() {
                   )}
                   <p className="text-gold-500/60 text-xs mt-2 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {formatDate(activity.created_at)}
+                    {activity.created_at ? formatDate(activity.created_at) : '-'}
                   </p>
                 </div>
               </div>

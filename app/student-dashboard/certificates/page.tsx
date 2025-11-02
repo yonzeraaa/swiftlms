@@ -232,7 +232,7 @@ export default function CertificatesPage() {
             <div>
               <p className="text-gold-300 text-sm">Horas Certificadas</p>
               <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
-                {certificates.reduce((sum, cert) => sum + (cert.course_hours || 0), 0)}h
+                {certificates.reduce((sum, cert) => sum + (cert.course?.duration_hours || 0), 0)}h
               </p>
             </div>
             <Medal className="w-10 h-10 text-blue-500/30" />
@@ -318,14 +318,8 @@ export default function CertificatesPage() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gold-500">Carga Horária:</span>
-                      <span className="text-gold-300">{certificate.course_hours}h</span>
+                      <span className="text-gold-300">{certificate.course?.duration_hours || 0}h</span>
                     </div>
-                    {certificate.grade && (
-                      <div className="flex justify-between">
-                        <span className="text-gold-500">Nota Final:</span>
-                        <span className="text-gold-300">{certificate.grade}%</span>
-                      </div>
-                    )}
                   </div>
 
                   {/* Certificate Number */}
@@ -492,14 +486,8 @@ export default function CertificatesPage() {
                   <div className="flex justify-center gap-8 mt-6">
                     <div>
                       <p className="text-gold-400 text-sm">Carga Horária</p>
-                      <p className="text-gold font-bold text-xl">{selectedCertificate.course_hours} horas</p>
+                      <p className="text-gold font-bold text-xl">{selectedCertificate.course?.duration_hours || 0} horas</p>
                     </div>
-                    {selectedCertificate.grade && (
-                      <div>
-                        <p className="text-gold-400 text-sm">Aproveitamento</p>
-                        <p className="text-gold font-bold text-xl">{selectedCertificate.grade}%</p>
-                      </div>
-                    )}
                   </div>
                   <p className="text-gold-300 mt-6">
                     Emitido em {formatDate(selectedCertificate.issued_at || '')}
@@ -516,18 +504,11 @@ export default function CertificatesPage() {
                     Nº {selectedCertificate.certificate_number}
                   </p>
                   <p className="text-xs text-gold-500">
-                    Código de Verificação: {selectedCertificate.verification_code}
+                    Código de Verificação: {selectedCertificate.validation_code}
                   </p>
                 </div>
 
-                {/* Instructor Signature */}
-                {selectedCertificate.instructor_name && (
-                  <div className="mt-8">
-                    <div className="border-t border-gold-500/30 w-48 mx-auto mb-2" />
-                    <p className="text-sm text-gold-400">{selectedCertificate.instructor_name}</p>
-                    <p className="text-xs text-gold-500">Instrutor</p>
-                  </div>
-                )}
+                {/* Instructor Signature - temporariamente removido */}
               </div>
 
               {/* Actions */}
@@ -628,14 +609,8 @@ export default function CertificatesPage() {
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '60px', marginTop: '30px', marginBottom: '30px' }}>
                   <div>
                     <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '14px', marginBottom: '5px' }}>Carga Horária</p>
-                    <p style={{ color: '#FFD700', fontSize: '20px', fontWeight: 'bold' }}>{selectedCertificate.course_hours} horas</p>
+                    <p style={{ color: '#FFD700', fontSize: '20px', fontWeight: 'bold' }}>{selectedCertificate.course?.duration_hours || 0} horas</p>
                   </div>
-                  {selectedCertificate.grade && (
-                    <div>
-                      <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '14px', marginBottom: '5px' }}>Aproveitamento</p>
-                      <p style={{ color: '#FFD700', fontSize: '20px', fontWeight: 'bold' }}>{selectedCertificate.grade}%</p>
-                    </div>
-                  )}
                 </div>
                 
                 <p style={{ color: '#FFD700', opacity: 0.8, fontSize: '16px', marginTop: '20px' }}>
@@ -657,24 +632,12 @@ export default function CertificatesPage() {
                   Nº {selectedCertificate.certificate_number}
                 </p>
                 <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '12px' }}>
-                  Código de Verificação: {selectedCertificate.verification_code}
+                  Código de Verificação: {selectedCertificate.validation_code}
                 </p>
               </div>
 
               {/* Instructor Signature */}
-              {selectedCertificate.instructor_name && (
-                <div style={{ marginTop: '40px' }}>
-                  <div style={{ 
-                    borderTop: '1px solid rgba(255, 215, 0, 0.5)',
-                    width: '200px',
-                    margin: '0 auto 10px'
-                  }} />
-                  <p style={{ color: '#FFD700', opacity: 0.8, fontSize: '14px', marginBottom: '5px' }}>
-                    {selectedCertificate.instructor_name}
-                  </p>
-                  <p style={{ color: '#FFD700', opacity: 0.6, fontSize: '12px' }}>Instrutor</p>
-                </div>
-              )}
+              {/* Instructor Signature - temporariamente removido */}
             </div>
           </div>
         </div>

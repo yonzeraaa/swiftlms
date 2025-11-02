@@ -52,8 +52,9 @@ export async function generateReportWithTemplate(
     await engine.loadTemplate()
     await engine.fillTemplate(reportData)
     const buffer = await engine.generate()
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer
 
-    return new Blob([buffer], {
+    return new Blob([arrayBuffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     })
   } catch (error) {
