@@ -76,9 +76,13 @@ export default function TemplateUploadModal({ onClose, onSuccess }: TemplateUplo
     try {
       setUploading(true)
 
-      // Gerar caminho único para o arquivo
+      // Gerar caminho único para o arquivo (sem espaços e caracteres especiais)
       const timestamp = Date.now()
-      const fileName = `${category}/${timestamp}_${file.name}`
+      const sanitizedFileName = file.name
+        .replace(/\s+/g, '_')  // Substitui espaços por underscore
+        .replace(/[^a-zA-Z0-9._-]/g, '')  // Remove caracteres especiais
+        .toLowerCase()
+      const fileName = `${category}/${timestamp}_${sanitizedFileName}`
 
       // Upload para Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
