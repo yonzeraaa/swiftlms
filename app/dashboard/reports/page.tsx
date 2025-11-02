@@ -1423,7 +1423,7 @@ export default function ReportsPage() {
           *,
           enrollments(
             *,
-            course:courses(title, code),
+            course:courses(title, slug),
             lesson_progress(*)
           )
         `)
@@ -1478,7 +1478,7 @@ export default function ReportsPage() {
             nome: user.full_name || 'Usuário desconhecido',
             email: user.email || '',
             whatsapp: user.phone || '',
-            codigo_curso: enrollment.course?.code || '-',
+            codigo_curso: enrollment.course?.slug || '-',
             atividade: user.role === 'admin' ? 'Administrador' : user.role === 'instructor' ? 'Professor' : 'Estudante',
             pontuacao: enrollment.progress_percentage || 0,
             avanco: Math.round(avanco),
@@ -1583,24 +1583,24 @@ export default function ReportsPage() {
 
       // Processar módulos e disciplinas
       const modulesData: any[] = []
-      enrollment.course.modules?.forEach((module: any) => {
+      enrollment.course.modules?.forEach((module: any, moduleIndex: number) => {
         // Adicionar linha do módulo
         modulesData.push({
-          codigo: module.code || '',
+          codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}`,
           nome: `Módulo ${module.title}`,
-          carga_horaria: module.duration || 0,
+          carga_horaria: module.total_hours || 0,
           data_finalizacao: '',
           pontuacao: '',
           isModule: true
         })
 
-        // Adicionar disciplinas do módulo
-        module.lessons?.forEach((lesson: any) => {
+        // Adicionar disciplinas do módulo (lessons)
+        module.lessons?.forEach((lesson: any, lessonIndex: number) => {
           const progress = lesson.lesson_progress?.[0]
           modulesData.push({
-            codigo: lesson.code || '',
+            codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}${(lessonIndex + 1).toString().padStart(2, '0')}`,
             nome: ` Disciplina ${lesson.title}`,
-            carga_horaria: lesson.duration || 0,
+            carga_horaria: lesson.duration_minutes || 0,
             data_finalizacao: progress?.completed_at ? formatDate(progress.completed_at) : '',
             pontuacao: progress?.score || 0,
             isModule: false
