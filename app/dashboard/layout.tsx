@@ -25,7 +25,8 @@ import {
   Layers,
   Folder,
   Award,
-  Eye
+  Eye,
+  FileSpreadsheet
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import LogoSwiftEDU from '../components/LogoSwiftEDU'
@@ -115,6 +116,7 @@ export default function DashboardLayout({
     { name: t('nav.lessons'), href: '/dashboard/lessons', icon: PlayCircle },
     { name: 'Testes', href: '/dashboard/tests', icon: FileCheck },
     { name: t('nav.reports'), href: '/dashboard/reports', icon: BarChart3 },
+    { name: 'Templates Excel', href: '/dashboard/templates', icon: FileSpreadsheet },
     { name: t('nav.settings'), href: '/dashboard/settings', icon: Settings },
   ]
 
