@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Upload, FileSpreadsheet } from 'lucide-react'
+import { X, Upload, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
@@ -19,7 +19,11 @@ export default function TemplateUploadModal({ onClose, onSuccess }: TemplateUplo
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('users')
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
   const [dragActive, setDragActive] = useState(false)
+  const [nameError, setNameError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -69,12 +73,21 @@ export default function TemplateUploadModal({ onClose, onSuccess }: TemplateUplo
 
   const handleUpload = async () => {
     if (!file || !name || !user) {
-      alert('Preencha todos os campos obrigatórios')
+      setErrorMessage('Preencha todos os campos obrigatórios')
+      setUploadStatus('error')
       return
     }
 
     try {
       setUploading(true)
+      setUploadStatus('uploading')
+      setUploadProgress(0)
+      setErrorMessage('')
+
+      // Simular progress (storage upload não tem callback de progress)
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => Math.min(prev + 10, 90))
+      }, 200)
 
       // Gerar caminho único para o arquivo (sem espaços e caracteres especiais)
       const timestamp = Date.now()
@@ -92,7 +105,11 @@ export default function TemplateUploadModal({ onClose, onSuccess }: TemplateUplo
           upsert: false,
         })
 
+      clearInterval(progressInterval)
+
       if (uploadError) throw uploadError
+
+      setUploadProgress(95)
 
       // Salvar metadata no banco de dados
       const { error: dbError } = await supabase.from('excel_templates').insert({
@@ -108,11 +125,17 @@ export default function TemplateUploadModal({ onClose, onSuccess }: TemplateUplo
 
       if (dbError) throw dbError
 
-      alert('Template enviado com sucesso!')
-      onSuccess()
+      setUploadProgress(100)
+      setUploadStatus('success')
+
+      // Aguardar um pouco para mostrar animação de sucesso
+      setTimeout(() => {
+        onSuccess()
+      }, 1500)
     } catch (error: any) {
       console.error('Erro ao enviar template:', error)
-      alert(`Erro ao enviar template: ${error.message}`)
+      setErrorMessage(error.message || 'Erro ao enviar template')
+      setUploadStatus('error')
     } finally {
       setUploading(false)
     }
@@ -236,17 +259,63 @@ export default function TemplateUploadModal({ onClose, onSuccess }: TemplateUplo
             </div>
           </div>
 
+          {/* Progress Bar */}
+          {uploadStatus !== 'idle' && (
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gold-300">
+                  {uploadStatus === 'uploading' && 'Enviando template...'}
+                  {uploadStatus === 'success' && 'Upload concluído!'}
+                  {uploadStatus === 'error' && 'Erro no upload'}
+                </span>
+                <span className="text-gold-400 font-medium">{uploadProgress}%</span>
+              </div>
+              <div className="h-2 bg-navy-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    uploadStatus === 'success'
+                      ? 'bg-gradient-to-r from-green-500 to-green-400'
+                      : uploadStatus === 'error'
+                      ? 'bg-gradient-to-r from-red-500 to-red-400'
+                      : 'bg-gradient-to-r from-gold-500 to-gold-400'
+                  }`}
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              {uploadStatus === 'success' && (
+                <div className="flex items-center gap-2 text-green-400 text-sm">
+                  <CheckCircle className="h-4 w-4" />
+                  Template enviado com sucesso!
+                </div>
+              )}
+              {uploadStatus === 'error' && errorMessage && (
+                <div className="flex items-center gap-2 text-red-400 text-sm">
+                  <AlertCircle className="h-4 w-4" />
+                  {errorMessage}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-3 mt-6">
-            <Button variant="outline" onClick={onClose} className="flex-1" disabled={uploading}>
-              Cancelar
+            <Button
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+              disabled={uploading || uploadStatus === 'success'}
+            >
+              {uploadStatus === 'success' ? 'Fechar' : 'Cancelar'}
             </Button>
             <Button
               onClick={handleUpload}
-              className="flex-1"
-              disabled={!file || !name || uploading}
+              variant={uploadStatus === 'success' ? 'success' : 'primary'}
+              className="flex-1 gap-2"
+              disabled={!file || !name || uploading || uploadStatus === 'success'}
+              glow={uploadStatus === 'success'}
             >
-              {uploading ? 'Enviando...' : 'Enviar Template'}
+              {uploadStatus === 'success' && <CheckCircle className="h-4 w-4" />}
+              {uploading ? 'Enviando...' : uploadStatus === 'success' ? 'Concluído' : 'Enviar Template'}
             </Button>
           </div>
         </div>
