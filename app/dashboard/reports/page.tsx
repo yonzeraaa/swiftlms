@@ -1539,7 +1539,26 @@ export default function ReportsPage() {
         })
       }) || []
 
-      // Criar exportador Excel
+      // Verificar se há template selecionado
+      if (selectedTemplate) {
+        const blob = await generateReportWithTemplate('users', selectedTemplate)
+
+        if (blob) {
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `SWIFTEDU_RELATORIO_USUARIOS_${new Date().toISOString().split('T')[0]}.xlsx`
+          document.body.appendChild(a)
+          a.click()
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+          alert('Relatório de Usuários gerado com template personalizado!')
+          setGeneratingReport(null)
+          return
+        }
+      }
+
+      // Criar exportador Excel (fallback se não houver template)
       const exporter = new ExcelExporter()
 
       exporter.addDataSheet('Usuários', {
