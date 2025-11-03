@@ -30,6 +30,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [analysis, setAnalysis] = useState<TemplateAnalysis | null>(null)
   const [analysisError, setAnalysisError] = useState('')
   const [customMapping, setCustomMapping] = useState<SuggestedMapping | null>(null)
+  const [manualMode, setManualMode] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -83,6 +84,23 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
     }
   }
 
+  const createManualAnalysis = () => {
+    // Criar análise manual básica para configuração do zero
+    const manualAnalysis: TemplateAnalysis = {
+      headers: [
+        { column: 1, value: 'Coluna 1', suggestedField: undefined },
+        { column: 2, value: 'Coluna 2', suggestedField: undefined },
+        { column: 3, value: 'Coluna 3', suggestedField: undefined },
+      ],
+      dataStartRow: 2,
+      sheetName: 'Sheet1',
+      totalColumns: 3,
+    }
+    setAnalysis(manualAnalysis)
+    setManualMode(true)
+    setAnalysisError('')
+  }
+
   const analyzeTemplateFile = async (file: File) => {
     try {
       setAnalyzing(true)
@@ -103,6 +121,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       }
 
       setAnalysis(data.analysis)
+      setManualMode(false)
       console.log('Template analisado:', data.analysis)
     } catch (error) {
       console.error('Erro ao analisar template:', error)
@@ -359,17 +378,27 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
             </>
           )}
 
-          {analysisError && !analyzing && (
-            <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+          {analysisError && !analyzing && !analysis && (
+            <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg space-y-4">
               <div className="flex items-center gap-2 text-red-300">
                 <AlertCircle className="h-5 w-5" />
-                <div>
-                  <p className="font-semibold">Erro ao analisar template</p>
+                <div className="flex-1">
+                  <p className="font-semibold">Erro ao analisar template automaticamente</p>
                   <p className="text-sm mt-1">{analysisError}</p>
-                  <p className="text-xs mt-2 text-red-300/70">
-                    Você ainda pode fazer o upload, mas precisará configurar os mapeamentos manualmente.
-                  </p>
                 </div>
+              </div>
+              <div className="flex items-center gap-3 pt-2 border-t border-red-500/30">
+                <Button
+                  variant="outline"
+                  onClick={createManualAnalysis}
+                  className="flex-1"
+                  type="button"
+                >
+                  Configurar Manualmente
+                </Button>
+                <p className="text-xs text-red-300/70 flex-1">
+                  Configure os mapeamentos do zero ou tente novamente o upload
+                </p>
               </div>
             </div>
           )}
