@@ -304,9 +304,9 @@ export default function CertificatesPage() {
                       {certificate.course.category}
                     </p>
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${getCertificateBadgeClasses(certificate.certificate_type)}`}
+                      className="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/20 text-green-300"
                     >
-                      {getCertificateTypeLabel(certificate.certificate_type)}
+                      Certificado Técnico
                     </span>
                   </div>
 
@@ -481,7 +481,7 @@ export default function CertificatesPage() {
                     {selectedCertificate.course.title}
                   </p>
                   <p className="text-sm uppercase tracking-wider text-gold-400">
-                    {getCertificateTypeLabel(selectedCertificate.certificate_type)}
+                    Certificado Técnico
                   </p>
                   <div className="flex justify-center gap-8 mt-6">
                     <div>
@@ -504,7 +504,7 @@ export default function CertificatesPage() {
                     Nº {selectedCertificate.certificate_number}
                   </p>
                   <p className="text-xs text-gold-500">
-                    Código de Verificação: {selectedCertificate.validation_code}
+                    Código de Verificação: {selectedCertificate.verification_code}
                   </p>
                 </div>
 
@@ -603,7 +603,7 @@ export default function CertificatesPage() {
                   fontSize: '14px',
                   marginBottom: '20px'
                 }}>
-                  {getCertificateTypeLabel(selectedCertificate.certificate_type)}
+                  Certificado Técnico
                 </p>
                 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '60px', marginTop: '30px', marginBottom: '30px' }}>
@@ -632,7 +632,7 @@ export default function CertificatesPage() {
                   Nº {selectedCertificate.certificate_number}
                 </p>
                 <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '12px' }}>
-                  Código de Verificação: {selectedCertificate.validation_code}
+                  Código de Verificação: {selectedCertificate.verification_code}
                 </p>
               </div>
 
