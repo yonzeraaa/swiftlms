@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
 import Card from '../../../components/Card'
-import { createSuggestedMapping, validateMapping, type TemplateAnalysis } from '@/lib/template-analyzer'
+import { createSuggestedMapping, validateMapping, type TemplateAnalysis, type SuggestedMapping } from '@/lib/template-analyzer'
+import MappingEditor from './MappingEditor'
 
 interface TemplateUploadModalProps {
   onClose: () => void
@@ -28,6 +29,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<TemplateAnalysis | null>(null)
   const [analysisError, setAnalysisError] = useState('')
+  const [customMapping, setCustomMapping] = useState<SuggestedMapping | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -154,12 +156,13 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       // Criar metadata automaticamente se houver análise
       let metadata = null
       if (analysis) {
-        const suggestedMapping = createSuggestedMapping(analysis, category)
-        const validation = validateMapping(suggestedMapping, category)
+        // Usar mapeamento customizado se existir, senão usar sugerido
+        const finalMapping = customMapping || createSuggestedMapping(analysis, category)
+        const validation = validateMapping(finalMapping, category)
 
         metadata = {
           mappings: {
-            [suggestedMapping.source]: suggestedMapping
+            [finalMapping.source]: finalMapping
           },
           analysis: {
             headers: analysis.headers,
@@ -168,7 +171,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           }
         }
 
-        console.log('Metadata gerado automaticamente:', metadata)
+        console.log('Metadata gerado:', customMapping ? '(customizado)' : '(automático)', metadata)
       }
 
       // Salvar metadata no banco de dados
@@ -330,20 +333,30 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           )}
 
           {analysis && !analyzing && (
-            <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg space-y-3">
-              <div className="flex items-center gap-2 text-green-300">
-                <CheckCircle className="h-5 w-5" />
-                <span className="font-semibold">Template analisado com sucesso!</span>
+            <>
+              <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg space-y-3">
+                <div className="flex items-center gap-2 text-green-300">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-semibold">Template analisado com sucesso!</span>
+                </div>
+                <div className="text-sm text-gold-200 space-y-1">
+                  <p>• Planilha: <span className="text-gold-100 font-medium">{analysis.sheetName}</span></p>
+                  <p>• Linha de dados: <span className="text-gold-100 font-medium">{analysis.dataStartRow}</span></p>
+                  <p>• Colunas encontradas: <span className="text-gold-100 font-medium">{analysis.headers.length}</span></p>
+                </div>
+                <div className="text-xs text-gold-300/70">
+                  Configure os mapeamentos abaixo ou use os sugeridos automaticamente
+                </div>
               </div>
-              <div className="text-sm text-gold-200 space-y-1">
-                <p>• Planilha: <span className="text-gold-100 font-medium">{analysis.sheetName}</span></p>
-                <p>• Linha de dados: <span className="text-gold-100 font-medium">{analysis.dataStartRow}</span></p>
-                <p>• Colunas encontradas: <span className="text-gold-100 font-medium">{analysis.headers.length}</span></p>
-              </div>
-              <div className="text-xs text-gold-300/70">
-                Mapeamentos serão configurados automaticamente ao enviar
-              </div>
-            </div>
+
+              {/* Editor de Mapeamento */}
+              <MappingEditor
+                analysis={analysis}
+                category={category}
+                initialMapping={customMapping || createSuggestedMapping(analysis, category)}
+                onChange={setCustomMapping}
+              />
+            </>
           )}
 
           {analysisError && !analyzing && (

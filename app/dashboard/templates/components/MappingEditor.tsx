@@ -1,0 +1,140 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Settings } from 'lucide-react'
+import type { TemplateAnalysis, SuggestedMapping } from '@/lib/template-analyzer'
+import FieldSelector from './FieldSelector'
+import MappingPreview from './MappingPreview'
+
+interface MappingEditorProps {
+  analysis: TemplateAnalysis
+  category: string
+  initialMapping: SuggestedMapping
+  onChange: (mapping: SuggestedMapping) => void
+}
+
+export default function MappingEditor({
+  analysis,
+  category,
+  initialMapping,
+  onChange,
+}: MappingEditorProps) {
+  const [mapping, setMapping] = useState<SuggestedMapping>(initialMapping)
+  const [startRow, setStartRow] = useState(initialMapping.startRow)
+
+  useEffect(() => {
+    const updatedMapping = {
+      ...mapping,
+      startRow,
+    }
+    setMapping(updatedMapping)
+    onChange(updatedMapping)
+  }, [startRow])
+
+  const handleFieldChange = (columnNumber: number, fieldKey: string | undefined) => {
+    const newFields = { ...mapping.fields }
+
+    // Remove mapeamento anterior desta coluna
+    Object.keys(newFields).forEach(key => {
+      if (newFields[key] === columnNumber) {
+        delete newFields[key]
+      }
+    })
+
+    // Adiciona novo mapeamento se campo selecionado
+    if (fieldKey) {
+      newFields[fieldKey] = columnNumber
+    }
+
+    const updatedMapping = {
+      ...mapping,
+      fields: newFields,
+    }
+
+    setMapping(updatedMapping)
+    onChange(updatedMapping)
+  }
+
+  const getFieldForColumn = (columnNumber: number): string | undefined => {
+    return Object.keys(mapping.fields).find(
+      key => mapping.fields[key] === columnNumber
+    )
+  }
+
+  const usedFields = new Set(Object.keys(mapping.fields))
+
+  return (
+    <div className="mt-6 space-y-4">
+      <div className="flex items-center gap-2 text-gold-200">
+        <Settings className="h-5 w-5" />
+        <h3 className="text-lg font-semibold">Configurar Mapeamento</h3>
+      </div>
+
+      <p className="text-sm text-gold-300/70">
+        Selecione qual campo do sistema corresponde a cada coluna do Excel:
+      </p>
+
+      {/* Linha inicial dos dados */}
+      <div className="p-4 bg-navy-800/50 border border-navy-600 rounded-lg">
+        <label className="block text-sm font-medium text-gold-200 mb-2">
+          Linha inicial dos dados
+        </label>
+        <input
+          type="number"
+          min="1"
+          value={startRow}
+          onChange={(e) => setStartRow(Number(e.target.value))}
+          className="w-32 px-3 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all"
+        />
+        <p className="text-xs text-gold-300/70 mt-2">
+          Linha onde os dados começam (após o cabeçalho)
+        </p>
+      </div>
+
+      {/* Lista de colunas */}
+      <div className="space-y-3">
+        {analysis.headers.map((header) => (
+          <div
+            key={header.column}
+            className="p-4 bg-navy-800/50 border border-navy-600 rounded-lg"
+          >
+            <div className="flex items-start gap-4">
+              {/* Coluna do Excel */}
+              <div className="flex-shrink-0">
+                <div className="w-16 h-10 flex items-center justify-center bg-gold-500/10 border border-gold-500/30 rounded">
+                  <span className="text-sm font-mono text-gold-400">
+                    Col {header.column}
+                  </span>
+                </div>
+              </div>
+
+              {/* Nome da coluna */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gold-100 mb-1 truncate">
+                  {header.value}
+                </p>
+                {header.suggestedField && (
+                  <p className="text-xs text-gold-300/70">
+                    Sugestão automática: {header.suggestedField}
+                  </p>
+                )}
+              </div>
+
+              {/* Seletor de campo */}
+              <FieldSelector
+                category={category}
+                value={getFieldForColumn(header.column)}
+                onChange={(fieldKey) => handleFieldChange(header.column, fieldKey)}
+                usedFields={usedFields}
+                columnName={header.value}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Preview */}
+      <MappingPreview mapping={mapping} category={category} />
+    </div>
+  )
+}
