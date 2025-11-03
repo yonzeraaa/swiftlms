@@ -43,7 +43,7 @@ export async function DELETE(
 
     // First, try to use the RPC function if it exists
     try {
-      const { data, error: rpcError } = await supabase
+      const { data, error: rpcError } = await (supabase as any)
         .rpc('delete_user_completely', { user_id_to_delete: userId })
 
       if (!rpcError) {
@@ -88,7 +88,7 @@ export async function DELETE(
     await supabase.from('activity_logs').delete().eq('user_id', userId)
     
     // 11. Delete import_progress
-    await supabase.from('import_progress').delete().eq('user_id', userId)
+    await supabase.from('import_progress' as any).delete().eq('user_id', userId)
     
     // 12. Delete certificate_requirements
     await supabase.from('certificate_requirements').delete().eq('user_id', userId)

@@ -44,6 +44,21 @@ export default function TemplatesPage() {
     return cat?.icon || FileSpreadsheet
   }
 
+  const getCategoryLabel = (category: string) => {
+    const cat = categories.find(c => c.value === category)
+    return cat?.label || 'Templates'
+  }
+
+  const getCategoryColor = (category: string) => {
+    const colors = {
+      users: { bg: 'from-blue-500/20 to-blue-600/10', text: 'text-blue-400', border: 'border-blue-500/30', badge: 'from-blue-500/30 to-blue-600/20' },
+      grades: { bg: 'from-green-500/20 to-green-600/10', text: 'text-green-400', border: 'border-green-500/30', badge: 'from-green-500/30 to-green-600/20' },
+      enrollments: { bg: 'from-amber-500/20 to-amber-600/10', text: 'text-amber-400', border: 'border-amber-500/30', badge: 'from-amber-500/30 to-amber-600/20' },
+      access: { bg: 'from-purple-500/20 to-purple-600/10', text: 'text-purple-400', border: 'border-purple-500/30', badge: 'from-purple-500/30 to-purple-600/20' },
+    }
+    return colors[category as keyof typeof colors] || colors.users
+  }
+
   const getTemplatesByCategory = (category: string) => {
     if (category === 'all') return templates.length
     return templates.filter(t => t.category === category).length
@@ -181,10 +196,14 @@ export default function TemplatesPage() {
             <FileSpreadsheet className="relative h-24 w-24 mx-auto text-gold-400 animate-pulse" />
           </div>
           <h3 className="text-2xl font-bold text-gold-100 mb-3">
-            Nenhum template encontrado
+            {selectedCategory === 'all'
+              ? 'Nenhum template encontrado'
+              : `Nenhum template de ${getCategoryLabel(selectedCategory)} encontrado`}
           </h3>
           <p className="text-gold-300/70 mb-8 max-w-md mx-auto">
-            Faça upload de um template Excel personalizado para começar a gerar relatórios profissionais com sua marca
+            {selectedCategory === 'all'
+              ? 'Faça upload de um template Excel personalizado para começar a gerar relatórios profissionais com sua marca'
+              : `Faça upload de um template Excel para relatórios de ${getCategoryLabel(selectedCategory)}`}
           </p>
           <Button
             onClick={() => setShowUploadModal(true)}
@@ -193,29 +212,30 @@ export default function TemplatesPage() {
             className="gap-2"
           >
             <Plus className="h-5 w-5" />
-            Criar Primeiro Template
+            {selectedCategory === 'all' ? 'Criar Primeiro Template' : `Criar Template de ${getCategoryLabel(selectedCategory)}`}
           </Button>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {templates.map((template) => {
             const CategoryIcon = getCategoryIcon(template.category)
+            const colors = getCategoryColor(template.category)
             return (
               <Card
                 key={template.id}
                 variant="interactive"
                 hoverable
                 depth={3}
-                className="p-6 group relative"
+                className={`p-6 group relative border-l-4 ${colors.border}`}
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="p-3 bg-gradient-to-br from-green-500/20 to-green-600/10 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                    <FileSpreadsheet className="h-7 w-7 text-green-400" />
+                  <div className={`p-3 bg-gradient-to-br ${colors.bg} rounded-xl group-hover:scale-110 transition-transform duration-300 shadow-lg`}>
+                    <FileSpreadsheet className={`h-7 w-7 ${colors.text}`} />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1.5 text-xs bg-gradient-to-r from-navy-500/30 to-gold-500/20 text-gold-300 rounded-full border border-gold-500/30 flex items-center gap-1">
+                    <span className={`px-3 py-1.5 text-xs bg-gradient-to-r ${colors.badge} ${colors.text} rounded-full border ${colors.border} flex items-center gap-1`}>
                       <CategoryIcon className="h-3 w-3" />
-                      {template.category}
+                      {getCategoryLabel(template.category)}
                     </span>
                     <div className="relative">
                       <button
@@ -319,6 +339,7 @@ export default function TemplatesPage() {
             setShowUploadModal(false)
             fetchTemplates()
           }}
+          defaultCategory={selectedCategory !== 'all' ? selectedCategory : 'users'}
         />
       )}
     </div>

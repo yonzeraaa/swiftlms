@@ -10,14 +10,15 @@ import Card from '../../../components/Card'
 interface TemplateUploadModalProps {
   onClose: () => void
   onSuccess: () => void
+  defaultCategory?: string
 }
 
-export default function TemplateUploadModal({ onClose, onSuccess }: TemplateUploadModalProps) {
+export default function TemplateUploadModal({ onClose, onSuccess, defaultCategory = 'users' }: TemplateUploadModalProps) {
   const { user } = useAuth()
   const [file, setFile] = useState<File | null>(null)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState('users')
+  const [category, setCategory] = useState(defaultCategory)
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
