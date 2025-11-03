@@ -1,16 +1,19 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings } from 'lucide-react'
+import { Settings, Plus, Trash2 } from 'lucide-react'
 import type { TemplateAnalysis, SuggestedMapping } from '@/lib/template-analyzer'
 import FieldSelector from './FieldSelector'
 import MappingPreview from './MappingPreview'
+import Button from '../../../components/Button'
 
 interface MappingEditorProps {
   analysis: TemplateAnalysis
   category: string
   initialMapping: SuggestedMapping
   onChange: (mapping: SuggestedMapping) => void
+  manualMode?: boolean
+  onAnalysisChange?: (analysis: TemplateAnalysis) => void
 }
 
 export default function MappingEditor({
@@ -18,9 +21,12 @@ export default function MappingEditor({
   category,
   initialMapping,
   onChange,
+  manualMode = false,
+  onAnalysisChange,
 }: MappingEditorProps) {
   const [mapping, setMapping] = useState<SuggestedMapping>(initialMapping)
   const [startRow, setStartRow] = useState(initialMapping.startRow)
+  const [columns, setColumns] = useState(analysis.headers)
 
   useEffect(() => {
     const updatedMapping = {
@@ -30,6 +36,53 @@ export default function MappingEditor({
     setMapping(updatedMapping)
     onChange(updatedMapping)
   }, [startRow])
+
+  const addColumn = () => {
+    const nextColumnNumber = Math.max(...columns.map(h => h.column), 0) + 1
+    const newColumn = {
+      column: nextColumnNumber,
+      value: `Coluna ${nextColumnNumber}`,
+      suggestedField: undefined,
+    }
+    const newColumns = [...columns, newColumn]
+    setColumns(newColumns)
+
+    if (onAnalysisChange) {
+      onAnalysisChange({
+        ...analysis,
+        headers: newColumns,
+        totalColumns: Math.max(...newColumns.map(h => h.column)),
+      })
+    }
+  }
+
+  const removeColumn = (columnNumber: number) => {
+    const newColumns = columns.filter(h => h.column !== columnNumber)
+    setColumns(newColumns)
+
+    // Remove mapeamento desta coluna
+    const newFields = { ...mapping.fields }
+    Object.keys(newFields).forEach(key => {
+      if (newFields[key] === columnNumber) {
+        delete newFields[key]
+      }
+    })
+
+    const updatedMapping = {
+      ...mapping,
+      fields: newFields,
+    }
+    setMapping(updatedMapping)
+    onChange(updatedMapping)
+
+    if (onAnalysisChange) {
+      onAnalysisChange({
+        ...analysis,
+        headers: newColumns,
+        totalColumns: Math.max(...newColumns.map(h => h.column), 0),
+      })
+    }
+  }
 
   const handleFieldChange = (columnNumber: number, fieldKey: string | undefined) => {
     const newFields = { ...mapping.fields }
@@ -93,7 +146,7 @@ export default function MappingEditor({
 
       {/* Lista de colunas */}
       <div className="space-y-3">
-        {analysis.headers.map((header) => (
+        {columns.map((header) => (
           <div
             key={header.column}
             className="p-4 bg-navy-800/50 border border-navy-600 rounded-lg"
@@ -128,9 +181,34 @@ export default function MappingEditor({
                 usedFields={usedFields}
                 columnName={header.value}
               />
+
+              {/* Botão Remover (apenas modo manual) */}
+              {manualMode && columns.length > 1 && (
+                <button
+                  onClick={() => removeColumn(header.column)}
+                  className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-red-400 hover:text-red-300"
+                  title="Remover coluna"
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
         ))}
+
+        {/* Botão Adicionar Coluna (apenas modo manual) */}
+        {manualMode && (
+          <Button
+            variant="outline"
+            onClick={addColumn}
+            className="w-full"
+            type="button"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar Coluna
+          </Button>
+        )}
       </div>
 
       {/* Preview */}

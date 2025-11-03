@@ -374,6 +374,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 category={category}
                 initialMapping={customMapping || createSuggestedMapping(analysis, category)}
                 onChange={setCustomMapping}
+                manualMode={manualMode}
+                onAnalysisChange={setAnalysis}
               />
             </>
           )}
