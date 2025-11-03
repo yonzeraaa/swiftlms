@@ -143,17 +143,17 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-2xl bg-white dark:bg-navy-900 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <Card variant="elevated" depth={3} className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-navy-800 dark:text-gold-100">
+            <h2 className="text-2xl font-bold text-gold">
               Novo Template Excel
             </h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-navy-800 rounded-lg transition-colors"
+              className="p-2 hover:bg-navy-700 rounded-lg transition-colors text-gold-400 hover:text-gold-300"
             >
               <X className="h-5 w-5" />
             </button>
@@ -161,10 +161,10 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
 
           {/* Upload Area */}
           <div
-            className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-colors ${
+            className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-all duration-300 ${
               dragActive
-                ? 'border-gold-500 bg-gold-500/10'
-                : 'border-gray-300 dark:border-navy-700'
+                ? 'border-gold-500 bg-gold-500/10 scale-[1.02]'
+                : 'border-gold-500/30 bg-navy-800/50'
             }`}
             onDragEnter={handleDrag}
             onDragLeave={handleDrag}
@@ -173,10 +173,10 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           >
             {file ? (
               <div className="flex items-center justify-center gap-3">
-                <FileSpreadsheet className="h-8 w-8 text-green-500" />
+                <FileSpreadsheet className="h-8 w-8 text-green-400" />
                 <div className="text-left">
-                  <p className="font-medium text-navy-800 dark:text-gold-100">{file.name}</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium text-gold-100">{file.name}</p>
+                  <p className="text-sm text-gold-300/70">
                     {(file.size / 1024).toFixed(2)} KB
                   </p>
                 </div>
@@ -191,8 +191,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               </div>
             ) : (
               <>
-                <Upload className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-700 dark:text-gray-300 mb-2">
+                <Upload className="h-12 w-12 mx-auto text-gold-400 mb-4" />
+                <p className="text-gold-100 mb-2">
                   Arraste o arquivo Excel aqui ou
                 </p>
                 <Button
@@ -202,7 +202,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 >
                   Selecionar Arquivo
                 </Button>
-                <p className="text-xs text-gray-500 mt-2">Apenas arquivos .xlsx (máx 10MB)</p>
+                <p className="text-xs text-gold-300/70 mt-2">Apenas arquivos .xlsx (máx 10MB)</p>
               </>
             )}
             <input
@@ -217,42 +217,42 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           {/* Form Fields */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gold-200 mb-2">
                 Nome do Template *
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-navy-700 rounded-lg focus:ring-2 focus:ring-gold-500 dark:bg-navy-800"
+                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all"
                 placeholder="Ex: Relatório de Usuários IPETEC"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gold-200 mb-2">
                 Descrição
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-navy-700 rounded-lg focus:ring-2 focus:ring-gold-500 dark:bg-navy-800"
+                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all resize-none"
                 placeholder="Descreva o propósito deste template..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gold-200 mb-2">
                 Categoria *
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-navy-700 rounded-lg focus:ring-2 focus:ring-gold-500 dark:bg-navy-800"
+                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all cursor-pointer"
               >
                 {categories.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
+                  <option key={cat.value} value={cat.value} className="bg-navy-800 text-gold-100">
                     {cat.label}
                   </option>
                 ))}
