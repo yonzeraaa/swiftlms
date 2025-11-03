@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Upload, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react'
+import { X, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
 import Card from '../../../components/Card'
+import { analyzeTemplate, createSuggestedMapping, validateMapping, type TemplateAnalysis } from '@/lib/template-analyzer'
 
 interface TemplateUploadModalProps {
   onClose: () => void
@@ -25,6 +26,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [errorMessage, setErrorMessage] = useState('')
   const [dragActive, setDragActive] = useState(false)
   const [nameError, setNameError] = useState('')
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysis, setAnalysis] = useState<TemplateAnalysis | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -45,7 +48,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
     }
   }
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragActive(false)
@@ -58,17 +61,37 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       ) {
         setFile(file)
         if (!name) setName(file.name.replace('.xlsx', ''))
+
+        // Analisar template automaticamente
+        await analyzeTemplateFile(file)
       } else {
         alert('Por favor, envie apenas arquivos .xlsx')
       }
     }
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
       setFile(file)
       if (!name) setName(file.name.replace('.xlsx', ''))
+
+      // Analisar template automaticamente
+      await analyzeTemplateFile(file)
+    }
+  }
+
+  const analyzeTemplateFile = async (file: File) => {
+    try {
+      setAnalyzing(true)
+      const templateAnalysis = await analyzeTemplate(file)
+      setAnalysis(templateAnalysis)
+      console.log('Template analisado:', templateAnalysis)
+    } catch (error) {
+      console.error('Erro ao analisar template:', error)
+      setAnalysis(null)
+    } finally {
+      setAnalyzing(false)
     }
   }
 
@@ -112,6 +135,26 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
 
       setUploadProgress(95)
 
+      // Criar metadata automaticamente se houver análise
+      let metadata = null
+      if (analysis) {
+        const suggestedMapping = createSuggestedMapping(analysis, category)
+        const validation = validateMapping(suggestedMapping, category)
+
+        metadata = {
+          mappings: {
+            [suggestedMapping.source]: suggestedMapping
+          },
+          analysis: {
+            headers: analysis.headers,
+            sheetName: analysis.sheetName,
+            validation: validation
+          }
+        }
+
+        console.log('Metadata gerado automaticamente:', metadata)
+      }
+
       // Salvar metadata no banco de dados
       const { error: dbError } = await supabase.from('excel_templates').insert({
         name,
@@ -121,7 +164,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         storage_bucket: 'excel-templates',
         created_by: user.id,
         is_active: true,
-        metadata: null, // Será configurado manualmente depois
+        metadata: metadata
       })
 
       if (dbError) throw dbError
@@ -259,6 +302,33 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               </select>
             </div>
           </div>
+
+          {/* Template Analysis */}
+          {analyzing && (
+            <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-300">
+                <Info className="h-5 w-5 animate-pulse" />
+                <span>Analisando estrutura do template...</span>
+              </div>
+            </div>
+          )}
+
+          {analysis && !analyzing && (
+            <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg space-y-3">
+              <div className="flex items-center gap-2 text-green-300">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-semibold">Template analisado com sucesso!</span>
+              </div>
+              <div className="text-sm text-gold-200 space-y-1">
+                <p>• Planilha: <span className="text-gold-100 font-medium">{analysis.sheetName}</span></p>
+                <p>• Linha de dados: <span className="text-gold-100 font-medium">{analysis.dataStartRow}</span></p>
+                <p>• Colunas encontradas: <span className="text-gold-100 font-medium">{analysis.headers.length}</span></p>
+              </div>
+              <div className="text-xs text-gold-300/70">
+                Mapeamentos serão configurados automaticamente ao enviar
+              </div>
+            </div>
+          )}
 
           {/* Progress Bar */}
           {uploadStatus !== 'idle' && (
