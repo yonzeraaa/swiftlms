@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
 import Card from '../../../components/Card'
-import { analyzeTemplate, createSuggestedMapping, validateMapping, type TemplateAnalysis } from '@/lib/template-analyzer'
+import { createSuggestedMapping, validateMapping, type TemplateAnalysis } from '@/lib/template-analyzer'
 
 interface TemplateUploadModalProps {
   onClose: () => void
@@ -25,9 +25,9 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
   const [dragActive, setDragActive] = useState(false)
-  const [nameError, setNameError] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<TemplateAnalysis | null>(null)
+  const [analysisError, setAnalysisError] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
 
@@ -84,11 +84,27 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const analyzeTemplateFile = async (file: File) => {
     try {
       setAnalyzing(true)
-      const templateAnalysis = await analyzeTemplate(file)
-      setAnalysis(templateAnalysis)
-      console.log('Template analisado:', templateAnalysis)
+      setAnalysisError('')
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/analyze-template', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao analisar template')
+      }
+
+      setAnalysis(data.analysis)
+      console.log('Template analisado:', data.analysis)
     } catch (error) {
       console.error('Erro ao analisar template:', error)
+      setAnalysisError(error instanceof Error ? error.message : 'Erro ao analisar template')
       setAnalysis(null)
     } finally {
       setAnalyzing(false)
@@ -326,6 +342,21 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               </div>
               <div className="text-xs text-gold-300/70">
                 Mapeamentos serão configurados automaticamente ao enviar
+              </div>
+            </div>
+          )}
+
+          {analysisError && !analyzing && (
+            <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <div className="flex items-center gap-2 text-red-300">
+                <AlertCircle className="h-5 w-5" />
+                <div>
+                  <p className="font-semibold">Erro ao analisar template</p>
+                  <p className="text-sm mt-1">{analysisError}</p>
+                  <p className="text-xs mt-2 text-red-300/70">
+                    Você ainda pode fazer o upload, mas precisará configurar os mapeamentos manualmente.
+                  </p>
+                </div>
               </div>
             </div>
           )}
