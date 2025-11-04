@@ -75,29 +75,41 @@ export async function analyzeTemplate(file: File): Promise<TemplateAnalysis> {
 
   const staticCells: StaticCell[] = []
   let tableHeaderRow = 0
-  let maxRowToScan = 50 // Limitar escaneamento
+  const maxRowToScan = 50 // Limitar escaneamento
 
   // Primeira passagem: encontrar linha de cabeçalho da tabela
   // (linha com múltiplas colunas preenchidas consecutivas)
+  let maxConsecutiveCells = 0
+  let candidateHeaderRow = 0
+
   for (let rowNum = 1; rowNum <= Math.min(maxRowToScan, worksheet.rowCount); rowNum++) {
     const row = worksheet.getRow(rowNum)
     let consecutiveCells = 0
     let hasContent = false
+    let hasLabelCell = false
 
     row.eachCell({ includeEmpty: false }, (cell) => {
       const value = String(cell.value || '').trim()
       if (value) {
         consecutiveCells++
         hasContent = true
+
+        // Verificar se célula termina com ":" (é um label, não cabeçalho)
+        if (value.endsWith(':')) {
+          hasLabelCell = true
+        }
       }
     })
 
-    // Se encontrou linha com 3+ colunas, provavelmente é cabeçalho da tabela
-    if (consecutiveCells >= 3 && hasContent) {
-      tableHeaderRow = rowNum
-      break
+    // Procurar linha com maior número de colunas consecutivas (5+)
+    // Ignorar linhas que contêm labels (terminam com ":")
+    if (consecutiveCells >= 5 && hasContent && !hasLabelCell && consecutiveCells > maxConsecutiveCells) {
+      maxConsecutiveCells = consecutiveCells
+      candidateHeaderRow = rowNum
     }
   }
+
+  tableHeaderRow = candidateHeaderRow
 
   // Segunda passagem: coletar células estáticas (antes da tabela)
   for (let rowNum = 1; rowNum < tableHeaderRow; rowNum++) {
