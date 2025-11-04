@@ -43,6 +43,30 @@ export const TEMPLATE_FIELDS_BY_CATEGORY: Record<string, FieldDefinition[]> = {
     { key: 'created_at', label: 'Data/Hora do Acesso', required: false, description: 'Timestamp do acesso' },
     { key: 'course', label: 'Curso Acessado', required: false, description: 'Curso que foi acessado' },
   ],
+  'student-history': [
+    // Cabeçalho
+    { key: 'course_name', label: 'Nome do Curso', required: true, description: 'Nome completo do curso' },
+    { key: 'category', label: 'Categoria', required: true, description: 'Categoria do curso (ex: Pós-graduação)' },
+    { key: 'institution', label: 'Instituição', required: true, description: 'Nome da instituição' },
+    { key: 'enrollment_date', label: 'Matrícula', required: false, description: 'Data de matrícula do aluno' },
+    { key: 'coordination', label: 'Coordenação', required: false, description: 'Nome do coordenador do curso' },
+    { key: 'student_name', label: 'Aluno', required: true, description: 'Nome completo do aluno' },
+    // Situação Acadêmica
+    { key: 'approval', label: 'Aprovação', required: true, description: 'Status de aprovação (Sim/Não)' },
+    { key: 'last_access', label: 'Último acesso', required: false, description: 'Data e hora do último acesso' },
+    { key: 'tests_grade', label: 'Avaliação dos testes', required: true, description: 'Nota média dos testes' },
+    { key: 'tcc_grade', label: 'Avaliação do TCC', required: true, description: 'Nota do TCC' },
+    { key: 'general_average', label: 'Média Geral', required: true, description: 'Média geral ponderada' },
+    // Tabela de Módulos e Disciplinas
+    { key: 'code', label: 'Código', required: true, description: 'Código do módulo ou disciplina' },
+    { key: 'name', label: 'Módulos e Disciplinas', required: true, description: 'Nome do módulo ou disciplina' },
+    { key: 'workload', label: 'Carga Horária', required: true, description: 'Carga horária em horas' },
+    { key: 'completion_date', label: 'Data da Finalização', required: false, description: 'Data de conclusão da disciplina' },
+    { key: 'score', label: 'Pontuação', required: false, description: 'Pontuação obtida' },
+    // Totais
+    { key: 'total_workload', label: 'Total Carga Horária', required: false, description: 'Soma total de todas as cargas horárias' },
+    { key: 'total_duration_days', label: 'Total Duração (Dias)', required: false, description: 'Tempo total do curso em dias' },
+  ],
 }
 
 export function getFieldsForCategory(category: string): FieldDefinition[] {

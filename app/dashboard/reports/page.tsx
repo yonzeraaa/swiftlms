@@ -1630,7 +1630,25 @@ export default function ReportsPage() {
     setGeneratingReport('student-history')
 
     try {
-      // Buscar dados do aluno
+      // Tentar gerar usando template
+      const blob = await generateReportWithTemplate('student-history', selectedTemplate || undefined, { userId })
+
+      if (blob) {
+        // Usar template
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `SWIFTEDU_HISTORICO_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+        alert('Histórico do Aluno gerado com sucesso!')
+        setGeneratingReport(null)
+        return
+      }
+
+      // Fallback: gerar sem template (método antigo)
       const { data: enrollment, error: enrollmentError } = await supabase
         .from('enrollments')
         .select(`
@@ -1656,26 +1674,18 @@ export default function ReportsPage() {
         return
       }
 
-      // Buscar tentativas de testes
       const { data: testAttempts } = await supabase
         .from('test_attempts')
         .select('*, test:tests(*)')
         .eq('user_id', userId)
 
-      // Calcular média dos testes
       const testScores = testAttempts?.map((ta: any) => ta.score) || []
       const avgTests = testScores.length > 0 ? testScores.reduce((a: number, b: number) => a + b, 0) / testScores.length : 0
-
-      // Buscar avaliação do TCC (placeholder)
-      const tccScore = 72.0 // Implementar busca real
-
-      // Calcular média ponderada: ((Média dos Testes × 1) + (Nota do TCC × 2)) / 3
+      const tccScore = 72.0
       const mediaGeral = ((avgTests * 1) + (tccScore * 2)) / 3
 
-      // Processar módulos e disciplinas
       const modulesData: any[] = []
       enrollment.course.modules?.forEach((module: any, moduleIndex: number) => {
-        // Adicionar linha do módulo
         modulesData.push({
           codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}`,
           nome: `Módulo ${module.title}`,
@@ -1685,7 +1695,6 @@ export default function ReportsPage() {
           isModule: true
         })
 
-        // Adicionar disciplinas do módulo (lessons)
         module.lessons?.forEach((lesson: any, lessonIndex: number) => {
           const progress = lesson.lesson_progress?.[0]
           modulesData.push({
@@ -1699,9 +1708,7 @@ export default function ReportsPage() {
         })
       })
 
-      // Criar exportador Excel
       const exporter = new ExcelExporter()
-
       exporter.addDataSheet('Histórico', {
         title: `HISTÓRICO ACADÊMICO - ${userName}`,
         headers: ['CÓDIGO', 'MÓDULOS E DISCIPLINAS', 'CARGA HORÁRIA', 'DATA DA FINALIZAÇÃO', 'PONTUAÇÃO'],
@@ -1718,7 +1725,7 @@ export default function ReportsPage() {
         },
         formatting: {
           columns: {
-            4: { // Pontuação
+            4: {
               condition: (value: any) => typeof value === 'number' && value < 70,
               font: { bold: true, color: '#FF0000' }
             }

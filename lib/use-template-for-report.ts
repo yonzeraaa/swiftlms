@@ -1,13 +1,15 @@
 import { createClient } from '@/lib/supabase/client'
 import { ExcelTemplateEngine } from './excel-template-engine'
 import { fetchUsersData, mapUsersDataForTemplate } from './excel-template-mappers/users-mapper'
+import { fetchStudentHistoryData, mapStudentHistoryDataForTemplate } from './excel-template-mappers/student-history-mapper'
 
 /**
  * Hook para usar templates em relatórios
  */
 export async function generateReportWithTemplate(
   category: string,
-  templateId?: string
+  templateId?: string,
+  params?: { userId?: string }
 ): Promise<Blob | null> {
   const supabase = createClient()
 
@@ -43,6 +45,12 @@ export async function generateReportWithTemplate(
     if (category === 'users') {
       const userData = await fetchUsersData()
       reportData = mapUsersDataForTemplate(userData)
+    } else if (category === 'student-history') {
+      if (!params?.userId) {
+        throw new Error('userId é obrigatório para relatório de histórico do aluno')
+      }
+      const historyData = await fetchStudentHistoryData(params.userId)
+      reportData = mapStudentHistoryDataForTemplate(historyData)
     } else {
       throw new Error(`Categoria não suportada ainda: ${category}`)
     }
