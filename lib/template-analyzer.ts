@@ -103,36 +103,25 @@ export async function analyzeTemplate(file: File): Promise<TemplateAnalysis> {
   for (let rowNum = 1; rowNum < tableHeaderRow; rowNum++) {
     const row = worksheet.getRow(rowNum)
 
-    row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
       const value = String(cell.value || '').trim()
-      if (value && value.length > 0) {
-        // Detectar se é um label (termina com ':' ou está em coluna específica)
-        const isLabel = value.endsWith(':') || colNumber <= 2
 
-        if (isLabel) {
-          // Label encontrado, verificar célula adjacente com valor
-          const nextCell = row.getCell(colNumber + 1)
-          const nextValue = String(nextCell.value || '').trim()
+      // Detectar se célula atual é um label (termina com ':')
+      const isLabel = value.endsWith(':')
 
-          staticCells.push({
-            address: nextCell.address,
-            row: rowNum,
-            column: colNumber + 1,
-            label: value.replace(':', '').trim(),
-            value: nextValue,
-            suggestedField: suggestFieldName(value.replace(':', '').trim())
-          })
-        } else if (colNumber >= 3) {
-          // Célula sem label explícito, mas pode ser um campo estático
-          staticCells.push({
-            address: cell.address,
-            row: rowNum,
-            column: colNumber,
-            label: value,
-            value: value,
-            suggestedField: suggestFieldName(value)
-          })
-        }
+      if (isLabel) {
+        // Label encontrado, mapear célula adjacente (mesmo se vazia)
+        const nextCell = row.getCell(colNumber + 1)
+        const nextValue = String(nextCell.value || '').trim()
+
+        staticCells.push({
+          address: nextCell.address,
+          row: rowNum,
+          column: colNumber + 1,
+          label: value.replace(':', '').trim(),
+          value: nextValue,
+          suggestedField: suggestFieldName(value.replace(':', '').trim())
+        })
       }
     })
   }
