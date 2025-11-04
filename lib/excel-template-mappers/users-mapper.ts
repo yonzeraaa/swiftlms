@@ -8,17 +8,17 @@ export interface UserReportData {
 }
 
 export interface UserRowData {
-  nome_completo: string
+  full_name: string
   email: string
-  whatsapp: string
-  codigo_curso: string
-  atividade: string
-  pontuacao: number
-  avanco: number
-  data_matricula: string
-  data_conclusao: string
-  tempo_sistema: number
-  situacao: string
+  phone: string
+  course_code: string
+  role: string
+  grade: number
+  progress: number
+  enrollment_date: string
+  completed_at: string
+  time_in_system: number
+  status: string
 }
 
 /**
@@ -52,22 +52,22 @@ export async function fetchUsersData(): Promise<UserReportData> {
       // Se não tem matrículas, criar linha sem curso
       if (!user.enrollments || user.enrollments.length === 0) {
         usersData.push({
-          nome_completo: user.full_name || 'Usuário desconhecido',
+          full_name: user.full_name || 'Usuário desconhecido',
           email: user.email || '',
-          whatsapp: user.phone || '',
-          codigo_curso: '-',
-          atividade:
+          phone: user.phone || '',
+          course_code: '-',
+          role:
             user.role === 'admin'
               ? 'Administrador'
               : user.role === 'instructor'
                 ? 'Professor'
                 : 'Estudante',
-          pontuacao: 0,
-          avanco: 0,
-          data_matricula: '',
-          data_conclusao: '',
-          tempo_sistema: 0,
-          situacao: user.status === 'inactive' ? 'Inativo' : 'Ativo',
+          grade: 0,
+          progress: 0,
+          enrollment_date: '',
+          completed_at: '',
+          time_in_system: 0,
+          status: user.status === 'inactive' ? 'Inativo' : 'Ativo',
         })
         continue
       }
@@ -101,26 +101,26 @@ export async function fetchUsersData(): Promise<UserReportData> {
         }
 
         usersData.push({
-          nome_completo: user.full_name || 'Usuário desconhecido',
+          full_name: user.full_name || 'Usuário desconhecido',
           email: user.email || '',
-          whatsapp: user.phone || '',
-          codigo_curso: enrollment.course?.slug || '-',
-          atividade:
+          phone: user.phone || '',
+          course_code: enrollment.course?.slug || '-',
+          role:
             user.role === 'admin'
               ? 'Administrador'
               : user.role === 'instructor'
                 ? 'Professor'
                 : 'Estudante',
-          pontuacao: Math.round(pontuacao * 10) / 10,
-          avanco: Math.round(avanco * 10) / 10,
-          data_matricula: enrollment.enrolled_at
+          grade: Math.round(pontuacao * 10) / 10,
+          progress: Math.round(avanco * 10) / 10,
+          enrollment_date: enrollment.enrolled_at
             ? format(new Date(enrollment.enrolled_at), 'dd/MM/yyyy')
             : '',
-          data_conclusao: enrollment.completed_at
+          completed_at: enrollment.completed_at
             ? format(new Date(enrollment.completed_at), 'dd/MM/yyyy')
             : '-',
-          tempo_sistema: diffHours,
-          situacao,
+          time_in_system: diffHours,
+          status: situacao,
         })
       }
     }
@@ -151,17 +151,17 @@ export function createUsersMappingMetadata(): TemplateMetadata {
         source: 'users',
         startRow: 5, // Linha onde começa a tabela (após cabeçalho)
         fields: {
-          nome_completo: 1, // Coluna A
+          full_name: 1, // Coluna A
           email: 2, // Coluna B
-          whatsapp: 3, // Coluna C
-          codigo_curso: 4, // Coluna D
-          atividade: 5, // Coluna E
-          pontuacao: 6, // Coluna F
-          avanco: 7, // Coluna G
-          data_matricula: 8, // Coluna H
-          data_conclusao: 9, // Coluna I
-          tempo_sistema: 10, // Coluna J
-          situacao: 11, // Coluna K
+          phone: 3, // Coluna C
+          course_code: 4, // Coluna D
+          role: 5, // Coluna E
+          grade: 6, // Coluna F
+          progress: 7, // Coluna G
+          enrollment_date: 8, // Coluna H
+          completed_at: 9, // Coluna I
+          time_in_system: 10, // Coluna J
+          status: 11, // Coluna K
         },
       } as ArrayMapping,
     },

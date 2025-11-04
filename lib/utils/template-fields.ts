@@ -14,10 +14,13 @@ export const TEMPLATE_FIELDS_BY_CATEGORY: Record<string, FieldDefinition[]> = {
     { key: 'role', label: 'Perfil/Tipo', required: false, description: 'Perfil ou tipo de usuário' },
     { key: 'status', label: 'Status', required: false, description: 'Status do usuário (ativo, inativo, etc)' },
     { key: 'course', label: 'Curso', required: false, description: 'Curso matriculado' },
+    { key: 'course_code', label: 'Código do Curso', required: false, description: 'Código/slug do curso' },
     { key: 'enrollment_date', label: 'Data de Matrícula', required: false, description: 'Data de matrícula no curso' },
+    { key: 'completed_at', label: 'Data de Conclusão', required: false, description: 'Data de conclusão do curso' },
     { key: 'created_at', label: 'Data de Cadastro', required: false, description: 'Data de criação do cadastro' },
     { key: 'grade', label: 'Nota/Pontuação', required: false, description: 'Nota ou pontuação do usuário' },
     { key: 'progress', label: 'Progresso (%)', required: false, description: 'Percentual de progresso no curso' },
+    { key: 'time_in_system', label: 'Tempo no Sistema (h)', required: false, description: 'Tempo em horas que o usuário está no sistema' },
   ],
   grades: [
     { key: 'full_name', label: 'Nome Completo', required: true, description: 'Nome do aluno' },
