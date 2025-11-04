@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { Settings, Plus, Trash2 } from 'lucide-react'
-import type { TemplateAnalysis, SuggestedMapping } from '@/lib/template-analyzer'
+import type { TemplateAnalysis, SuggestedMapping, StaticCell } from '@/lib/template-analyzer'
 import FieldSelector from './FieldSelector'
+import StaticFieldMapper from './StaticFieldMapper'
 import MappingPreview from './MappingPreview'
 import Button from '../../../components/Button'
 
@@ -12,6 +13,7 @@ interface MappingEditorProps {
   category: string
   initialMapping: SuggestedMapping
   onChange: (mapping: SuggestedMapping) => void
+  onStaticMappingsChange?: (staticMappings: Record<string, string>) => void
   manualMode?: boolean
   onAnalysisChange?: (analysis: TemplateAnalysis) => void
 }
@@ -21,12 +23,15 @@ export default function MappingEditor({
   category,
   initialMapping,
   onChange,
+  onStaticMappingsChange,
   manualMode = false,
   onAnalysisChange,
 }: MappingEditorProps) {
   const [mapping, setMapping] = useState<SuggestedMapping>(initialMapping)
   const [startRow, setStartRow] = useState(initialMapping.startRow)
   const [columns, setColumns] = useState(analysis.headers)
+  const [staticCells, setStaticCells] = useState<StaticCell[]>(analysis.staticCells || [])
+  const [staticMappings, setStaticMappings] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const updatedMapping = {
@@ -36,6 +41,32 @@ export default function MappingEditor({
     setMapping(updatedMapping)
     onChange(updatedMapping)
   }, [startRow])
+
+  useEffect(() => {
+    if (onStaticMappingsChange) {
+      onStaticMappingsChange(staticMappings)
+    }
+  }, [staticMappings, onStaticMappingsChange])
+
+  const handleStaticFieldChange = (cellAddress: string, fieldKey: string | null) => {
+    const newMappings = { ...staticMappings }
+
+    if (fieldKey) {
+      newMappings[cellAddress] = fieldKey
+    } else {
+      delete newMappings[cellAddress]
+    }
+
+    setStaticMappings(newMappings)
+  }
+
+  const handleRemoveStaticCell = (cellAddress: string) => {
+    setStaticCells(staticCells.filter(cell => cell.address !== cellAddress))
+
+    const newMappings = { ...staticMappings }
+    delete newMappings[cellAddress]
+    setStaticMappings(newMappings)
+  }
 
   const addColumn = () => {
     const nextColumnNumber = Math.max(...columns.map(h => h.column), 0) + 1
@@ -117,18 +148,56 @@ export default function MappingEditor({
   const usedFields = new Set(Object.keys(mapping.fields))
 
   return (
-    <div className="mt-6 space-y-4">
+    <div className="mt-6 space-y-6">
       <div className="flex items-center gap-2 text-gold-200">
         <Settings className="h-5 w-5" />
         <h3 className="text-lg font-semibold">Configurar Mapeamento</h3>
       </div>
 
       <p className="text-sm text-gold-300/70">
-        Selecione qual campo do sistema corresponde a cada coluna do Excel:
+        Mapeie os campos estáticos do cabeçalho e as colunas da tabela de dados:
       </p>
 
-      {/* Linha inicial dos dados */}
-      <div className="p-4 bg-navy-800/50 border border-navy-600 rounded-lg">
+      {/* Seção: Campos Estáticos */}
+      {staticCells.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-gold-200">
+            <div className="h-px flex-1 bg-gold-500/20" />
+            <h4 className="text-sm font-semibold">Campos Estáticos (Cabeçalho)</h4>
+            <div className="h-px flex-1 bg-gold-500/20" />
+          </div>
+
+          <p className="text-xs text-gold-300/60">
+            Células individuais detectadas antes da tabela de dados:
+          </p>
+
+          <div className="space-y-2">
+            {staticCells.map((cell) => (
+              <StaticFieldMapper
+                key={cell.address}
+                cell={cell}
+                category={category}
+                mappedField={staticMappings[cell.address]}
+                onFieldChange={handleStaticFieldChange}
+                onRemove={handleRemoveStaticCell}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Seção: Configuração da Tabela */}
+      <div className="space-y-4">
+        {staticCells.length > 0 && (
+          <div className="flex items-center gap-2 text-gold-200">
+            <div className="h-px flex-1 bg-gold-500/20" />
+            <h4 className="text-sm font-semibold">Tabela de Dados</h4>
+            <div className="h-px flex-1 bg-gold-500/20" />
+          </div>
+        )}
+
+        {/* Linha inicial dos dados */}
+        <div className="p-4 bg-navy-800/50 border border-navy-600 rounded-lg">
         <label className="block text-sm font-medium text-gold-200 mb-2">
           Linha inicial dos dados
         </label>
@@ -144,8 +213,8 @@ export default function MappingEditor({
         </p>
       </div>
 
-      {/* Lista de colunas */}
-      <div className="space-y-3">
+        {/* Lista de colunas */}
+        <div className="space-y-3">
         {columns.map((header) => (
           <div
             key={header.column}
@@ -209,6 +278,7 @@ export default function MappingEditor({
             Adicionar Coluna
           </Button>
         )}
+      </div>
       </div>
 
       {/* Preview */}

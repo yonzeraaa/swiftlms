@@ -30,6 +30,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [analysis, setAnalysis] = useState<TemplateAnalysis | null>(null)
   const [analysisError, setAnalysisError] = useState('')
   const [customMapping, setCustomMapping] = useState<SuggestedMapping | null>(null)
+  const [staticMappings, setStaticMappings] = useState<Record<string, string>>({})
   const [manualMode, setManualMode] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
@@ -92,6 +93,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         { column: 2, value: 'Coluna 2', suggestedField: undefined },
         { column: 3, value: 'Coluna 3', suggestedField: undefined },
       ],
+      staticCells: [],
       dataStartRow: 2,
       sheetName: 'Sheet1',
       totalColumns: 3,
@@ -179,18 +181,26 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         const finalMapping = customMapping || createSuggestedMapping(analysis, category)
         const validation = validateMapping(finalMapping, category)
 
+        // Construir mappings combinando estáticos e array
+        const allMappings: Record<string, string | any> = {
+          // Mapeamentos estáticos (células individuais)
+          ...staticMappings,
+          // Mapeamento de array (tabela)
+          [finalMapping.source]: finalMapping
+        }
+
         metadata = {
-          mappings: {
-            [finalMapping.source]: finalMapping
-          },
+          mappings: allMappings,
           analysis: {
             headers: analysis.headers,
+            staticCells: analysis.staticCells || [],
             sheetName: analysis.sheetName,
             validation: validation
           }
         }
 
         console.log('Metadata gerado:', customMapping ? '(customizado)' : '(automático)', metadata)
+        console.log('Mapeamentos estáticos:', Object.keys(staticMappings).length, 'células')
       }
 
       // Salvar metadata no banco de dados
@@ -374,6 +384,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 category={category}
                 initialMapping={customMapping || createSuggestedMapping(analysis, category)}
                 onChange={setCustomMapping}
+                onStaticMappingsChange={setStaticMappings}
                 manualMode={manualMode}
                 onAnalysisChange={setAnalysis}
               />

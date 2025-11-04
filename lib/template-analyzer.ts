@@ -1,11 +1,21 @@
 import ExcelJS from 'exceljs'
 
+export interface StaticCell {
+  address: string
+  row: number
+  column: number
+  label: string
+  value: string
+  suggestedField?: string
+}
+
 export interface TemplateAnalysis {
   headers: Array<{
     column: number
     value: string
     suggestedField?: string
   }>
+  staticCells: StaticCell[]
   dataStartRow: number
   sheetName: string
   totalColumns: number
@@ -22,7 +32,8 @@ export interface SuggestedMapping {
  * Mapas de termos comuns para campos do sistema
  */
 const FIELD_MAPPINGS: Record<string, string[]> = {
-  full_name: ['nome', 'name', 'nome completo', 'full name', 'aluno', 'student', 'usuario', 'user'],
+  full_name: ['nome', 'name', 'nome completo', 'full name', 'usuario', 'user'],
+  student_name: ['aluno', 'student', 'nome do aluno', 'student name'],
   email: ['email', 'e-mail', 'mail', 'correio'],
   role: ['perfil', 'role', 'tipo', 'type', 'função', 'cargo'],
   status: ['status', 'estado', 'state', 'situação', 'situacao'],
@@ -31,6 +42,20 @@ const FIELD_MAPPINGS: Record<string, string[]> = {
   cpf: ['cpf', 'documento', 'document'],
   enrollment_date: ['matricula', 'enrollment', 'data matricula', 'enrollment date'],
   course: ['curso', 'course'],
+  course_name: ['nome do curso', 'course name', 'curso'],
+  category: ['categoria', 'category', 'tipo de curso'],
+  institution: ['instituição', 'instituicao', 'institution', 'escola'],
+  coordination: ['coordenação', 'coordenacao', 'coordination', 'coordenador'],
+  approval: ['aprovação', 'aprovacao', 'approval', 'aprovado'],
+  last_access: ['último acesso', 'ultimo acesso', 'last access', 'acesso'],
+  tests_grade: ['avaliação dos testes', 'avaliacao dos testes', 'nota testes', 'tests grade'],
+  tcc_grade: ['avaliação do tcc', 'avaliacao do tcc', 'nota tcc', 'tcc grade', 'tcc'],
+  general_average: ['média geral', 'media geral', 'general average', 'média', 'media'],
+  code: ['código', 'codigo', 'code'],
+  name: ['nome', 'name', 'módulos', 'modulos', 'disciplinas'],
+  workload: ['carga horária', 'carga horaria', 'workload', 'horas'],
+  completion_date: ['data da finalização', 'data finalizacao', 'completion date', 'finalização', 'conclusão'],
+  score: ['pontuação', 'pontuacao', 'score', 'nota'],
   grade: ['nota', 'grade', 'pontuação', 'score'],
   progress: ['progresso', 'progress', 'percentual', 'percentage'],
 }
@@ -48,32 +73,94 @@ export async function analyzeTemplate(file: File): Promise<TemplateAnalysis> {
     throw new Error('Nenhuma planilha encontrada no template')
   }
 
-  // Encontrar linha de cabeçalho (primeira linha não vazia)
-  const firstRow = worksheet.getRow(1)
+  const staticCells: StaticCell[] = []
+  let tableHeaderRow = 0
+  let maxRowToScan = 50 // Limitar escaneamento
 
-  // Extrair cabeçalhos
+  // Primeira passagem: encontrar linha de cabeçalho da tabela
+  // (linha com múltiplas colunas preenchidas consecutivas)
+  for (let rowNum = 1; rowNum <= Math.min(maxRowToScan, worksheet.rowCount); rowNum++) {
+    const row = worksheet.getRow(rowNum)
+    let consecutiveCells = 0
+    let hasContent = false
+
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      const value = String(cell.value || '').trim()
+      if (value) {
+        consecutiveCells++
+        hasContent = true
+      }
+    })
+
+    // Se encontrou linha com 3+ colunas, provavelmente é cabeçalho da tabela
+    if (consecutiveCells >= 3 && hasContent) {
+      tableHeaderRow = rowNum
+      break
+    }
+  }
+
+  // Segunda passagem: coletar células estáticas (antes da tabela)
+  for (let rowNum = 1; rowNum < tableHeaderRow; rowNum++) {
+    const row = worksheet.getRow(rowNum)
+
+    row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      const value = String(cell.value || '').trim()
+      if (value && value.length > 0) {
+        // Detectar se é um label (termina com ':' ou está em coluna específica)
+        const isLabel = value.endsWith(':') || colNumber <= 2
+
+        if (isLabel) {
+          // Label encontrado, verificar célula adjacente com valor
+          const nextCell = row.getCell(colNumber + 1)
+          const nextValue = String(nextCell.value || '').trim()
+
+          staticCells.push({
+            address: nextCell.address,
+            row: rowNum,
+            column: colNumber + 1,
+            label: value.replace(':', '').trim(),
+            value: nextValue,
+            suggestedField: suggestFieldName(value.replace(':', '').trim())
+          })
+        } else if (colNumber >= 3) {
+          // Célula sem label explícito, mas pode ser um campo estático
+          staticCells.push({
+            address: cell.address,
+            row: rowNum,
+            column: colNumber,
+            label: value,
+            value: value,
+            suggestedField: suggestFieldName(value)
+          })
+        }
+      }
+    })
+  }
+
+  // Extrair cabeçalhos da tabela
   const headers: TemplateAnalysis['headers'] = []
   let totalColumns = 0
 
-  firstRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-    const value = String(cell.value || '').trim()
-    if (value) {
-      headers.push({
-        column: colNumber,
-        value,
-        suggestedField: suggestFieldName(value),
-      })
-      totalColumns = Math.max(totalColumns, colNumber)
-    }
-  })
+  if (tableHeaderRow > 0) {
+    const headerRow = worksheet.getRow(tableHeaderRow)
 
-  if (headers.length === 0) {
-    throw new Error('Nenhuma linha de cabeçalho encontrada')
+    headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      const value = String(cell.value || '').trim()
+      if (value) {
+        headers.push({
+          column: colNumber,
+          value,
+          suggestedField: suggestFieldName(value),
+        })
+        totalColumns = Math.max(totalColumns, colNumber)
+      }
+    })
   }
 
   return {
     headers,
-    dataStartRow: 2,
+    staticCells,
+    dataStartRow: tableHeaderRow > 0 ? tableHeaderRow + 1 : 2,
     sheetName: worksheet.name,
     totalColumns,
   }
