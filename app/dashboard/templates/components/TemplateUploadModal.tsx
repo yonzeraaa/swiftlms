@@ -40,6 +40,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
     { value: 'grades', label: 'Relatório de Notas' },
     { value: 'enrollments', label: 'Relatório de Matrículas' },
     { value: 'access', label: 'Relatório de Acessos' },
+    { value: 'student-history', label: 'Histórico do Aluno' },
   ]
 
   const handleDrag = (e: React.DragEvent) => {

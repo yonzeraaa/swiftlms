@@ -21,7 +21,10 @@ export default function StaticFieldMapper({
   onRemove
 }: StaticFieldMapperProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const fields = getFieldsForCategory(category)
+  const allFields = getFieldsForCategory(category)
+
+  // Filtrar apenas campos estáticos (ou sem tipo para compatibilidade)
+  const fields = allFields.filter((f: FieldDefinition) => !f.type || f.type === 'static')
 
   const selectedField = fields.find((f: FieldDefinition) => f.key === mappedField)
 

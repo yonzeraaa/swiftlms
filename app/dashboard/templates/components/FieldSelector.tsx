@@ -18,7 +18,10 @@ export default function FieldSelector({
   usedFields,
   columnName,
 }: FieldSelectorProps) {
-  const fields = getFieldsForCategory(category)
+  const allFields = getFieldsForCategory(category)
+
+  // Filtrar apenas campos de tabela (ou sem tipo para compatibilidade)
+  const fields = allFields.filter((f: FieldDefinition) => !f.type || f.type === 'table')
 
   return (
     <div className="flex-1">
