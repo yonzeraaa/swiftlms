@@ -23,6 +23,12 @@ export default function FieldSelector({
   // Filtrar apenas campos de tabela (ou sem tipo para compatibilidade)
   const fields = allFields.filter((f: FieldDefinition) => !f.type || f.type === 'table')
 
+  // DEBUG: Log para rastrear categoria e campos
+  console.log('[FieldSelector] Column:', columnName)
+  console.log('[FieldSelector] Category:', category)
+  console.log('[FieldSelector] Total fields from category:', allFields.length, allFields.map(f => f.key))
+  console.log('[FieldSelector] Filtered fields (table):', fields.length, fields.map(f => `${f.key} (type: ${f.type || 'undefined'})`))
+
   return (
     <div className="flex-1">
       <select

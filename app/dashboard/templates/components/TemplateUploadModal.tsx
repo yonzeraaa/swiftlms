@@ -380,6 +380,13 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               </div>
 
               {/* Editor de Mapeamento */}
+              {(() => {
+                // DEBUG: Log para rastrear categoria antes de passar para MappingEditor
+                console.log('[TemplateUploadModal] Passing category to MappingEditor:', category)
+                console.log('[TemplateUploadModal] Analysis headers:', analysis.headers.map(h => h.value))
+                console.log('[TemplateUploadModal] Analysis static cells:', analysis.staticCells?.map(c => `${c.address}: ${c.label}`))
+                return null
+              })()}
               <MappingEditor
                 analysis={analysis}
                 category={category}

@@ -27,6 +27,11 @@ export default function MappingEditor({
   manualMode = false,
   onAnalysisChange,
 }: MappingEditorProps) {
+  // DEBUG: Log para rastrear categoria recebida
+  console.log('[MappingEditor] Category received:', category)
+  console.log('[MappingEditor] Static cells count:', analysis.staticCells?.length || 0)
+  console.log('[MappingEditor] Headers count:', analysis.headers?.length || 0)
+
   const [mapping, setMapping] = useState<SuggestedMapping>(initialMapping)
   const [startRow, setStartRow] = useState(initialMapping.startRow)
   const [columns, setColumns] = useState(analysis.headers)
