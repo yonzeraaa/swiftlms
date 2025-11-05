@@ -257,9 +257,13 @@ useEffect(() => {
     tokenClientRef.current.requestAccessToken()
   }
 
-  const listFilesRecursively = async (folderId: string, parentId: string | null = null, allFiles: any[] = []): Promise<any[]> => {
+  const listFilesRecursively = async (folderId: string, parentId: string | null = null, allFiles: any[] = [], depth: number = 0): Promise<any[]> => {
+    // DEBUG: Log da busca atual
+    console.log(`[DriveImport] ${'  '.repeat(depth)}📁 Buscando arquivos em folder ID: ${folderId}`)
+    console.log(`[DriveImport] ${'  '.repeat(depth)}   Parent ID: ${parentId || 'ROOT'}`)
+
     const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=files(id,name,mimeType)&pageSize=1000`,
+      `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=files(id,name,mimeType,parents)&pageSize=1000`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`
@@ -274,11 +278,19 @@ useEffect(() => {
     const data = await response.json()
     const files = data.files || []
 
+    console.log(`[DriveImport] ${'  '.repeat(depth)}   Encontrados ${files.length} itens`)
+
     for (const file of files) {
+      // DEBUG: Log de cada arquivo/pasta encontrado
+      const icon = file.mimeType === 'application/vnd.google-apps.folder' ? '📁' : '📄'
+      console.log(`[DriveImport] ${'  '.repeat(depth)}   ${icon} ${file.name} (ID: ${file.id})`)
+      console.log(`[DriveImport] ${'  '.repeat(depth)}      Parents retornados pela API: ${JSON.stringify(file.parents || [])}`)
+      console.log(`[DriveImport] ${'  '.repeat(depth)}      Parent ID atribuído: ${parentId}`)
+
       allFiles.push({ ...file, parentId })
 
       if (file.mimeType === 'application/vnd.google-apps.folder') {
-        await listFilesRecursively(file.id, file.id, allFiles)
+        await listFilesRecursively(file.id, file.id, allFiles, depth + 1)
       }
     }
 
@@ -288,7 +300,13 @@ useEffect(() => {
   const handleListItems = async () => {
     if (!accessToken || !driveUrl) return
 
+    // DEBUG: Log do URL original e folder ID extraído
+    console.log('=== INICIANDO IMPORTAÇÃO DO GOOGLE DRIVE ===')
+    console.log('[DriveImport] URL fornecido:', driveUrl)
+
     const folderId = extractFolderId(driveUrl)
+    console.log('[DriveImport] Folder ID extraído:', folderId)
+
     if (!folderId) {
       setError('URL do Google Drive inválida')
       return
@@ -298,7 +316,15 @@ useEffect(() => {
     setError(null)
 
     try {
+      console.log('[DriveImport] Iniciando busca recursiva...')
       const allFiles = await listFilesRecursively(folderId)
+
+      console.log('[DriveImport] === RESUMO DA BUSCA ===')
+      console.log('[DriveImport] Total de itens encontrados:', allFiles.length)
+      console.log('[DriveImport] Itens raiz (sem parentId ou parentId = null):')
+      allFiles.filter(f => !f.parentId).forEach(f => {
+        console.log(`  - ${f.name} (ID: ${f.id})`)
+      })
 
       const processedItems: ProcessedItem[] = allFiles
         .map((file: any) => ({
@@ -317,14 +343,23 @@ useEffect(() => {
         itemsMap.set(item.id, item)
       })
 
+      console.log('[DriveImport] === CONSTRUINDO ÁRVORE ===')
       processedItems.forEach(item => {
         if (item.parentId && itemsMap.has(item.parentId)) {
           const parent = itemsMap.get(item.parentId)!
           parent.children = parent.children || []
           parent.children.push(item)
+          console.log(`[DriveImport] ✓ ${item.name} → filho de ${parent.name}`)
         } else {
           rootItems.push(item)
+          console.log(`[DriveImport] ⚠ ${item.name} → RAIZ (parentId: ${item.parentId || 'null'})`)
         }
+      })
+
+      console.log('[DriveImport] === ITENS RAIZ FINAIS ===')
+      console.log(`[DriveImport] Total: ${rootItems.length} itens`)
+      rootItems.forEach(item => {
+        console.log(`  📁 ${item.name} (${item.type})`)
       })
 
       const sortedRootItems = sortTreeRecursively(rootItems)
