@@ -9,6 +9,7 @@ import Card from '../../../components/Card'
 import { createSuggestedMapping, validateMapping, type TemplateAnalysis, type SuggestedMapping } from '@/lib/template-analyzer'
 import { extractArrayMapping, extractStaticMappings, buildMetadata } from '@/lib/template-utils'
 import MappingEditor from './MappingEditor'
+import { TEMPLATE_CATEGORIES } from '../constants'
 
 interface ExcelTemplate {
   id: string
@@ -101,13 +102,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
     }
   }, [category, originalCategory, isEditMode])
 
-  const categories = [
-    { value: 'users', label: 'Relatório de Usuários' },
-    { value: 'grades', label: 'Relatório de Notas' },
-    { value: 'enrollments', label: 'Relatório de Matrículas' },
-    { value: 'access', label: 'Relatório de Acessos' },
-    { value: 'student-history', label: 'Histórico do Aluno' },
-  ]
+  const categories = TEMPLATE_CATEGORIES.map(({ value, label }) => ({ value, label }))
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()

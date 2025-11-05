@@ -1,13 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Plus, FileSpreadsheet, Trash2, Eye, Users, Award, BookOpen, Activity, MoreVertical, Download, Copy, Edit3 } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Plus, FileSpreadsheet, Trash2, Eye, MoreVertical, Download, Copy, Edit3 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../providers/AuthProvider'
 import TemplateUploadModal from './components/TemplateUploadModal'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
+import Modal from '../../components/Modal'
+import { useToast } from '../../components/Toast'
+import { DEFAULT_TEMPLATE_ICON, TEMPLATE_CATEGORIES } from './constants'
 
 interface ExcelTemplate {
   id: string
@@ -24,25 +27,29 @@ interface ExcelTemplate {
 
 export default function TemplatesPage() {
   const { user } = useAuth()
+  const { showToast } = useToast()
   const [templates, setTemplates] = useState<ExcelTemplate[]>([])
+  const [allTemplates, setAllTemplates] = useState<ExcelTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [editingTemplate, setEditingTemplate] = useState<ExcelTemplate | null>(null)
+  const [templateToDelete, setTemplateToDelete] = useState<ExcelTemplate | null>(null)
+  const [deletingTemplate, setDeletingTemplate] = useState(false)
   const supabase = createClient()
 
-  const categories = [
-    { value: 'all', label: 'Todos', icon: FileSpreadsheet },
-    { value: 'users', label: 'Usuários', icon: Users },
-    { value: 'grades', label: 'Notas', icon: Award },
-    { value: 'enrollments', label: 'Matrículas', icon: BookOpen },
-    { value: 'access', label: 'Acessos', icon: Activity },
-  ]
+  const categories = useMemo(
+    () => [
+      { value: 'all', label: 'Todos', icon: DEFAULT_TEMPLATE_ICON },
+      ...TEMPLATE_CATEGORIES,
+    ],
+    []
+  )
 
   const getCategoryIcon = (category: string) => {
     const cat = categories.find(c => c.value === category)
-    return cat?.icon || FileSpreadsheet
+    return cat?.icon || DEFAULT_TEMPLATE_ICON
   }
 
   const getCategoryLabel = (category: string) => {
@@ -56,69 +63,91 @@ export default function TemplatesPage() {
       grades: { bg: 'from-green-500/20 to-green-600/10', text: 'text-green-400', border: 'border-green-500/30', badge: 'from-green-500/30 to-green-600/20' },
       enrollments: { bg: 'from-amber-500/20 to-amber-600/10', text: 'text-amber-400', border: 'border-amber-500/30', badge: 'from-amber-500/30 to-amber-600/20' },
       access: { bg: 'from-purple-500/20 to-purple-600/10', text: 'text-purple-400', border: 'border-purple-500/30', badge: 'from-purple-500/30 to-purple-600/20' },
+      'student-history': { bg: 'from-emerald-500/20 to-emerald-600/10', text: 'text-emerald-400', border: 'border-emerald-500/30', badge: 'from-emerald-500/30 to-emerald-600/20' },
     }
     return colors[category as keyof typeof colors] || colors.users
   }
 
   const getTemplatesByCategory = (category: string) => {
-    if (category === 'all') return templates.length
-    return templates.filter(t => t.category === category).length
+    if (category === 'all') return allTemplates.length
+    return allTemplates.filter(t => t.category === category).length
   }
 
-  useEffect(() => {
-    fetchTemplates()
-  }, [selectedCategory])
+  const filterTemplates = useCallback(
+    (list: ExcelTemplate[], category: string) => {
+      if (category === 'all') return list
+      return list.filter(template => template.category === category)
+    },
+    []
+  )
 
-  const fetchTemplates = async () => {
+  const fetchTemplates = useCallback(async () => {
     try {
       setLoading(true)
 
-      let query = supabase.from('excel_templates').select('*').order('created_at', { ascending: false })
-
-      if (selectedCategory !== 'all') {
-        query = query.eq('category', selectedCategory)
-      }
-
-      const { data, error } = await query
+      const { data, error } = await supabase
+        .from('excel_templates')
+        .select('*')
+        .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      setTemplates(data || [])
+      const list = data || []
+      setAllTemplates(list)
+      setTemplates(filterTemplates(list, selectedCategory))
     } catch (error) {
       console.error('Erro ao carregar templates:', error)
+      showToast('Erro ao carregar templates')
     } finally {
       setLoading(false)
     }
-  }
+  }, [filterTemplates, selectedCategory, showToast, supabase])
 
-  const handleDeleteTemplate = async (id: string, storagePath: string) => {
-    if (!confirm('Tem certeza que deseja deletar este template?')) return
+  useEffect(() => {
+    fetchTemplates()
+  }, [fetchTemplates])
 
+  useEffect(() => {
+    setTemplates(filterTemplates(allTemplates, selectedCategory))
+  }, [allTemplates, filterTemplates, selectedCategory])
+
+  const handleDeleteTemplate = async () => {
+    if (!templateToDelete) return
     try {
+      setDeletingTemplate(true)
+      const bucket = templateToDelete.storage_bucket || 'excel-templates'
+
       // Deletar arquivo do storage
       const { error: storageError } = await supabase.storage
-        .from('excel-templates')
-        .remove([storagePath])
+        .from(bucket)
+        .remove([templateToDelete.storage_path])
 
       if (storageError) throw storageError
 
       // Deletar registro do banco
-      const { error: dbError } = await supabase.from('excel_templates').delete().eq('id', id)
+      const { error: dbError } = await supabase
+        .from('excel_templates')
+        .delete()
+        .eq('id', templateToDelete.id)
 
       if (dbError) throw dbError
 
-      alert('Template deletado com sucesso!')
+      showToast('Template deletado com sucesso!')
+      setTemplateToDelete(null)
       fetchTemplates()
     } catch (error: any) {
       console.error('Erro ao deletar template:', error)
-      alert(`Erro ao deletar template: ${error.message}`)
+      showToast(`Erro ao deletar template: ${error.message}`)
+    } finally {
+      setDeletingTemplate(false)
     }
   }
 
   const handleDownloadTemplate = async (template: ExcelTemplate) => {
     try {
+      const bucket = template.storage_bucket || 'excel-templates'
       const { data, error } = await supabase.storage
-        .from(template.storage_bucket)
+        .from(bucket)
         .download(template.storage_path)
 
       if (error) throw error
@@ -132,9 +161,77 @@ export default function TemplatesPage() {
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
+
+      showToast('Download iniciado com sucesso!')
     } catch (error: any) {
       console.error('Erro ao baixar template:', error)
-      alert(`Erro ao baixar template: ${error.message}`)
+      showToast(`Erro ao baixar template: ${error.message}`)
+    }
+  }
+
+  const handlePreviewTemplate = async (template: ExcelTemplate) => {
+    try {
+      const bucket = template.storage_bucket || 'excel-templates'
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(template.storage_path, 60)
+
+      if (error || !data?.signedUrl) {
+        throw error || new Error('Não foi possível gerar o link de visualização')
+      }
+
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+      showToast('Visualizando template em nova aba')
+    } catch (error: any) {
+      console.error('Erro ao visualizar template:', error)
+      showToast(`Erro ao visualizar template: ${error.message}`)
+    }
+  }
+
+  const handleDuplicateTemplate = async (template: ExcelTemplate) => {
+    try {
+      if (!user) {
+        throw new Error('Usuário não autenticado')
+      }
+
+      const bucket = template.storage_bucket || 'excel-templates'
+      const timestamp = Date.now()
+
+      const pathParts = template.storage_path.split('/')
+      const originalFileName = pathParts.pop() || template.storage_path
+      const extensionIndex = originalFileName.lastIndexOf('.')
+      const extension = extensionIndex !== -1 ? originalFileName.slice(extensionIndex) : ''
+      const baseName = extensionIndex !== -1 ? originalFileName.slice(0, extensionIndex) : originalFileName
+      const directory = pathParts.join('/')
+      const newFileName = `${baseName}_copia_${timestamp}${extension}`
+      const newStoragePath = directory ? `${directory}/${newFileName}` : newFileName
+
+      const { error: copyError } = await supabase.storage
+        .from(bucket)
+        .copy(template.storage_path, newStoragePath)
+
+      if (copyError) throw copyError
+
+      const { error: insertError } = await supabase
+        .from('excel_templates')
+        .insert({
+          name: `${template.name} (Cópia)`,
+          description: template.description,
+          category: template.category,
+          storage_path: newStoragePath,
+          storage_bucket: bucket,
+          created_by: user.id,
+          is_active: template.is_active,
+          metadata: template.metadata,
+        })
+
+      if (insertError) throw insertError
+
+      showToast('Template duplicado com sucesso!')
+      fetchTemplates()
+    } catch (error: any) {
+      console.error('Erro ao duplicar template:', error)
+      showToast(`Erro ao duplicar template: ${error.message}`)
     }
   }
 
@@ -259,7 +356,7 @@ export default function TemplatesPage() {
                           </button>
                           <button
                             onClick={() => {
-                              handleDownloadTemplate(template)
+                              handlePreviewTemplate(template)
                               setOpenDropdown(null)
                             }}
                             className="w-full px-4 py-2.5 text-left text-sm text-gold-300 hover:bg-gold-500/10 flex items-center gap-2 transition-colors"
@@ -269,6 +366,7 @@ export default function TemplatesPage() {
                           </button>
                           <button
                             onClick={() => {
+                              handleDuplicateTemplate(template)
                               setOpenDropdown(null)
                             }}
                             className="w-full px-4 py-2.5 text-left text-sm text-gold-300 hover:bg-gold-500/10 flex items-center gap-2 transition-colors"
@@ -289,7 +387,7 @@ export default function TemplatesPage() {
                           <div className="h-px bg-gold-500/20 my-1"></div>
                           <button
                             onClick={() => {
-                              handleDeleteTemplate(template.id, template.storage_path)
+                              setTemplateToDelete(template)
                               setOpenDropdown(null)
                             }}
                             className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
@@ -353,6 +451,40 @@ export default function TemplatesPage() {
           }}
         />
       )}
+
+      <Modal
+        isOpen={!!templateToDelete}
+        onClose={() => {
+          if (!deletingTemplate) {
+            setTemplateToDelete(null)
+          }
+        }}
+        title="Confirmar exclusão"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => setTemplateToDelete(null)}
+              disabled={deletingTemplate}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDeleteTemplate}
+              loading={deletingTemplate}
+            >
+              Confirmar exclusão
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-gold-200">
+          Tem certeza de que deseja remover o template{' '}
+          <span className="font-semibold text-gold-300">{templateToDelete?.name}</span>?
+          Essa ação excluirá o arquivo do armazenamento e não poderá ser desfeita.
+        </p>
+      </Modal>
     </div>
   )
 }
