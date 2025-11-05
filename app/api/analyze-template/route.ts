@@ -5,6 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
+    const sheet = formData.get('sheet') as string | null
 
     if (!file) {
       return NextResponse.json(
@@ -25,7 +26,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Analisar template
-    const analysis = await analyzeTemplate(file)
+    const analysis = await analyzeTemplate(file, {
+      sheetName: sheet ?? undefined,
+    })
 
     return NextResponse.json({
       success: true,

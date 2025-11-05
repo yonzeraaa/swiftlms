@@ -11,6 +11,8 @@ interface StaticFieldMapperProps {
   mappedField?: string
   onFieldChange: (cellAddress: string, fieldKey: string | null) => void
   onRemove: (cellAddress: string) => void
+  onLabelChange?: (cellAddress: string, label: string) => void
+  allowLabelEdit?: boolean
 }
 
 export default function StaticFieldMapper({
@@ -18,7 +20,9 @@ export default function StaticFieldMapper({
   category,
   mappedField,
   onFieldChange,
-  onRemove
+  onRemove,
+  onLabelChange,
+  allowLabelEdit = false,
 }: StaticFieldMapperProps) {
   const [isOpen, setIsOpen] = useState(false)
   const allFields = getFieldsForCategory(category)
@@ -39,11 +43,29 @@ export default function StaticFieldMapper({
 
       {/* Label */}
       <div className="flex-shrink-0 min-w-[200px]">
-        <p className="text-sm text-gold-300/90 font-medium">{cell.label}</p>
-        {cell.value && (
-          <p className="text-xs text-gold-300/50 mt-0.5 truncate">
-            Valor atual: {cell.value}
-          </p>
+        {allowLabelEdit && onLabelChange ? (
+          <div className="space-y-1">
+            <input
+              type="text"
+              value={cell.label}
+              onChange={(e) => onLabelChange(cell.address, e.target.value)}
+              className="w-full px-3 py-1.5 bg-navy-900/60 border border-gold-500/20 rounded-lg text-sm text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+            />
+            {cell.value && (
+              <p className="text-xs text-gold-300/50 truncate">
+                Valor atual: {cell.value}
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-gold-300/90 font-medium">{cell.label}</p>
+            {cell.value && (
+              <p className="text-xs text-gold-300/50 mt-0.5 truncate">
+                Valor atual: {cell.value}
+              </p>
+            )}
+          </>
         )}
       </div>
 

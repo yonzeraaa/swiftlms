@@ -58,6 +58,9 @@ export function buildMetadata(
       staticCells: analysis.staticCells,
       sheetName: analysis.sheetName,
       totalColumns: analysis.totalColumns,
+      dataStartRow: analysis.dataStartRow,
+      availableSheets: analysis.availableSheets,
+      version: analysis.version,
     }
   }
 

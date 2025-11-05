@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { X, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Info, FileText, Settings, AlertTriangle, RotateCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../../providers/AuthProvider'
@@ -53,9 +53,46 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [replaceFile, setReplaceFile] = useState(false)
   const [categoryChanged, setCategoryChanged] = useState(false)
   const [originalCategory, setOriginalCategory] = useState<string | null>(null)
+  const [selectedSheet, setSelectedSheet] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
   const isEditMode = !!template
+
+  const normalizeStoredAnalysis = (raw: any): TemplateAnalysis => {
+    const safeHeaders = Array.isArray(raw?.headers) ? raw.headers : []
+    const safeStaticCells = Array.isArray(raw?.staticCells)
+      ? raw.staticCells.map((cell: any) => ({
+          address: cell.address,
+          row: cell.row ?? 0,
+          column: cell.column ?? 0,
+          label: cell.label ?? '',
+          value: cell.value ?? '',
+          suggestedField: cell.suggestedField,
+          type: 'static',
+        }))
+      : []
+    const sheetName = raw?.sheetName || raw?.sheet || 'Sheet1'
+
+    return {
+      headers: safeHeaders,
+      staticCells: safeStaticCells,
+      dataStartRow: raw?.dataStartRow || raw?.startRow || 2,
+      sheetName,
+      totalColumns: raw?.totalColumns || safeHeaders.length,
+      availableSheets: Array.isArray(raw?.availableSheets) && raw.availableSheets.length > 0
+        ? raw.availableSheets
+        : [sheetName],
+      version: raw?.version || 1,
+    }
+  }
+
+  const resolvedMapping = useMemo(() => {
+    if (!analysis) return null
+    if (customMapping) {
+      return customMapping
+    }
+    return createSuggestedMapping(analysis, category)
+  }, [analysis, category, customMapping])
 
   // Preencher campos quando em modo de edição
   useEffect(() => {
@@ -67,9 +104,10 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
 
       // Carregar metadata existente se disponível
       if (template.metadata) {
-        // Carregar análise salva
         if (template.metadata.analysis) {
-          setAnalysis(template.metadata.analysis)
+          const normalized = normalizeStoredAnalysis(template.metadata.analysis)
+          setAnalysis(normalized)
+          setSelectedSheet(normalized.sheetName)
         }
 
         // Extrair mapeamentos existentes
@@ -159,19 +197,27 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       dataStartRow: 2,
       sheetName: 'Sheet1',
       totalColumns: 3,
+      availableSheets: ['Sheet1'],
+      version: 2,
     }
     setAnalysis(manualAnalysis)
+    setSelectedSheet('Sheet1')
+    setCustomMapping(null)
+    setStaticMappings({})
     setManualMode(true)
     setAnalysisError('')
   }
 
-  const analyzeTemplateFile = async (file: File) => {
+  const analyzeTemplateFile = async (file: File, options: { sheetName?: string } = {}) => {
     try {
       setAnalyzing(true)
       setAnalysisError('')
 
       const formData = new FormData()
       formData.append('file', file)
+      if (options.sheetName) {
+        formData.append('sheet', options.sheetName)
+      }
 
       const response = await fetch('/api/analyze-template', {
         method: 'POST',
@@ -184,16 +230,37 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         throw new Error(data.error || 'Erro ao analisar template')
       }
 
-      setAnalysis(data.analysis)
+      const normalizedAnalysis = normalizeStoredAnalysis(data.analysis)
+      setAnalysis(normalizedAnalysis)
+      setSelectedSheet(normalizedAnalysis.sheetName)
+      setCustomMapping(null)
+      setStaticMappings({})
       setManualMode(false)
       console.log('Template analisado:', data.analysis)
     } catch (error) {
       console.error('Erro ao analisar template:', error)
       setAnalysisError(error instanceof Error ? error.message : 'Erro ao analisar template')
       setAnalysis(null)
+      setSelectedSheet(null)
     } finally {
       setAnalyzing(false)
     }
+  }
+
+  const handleSheetChange = async (sheetName: string) => {
+    if (!file) {
+      setSelectedSheet(sheetName)
+      if (analysis) {
+        setAnalysis({
+          ...analysis,
+          sheetName,
+        })
+      }
+      return
+    }
+
+    setSelectedSheet(sheetName)
+    await analyzeTemplateFile(file, { sheetName })
   }
 
   const handleUpload = async () => {
@@ -258,8 +325,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         let metadata = template.metadata || {}
 
         // Se tem análise e mapeamentos, atualizar metadata
-        if (analysis && (customMapping || Object.keys(staticMappings).length > 0)) {
-          const finalMapping = customMapping || createSuggestedMapping(analysis, category)
+        if (analysis && (resolvedMapping || Object.keys(staticMappings).length > 0)) {
+          const finalMapping = resolvedMapping || createSuggestedMapping(analysis, category)
           metadata = buildMetadata(analysis, finalMapping, staticMappings)
 
           console.log('[TemplateUploadModal] Metadata atualizado:', metadata)
@@ -337,8 +404,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       // Criar metadata automaticamente se houver análise
       let metadata = null
       if (analysis) {
-        // Usar mapeamento customizado se existir, senão usar sugerido
-        const finalMapping = customMapping || createSuggestedMapping(analysis, category)
+        const finalMapping = resolvedMapping || createSuggestedMapping(analysis, category)
         const validation = validateMapping(finalMapping, category)
 
         // Construir mappings combinando estáticos e array
@@ -665,8 +731,32 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                   <CheckCircle className="h-5 w-5" />
                   <span className="font-semibold">Template analisado com sucesso!</span>
                 </div>
-                <div className="text-sm text-gold-200 space-y-1">
-                  <p>• Planilha: <span className="text-gold-100 font-medium">{analysis.sheetName}</span></p>
+                <div className="text-sm text-gold-200 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <span>• Planilha:</span>
+                    {analysis.availableSheets.length > 1 ? (
+                      <select
+                        value={selectedSheet || analysis.sheetName}
+                        onChange={(e) => handleSheetChange(e.target.value)}
+                        disabled={!file}
+                        className="px-3 py-2 bg-navy-900/60 border border-gold-500/20 rounded-lg text-sm text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={!file ? 'Faça upload de um novo arquivo para reanalisar outras planilhas' : 'Selecione a aba que deseja mapear'}
+                      >
+                        {analysis.availableSheets.map(sheet => (
+                          <option key={sheet} value={sheet}>
+                            {sheet}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-gold-100 font-medium">{analysis.sheetName}</span>
+                    )}
+                    {!file && analysis.availableSheets.length > 1 && (
+                      <span className="text-xs text-gold-300/60">
+                        Faça upload do arquivo para reprocessar outras planilhas.
+                      </span>
+                    )}
+                  </div>
                   <p>• Linha de dados: <span className="text-gold-100 font-medium">{analysis.dataStartRow}</span></p>
                   <p>• Colunas encontradas: <span className="text-gold-100 font-medium">{analysis.headers.length}</span></p>
                 </div>
@@ -683,15 +773,18 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 console.log('[TemplateUploadModal] Analysis static cells:', analysis.staticCells?.map(c => `${c.address}: ${c.label}`))
                 return null
               })()}
-              <MappingEditor
-                analysis={analysis}
-                category={category}
-                initialMapping={customMapping || createSuggestedMapping(analysis, category)}
-                onChange={setCustomMapping}
-                onStaticMappingsChange={setStaticMappings}
-                manualMode={manualMode}
-                onAnalysisChange={setAnalysis}
-              />
+              {resolvedMapping && (
+                <MappingEditor
+                  analysis={analysis}
+                  category={category}
+                  initialMapping={resolvedMapping}
+                  onChange={setCustomMapping}
+                  onStaticMappingsChange={setStaticMappings}
+                  initialStaticMappings={staticMappings}
+                  manualMode={manualMode}
+                  onAnalysisChange={setAnalysis}
+                />
+              )}
             </>
           )}
 

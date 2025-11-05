@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs'
+import { getFieldsForCategory } from './utils/template-fields'
 
 export interface StaticCell {
   address: string
@@ -7,6 +8,7 @@ export interface StaticCell {
   label: string
   value: string
   suggestedField?: string
+  type?: 'static'
 }
 
 export interface TemplateAnalysis {
@@ -19,6 +21,8 @@ export interface TemplateAnalysis {
   dataStartRow: number
   sheetName: string
   totalColumns: number
+  availableSheets: string[]
+  version: number
 }
 
 export interface SuggestedMapping {
@@ -63,12 +67,19 @@ const FIELD_MAPPINGS: Record<string, string[]> = {
 /**
  * Analisa um arquivo Excel para extrair estrutura e sugerir mapeamentos
  */
-export async function analyzeTemplate(file: File): Promise<TemplateAnalysis> {
+export async function analyzeTemplate(
+  file: File,
+  options: { sheetName?: string } = {}
+): Promise<TemplateAnalysis> {
   const arrayBuffer = await file.arrayBuffer()
   const workbook = new ExcelJS.Workbook()
   await workbook.xlsx.load(arrayBuffer)
 
-  const worksheet = workbook.getWorksheet(1)
+  const sheetNames = workbook.worksheets.map(ws => ws.name)
+  const worksheet =
+    (options.sheetName && workbook.getWorksheet(options.sheetName)) ||
+    workbook.getWorksheet(1)
+
   if (!worksheet) {
     throw new Error('Nenhuma planilha encontrada no template')
   }
@@ -132,7 +143,8 @@ export async function analyzeTemplate(file: File): Promise<TemplateAnalysis> {
           column: colNumber + 1,
           label: value.replace(':', '').trim(),
           value: nextValue,
-          suggestedField: suggestFieldName(value.replace(':', '').trim())
+          suggestedField: suggestFieldName(value.replace(':', '').trim()),
+          type: 'static',
         })
       }
     })
@@ -164,6 +176,8 @@ export async function analyzeTemplate(file: File): Promise<TemplateAnalysis> {
     dataStartRow: tableHeaderRow > 0 ? tableHeaderRow + 1 : 2,
     sheetName: worksheet.name,
     totalColumns,
+    availableSheets: sheetNames,
+    version: 2,
   }
 }
 
@@ -216,6 +230,7 @@ function getCategoryDataSource(category: string): string {
     grades: 'grades',
     enrollments: 'enrollments',
     access: 'accessLogs',
+    'student-history': 'modules',
   }
 
   return sources[category] || category
@@ -229,14 +244,9 @@ export function validateMapping(mapping: SuggestedMapping, category: string): {
   missingFields: string[]
   warnings: string[]
 } {
-  const requiredFieldsByCategory: Record<string, string[]> = {
-    users: ['full_name', 'email'],
-    grades: ['full_name', 'course', 'grade'],
-    enrollments: ['full_name', 'course', 'enrollment_date'],
-    access: ['full_name', 'email'],
-  }
-
-  const requiredFields = requiredFieldsByCategory[category] || []
+  const requiredFields = getFieldsForCategory(category)
+    .filter(field => field.required && (field.type !== 'static'))
+    .map(field => field.key)
   const missingFields = requiredFields.filter((field) => !mapping.fields[field])
   const warnings: string[] = []
 
