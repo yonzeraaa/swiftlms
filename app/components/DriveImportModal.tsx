@@ -343,14 +343,34 @@ useEffect(() => {
         itemsMap.set(item.id, item)
       })
 
+      // Validação de hierarquia: garante que tipos só podem ter filhos válidos
+      const isValidHierarchy = (parent: ProcessedItem, child: ProcessedItem): boolean => {
+        // Módulo só pode ter disciplinas como filhos
+        if (parent.type === 'module') return child.type === 'subject'
+        // Disciplina pode ter aulas ou testes como filhos
+        if (parent.type === 'subject') return child.type === 'lesson' || child.type === 'test'
+        // Aula não tem filhos válidos
+        if (parent.type === 'lesson') return false
+        // Teste não tem filhos válidos
+        if (parent.type === 'test') return false
+        return false
+      }
+
       console.log('[DriveImport] === CONSTRUINDO ÁRVORE ===')
       processedItems.forEach(item => {
         if (item.parentId && itemsMap.has(item.parentId)) {
-          // Item tem pai E o pai está no mapa -> adicionar como filho
           const parent = itemsMap.get(item.parentId)!
-          parent.children = parent.children || []
-          parent.children.push(item)
-          console.log(`[DriveImport] ✓ ${item.name} → filho de ${parent.name}`)
+
+          // Verificar se a hierarquia é válida
+          if (isValidHierarchy(parent, item)) {
+            // Hierarquia válida: adicionar como filho
+            parent.children = parent.children || []
+            parent.children.push(item)
+            console.log(`[DriveImport] ✓ ${item.name} → filho de ${parent.name}`)
+          } else {
+            // Hierarquia inválida (ex: módulo dentro de módulo)
+            console.log(`[DriveImport] ✗ ${item.name} → IGNORADO (hierarquia inválida: ${item.type} dentro de ${parent.type})`)
+          }
         } else if (!item.parentId) {
           // Item sem pai -> raiz legítima
           rootItems.push(item)
