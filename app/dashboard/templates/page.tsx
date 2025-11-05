@@ -29,6 +29,7 @@ export default function TemplatesPage() {
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  const [editingTemplate, setEditingTemplate] = useState<ExcelTemplate | null>(null)
   const supabase = createClient()
 
   const categories = [
@@ -277,6 +278,7 @@ export default function TemplatesPage() {
                           </button>
                           <button
                             onClick={() => {
+                              setEditingTemplate(template)
                               setOpenDropdown(null)
                             }}
                             className="w-full px-4 py-2.5 text-left text-sm text-gold-300 hover:bg-gold-500/10 flex items-center gap-2 transition-colors"
@@ -332,14 +334,23 @@ export default function TemplatesPage() {
       )}
 
       {/* Modal de Upload */}
-      {showUploadModal && (
+      {(showUploadModal || editingTemplate) && (
         <TemplateUploadModal
-          onClose={() => setShowUploadModal(false)}
+          onClose={() => {
+            setShowUploadModal(false)
+            setEditingTemplate(null)
+          }}
           onSuccess={() => {
             setShowUploadModal(false)
+            setEditingTemplate(null)
             fetchTemplates()
           }}
           defaultCategory={selectedCategory !== 'all' ? selectedCategory : 'users'}
+          template={editingTemplate || undefined}
+          onUpdate={() => {
+            setEditingTemplate(null)
+            fetchTemplates()
+          }}
         />
       )}
     </div>

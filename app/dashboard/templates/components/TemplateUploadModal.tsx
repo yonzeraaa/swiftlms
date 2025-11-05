@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Info } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../../providers/AuthProvider'
@@ -9,13 +9,28 @@ import Card from '../../../components/Card'
 import { createSuggestedMapping, validateMapping, type TemplateAnalysis, type SuggestedMapping } from '@/lib/template-analyzer'
 import MappingEditor from './MappingEditor'
 
+interface ExcelTemplate {
+  id: string
+  name: string
+  description: string | null
+  category: string
+  storage_path: string
+  storage_bucket: string
+  is_active: boolean
+  created_at: string
+  created_by: string
+  metadata: any
+}
+
 interface TemplateUploadModalProps {
   onClose: () => void
   onSuccess: () => void
   defaultCategory?: string
+  template?: ExcelTemplate
+  onUpdate?: () => void
 }
 
-export default function TemplateUploadModal({ onClose, onSuccess, defaultCategory = 'users' }: TemplateUploadModalProps) {
+export default function TemplateUploadModal({ onClose, onSuccess, defaultCategory = 'users', template, onUpdate }: TemplateUploadModalProps) {
   const { user } = useAuth()
   const [file, setFile] = useState<File | null>(null)
   const [name, setName] = useState('')
@@ -34,6 +49,16 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [manualMode, setManualMode] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
+  const isEditMode = !!template
+
+  // Preencher campos quando em modo de edição
+  useEffect(() => {
+    if (template) {
+      setName(template.name)
+      setDescription(template.description || '')
+      setCategory(template.category)
+    }
+  }, [template])
 
   const categories = [
     { value: 'users', label: 'Relatório de Usuários' },
@@ -136,7 +161,15 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   }
 
   const handleUpload = async () => {
-    if (!file || !name || !user) {
+    // Em modo de edição, não precisa de arquivo
+    if (isEditMode && (!name || !user)) {
+      setErrorMessage('Preencha todos os campos obrigatórios')
+      setUploadStatus('error')
+      return
+    }
+
+    // Em modo de criação, precisa de arquivo
+    if (!isEditMode && (!file || !name || !user)) {
       setErrorMessage('Preencha todos os campos obrigatórios')
       setUploadStatus('error')
       return
@@ -147,6 +180,34 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       setUploadStatus('uploading')
       setUploadProgress(0)
       setErrorMessage('')
+
+      // Em modo de edição, apenas atualizar metadados
+      if (isEditMode && template) {
+        setUploadProgress(50)
+
+        const { error: dbError } = await supabase.from('excel_templates').update({
+          name,
+          description: description || null,
+          category,
+        }).eq('id', template.id)
+
+        if (dbError) throw dbError
+
+        setUploadProgress(100)
+        setUploadStatus('success')
+
+        setTimeout(() => {
+          onUpdate?.()
+          onSuccess()
+        }, 1500)
+
+        return
+      }
+
+      // Modo de criação: fazer upload do arquivo
+      if (!file) {
+        throw new Error('Arquivo não selecionado')
+      }
 
       // Simular progress (storage upload não tem callback de progress)
       const progressInterval = setInterval(() => {
@@ -205,6 +266,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       }
 
       // Salvar metadata no banco de dados
+      if (!user) throw new Error('Usuário não autenticado')
+
       const { error: dbError } = await supabase.from('excel_templates').insert({
         name,
         description: description || null,
@@ -241,7 +304,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gold">
-              Novo Template Excel
+              {isEditMode ? 'Editar Template' : 'Novo Template Excel'}
             </h2>
             <button
               onClick={onClose}
@@ -251,8 +314,9 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
             </button>
           </div>
 
-          {/* Upload Area */}
-          <div
+          {/* Upload Area - Apenas no modo criação */}
+          {!isEditMode && (
+            <div
             className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-all duration-300 ${
               dragActive
                 ? 'border-gold-500 bg-gold-500/10 scale-[1.02]'
@@ -305,6 +369,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               className="hidden"
             />
           </div>
+          )}
 
           {/* Form Fields */}
           <div className="space-y-4">
@@ -476,11 +541,11 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               onClick={handleUpload}
               variant={uploadStatus === 'success' ? 'success' : 'primary'}
               className="flex-1 gap-2"
-              disabled={!file || !name || uploading || uploadStatus === 'success'}
+              disabled={isEditMode ? (!name || uploading || uploadStatus === 'success') : (!file || !name || uploading || uploadStatus === 'success')}
               glow={uploadStatus === 'success'}
             >
               {uploadStatus === 'success' && <CheckCircle className="h-4 w-4" />}
-              {uploading ? 'Enviando...' : uploadStatus === 'success' ? 'Concluído' : 'Enviar Template'}
+              {uploading ? (isEditMode ? 'Salvando...' : 'Enviando...') : uploadStatus === 'success' ? 'Concluído' : (isEditMode ? 'Salvar Alterações' : 'Enviar Template')}
             </Button>
           </div>
         </div>
