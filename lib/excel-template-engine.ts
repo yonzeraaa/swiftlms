@@ -95,8 +95,12 @@ export class ExcelTemplateEngine {
   /**
    * Preenche o template com dados
    * @param data Objeto com os dados a serem preenchidos
+   * @param customMappings Mapeamentos customizados (prioridade sobre metadata)
    */
-  async fillTemplate(data: Record<string, any>): Promise<void> {
+  async fillTemplate(
+    data: Record<string, any>,
+    customMappings?: Record<string, string | ArrayMapping>
+  ): Promise<void> {
     const sheetName = this.template.metadata?.analysis?.sheetName
     const worksheet =
       (sheetName && this.workbook.getWorksheet(sheetName)) ||
@@ -106,7 +110,8 @@ export class ExcelTemplateEngine {
       throw new Error('Nenhuma planilha encontrada no template')
     }
 
-    const mappings = this.template.metadata?.mappings || {}
+    // Prioridade: customMappings > metadata.mappings > {}
+    const mappings = customMappings || this.template.metadata?.mappings || {}
 
     // Processar mapeamentos simples (célula única)
     for (const [cellAddress, dataPath] of Object.entries(mappings)) {
@@ -270,12 +275,13 @@ export class ExcelTemplateEngine {
  */
 export async function generateFromTemplate(
   template: ExcelTemplate,
-  data: Record<string, any>
+  data: Record<string, any>,
+  customMappings?: Record<string, string | ArrayMapping>
 ): Promise<Buffer> {
   const engine = new ExcelTemplateEngine(template)
 
   await engine.loadTemplate()
-  await engine.fillTemplate(data)
+  await engine.fillTemplate(data, customMappings)
 
   return await engine.generate()
 }

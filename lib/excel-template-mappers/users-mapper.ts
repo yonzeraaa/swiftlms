@@ -136,8 +136,11 @@ export async function fetchUsersData(): Promise<UserReportData> {
 }
 
 /**
- * Cria metadados de mapeamento para o template de usuários
- * Define onde cada campo deve ser inserido no Excel
+ * @deprecated Esta função não é mais usada. Os mapeamentos são configurados
+ * pelo usuário via UI e armazenados em template.metadata.mappings.
+ * Mantida apenas como referência da estrutura de dados esperada.
+ *
+ * Exemplo de estrutura de mapeamento para template de usuários:
  */
 export function createUsersMappingMetadata(): TemplateMetadata {
   return {

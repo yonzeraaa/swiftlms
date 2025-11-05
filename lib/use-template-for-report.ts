@@ -55,10 +55,13 @@ export async function generateReportWithTemplate(
       throw new Error(`Categoria não suportada ainda: ${category}`)
     }
 
-    // Gerar relatório usando template
+    // Extrair mapeamentos customizados do template (se existirem)
+    const customMappings = template.metadata?.mappings
+
+    // Gerar relatório usando template com mapeamentos customizados
     const engine = new ExcelTemplateEngine(template)
     await engine.loadTemplate()
-    await engine.fillTemplate(reportData)
+    await engine.fillTemplate(reportData, customMappings)
     const buffer = await engine.generate()
     const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer
 
