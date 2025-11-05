@@ -162,6 +162,7 @@ export default function MappingEditor({
     })
 
     if (fieldKey) {
+      delete newFields[fieldKey]
       newFields[fieldKey] = columnNumber
     }
 
@@ -406,7 +407,6 @@ export default function MappingEditor({
                     value={getFieldForColumn(header.column)}
                     onChange={(field) => handleFieldChange(header.column, field)}
                     usedFields={usedFields}
-                    columnName={header.value}
                   />
                 </div>
 

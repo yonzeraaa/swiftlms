@@ -236,7 +236,6 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       setCustomMapping(null)
       setStaticMappings({})
       setManualMode(false)
-      console.log('Template analisado:', data.analysis)
     } catch (error) {
       console.error('Erro ao analisar template:', error)
       setAnalysisError(error instanceof Error ? error.message : 'Erro ao analisar template')
@@ -328,8 +327,6 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         if (analysis && (resolvedMapping || Object.keys(staticMappings).length > 0)) {
           const finalMapping = resolvedMapping || createSuggestedMapping(analysis, category)
           metadata = buildMetadata(analysis, finalMapping, staticMappings)
-
-          console.log('[TemplateUploadModal] Metadata atualizado:', metadata)
         }
 
         setUploadProgress(80)
@@ -424,9 +421,6 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
             validation: validation
           }
         }
-
-        console.log('Metadata gerado:', customMapping ? '(customizado)' : '(automático)', metadata)
-        console.log('Mapeamentos estáticos:', Object.keys(staticMappings).length, 'células')
       }
 
       // Salvar metadata no banco de dados
@@ -765,14 +759,6 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 </div>
               </div>
 
-              {/* Editor de Mapeamento */}
-              {(() => {
-                // DEBUG: Log para rastrear categoria antes de passar para MappingEditor
-                console.log('[TemplateUploadModal] Passing category to MappingEditor:', category)
-                console.log('[TemplateUploadModal] Analysis headers:', analysis.headers.map(h => h.value))
-                console.log('[TemplateUploadModal] Analysis static cells:', analysis.staticCells?.map(c => `${c.address}: ${c.label}`))
-                return null
-              })()}
               {resolvedMapping && (
                 <MappingEditor
                   analysis={analysis}

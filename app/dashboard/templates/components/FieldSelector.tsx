@@ -8,7 +8,6 @@ interface FieldSelectorProps {
   value: string | undefined
   onChange: (value: string | undefined) => void
   usedFields: Set<string>
-  columnName: string
 }
 
 export default function FieldSelector({
@@ -16,18 +15,11 @@ export default function FieldSelector({
   value,
   onChange,
   usedFields,
-  columnName,
 }: FieldSelectorProps) {
   const allFields = getFieldsForCategory(category)
 
   // Filtrar apenas campos de tabela (ou sem tipo para compatibilidade)
   const fields = allFields.filter((f: FieldDefinition) => !f.type || f.type === 'table')
-
-  // DEBUG: Log para rastrear categoria e campos
-  console.log('[FieldSelector] Column:', columnName)
-  console.log('[FieldSelector] Category:', category)
-  console.log('[FieldSelector] Total fields from category:', allFields.length, allFields.map(f => f.key))
-  console.log('[FieldSelector] Filtered fields (table):', fields.length, fields.map(f => `${f.key} (type: ${f.type || 'undefined'})`))
 
   return (
     <div className="flex-1">
@@ -40,19 +32,17 @@ export default function FieldSelector({
           Não mapear
         </option>
         {fields.map((field: FieldDefinition) => {
-          const isUsed = usedFields.has(field.key) && value !== field.key
-          const isDisabled = isUsed
+          const isUsedElsewhere = usedFields.has(field.key) && value !== field.key
 
           return (
             <option
               key={field.key}
               value={field.key}
-              disabled={isDisabled}
               className="bg-navy-800 text-gold-100"
             >
               {field.label}
               {field.required && ' ⚠️'}
-              {isUsed && ' (já usado)'}
+              {isUsedElsewhere && ' (mapeado em outra coluna)'}
             </option>
           )
         })}
