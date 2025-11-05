@@ -29,7 +29,7 @@ export default function MappingEditor({
   manualMode = false,
   onAnalysisChange,
 }: MappingEditorProps) {
-  const [mapping, setMapping] = useState<SuggestedMapping>(initialMapping)
+  const [fieldsMapping, setFieldsMapping] = useState<Record<string, number>>(initialMapping.fields)
   const [startRow, setStartRow] = useState(initialMapping.startRow)
   const [columns, setColumns] = useState(analysis.headers)
   const [staticCells, setStaticCells] = useState<StaticCell[]>(analysis.staticCells || [])
@@ -40,7 +40,7 @@ export default function MappingEditor({
   const [staticFormError, setStaticFormError] = useState<string | null>(null)
 
   useEffect(() => {
-    setMapping(initialMapping)
+    setFieldsMapping(initialMapping.fields)
     setStartRow(initialMapping.startRow)
   }, [initialMapping])
 
@@ -57,26 +57,19 @@ export default function MappingEditor({
   }, [initialStaticMappings])
 
   useEffect(() => {
-    const updatedMapping = {
-      ...mapping,
-      startRow,
-    }
-    setMapping(updatedMapping)
-    onChange(updatedMapping)
-
-    if (onAnalysisChange) {
-      onAnalysisChange({
-        ...analysis,
-        dataStartRow: startRow,
-      })
-    }
-  }, [analysis, onAnalysisChange, onChange, startRow])
-
-  useEffect(() => {
     if (onStaticMappingsChange) {
       onStaticMappingsChange(staticMappings)
     }
   }, [staticMappings, onStaticMappingsChange])
+
+  const emitMappingChange = (nextFields: Record<string, number>, nextStartRow: number = startRow) => {
+    const updatedMapping: SuggestedMapping = {
+      ...initialMapping,
+      fields: nextFields,
+      startRow: nextStartRow,
+    }
+    onChange(updatedMapping)
+  }
 
   const emitAnalysisChange = (partial: Partial<TemplateAnalysis>) => {
     if (!onAnalysisChange) return
@@ -136,24 +129,20 @@ export default function MappingEditor({
     const newColumns = columns.filter(h => h.column !== columnNumber)
     setColumns(newColumns)
 
-    const newFields = { ...mapping.fields }
+    const newFields = { ...fieldsMapping }
     Object.keys(newFields).forEach(key => {
       if (newFields[key] === columnNumber) {
         delete newFields[key]
       }
     })
 
-    const updatedMapping = {
-      ...mapping,
-      fields: newFields,
-    }
-    setMapping(updatedMapping)
-    onChange(updatedMapping)
+    setFieldsMapping(newFields)
+    emitMappingChange(newFields)
     emitAnalysisChange({ headers: newColumns, totalColumns: Math.max(...newColumns.map(h => h.column), 0) })
   }
 
   const handleFieldChange = (columnNumber: number, fieldKey: string | undefined) => {
-    const newFields = { ...mapping.fields }
+    const newFields = { ...fieldsMapping }
 
     Object.keys(newFields).forEach(key => {
       if (newFields[key] === columnNumber) {
@@ -166,13 +155,7 @@ export default function MappingEditor({
       newFields[fieldKey] = columnNumber
     }
 
-    const updatedMapping = {
-      ...mapping,
-      fields: newFields,
-    }
-
-    setMapping(updatedMapping)
-    onChange(updatedMapping)
+    setFieldsMapping(newFields)
   }
 
   const normalizeExcelAddress = (address: string) => address.trim().toUpperCase()
@@ -235,7 +218,7 @@ export default function MappingEditor({
   }
 
   const getFieldForColumn = (columnNumber: number): string | undefined => {
-    return Object.keys(mapping.fields).find(key => mapping.fields[key] === columnNumber)
+    return Object.keys(fieldsMapping).find(key => fieldsMapping[key] === columnNumber)
   }
 
   const previewAnalysis = useMemo(
@@ -248,7 +231,23 @@ export default function MappingEditor({
     [analysis, columns, startRow, staticCells]
   )
 
-  const usedFields = useMemo(() => new Set(Object.keys(mapping.fields)), [mapping.fields])
+  const usedFields = useMemo(() => new Set(Object.keys(fieldsMapping)), [fieldsMapping])
+
+  const handleStartRowChange = (value: number) => {
+    const normalized = Number.isNaN(value) ? 1 : Math.max(1, value)
+    setStartRow(normalized)
+    emitMappingChange(fieldsMapping, normalized)
+    emitAnalysisChange({ dataStartRow: normalized })
+  }
+
+  const previewMapping = useMemo<SuggestedMapping>(
+    () => ({
+      ...initialMapping,
+      fields: fieldsMapping,
+      startRow,
+    }),
+    [fieldsMapping, initialMapping, startRow]
+  )
 
   return (
     <div className="mt-6 space-y-6">
@@ -375,7 +374,7 @@ export default function MappingEditor({
             type="number"
             min="1"
             value={startRow}
-            onChange={(e) => setStartRow(Number(e.target.value))}
+            onChange={(e) => handleStartRowChange(Number(e.target.value))}
             className="w-32 px-3 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all"
           />
           <p className="text-xs text-gold-300/70 mt-2">
@@ -436,7 +435,7 @@ export default function MappingEditor({
       </div>
 
       <MappingPreview
-        mapping={mapping}
+        mapping={previewMapping}
         category={category}
         staticMappings={staticMappings}
         analysis={previewAnalysis}
