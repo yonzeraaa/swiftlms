@@ -15,16 +15,16 @@ class NotFoundError extends Error {
 
 async function deleteByIds(
   supabase: AdminClient,
-  table: keyof Database['public']['Tables'],
+  table: keyof Database['public']['Tables'] | string,
   column: string,
   ids: string[]
 ) {
   if (ids.length === 0) return
 
-  const { error } = await supabase
-    .from(table)
+  const { error } = await (supabase
+    .from(table as any)
     .delete()
-    .in(column, ids)
+    .in(column, ids))
 
   if (error) {
     throw new Error(`Erro ao limpar ${table}: ${error.message}`)
@@ -139,9 +139,9 @@ async function deleteModuleCascade(supabase: AdminClient, moduleId: string) {
   testIds = Array.from(new Set(testIds))
   summary.removedTests = testIds.length
 
-  await deleteByIds(supabase, 'test_answer_keys' as any, 'test_id', testIds)
-  await deleteByIds(supabase, 'test_attempts' as any, 'test_id', testIds)
-  await deleteByIds(supabase, 'test_grades' as any, 'test_id', testIds)
+  await deleteByIds(supabase, 'test_answer_keys', 'test_id', testIds)
+  await deleteByIds(supabase, 'test_attempts', 'test_id', testIds)
+  await deleteByIds(supabase, 'test_grades', 'test_id', testIds)
   await deleteByIds(supabase, 'tests' as any, 'id', testIds)
 
   await deleteByIds(supabase, 'lesson_progress', 'lesson_id', lessonIds)
@@ -222,9 +222,9 @@ async function deleteSubjectCascade(supabase: AdminClient, subjectId: string) {
   )
   summary.removedTests = testIds.length
 
-  await deleteByIds(supabase, 'test_answer_keys' as any, 'test_id', testIds)
-  await deleteByIds(supabase, 'test_attempts' as any, 'test_id', testIds)
-  await deleteByIds(supabase, 'test_grades' as any, 'test_id', testIds)
+  await deleteByIds(supabase, 'test_answer_keys', 'test_id', testIds)
+  await deleteByIds(supabase, 'test_attempts', 'test_id', testIds)
+  await deleteByIds(supabase, 'test_grades', 'test_id', testIds)
   await deleteByIds(supabase, 'tests' as any, 'id', testIds)
 
   await deleteByIds(supabase, 'lesson_progress', 'lesson_id', lessonIds)

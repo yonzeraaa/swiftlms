@@ -346,13 +346,18 @@ useEffect(() => {
       console.log('[DriveImport] === CONSTRUINDO ÁRVORE ===')
       processedItems.forEach(item => {
         if (item.parentId && itemsMap.has(item.parentId)) {
+          // Item tem pai E o pai está no mapa -> adicionar como filho
           const parent = itemsMap.get(item.parentId)!
           parent.children = parent.children || []
           parent.children.push(item)
           console.log(`[DriveImport] ✓ ${item.name} → filho de ${parent.name}`)
-        } else {
+        } else if (!item.parentId) {
+          // Item sem pai -> raiz legítima
           rootItems.push(item)
-          console.log(`[DriveImport] ⚠ ${item.name} → RAIZ (parentId: ${item.parentId || 'null'})`)
+          console.log(`[DriveImport] ✓ ${item.name} → RAIZ (sem pai)`)
+        } else {
+          // Item tem parentId mas o pai NÃO está no mapa -> item órfão, IGNORAR
+          console.log(`[DriveImport] ✗ ${item.name} → IGNORADO (parentId órfão: ${item.parentId})`)
         }
       })
 
