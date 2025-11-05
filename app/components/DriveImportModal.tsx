@@ -561,6 +561,7 @@ useEffect(() => {
       tests: { total: 0, completed: 0 }
     }
 
+    const allFlatItems = flattenItems(items)
     allFlatItems.forEach(item => {
       if (item.type === 'module') {
         stats.modules.total++
