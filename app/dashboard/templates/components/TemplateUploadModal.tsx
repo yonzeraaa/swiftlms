@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Info } from 'lucide-react'
+import { X, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Info, FileText, Settings, AlertTriangle, RotateCw } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
 import Card from '../../../components/Card'
 import { createSuggestedMapping, validateMapping, type TemplateAnalysis, type SuggestedMapping } from '@/lib/template-analyzer'
+import { extractArrayMapping, extractStaticMappings, buildMetadata } from '@/lib/template-utils'
 import MappingEditor from './MappingEditor'
 
 interface ExcelTemplate {
@@ -47,6 +48,10 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [customMapping, setCustomMapping] = useState<SuggestedMapping | null>(null)
   const [staticMappings, setStaticMappings] = useState<Record<string, string>>({})
   const [manualMode, setManualMode] = useState(false)
+  const [activeTab, setActiveTab] = useState<'info' | 'mapping'>('info')
+  const [replaceFile, setReplaceFile] = useState(false)
+  const [categoryChanged, setCategoryChanged] = useState(false)
+  const [originalCategory, setOriginalCategory] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
   const isEditMode = !!template
@@ -57,8 +62,44 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       setName(template.name)
       setDescription(template.description || '')
       setCategory(template.category)
+      setOriginalCategory(template.category)
+
+      // Carregar metadata existente se disponível
+      if (template.metadata) {
+        // Carregar análise salva
+        if (template.metadata.analysis) {
+          setAnalysis(template.metadata.analysis)
+        }
+
+        // Extrair mapeamentos existentes
+        const arrayMapping = extractArrayMapping(template.metadata)
+        const staticMaps = extractStaticMappings(template.metadata)
+
+        if (arrayMapping) {
+          setCustomMapping(arrayMapping)
+        }
+
+        if (Object.keys(staticMaps).length > 0) {
+          setStaticMappings(staticMaps)
+        }
+
+        console.log('[TemplateUploadModal] Metadata carregado:', {
+          hasAnalysis: !!template.metadata.analysis,
+          hasArrayMapping: !!arrayMapping,
+          staticCellsCount: Object.keys(staticMaps).length,
+        })
+      }
     }
   }, [template])
+
+  // Detectar mudança de categoria
+  useEffect(() => {
+    if (isEditMode && originalCategory && category !== originalCategory) {
+      setCategoryChanged(true)
+    } else {
+      setCategoryChanged(false)
+    }
+  }, [category, originalCategory, isEditMode])
 
   const categories = [
     { value: 'users', label: 'Relatório de Usuários' },
@@ -181,15 +222,77 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       setUploadProgress(0)
       setErrorMessage('')
 
-      // Em modo de edição, apenas atualizar metadados
+      // Em modo de edição
       if (isEditMode && template) {
-        setUploadProgress(50)
+        setUploadProgress(30)
 
-        const { error: dbError } = await supabase.from('excel_templates').update({
+        // Se está substituindo arquivo, fazer re-upload
+        if (replaceFile && file) {
+          // Upload do novo arquivo
+          const timestamp = Date.now()
+          const sanitizedFileName = file.name
+            .replace(/\s+/g, '_')
+            .replace(/[^a-zA-Z0-9._-]/g, '')
+            .toLowerCase()
+          const fileName = `${category}/${timestamp}_${sanitizedFileName}`
+
+          // Deletar arquivo antigo
+          if (template.storage_path) {
+            await supabase.storage
+              .from('excel-templates')
+              .remove([template.storage_path])
+          }
+
+          // Upload novo arquivo
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('excel-templates')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false,
+            })
+
+          if (uploadError) throw uploadError
+
+          setUploadProgress(60)
+
+          // Atualizar com novo caminho
+          template.storage_path = uploadData.path
+        }
+
+        // Construir metadata atualizado
+        let metadata = template.metadata || {}
+
+        // Se tem análise e mapeamentos, atualizar metadata
+        if (analysis && (customMapping || Object.keys(staticMappings).length > 0)) {
+          const finalMapping = customMapping || createSuggestedMapping(analysis, category)
+          metadata = buildMetadata(analysis, finalMapping, staticMappings)
+
+          console.log('[TemplateUploadModal] Metadata atualizado:', metadata)
+        }
+
+        setUploadProgress(80)
+
+        // Atualizar banco de dados
+        const updateData: any = {
           name,
           description: description || null,
           category,
-        }).eq('id', template.id)
+        }
+
+        // Se substituiu arquivo, atualizar storage_path
+        if (replaceFile && template.storage_path) {
+          updateData.storage_path = template.storage_path
+        }
+
+        // Se tem metadata, atualizar
+        if (Object.keys(metadata).length > 0) {
+          updateData.metadata = metadata
+        }
+
+        const { error: dbError } = await supabase
+          .from('excel_templates')
+          .update(updateData)
+          .eq('id', template.id)
 
         if (dbError) throw dbError
 
@@ -314,19 +417,74 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
             </button>
           </div>
 
-          {/* Upload Area - Apenas no modo criação */}
-          {!isEditMode && (
-            <div
-            className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-all duration-300 ${
-              dragActive
-                ? 'border-gold-500 bg-gold-500/10 scale-[1.02]'
-                : 'border-gold-500/30 bg-navy-800/50'
-            }`}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-          >
+          {/* Tabs - Apenas no modo edição */}
+          {isEditMode && (
+            <div className="flex gap-2 mb-6 border-b border-gold-500/20">
+              <button
+                onClick={() => setActiveTab('info')}
+                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all ${
+                  activeTab === 'info'
+                    ? 'text-gold-400 border-b-2 border-gold-500'
+                    : 'text-gold-300/60 hover:text-gold-300'
+                }`}
+              >
+                <FileText className="h-4 w-4" />
+                Informações Básicas
+              </button>
+              <button
+                onClick={() => setActiveTab('mapping')}
+                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all ${
+                  activeTab === 'mapping'
+                    ? 'text-gold-400 border-b-2 border-gold-500'
+                    : 'text-gold-300/60 hover:text-gold-300'
+                }`}
+              >
+                <Settings className="h-4 w-4" />
+                Mapeamento de Campos
+                {analysis && (
+                  <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded-full">
+                    ✓
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Aviso de mudança de categoria */}
+          {categoryChanged && (
+            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-amber-300 font-medium mb-1">
+                    Categoria alterada
+                  </p>
+                  <p className="text-sm text-amber-300/70">
+                    Você alterou a categoria de "{categories.find(c => c.value === originalCategory)?.label}"
+                    para "{categories.find(c => c.value === category)?.label}".
+                    Verifique se os mapeamentos de campos ainda estão corretos.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Aba: Informações Básicas */}
+          {(!isEditMode || activeTab === 'info') && (
+            <>
+              {/* Upload Area - Apenas no modo criação */}
+              {!isEditMode && (
+                <div
+                className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-all duration-300 ${
+                  dragActive
+                    ? 'border-gold-500 bg-gold-500/10 scale-[1.02]'
+                    : 'border-gold-500/30 bg-navy-800/50'
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
             {file ? (
               <div className="flex items-center justify-center gap-3">
                 <FileSpreadsheet className="h-8 w-8 text-green-400" />
@@ -416,9 +574,87 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               </select>
             </div>
           </div>
+            </>
+          )}
+
+          {/* Aba: Mapeamento de Campos */}
+          {isEditMode && activeTab === 'mapping' && (
+            <>
+              {/* Toggle Substituir Arquivo */}
+              <div className="mb-6 p-4 bg-navy-800/50 border border-navy-600 rounded-lg">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={replaceFile}
+                    onChange={(e) => setReplaceFile(e.target.checked)}
+                    className="w-4 h-4 text-gold-500 bg-navy-900 border-navy-600 rounded focus:ring-gold-500 focus:ring-2"
+                  />
+                  <div className="flex items-center gap-2 flex-1">
+                    <RotateCw className="h-4 w-4 text-gold-400" />
+                    <span className="text-gold-200 font-medium">
+                      Substituir arquivo Excel
+                    </span>
+                  </div>
+                </label>
+                <p className="text-xs text-gold-300/70 mt-2 ml-7">
+                  Marque para fazer upload de um novo arquivo e re-analisar a estrutura
+                </p>
+              </div>
+
+              {/* Upload Area - Apenas se marcou "substituir arquivo" */}
+              {replaceFile && (
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-all duration-300 ${
+                    dragActive
+                      ? 'border-gold-500 bg-gold-500/10 scale-[1.02]'
+                      : 'border-gold-500/30 bg-navy-800/50'
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  {file ? (
+                    <div className="flex items-center justify-center gap-3">
+                      <FileSpreadsheet className="h-8 w-8 text-green-400" />
+                      <div className="text-left">
+                        <p className="font-medium text-gold-100">{file.name}</p>
+                        <p className="text-sm text-gold-300/70">
+                          {(file.size / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setFile(null)}
+                        className="ml-auto"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-12 w-12 mx-auto text-gold-400 mb-4" />
+                      <p className="text-gold-100 mb-2">
+                        Arraste o novo arquivo Excel aqui ou
+                      </p>
+                      <Button
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        type="button"
+                      >
+                        Selecionar Arquivo
+                      </Button>
+                      <p className="text-xs text-gold-300/70 mt-2">Apenas arquivos .xlsx (máx 10MB)</p>
+                    </>
+                  )}
+                </div>
+              )}
+            </>
+          )}
 
           {/* Template Analysis */}
-          {analyzing && (
+          {(!isEditMode || (isEditMode && activeTab === 'mapping')) && analyzing && (
             <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
               <div className="flex items-center gap-2 text-blue-300">
                 <Info className="h-5 w-5 animate-pulse" />
@@ -427,7 +663,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
             </div>
           )}
 
-          {analysis && !analyzing && (
+          {(!isEditMode || (isEditMode && activeTab === 'mapping')) && analysis && !analyzing && (
             <>
               <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg space-y-3">
                 <div className="flex items-center gap-2 text-green-300">
@@ -464,7 +700,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
             </>
           )}
 
-          {analysisError && !analyzing && !analysis && (
+          {(!isEditMode || (isEditMode && activeTab === 'mapping')) && analysisError && !analyzing && !analysis && (
             <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg space-y-4">
               <div className="flex items-center gap-2 text-red-300">
                 <AlertCircle className="h-5 w-5" />
