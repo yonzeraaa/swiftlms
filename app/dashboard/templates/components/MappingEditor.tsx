@@ -247,6 +247,8 @@ export default function MappingEditor({
     [analysis, columns, startRow, staticCells]
   )
 
+  const usedFields = useMemo(() => new Set(Object.keys(mapping.fields)), [mapping.fields])
+
   return (
     <div className="mt-6 space-y-6">
       <div className="flex items-center gap-2 text-gold-200">
@@ -401,8 +403,10 @@ export default function MappingEditor({
                   </p>
                   <FieldSelector
                     category={category}
-                    selectedField={getFieldForColumn(header.column)}
+                    value={getFieldForColumn(header.column)}
                     onChange={(field) => handleFieldChange(header.column, field)}
+                    usedFields={usedFields}
+                    columnName={header.value}
                   />
                 </div>
 
