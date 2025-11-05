@@ -5,6 +5,7 @@ export interface TemplateMetadata {
   mappings?: Record<string, string | ArrayMapping>
   formulas?: Record<string, string>
   imagePositions?: Record<string, { col: number; row: number }>
+  analysis?: TemplateMetadataAnalysis
 }
 
 export interface ArrayMapping {
@@ -12,6 +13,28 @@ export interface ArrayMapping {
   source: string
   startRow: number
   fields: Record<string, number> // field name -> column number
+}
+
+export interface TemplateMetadataAnalysis {
+  sheetName?: string
+  dataStartRow?: number
+  totalColumns?: number
+  headers?: Array<{
+    column: number
+    value: string
+    suggestedField?: string
+  }>
+  staticCells?: Array<{
+    address: string
+    row: number
+    column: number
+    label: string
+    value: string
+    suggestedField?: string
+    type?: string
+  }>
+  availableSheets?: string[]
+  version?: number
 }
 
 export interface ExcelTemplate {
@@ -74,7 +97,10 @@ export class ExcelTemplateEngine {
    * @param data Objeto com os dados a serem preenchidos
    */
   async fillTemplate(data: Record<string, any>): Promise<void> {
-    const worksheet = this.workbook.getWorksheet(1) // Primeira planilha
+    const sheetName = this.template.metadata?.analysis?.sheetName
+    const worksheet =
+      (sheetName && this.workbook.getWorksheet(sheetName)) ||
+      this.workbook.getWorksheet(1)
 
     if (!worksheet) {
       throw new Error('Nenhuma planilha encontrada no template')
