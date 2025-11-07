@@ -50,7 +50,7 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
       *,
       course:courses(
         *,
-        modules(
+        course_modules(
           *,
           lessons(*)
         )
@@ -133,7 +133,7 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
   const completionDates: Date[] = []
 
   // Validar se existem módulos
-  const modules = enrollment.course.modules || []
+  const modules = enrollment.course.course_modules || []
 
   if (modules.length === 0) {
     console.warn('Nenhum módulo encontrado para o curso')
