@@ -1665,6 +1665,13 @@ export default function ReportsPage() {
     setGeneratingReport('student-history')
 
     try {
+      // Validação inicial
+      if (!userId) {
+        alert('Erro: ID do aluno não fornecido')
+        setGeneratingReport(null)
+        return
+      }
+
       // Tentar gerar usando template
       const blob = await generateReportWithTemplate('student-history', selectedTemplate || undefined, { userId })
 
@@ -1692,19 +1699,23 @@ export default function ReportsPage() {
             *,
             modules(
               *,
-              lessons(
-                *,
-                lesson_progress!inner(*)
-              )
+              lessons(*)
             )
           ),
           user:profiles(full_name, email)
         `)
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
-      if (enrollmentError || !enrollment) {
-        alert('Erro ao buscar histórico do aluno')
+      if (enrollmentError) {
+        console.error('Erro ao buscar enrollment:', enrollmentError)
+        alert(`Erro ao buscar histórico do aluno: ${enrollmentError.message}`)
+        setGeneratingReport(null)
+        return
+      }
+
+      if (!enrollment) {
+        alert('Nenhuma matrícula encontrada para este aluno')
         setGeneratingReport(null)
         return
       }
@@ -1770,9 +1781,23 @@ export default function ReportsPage() {
 
       exporter.download(`SWIFTEDU_HISTORICO_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`)
       alert('Histórico do Aluno gerado com sucesso!')
-    } catch (error) {
-      console.error('Erro ao gerar histórico:', error)
-      alert('Erro ao gerar histórico do aluno')
+    } catch (error: any) {
+      console.error('Erro detalhado ao gerar histórico:', error)
+
+      // Mensagem amigável baseada no tipo de erro
+      let errorMessage = 'Erro ao gerar histórico do aluno.'
+
+      if (error.message?.includes('Nenhuma matrícula')) {
+        errorMessage = 'Este aluno não possui matrícula ativa em nenhum curso.'
+      } else if (error.message?.includes('Curso não encontrado')) {
+        errorMessage = 'O curso associado à matrícula do aluno não foi encontrado.'
+      } else if (error.message?.includes('userId')) {
+        errorMessage = 'ID do aluno inválido ou não fornecido.'
+      } else if (error.message) {
+        errorMessage = `Erro: ${error.message}`
+      }
+
+      alert(errorMessage + '\n\nConsulte o console do navegador para mais detalhes.')
     } finally {
       setGeneratingReport(null)
     }
