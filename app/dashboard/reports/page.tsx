@@ -20,6 +20,9 @@ import { ExcelExporter, exportReportToExcel, PivotTableConfig, CellFormatting } 
 import { formatNumber, formatPercentage, formatDate, formatCompactNumber } from '@/lib/reports/formatters'
 import { generateReportWithTemplate, getTemplatesForCategory } from '@/lib/use-template-for-report'
 import { fetchUsersData } from '@/lib/excel-template-mappers/users-mapper'
+import { fetchGradesData } from '@/lib/excel-template-mappers/grades-mapper'
+import { fetchEnrollmentsData } from '@/lib/excel-template-mappers/enrollments-mapper'
+import { fetchAccessData } from '@/lib/excel-template-mappers/access-mapper'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -49,6 +52,7 @@ export default function ReportsPage() {
     start: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   })
+  const [dateError, setDateError] = useState<string | null>(null)
   const [templates, setTemplates] = useState<ExcelTemplate[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
@@ -59,6 +63,12 @@ export default function ReportsPage() {
   const supabase = createClient()
 
   useEffect(() => {
+    // Validar datas antes de buscar dados
+    if (new Date(dateRange.end) < new Date(dateRange.start)) {
+      setDateError('A data final não pode ser anterior à data inicial')
+      return
+    }
+    setDateError(null)
     fetchReportData()
     fetchTemplates()
   }, [dateRange])
@@ -188,30 +198,55 @@ export default function ReportsPage() {
   const generateReport = async (reportType: string) => {
     setGeneratingReport(reportType)
 
-    // Simulate report generation
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    try {
+      // Tentar gerar com template primeiro
+      if (reportType === 'student-history') {
+        // Abrir modal de seleção de aluno
+        await fetchStudents()
+        setShowStudentHistoryModal(true)
+        setGeneratingReport(null)
+        return
+      }
 
-    // Handle different report types
-    if (reportType === 'grades') {
-      generateGradesHistoryReport()
-    } else if (reportType === 'enrollments') {
-      generateEnrollmentAndCompletionReport()
-    } else if (reportType === 'access') {
-      generateAccessReport()
-    } else if (reportType === 'users') {
-      generateUsersReport()
-    } else if (reportType === 'student-history') {
-      // Abrir modal de seleção de aluno
-      await fetchStudents()
-      setShowStudentHistoryModal(true)
+      // Verificar se há template para a categoria
+      const blob = await generateReportWithTemplate(
+        reportType,
+        selectedTemplate || undefined,
+        { dateRange }
+      )
+
+      if (blob) {
+        // Template encontrado e gerado com sucesso
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${reportType}_${new Date().toISOString().split('T')[0]}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+
+        alert('Relatório gerado com sucesso!')
+      } else {
+        // Não há template, usar método de geração padrão
+        if (reportType === 'grades') {
+          generateGradesHistoryReport()
+        } else if (reportType === 'enrollments') {
+          generateEnrollmentAndCompletionReport()
+        } else if (reportType === 'access') {
+          generateAccessReport()
+        } else if (reportType === 'users') {
+          generateUsersReport()
+        } else {
+          alert(t('reports.reportGenerated'))
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error)
+      alert('Erro ao gerar relatório. Verifique o console para mais detalhes.')
+    } finally {
       setGeneratingReport(null)
-      return
-    } else {
-      // In a real application, you would generate actual PDF/Excel files here
-      alert(t('reports.reportGenerated'))
     }
-
-    setGeneratingReport(null)
   }
 
   // Função auxiliar para processar e exportar dados de notas
@@ -1853,14 +1888,36 @@ export default function ReportsPage() {
             value={selectedTemplate || ''}
             onChange={(e) => setSelectedTemplate(e.target.value || null)}
             className="px-4 py-2 bg-navy-900 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+            title="Selecione um template Excel personalizado ou deixe vazio para usar o padrão"
           >
-            <option value="">Exportação Padrão</option>
+            <option value="">Sem Template (Padrão)</option>
             <option disabled>─────────────</option>
-            {templates.filter(t => t.category === 'users').map((template) => (
-              <option key={template.id} value={template.id}>
-                {template.name}
-              </option>
-            ))}
+            {templates.length > 0 ? (
+              <>
+                {['users', 'grades', 'enrollments', 'access', 'student-history'].map(category => {
+                  const categoryTemplates = templates.filter(t => t.category === category)
+                  if (categoryTemplates.length === 0) return null
+                  const categoryNames: Record<string, string> = {
+                    users: 'Usuários',
+                    grades: 'Notas',
+                    enrollments: 'Matrículas',
+                    access: 'Acessos',
+                    'student-history': 'Histórico do Aluno'
+                  }
+                  return (
+                    <optgroup key={category} label={categoryNames[category] || category}>
+                      {categoryTemplates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )
+                })}
+              </>
+            ) : (
+              <option disabled>Nenhum template disponível</option>
+            )}
           </select>
           <Button
             variant="primary"
@@ -1875,24 +1932,70 @@ export default function ReportsPage() {
 
       {/* Date Filter */}
       <Card>
-        <div className="flex items-center gap-4">
-          <Filter className="w-5 h-5 text-gold-400" />
-          <div className="flex items-center gap-2 flex-1">
-            <label className="text-gold-300">{t('reports.dateRange')}:</label>
-            <input
-              type="date"
-              value={dateRange.start}
-              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-              className="px-3 py-1 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-            />
-            <span className="text-gold-300">{t('reports.to')}</span>
-            <input
-              type="date"
-              value={dateRange.end}
-              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-              className="px-3 py-1 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-4 flex-wrap">
+            <Filter className="w-5 h-5 text-gold-400" />
+            <div className="flex items-center gap-2 flex-1 flex-wrap">
+              <label className="text-gold-300">{t('reports.dateRange')}:</label>
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                className={`px-3 py-1 bg-navy-900/50 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                  dateError ? 'border-red-500 focus:ring-red-500' : 'border-navy-600 focus:ring-gold-500'
+                }`}
+              />
+              <span className="text-gold-300">{t('reports.to')}</span>
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                className={`px-3 py-1 bg-navy-900/50 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                  dateError ? 'border-red-500 focus:ring-red-500' : 'border-navy-600 focus:ring-gold-500'
+                }`}
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const today = new Date().toISOString().split('T')[0]
+                  setDateRange({ start: today, end: today })
+                }}
+              >
+                Hoje
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const end = new Date().toISOString().split('T')[0]
+                  const start = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0]
+                  setDateRange({ start, end })
+                }}
+              >
+                7 dias
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  const end = new Date().toISOString().split('T')[0]
+                  const start = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0]
+                  setDateRange({ start, end })
+                }}
+              >
+                30 dias
+              </Button>
+            </div>
           </div>
+          {dateError && (
+            <div className="flex items-center gap-2 text-red-400 text-sm">
+              <span>⚠️</span>
+              <span>{dateError}</span>
+            </div>
+          )}
         </div>
       </Card>
 

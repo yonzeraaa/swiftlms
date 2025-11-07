@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
-import { format, differenceInDays } from 'date-fns'
+import { differenceInDays } from 'date-fns'
+import { Calculators, Formatters, Helpers } from './shared-utils'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
 export interface StudentHistoryData {
@@ -69,15 +70,14 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
 
   // Calcular média dos testes
   const testScores = testAttempts?.map((ta: any) => ta.score).filter((s: number) => s > 0) || []
-  const avgTests = testScores.length > 0
-    ? testScores.reduce((a: number, b: number) => a + b, 0) / testScores.length
-    : 0
+  const avgTests = Calculators.average(testScores)
 
-  // Nota TCC (placeholder - implementar busca real depois)
+  // Nota TCC (buscar do banco ou usar padrão)
+  // TODO: Implementar tabela tcc_submissions
   const tccScore = 72.0
 
-  // Média geral ponderada: (testes + tcc*2) / 3
-  const mediaGeral = ((avgTests * 1) + (tccScore * 2)) / 3
+  // Média geral ponderada
+  const mediaGeral = Calculators.generalAverage(avgTests, tccScore)
 
   // Buscar último acesso
   const { data: lastActivity } = await supabase
@@ -101,7 +101,7 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
     totalWorkload += moduleWorkload
 
     modulesData.push({
-      code: `CMN${(moduleIndex + 1).toString().padStart(2, '0')}`,
+      code: Formatters.moduleCode(moduleIndex),
       name: `Módulo ${module.title}`,
       workload: moduleWorkload,
       completion_date: '',
@@ -111,7 +111,7 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
     // Disciplinas do módulo
     module.lessons?.forEach((lesson: any, lessonIndex: number) => {
       const progress = lesson.lesson_progress?.[0]
-      const lessonWorkload = Math.round((lesson.duration_minutes || 0) / 60) // converter minutos para horas
+      const lessonWorkload = Helpers.minutesToHours(lesson.duration_minutes || 0)
       const lessonScore = progress?.score || 0
 
       totalWorkload += lessonWorkload
@@ -126,12 +126,10 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
       }
 
       modulesData.push({
-        code: `CMN${(moduleIndex + 1).toString().padStart(2, '0')}${(lessonIndex + 1).toString().padStart(2, '0')}`,
+        code: Formatters.lessonCode(moduleIndex, lessonIndex),
         name: ` Disciplina ${lesson.title}`,
         workload: lessonWorkload,
-        completion_date: progress?.completed_at
-          ? format(new Date(progress.completed_at), 'dd/MM/yyyy')
-          : '',
+        completion_date: Formatters.date(progress?.completed_at),
         score: lessonScore > 0 ? lessonScore : ''
       })
     })
@@ -160,18 +158,14 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
   })
 
   return {
-    course_name: enrollment.course.title || 'Curso não especificado',
-    category: 'PÓS-GRADUAÇÃO LATO SENSU',
-    institution: 'IPETEC / UCP',
-    enrollment_date: enrollment.enrolled_at
-      ? format(new Date(enrollment.enrolled_at), 'dd/MM/yyyy')
-      : '',
-    coordination: 'A definir', // TODO: Adicionar campo ao banco
-    student_name: enrollment.user?.full_name || 'Aluno',
-    approval: mediaGeral >= 70 ? 'Sim' : 'Não',
-    last_access: lastActivity?.created_at
-      ? format(new Date(lastActivity.created_at), 'dd/MM/yyyy HH:mm')
-      : '-',
+    course_name: Helpers.defaultValue(enrollment.course.title, 'Curso não especificado'),
+    category: enrollment.course.category || 'PÓS-GRADUAÇÃO LATO SENSU',
+    institution: Formatters.institution(),
+    enrollment_date: Formatters.date(enrollment.enrolled_at),
+    coordination: process.env.NEXT_PUBLIC_COORDINATION || 'A definir',
+    student_name: Helpers.defaultValue(enrollment.user?.full_name, 'Aluno'),
+    approval: Calculators.isApproved(mediaGeral) ? 'Sim' : 'Não',
+    last_access: Formatters.datetime(lastActivity?.created_at) || '-',
     tests_grade: avgTests.toFixed(1),
     tcc_grade: tccScore.toFixed(1),
     general_average: mediaGeral.toFixed(1),

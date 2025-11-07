@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/client'
 import { ExcelTemplateEngine } from './excel-template-engine'
 import { fetchUsersData, mapUsersDataForTemplate } from './excel-template-mappers/users-mapper'
 import { fetchStudentHistoryData, mapStudentHistoryDataForTemplate } from './excel-template-mappers/student-history-mapper'
+import { fetchGradesData, mapGradesDataForTemplate } from './excel-template-mappers/grades-mapper'
+import { fetchEnrollmentsData, mapEnrollmentsDataForTemplate } from './excel-template-mappers/enrollments-mapper'
+import { fetchAccessData, mapAccessDataForTemplate } from './excel-template-mappers/access-mapper'
 
 /**
  * Hook para usar templates em relatórios
@@ -9,7 +12,7 @@ import { fetchStudentHistoryData, mapStudentHistoryDataForTemplate } from './exc
 export async function generateReportWithTemplate(
   category: string,
   templateId?: string,
-  params?: { userId?: string }
+  params?: { userId?: string; dateRange?: { start: string; end: string } }
 ): Promise<Blob | null> {
   const supabase = createClient()
 
@@ -51,8 +54,17 @@ export async function generateReportWithTemplate(
       }
       const historyData = await fetchStudentHistoryData(params.userId)
       reportData = mapStudentHistoryDataForTemplate(historyData)
+    } else if (category === 'grades') {
+      const gradesData = await fetchGradesData()
+      reportData = mapGradesDataForTemplate(gradesData)
+    } else if (category === 'enrollments') {
+      const enrollmentsData = await fetchEnrollmentsData(params?.dateRange)
+      reportData = mapEnrollmentsDataForTemplate(enrollmentsData)
+    } else if (category === 'access') {
+      const accessData = await fetchAccessData()
+      reportData = mapAccessDataForTemplate(accessData)
     } else {
-      throw new Error(`Categoria não suportada ainda: ${category}`)
+      throw new Error(`Categoria não suportada: ${category}`)
     }
 
     // Extrair mapeamentos customizados do template (se existirem)

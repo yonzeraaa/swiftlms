@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
-import { format } from 'date-fns'
+import { Translators, Calculators, Formatters, Helpers } from './shared-utils'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
 export interface UserReportData {
@@ -52,22 +52,17 @@ export async function fetchUsersData(): Promise<UserReportData> {
       // Se não tem matrículas, criar linha sem curso
       if (!user.enrollments || user.enrollments.length === 0) {
         usersData.push({
-          full_name: user.full_name || 'Usuário desconhecido',
+          full_name: Helpers.defaultValue(user.full_name, 'Usuário desconhecido'),
           email: user.email || '',
           phone: user.phone || '',
           course_code: '-',
-          role:
-            user.role === 'admin'
-              ? 'Administrador'
-              : user.role === 'instructor'
-                ? 'Professor'
-                : 'Estudante',
+          role: Translators.role(user.role),
           grade: 0,
           progress: 0,
           enrollment_date: '',
           completed_at: '',
           time_in_system: 0,
-          status: user.status === 'inactive' ? 'Inativo' : 'Ativo',
+          status: Translators.userStatus(user.status),
         })
         continue
       }
@@ -75,50 +70,30 @@ export async function fetchUsersData(): Promise<UserReportData> {
       // Para cada matrícula, criar uma linha
       for (const enrollment of user.enrollments as any[]) {
         const lessons = enrollment.lesson_progress || []
-        const completedLessons = lessons.filter((lp: any) => lp.is_completed).length
-        const totalLessons = lessons.length
-        const avanco = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
+        const avanco = Calculators.lessonProgress(lessons)
 
         // Calcular pontuação (média dos testes - placeholder)
         const pontuacao = enrollment.progress_percentage || 0
 
-        // Calcular tempo no sistema (placeholder - usar activity_logs depois)
+        // Calcular tempo no sistema
         const enrolledDate = enrollment.enrolled_at
           ? new Date(enrollment.enrolled_at)
           : new Date()
-        const now = new Date()
-        const diffTime = Math.abs(now.getTime() - enrolledDate.getTime())
-        const diffHours = Math.floor(diffTime / (1000 * 60 * 60))
+        const diffHours = Calculators.hoursBetween(enrolledDate, new Date())
 
         // Determinar situação
-        let situacao = 'Ativo'
-        if (enrollment.status === 'completed') {
-          situacao = 'Concluído'
-        } else if (enrollment.status === 'dropped') {
-          situacao = 'Evadido'
-        } else if (user.status === 'inactive') {
-          situacao = 'Inativo'
-        }
+        const situacao = Translators.enrollmentStatus(enrollment.status, user.status)
 
         usersData.push({
-          full_name: user.full_name || 'Usuário desconhecido',
+          full_name: Helpers.defaultValue(user.full_name, 'Usuário desconhecido'),
           email: user.email || '',
           phone: user.phone || '',
           course_code: enrollment.course?.slug || '-',
-          role:
-            user.role === 'admin'
-              ? 'Administrador'
-              : user.role === 'instructor'
-                ? 'Professor'
-                : 'Estudante',
-          grade: Math.round(pontuacao * 10) / 10,
-          progress: Math.round(avanco * 10) / 10,
-          enrollment_date: enrollment.enrolled_at
-            ? format(new Date(enrollment.enrolled_at), 'dd/MM/yyyy')
-            : '',
-          completed_at: enrollment.completed_at
-            ? format(new Date(enrollment.completed_at), 'dd/MM/yyyy')
-            : '-',
+          role: Translators.role(user.role),
+          grade: Formatters.number(pontuacao),
+          progress: Formatters.number(avanco),
+          enrollment_date: Formatters.date(enrollment.enrolled_at),
+          completed_at: Formatters.date(enrollment.completed_at) || '-',
           time_in_system: diffHours,
           status: situacao,
         })
@@ -126,7 +101,7 @@ export async function fetchUsersData(): Promise<UserReportData> {
     }
 
     return {
-      institution: 'IPETEC / UCP',
+      institution: Formatters.institution(),
       users: usersData,
     }
   } catch (error) {
