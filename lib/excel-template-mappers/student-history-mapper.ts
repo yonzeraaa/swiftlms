@@ -102,9 +102,16 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
   const testScores = testAttempts?.map((ta: any) => ta.score).filter((s: number) => s > 0) || []
   const avgTests = Calculators.average(testScores)
 
-  // Nota TCC (buscar do banco ou usar padrão)
-  // TODO: Implementar tabela tcc_submissions
-  const tccScore = 72.0
+  // Buscar nota do TCC
+  const { data: tccSubmission } = await supabase
+    .from('tcc_submissions')
+    .select('grade')
+    .eq('user_id', userId)
+    .order('evaluated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const tccScore = tccSubmission?.grade != null ? Number(tccSubmission.grade) : 0
 
   // Média geral ponderada
   const mediaGeral = Calculators.generalAverage(avgTests, tccScore)

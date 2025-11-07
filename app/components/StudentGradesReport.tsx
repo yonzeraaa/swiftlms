@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, ChangeEvent } from 'react'
+import { useState, useEffect, useCallback, useMemo, ChangeEvent } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ExcelExporter } from '@/lib/excel-export'
 import { formatDate } from '@/lib/reports/formatters'
@@ -39,6 +39,21 @@ interface GradeBySubject {
   }>
 }
 
+interface LoadingStates {
+  initial: boolean
+  grades: boolean
+  tcc: boolean
+  overrides: boolean
+  export: boolean
+}
+
+interface ValidationErrors {
+  testsAverage?: string
+  testsWeight?: string
+  tccGrade?: string
+  tccWeight?: string
+}
+
 export default function StudentGradesReport({
   userId,
   userName,
@@ -47,7 +62,13 @@ export default function StudentGradesReport({
   dateRange,
   allowEditing = false
 }: StudentGradesReportProps) {
-  const [loading, setLoading] = useState(true)
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
+    initial: true,
+    grades: false,
+    tcc: false,
+    overrides: false,
+    export: false
+  })
   const [gradesBySubject, setGradesBySubject] = useState<GradeBySubject[]>([])
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set())
   const [totalTestsCount, setTotalTestsCount] = useState(0)
@@ -67,6 +88,7 @@ export default function StudentGradesReport({
     tccGrade: '',
     tccWeight: '1'
   })
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
   const [isSavingOverrides, setIsSavingOverrides] = useState(false)
   const [overrideMessage, setOverrideMessage] = useState<string | null>(null)
   const [overrideError, setOverrideError] = useState<string | null>(null)
@@ -77,9 +99,9 @@ export default function StudentGradesReport({
   const fetchStudentGrades = useCallback(async (options?: { skipLoading?: boolean }) => {
     try {
       if (!options?.skipLoading) {
-        setLoading(true)
+        setLoadingStates(prev => ({ ...prev, initial: true, grades: true, tcc: true, overrides: true }))
       }
-      
+
       // Buscar informações do aluno se não foi fornecido o nome
       let studentName = userName
       if (!studentName) {
@@ -88,21 +110,43 @@ export default function StudentGradesReport({
           .select('full_name, email')
           .eq('id', userId as any)
           .single()
-        
+
         studentName = profile?.full_name || profile?.email || 'Aluno'
       }
-      
-      // Buscar todos os testes ativos
+
+      // Buscar todos os testes ativos com subjects e courses em uma única query
       const { data: allTests } = await supabase
         .from('tests')
-        .select('*, subjects(name), courses(title)')
+        .select(`
+          id,
+          title,
+          subject_id,
+          course_id,
+          is_active,
+          subjects!inner (
+            name
+          ),
+          courses (
+            title
+          )
+        `)
         .eq('is_active', true)
-      
-      // Buscar TODAS as tentativas do aluno (sem filtro de data)
-      const { data: attempts } = await supabase
+
+      // Buscar tentativas do aluno com filtro de data otimizado
+      let attemptsQuery = supabase
         .from('test_attempts')
-        .select('*')
+        .select('test_id, score, submitted_at')
         .eq('user_id', userId)
+
+      // Aplicar filtro de data se fornecido
+      if (dateRange?.start) {
+        attemptsQuery = attemptsQuery.gte('submitted_at', dateRange.start)
+      }
+      if (dateRange?.end) {
+        attemptsQuery = attemptsQuery.lte('submitted_at', dateRange.end)
+      }
+
+      const { data: attempts } = await attemptsQuery
       
       // Criar mapa de tentativas por teste
       const attemptsByTest = new Map<string, any>()
@@ -131,14 +175,14 @@ export default function StudentGradesReport({
         const completed = !!attempt
         
         if (!subjectsMap.has(subjectKey)) {
-          const subjectName = test.subject_id 
-            ? (test.subjects?.name || 'Disciplina não encontrada') 
+          const subjectName = test.subject_id
+            ? ((test.subjects as any)?.name || 'Disciplina não encontrada')
             : 'Sem Disciplina Definida'
-          
+
           subjectsMap.set(subjectKey, {
             subjectId: subjectKey,
             subjectName: subjectName,
-            courseName: test.courses?.title || 'Sem curso',
+            courseName: (test.courses as any)?.title || 'Sem curso',
             totalTests: 0,
             testsCompleted: 0,
             testsMissed: 0,
@@ -191,17 +235,27 @@ export default function StudentGradesReport({
       setCompletedTestsCount(completedTests)
       setGradesBySubject(subjectsArray)
       setTestsAverageRaw(rawTestsAverage)
+      setLoadingStates(prev => ({ ...prev, grades: false }))
 
-      // Buscar nota do TCC mais recente
-      const { data: tccSubmission } = await supabase
+      // Buscar nota do TCC mais recente (com filtro de data se fornecido)
+      let tccQuery = supabase
         .from('tcc_submissions')
-        .select('grade')
+        .select('grade, evaluated_at')
         .eq('user_id', userId as any)
         .order('evaluated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+
+      // Aplicar filtro de data se fornecido
+      if (dateRange?.start) {
+        tccQuery = tccQuery.gte('evaluated_at', dateRange.start)
+      }
+      if (dateRange?.end) {
+        tccQuery = tccQuery.lte('evaluated_at', dateRange.end)
+      }
+
+      const { data: tccSubmission } = await tccQuery.limit(1).maybeSingle()
 
       setTccGradeRaw(tccSubmission?.grade != null ? Number(tccSubmission.grade) : null)
+      setLoadingStates(prev => ({ ...prev, tcc: false }))
 
       // Buscar overrides existentes
       const { data: overrideData } = await supabase
@@ -228,11 +282,14 @@ export default function StudentGradesReport({
         })
       }
 
+      setLoadingStates(prev => ({ ...prev, overrides: false }))
+
     } catch (error) {
-      console.error('Erro ao buscar notas:', error)
+      console.error('Erro ao buscar notas do aluno:', error)
+      setOverrideError('Não foi possível carregar as notas do aluno. Por favor, tente novamente.')
     } finally {
       if (!options?.skipLoading) {
-        setLoading(false)
+        setLoadingStates(prev => ({ ...prev, initial: false }))
       }
     }
   }, [supabase, userId, userName, dateRange])
@@ -305,16 +362,66 @@ export default function StudentGradesReport({
     }
   }
 
-  const gradeMetrics = computeGradeMetrics()
+  const gradeMetrics = useMemo(() => computeGradeMetrics(), [
+    testsAverageRaw,
+    tccGradeRaw,
+    overrides,
+    overrideForm,
+    allowEditing
+  ])
+
+  // Validação em tempo real
+  const validateField = useCallback((field: keyof typeof overrideForm, value: string): string | undefined => {
+    if (!value || value.trim() === '') {
+      return undefined
+    }
+
+    const normalized = value.replace(',', '.')
+    const num = Number(normalized)
+
+    if (!Number.isFinite(num)) {
+      return 'Valor inválido. Digite um número válido.'
+    }
+
+    if (field === 'testsAverage' || field === 'tccGrade') {
+      if (num < 0) return 'Nota não pode ser negativa.'
+      if (num > 100) return 'Nota não pode ser maior que 100.'
+    }
+
+    if (field === 'testsWeight' || field === 'tccWeight') {
+      if (num < 0) return 'Peso não pode ser negativo.'
+      if (num > 100) return 'Peso muito alto. Verifique o valor.'
+    }
+
+    return undefined
+  }, [])
 
   const handleOverrideChange = (field: keyof typeof overrideForm) => (event: ChangeEvent<HTMLInputElement>) => {
     const { value } = event.target
     setOverrideForm(prev => ({ ...prev, [field]: value }))
     setOverrideMessage(null)
-    setOverrideError(null)
+
+    // Validar campo em tempo real
+    const error = validateField(field, value)
+    setValidationErrors(prev => ({
+      ...prev,
+      [field]: error
+    }))
+
+    // Limpar erro geral se não houver erros de validação
+    if (!error && Object.values({ ...validationErrors, [field]: undefined }).every(e => !e)) {
+      setOverrideError(null)
+    }
   }
 
   const saveOverrides = async () => {
+    // Verificar erros de validação antes de salvar
+    const hasErrors = Object.values(validationErrors).some(e => e !== undefined)
+    if (hasErrors) {
+      setOverrideError('Por favor, corrija os erros nos campos antes de salvar.')
+      return
+    }
+
     setIsSavingOverrides(true)
     setOverrideMessage(null)
     setOverrideError(null)
@@ -337,13 +444,18 @@ export default function StudentGradesReport({
         .from('student_grade_overrides')
         .upsert(payload, { onConflict: 'user_id' })
 
-      if (error) throw error
+      if (error) {
+        console.error('Erro ao salvar ajustes:', error)
+        throw new Error(error.message || 'Falha ao comunicar com o banco de dados')
+      }
 
-      setOverrideMessage('Ajustes salvos com sucesso.')
+      setOverrideMessage('✓ Ajustes salvos com sucesso.')
+      setValidationErrors({})
       await fetchStudentGrades({ skipLoading: true })
     } catch (error: any) {
       console.error('Erro ao salvar ajustes de nota:', error)
-      setOverrideError(error?.message || 'Não foi possível salvar os ajustes.')
+      const errorMessage = error?.message || 'Não foi possível salvar os ajustes.'
+      setOverrideError(`Erro ao salvar: ${errorMessage}`)
     } finally {
       setIsSavingOverrides(false)
     }
@@ -360,7 +472,10 @@ export default function StudentGradesReport({
         .delete()
         .eq('user_id', userId as any)
 
-      if (error) throw error
+      if (error) {
+        console.error('Erro ao remover ajustes:', error)
+        throw new Error(error.message || 'Falha ao comunicar com o banco de dados')
+      }
 
       setOverrides(null)
       setOverrideForm({
@@ -369,11 +484,13 @@ export default function StudentGradesReport({
         tccGrade: '',
         tccWeight: '1'
       })
-      setOverrideMessage('Ajustes removidos. Valores calculados serão utilizados.')
+      setValidationErrors({})
+      setOverrideMessage('✓ Ajustes removidos. Valores calculados serão utilizados.')
       await fetchStudentGrades({ skipLoading: true })
     } catch (error: any) {
       console.error('Erro ao remover ajustes de nota:', error)
-      setOverrideError(error?.message || 'Não foi possível remover os ajustes.')
+      const errorMessage = error?.message || 'Não foi possível remover os ajustes.'
+      setOverrideError(`Erro ao remover ajustes: ${errorMessage}`)
     } finally {
       setIsSavingOverrides(false)
     }
@@ -404,22 +521,33 @@ export default function StudentGradesReport({
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Erro ao atribuir nota')
+        const errorMsg = data.error || 'Erro desconhecido ao atribuir nota'
+        throw new Error(errorMsg)
       }
 
-      setOverrideMessage(`Nota máxima atribuída com sucesso! Nota anterior: ${data.data.previousScore ?? 'Nenhuma'}`)
+      const previousScore = data.data?.previousScore
+      const previousText = previousScore !== null && previousScore !== undefined
+        ? `${previousScore.toFixed(1)}`
+        : 'Nenhuma'
+
+      setOverrideMessage(`✓ Nota máxima atribuída com sucesso ao teste "${testTitle}"! Nota anterior: ${previousText}`)
       await fetchStudentGrades({ skipLoading: true })
     } catch (error: any) {
       console.error('Erro ao atribuir nota máxima:', error)
-      setOverrideError(error?.message || 'Não foi possível atribuir a nota máxima.')
+      const errorMessage = error?.message || 'Não foi possível atribuir a nota máxima.'
+      setOverrideError(`Erro ao atribuir nota ao teste "${testTitle}": ${errorMessage}`)
     } finally {
       setAssigningGrade(null)
     }
   }
 
   const exportToExcel = async () => {
-    const metrics = computeGradeMetrics()
-    const exporter = new ExcelExporter()
+    try {
+      setLoadingStates(prev => ({ ...prev, export: true }))
+      setOverrideError(null)
+
+      const metrics = computeGradeMetrics()
+      const exporter = new ExcelExporter()
     
     // Preparar dados para exportação
     const summaryData = gradesBySubject.map(subject => ({
@@ -515,12 +643,21 @@ export default function StudentGradesReport({
         }
       ]
     })
-    
-    const fileName = `notas_${userName?.replace(/\s+/g, '_').toLowerCase() || 'aluno'}_${new Date().toISOString().split('T')[0]}.xlsx`
-    exporter.download(fileName)
+
+
+      const fileName = `notas_${userName?.replace(/\s+/g, '_').toLowerCase() || 'aluno'}_${new Date().toISOString().split('T')[0]}.xlsx`
+      exporter.download(fileName)
+      setOverrideMessage('✓ Arquivo Excel exportado com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao exportar para Excel:', error)
+      const errorMessage = error?.message || 'Não foi possível gerar o arquivo Excel.'
+      setOverrideError(`Erro ao exportar: ${errorMessage}`)
+    } finally {
+      setLoadingStates(prev => ({ ...prev, export: false }))
+    }
   }
 
-  if (loading) {
+  if (loadingStates.initial) {
     return (
       <div className="space-y-4">
         <div className="h-32 bg-navy-800/50 rounded-xl animate-pulse" />
@@ -554,12 +691,13 @@ export default function StudentGradesReport({
             size="sm"
             icon={<Download className="w-4 h-4" />}
             onClick={exportToExcel}
+            disabled={loadingStates.export}
           >
-            Exportar Excel
+            {loadingStates.export ? 'Exportando...' : 'Exportar Excel'}
           </Button>
         </div>
       )}
-      
+
       {/* Se showHeader e allowExport, mostrar botão junto com header */}
       {showHeader && allowExport && (
         <div className="flex justify-end -mt-12">
@@ -568,8 +706,9 @@ export default function StudentGradesReport({
             size="sm"
             icon={<Download className="w-4 h-4" />}
             onClick={exportToExcel}
+            disabled={loadingStates.export}
           >
-            Exportar Excel
+            {loadingStates.export ? 'Exportando...' : 'Exportar Excel'}
           </Button>
         </div>
       )}
@@ -682,11 +821,20 @@ export default function StudentGradesReport({
                   value={overrideForm.testsAverage}
                   onChange={handleOverrideChange('testsAverage')}
                   placeholder={gradeMetrics.testsAverageRaw.toFixed(2)}
-                  className="w-full px-3 py-2 bg-navy-900/60 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                    validationErrors.testsAverage
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gold-500/30 focus:ring-gold-500'
+                  }`}
                 />
-                <p className="text-xs text-gold-400 mt-1">
-                  Deixe em branco para usar a média calculada automaticamente ({gradeMetrics.testsAverageRaw.toFixed(2)}).
-                </p>
+                {validationErrors.testsAverage && (
+                  <p className="text-xs text-red-400 mt-1">{validationErrors.testsAverage}</p>
+                )}
+                {!validationErrors.testsAverage && (
+                  <p className="text-xs text-gold-400 mt-1">
+                    Deixe em branco para usar a média calculada automaticamente ({gradeMetrics.testsAverageRaw.toFixed(2)}).
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gold-300 mb-1">Peso dos Testes</label>
@@ -694,11 +842,20 @@ export default function StudentGradesReport({
                   type="text"
                   value={overrideForm.testsWeight}
                   onChange={handleOverrideChange('testsWeight')}
-                  className="w-full px-3 py-2 bg-navy-900/60 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                    validationErrors.testsWeight
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gold-500/30 focus:ring-gold-500'
+                  }`}
                 />
-                <p className="text-xs text-gold-400 mt-1">
-                  Valores maiores aumentam a influência dos testes na média final. Utilize 0 para desconsiderar.
-                </p>
+                {validationErrors.testsWeight && (
+                  <p className="text-xs text-red-400 mt-1">{validationErrors.testsWeight}</p>
+                )}
+                {!validationErrors.testsWeight && (
+                  <p className="text-xs text-gold-400 mt-1">
+                    Valores maiores aumentam a influência dos testes na média final. Utilize 0 para desconsiderar.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -710,11 +867,20 @@ export default function StudentGradesReport({
                   value={overrideForm.tccGrade}
                   onChange={handleOverrideChange('tccGrade')}
                   placeholder={gradeMetrics.tccGradeRaw !== null ? gradeMetrics.tccGradeRaw.toFixed(2) : 'Sem nota registrada'}
-                  className="w-full px-3 py-2 bg-navy-900/60 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                    validationErrors.tccGrade
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gold-500/30 focus:ring-gold-500'
+                  }`}
                 />
-                <p className="text-xs text-gold-400 mt-1">
-                  Deixe em branco para usar a nota registrada na avaliação de TCC.{gradeMetrics.tccGradeRaw === null ? ' (Nenhuma nota cadastrada até o momento)' : ''}
-                </p>
+                {validationErrors.tccGrade && (
+                  <p className="text-xs text-red-400 mt-1">{validationErrors.tccGrade}</p>
+                )}
+                {!validationErrors.tccGrade && (
+                  <p className="text-xs text-gold-400 mt-1">
+                    Deixe em branco para usar a nota registrada na avaliação de TCC.{gradeMetrics.tccGradeRaw === null ? ' (Nenhuma nota cadastrada até o momento)' : ''}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gold-300 mb-1">Peso do TCC</label>
@@ -722,11 +888,20 @@ export default function StudentGradesReport({
                   type="text"
                   value={overrideForm.tccWeight}
                   onChange={handleOverrideChange('tccWeight')}
-                  className="w-full px-3 py-2 bg-navy-900/60 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                    validationErrors.tccWeight
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gold-500/30 focus:ring-gold-500'
+                  }`}
                 />
-                <p className="text-xs text-gold-400 mt-1">
-                  Ajuste o peso para determinar a importância do TCC na média final. Utilize 0 para desconsiderar.
-                </p>
+                {validationErrors.tccWeight && (
+                  <p className="text-xs text-red-400 mt-1">{validationErrors.tccWeight}</p>
+                )}
+                {!validationErrors.tccWeight && (
+                  <p className="text-xs text-gold-400 mt-1">
+                    Ajuste o peso para determinar a importância do TCC na média final. Utilize 0 para desconsiderar.
+                  </p>
+                )}
               </div>
             </div>
           </div>
