@@ -70,7 +70,8 @@ export default function StudentGradesReport({
   const [isSavingOverrides, setIsSavingOverrides] = useState(false)
   const [overrideMessage, setOverrideMessage] = useState<string | null>(null)
   const [overrideError, setOverrideError] = useState<string | null>(null)
-  
+  const [assigningGrade, setAssigningGrade] = useState<string | null>(null)
+
   const supabase = createClient()
 
   const fetchStudentGrades = useCallback(async (options?: { skipLoading?: boolean }) => {
@@ -375,6 +376,44 @@ export default function StudentGradesReport({
       setOverrideError(error?.message || 'Não foi possível remover os ajustes.')
     } finally {
       setIsSavingOverrides(false)
+    }
+  }
+
+  const handleAssignMaxGrade = async (testId: string, testTitle: string) => {
+    if (!confirm(`Deseja atribuir nota máxima (100) ao teste "${testTitle}" para este aluno?`)) {
+      return
+    }
+
+    setAssigningGrade(testId)
+    setOverrideMessage(null)
+    setOverrideError(null)
+
+    try {
+      const response = await fetch('/api/admin/assign-grade', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId,
+          testId,
+          reason: 'Nota máxima atribuída via interface administrativa'
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao atribuir nota')
+      }
+
+      setOverrideMessage(`Nota máxima atribuída com sucesso! Nota anterior: ${data.data.previousScore ?? 'Nenhuma'}`)
+      await fetchStudentGrades({ skipLoading: true })
+    } catch (error: any) {
+      console.error('Erro ao atribuir nota máxima:', error)
+      setOverrideError(error?.message || 'Não foi possível atribuir a nota máxima.')
+    } finally {
+      setAssigningGrade(null)
     }
   }
 
@@ -782,7 +821,7 @@ export default function StudentGradesReport({
                 <div className="space-y-2">
                   <p className="text-gold-400 font-medium mb-2">Detalhamento dos Testes:</p>
                   {subject.tests.map(test => (
-                    <div 
+                    <div
                       key={test.id}
                       className={`flex justify-between items-center p-3 rounded-lg ${
                         test.completed ? 'bg-navy-800/50' : 'bg-navy-900/50'
@@ -796,13 +835,25 @@ export default function StudentGradesReport({
                           <p className="text-xs text-gold-500 mt-1">Data: {test.date}</p>
                         )}
                       </div>
-                      <div className="ml-4">
-                        {test.completed ? (
-                          <span className={`font-bold text-lg ${test.score >= 70 ? 'text-gold' : 'text-red-500'}`}>
-                            {test.score}
-                          </span>
-                        ) : (
-                          <span className="text-gold-600 text-sm">Não Realizado</span>
+                      <div className="ml-4 flex items-center gap-3">
+                        <div>
+                          {test.completed ? (
+                            <span className={`font-bold text-lg ${test.score >= 70 ? 'text-gold' : 'text-red-500'}`}>
+                              {test.score}
+                            </span>
+                          ) : (
+                            <span className="text-gold-600 text-sm">Não Realizado</span>
+                          )}
+                        </div>
+                        {allowEditing && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleAssignMaxGrade(test.id, test.title)}
+                            disabled={assigningGrade === test.id}
+                          >
+                            {assigningGrade === test.id ? 'Atribuindo...' : 'Nota Máxima'}
+                          </Button>
                         )}
                       </div>
                     </div>
