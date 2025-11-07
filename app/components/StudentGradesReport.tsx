@@ -93,6 +93,7 @@ export default function StudentGradesReport({
   const [overrideMessage, setOverrideMessage] = useState<string | null>(null)
   const [overrideError, setOverrideError] = useState<string | null>(null)
   const [assigningGrade, setAssigningGrade] = useState<string | null>(null)
+  const [assigningAllGrades, setAssigningAllGrades] = useState(false)
 
   const supabase = createClient()
 
@@ -541,6 +542,91 @@ export default function StudentGradesReport({
     }
   }
 
+  const handleAssignMaxGradeToAll = async () => {
+    // Coletar todos os testes
+    const allTests: Array<{ id: string; title: string }> = []
+    gradesBySubject.forEach(subject => {
+      subject.tests.forEach(test => {
+        allTests.push({ id: test.id, title: test.title })
+      })
+    })
+
+    if (allTests.length === 0) {
+      setOverrideError('Nenhum teste encontrado para atribuir notas.')
+      return
+    }
+
+    if (!confirm(
+      `Deseja atribuir nota máxima (100) a TODOS os ${allTests.length} testes deste aluno?\n\n` +
+      `Esta ação não pode ser desfeita e irá sobrescrever todas as notas existentes.`
+    )) {
+      return
+    }
+
+    setAssigningAllGrades(true)
+    setOverrideMessage(null)
+    setOverrideError(null)
+
+    let successCount = 0
+    let errorCount = 0
+    const errors: string[] = []
+
+    try {
+      // Processar em lote com Promise.allSettled para não interromper em caso de erro
+      const results = await Promise.allSettled(
+        allTests.map(async (test) => {
+          const response = await fetch('/api/admin/assign-grade', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              userId,
+              testId: test.id,
+              reason: 'Nota máxima atribuída em lote via interface administrativa'
+            })
+          })
+
+          const data = await response.json()
+
+          if (!response.ok) {
+            throw new Error(`${test.title}: ${data.error || 'Erro desconhecido'}`)
+          }
+
+          return { test: test.title, data }
+        })
+      )
+
+      // Contar sucessos e erros
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          successCount++
+        } else {
+          errorCount++
+          errors.push(result.reason.message)
+        }
+      })
+
+      // Mostrar resultado
+      if (errorCount === 0) {
+        setOverrideMessage(`✓ Nota máxima atribuída com sucesso a todos os ${successCount} testes!`)
+      } else if (successCount > 0) {
+        setOverrideMessage(`✓ Parcialmente concluído: ${successCount} testes atualizados com sucesso.`)
+        setOverrideError(`⚠️ ${errorCount} testes falharam: ${errors.slice(0, 3).join(', ')}${errors.length > 3 ? '...' : ''}`)
+      } else {
+        setOverrideError(`❌ Erro ao atribuir notas. Nenhum teste foi atualizado.`)
+      }
+
+      // Recarregar dados
+      await fetchStudentGrades({ skipLoading: true })
+    } catch (error: any) {
+      console.error('Erro ao atribuir notas máximas em lote:', error)
+      setOverrideError(`Erro ao processar atribuição em lote: ${error?.message || 'Erro desconhecido'}`)
+    } finally {
+      setAssigningAllGrades(false)
+    }
+  }
+
   const exportToExcel = async () => {
     try {
       setLoadingStates(prev => ({ ...prev, export: true }))
@@ -782,23 +868,47 @@ export default function StudentGradesReport({
       </div>
 
       {allowEditing && (
-        <Card className="bg-gradient-to-br from-navy-800/40 to-navy-900/40 border border-gold-500/20">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
-                <Scale className="w-5 h-5" /> Ajustes de Médias e Pesos
-              </h3>
-              <p className="text-sm text-gold-300">
-                Ajuste manualmente as médias para correções e defina os pesos utilizados na média final.
-              </p>
+        <>
+          <Card className="bg-gradient-to-br from-navy-800/40 to-navy-900/40 border border-gold-500/20">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
+                  <Target className="w-5 h-5" /> Atribuir Nota Máxima
+                </h3>
+                <p className="text-sm text-gold-300">
+                  Atribua nota máxima (100) a todos os testes de uma vez. Esta ação irá sobrescrever as notas existentes.
+                </p>
+              </div>
+              <div>
+                <Button
+                  variant="primary"
+                  onClick={handleAssignMaxGradeToAll}
+                  disabled={assigningAllGrades || gradesBySubject.length === 0}
+                  icon={<TrendingUp className="w-4 h-4" />}
+                >
+                  {assigningAllGrades ? 'Atribuindo notas...' : 'Nota Máxima em Todos os Testes'}
+                </Button>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-xs uppercase text-gold-400">Pré-visualização média final</p>
-              <p className={`text-2xl font-bold ${gradeMetrics.finalAverage >= 70 ? 'text-gold' : 'text-red-400'}`}>
-                {gradeMetrics.finalAverage.toFixed(2)}
-              </p>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-navy-800/40 to-navy-900/40 border border-gold-500/20">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
+                  <Scale className="w-5 h-5" /> Ajustes de Médias e Pesos
+                </h3>
+                <p className="text-sm text-gold-300">
+                  Ajuste manualmente as médias para correções e defina os pesos utilizados na média final.
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs uppercase text-gold-400">Pré-visualização média final</p>
+                <p className={`text-2xl font-bold ${gradeMetrics.finalAverage >= 70 ? 'text-gold' : 'text-red-400'}`}>
+                  {gradeMetrics.finalAverage.toFixed(2)}
+                </p>
+              </div>
             </div>
-          </div>
 
           {overrideMessage && (
             <div className="mb-4 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-300 text-sm">
@@ -923,6 +1033,7 @@ export default function StudentGradesReport({
             </Button>
           </div>
         </Card>
+        </>
       )}
 
       {/* Lista de Disciplinas */}
