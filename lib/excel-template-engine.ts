@@ -102,16 +102,25 @@ export class ExcelTemplateEngine {
     customMappings?: Record<string, string | ArrayMapping>
   ): Promise<void> {
     const sheetName = this.template.metadata?.analysis?.sheetName
-    const worksheet =
-      (sheetName && this.workbook.getWorksheet(sheetName)) ||
-      this.workbook.getWorksheet(1)
+    let worksheet = sheetName ? this.workbook.getWorksheet(sheetName) : null
+
+    if (!worksheet) {
+      console.warn(
+        `Planilha "${sheetName}" não encontrada. Usando primeira planilha disponível.`
+      )
+      worksheet = this.workbook.getWorksheet(1)
+    }
 
     if (!worksheet) {
       throw new Error('Nenhuma planilha encontrada no template')
     }
 
-    // Prioridade: customMappings > metadata.mappings > {}
-    const mappings = customMappings || this.template.metadata?.mappings || {}
+    // Merge de mapeamentos: metadata primeiro, depois customMappings sobrescreve
+    // Isso preserva mapeamentos existentes e permite sobrescrever campos específicos
+    const mappings = {
+      ...(this.template.metadata?.mappings || {}),
+      ...(customMappings || {}),
+    }
 
     // Processar mapeamentos simples (célula única)
     for (const [cellAddress, dataPath] of Object.entries(mappings)) {
@@ -130,9 +139,6 @@ export class ExcelTemplateEngine {
         await this.fillArrayData(worksheet, mapping, data)
       }
     }
-
-    // Preservar fórmulas (ExcelJS mantém automaticamente)
-    console.log('Template preenchido com dados')
   }
 
   /**
@@ -143,14 +149,30 @@ export class ExcelTemplateEngine {
     mapping: ArrayMapping,
     data: Record<string, any>
   ): Promise<void> {
-    const arrayData = this.getValueFromPath(data, mapping.source)
+    const arrayData = this.getValueFromPath(data, mapping.source, true)
 
     if (!Array.isArray(arrayData)) {
-      console.warn(`Dados não são array: ${mapping.source}`)
+      console.warn(
+        `[ExcelTemplateEngine] Esperado array para "${mapping.source}", recebido: ${typeof arrayData}`
+      )
+      return
+    }
+
+    if (arrayData.length === 0) {
+      console.warn(
+        `[ExcelTemplateEngine] Array "${mapping.source}" está vazio. Template terá apenas cabeçalhos.`
+      )
       return
     }
 
     let currentRow = mapping.startRow
+
+    // Validar que startRow é válido
+    if (currentRow < 1 || currentRow > 1048576) {
+      throw new Error(
+        `[ExcelTemplateEngine] startRow inválido: ${currentRow}. Deve estar entre 1 e 1048576.`
+      )
+    }
 
     // Obter linha de template para clonar formatação
     const templateRow = worksheet.getRow(currentRow)
@@ -164,14 +186,36 @@ export class ExcelTemplateEngine {
 
       // Preencher campos
       for (const [fieldName, columnNumber] of Object.entries(mapping.fields)) {
+        // Validar número de coluna
+        if (columnNumber < 1 || columnNumber > 16384) {
+          console.warn(
+            `[ExcelTemplateEngine] Número de coluna inválido: ${columnNumber} para campo "${fieldName}". Ignorando.`
+          )
+          continue
+        }
+
         const cell = row.getCell(columnNumber)
         const value = this.getValueFromPath(item, fieldName)
-        cell.value = value
+
+        // Aplicar tipo apropriado para Excel
+        if (value instanceof Date) {
+          cell.value = value
+          if (!cell.numFmt) cell.numFmt = 'dd/mm/yyyy'
+        } else if (typeof value === 'number') {
+          cell.value = value
+          if (!cell.numFmt) cell.numFmt = '0.00'
+        } else {
+          cell.value = value
+        }
       }
 
       row.commit()
       currentRow++
     }
+
+    console.log(
+      `[ExcelTemplateEngine] Preenchidos ${arrayData.length} linhas para "${mapping.source}"`
+    )
   }
 
   /**
@@ -211,7 +255,7 @@ export class ExcelTemplateEngine {
   /**
    * Obtém valor de objeto usando caminho (ex: "user.name")
    */
-  private getValueFromPath(obj: any, path: string): any {
+  private getValueFromPath(obj: any, path: string, warnIfMissing = false): any {
     const keys = path.split('.')
     let value = obj
 
@@ -219,6 +263,9 @@ export class ExcelTemplateEngine {
       if (value && typeof value === 'object' && key in value) {
         value = value[key]
       } else {
+        if (warnIfMissing) {
+          console.warn(`[ExcelTemplateEngine] Campo "${path}" não encontrado nos dados`)
+        }
         return undefined
       }
     }

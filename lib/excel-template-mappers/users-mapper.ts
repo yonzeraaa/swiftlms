@@ -135,41 +135,7 @@ export async function fetchUsersData(): Promise<UserReportData> {
   }
 }
 
-/**
- * @deprecated Esta função não é mais usada. Os mapeamentos são configurados
- * pelo usuário via UI e armazenados em template.metadata.mappings.
- * Mantida apenas como referência da estrutura de dados esperada.
- *
- * Exemplo de estrutura de mapeamento para template de usuários:
- */
-export function createUsersMappingMetadata(): TemplateMetadata {
-  return {
-    mappings: {
-      // Célula única - instituição
-      B3: 'institution',
-
-      // Mapeamento de array - dados dos usuários
-      users_table: {
-        type: 'array',
-        source: 'users',
-        startRow: 5, // Linha onde começa a tabela (após cabeçalho)
-        fields: {
-          full_name: 1, // Coluna A
-          email: 2, // Coluna B
-          phone: 3, // Coluna C
-          course_code: 4, // Coluna D
-          role: 5, // Coluna E
-          grade: 6, // Coluna F
-          progress: 7, // Coluna G
-          enrollment_date: 8, // Coluna H
-          completed_at: 9, // Coluna I
-          time_in_system: 10, // Coluna J
-          status: 11, // Coluna K
-        },
-      } as ArrayMapping,
-    },
-  }
-}
+// Função deprecated removida - mapeamentos agora são configurados via UI
 
 /**
  * Processa dados para formato compatível com template

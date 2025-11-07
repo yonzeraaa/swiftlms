@@ -14,13 +14,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Verificar se é arquivo Excel
-    if (
-      !file.type.includes('spreadsheet') &&
-      !file.name.endsWith('.xlsx')
-    ) {
+    // Validar tamanho do arquivo (máximo 10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+    if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { error: 'Arquivo deve ser .xlsx' },
+        { error: 'Arquivo muito grande. O tamanho máximo é 10MB.' },
+        { status: 400 }
+      )
+    }
+
+    // Validar tipo MIME
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ]
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.xlsx')) {
+      return NextResponse.json(
+        { error: 'Por favor, envie apenas arquivos Excel (.xlsx)' },
         { status: 400 }
       )
     }

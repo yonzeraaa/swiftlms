@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus, Settings, Trash2 } from 'lucide-react'
 import type { TemplateAnalysis, SuggestedMapping, StaticCell } from '@/lib/template-analyzer'
 import FieldSelector from './FieldSelector'
@@ -39,6 +39,47 @@ export default function MappingEditor({
   const [newStaticLabel, setNewStaticLabel] = useState('')
   const [staticFormError, setStaticFormError] = useState<string | null>(null)
 
+  // Validar conflitos de mapeamento
+  const mappingValidation = useMemo(() => {
+    const conflicts: string[] = []
+    const warnings: string[] = []
+
+    // Verificar se campos estão tanto em estático quanto em array
+    Object.entries(staticMappings).forEach(([cellAddress, fieldName]) => {
+      if (fieldName in fieldsMapping) {
+        conflicts.push(
+          `Campo "${fieldName}" mapeado em célula estática (${cellAddress}) e em coluna (${fieldsMapping[fieldName]})`
+        )
+      }
+    })
+
+    // Verificar se células estáticas sobrepõem área de array
+    Object.keys(staticMappings).forEach(cellAddress => {
+      const match = cellAddress.match(/^[A-Z]+(\d+)$/)
+      if (match) {
+        const row = parseInt(match[1])
+        if (row >= startRow) {
+          warnings.push(
+            `Célula estática ${cellAddress} pode sobrepor dados da tabela (linha inicial: ${startRow})`
+          )
+        }
+      }
+    })
+
+    // Verificar colunas duplicadas
+    const columnCounts: Record<number, number> = {}
+    Object.values(fieldsMapping).forEach(column => {
+      columnCounts[column] = (columnCounts[column] || 0) + 1
+    })
+    Object.entries(columnCounts).forEach(([column, count]) => {
+      if (count > 1) {
+        warnings.push(`Coluna ${column} mapeada para múltiplos campos`)
+      }
+    })
+
+    return { conflicts, warnings, hasIssues: conflicts.length > 0 || warnings.length > 0 }
+  }, [staticMappings, fieldsMapping, startRow])
+
   useEffect(() => {
     setFieldsMapping(initialMapping.fields)
     setStartRow(initialMapping.startRow)
@@ -62,26 +103,33 @@ export default function MappingEditor({
     }
   }, [staticMappings, onStaticMappingsChange])
 
-  const emitMappingChange = (nextFields: Record<string, number>, nextStartRow: number = startRow) => {
-    const updatedMapping: SuggestedMapping = {
-      ...initialMapping,
-      fields: nextFields,
-      startRow: nextStartRow,
-    }
-    onChange(updatedMapping)
-  }
+  const emitMappingChange = useCallback(
+    (nextFields: Record<string, number>, nextStartRow?: number) => {
+      const updatedMapping: SuggestedMapping = {
+        type: 'array',
+        source: initialMapping.source,
+        fields: nextFields,
+        startRow: nextStartRow ?? startRow,
+      }
+      onChange(updatedMapping)
+    },
+    [onChange, initialMapping.source, startRow]
+  )
 
-  const emitAnalysisChange = (partial: Partial<TemplateAnalysis>) => {
-    if (!onAnalysisChange) return
-    onAnalysisChange({
-      ...analysis,
-      ...partial,
-      headers: partial.headers || columns,
-      staticCells: partial.staticCells || staticCells,
-      dataStartRow: partial.dataStartRow ?? startRow,
-      totalColumns: partial.totalColumns ?? Math.max(...columns.map(h => h.column), 0),
-    })
-  }
+  const emitAnalysisChange = useCallback(
+    (partial: Partial<TemplateAnalysis>) => {
+      if (!onAnalysisChange) return
+      onAnalysisChange({
+        ...analysis,
+        ...partial,
+        headers: partial.headers || columns,
+        staticCells: partial.staticCells || staticCells,
+        dataStartRow: partial.dataStartRow ?? startRow,
+        totalColumns: partial.totalColumns ?? Math.max(...columns.map(h => h.column), 0),
+      })
+    },
+    [onAnalysisChange, analysis, columns, staticCells, startRow]
+  )
 
   const handleStaticFieldChange = (cellAddress: string, fieldKey: string | null) => {
     const newMappings = { ...staticMappings }
@@ -141,22 +189,35 @@ export default function MappingEditor({
     emitAnalysisChange({ headers: newColumns, totalColumns: Math.max(...newColumns.map(h => h.column), 0) })
   }
 
-  const handleFieldChange = (columnNumber: number, fieldKey: string | undefined) => {
-    const newFields = { ...fieldsMapping }
+  const handleFieldChange = useCallback(
+    (columnNumber: number, fieldKey: string | undefined) => {
+      setFieldsMapping(prevFields => {
+        const newFields = { ...prevFields }
 
-    Object.keys(newFields).forEach(key => {
-      if (newFields[key] === columnNumber) {
-        delete newFields[key]
-      }
-    })
+        // Remover mapeamento anterior desta coluna
+        Object.keys(newFields).forEach(key => {
+          if (newFields[key] === columnNumber) {
+            delete newFields[key]
+          }
+        })
 
-    if (fieldKey) {
-      delete newFields[fieldKey]
-      newFields[fieldKey] = columnNumber
-    }
+        // Se há novo campo, adicionar mapeamento
+        if (fieldKey) {
+          // Remover campo de outras colunas (um campo só pode estar em uma coluna)
+          delete newFields[fieldKey]
+          newFields[fieldKey] = columnNumber
+        }
 
-    setFieldsMapping(newFields)
-  }
+        // Emitir mudança após atualização
+        requestAnimationFrame(() => {
+          emitMappingChange(newFields)
+        })
+
+        return newFields
+      })
+    },
+    [emitMappingChange]
+  )
 
   const normalizeExcelAddress = (address: string) => address.trim().toUpperCase()
 
@@ -255,6 +316,37 @@ export default function MappingEditor({
         <Settings className="h-5 w-5" />
         <h3 className="text-lg font-semibold">Configurar Mapeamento</h3>
       </div>
+
+      {/* Alertas de Validação */}
+      {mappingValidation.hasIssues && (
+        <div className="space-y-2">
+          {mappingValidation.conflicts.length > 0 && (
+            <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <div className="text-red-400 font-semibold">⚠️ Conflitos</div>
+              </div>
+              <ul className="mt-2 space-y-1 text-sm text-red-300">
+                {mappingValidation.conflicts.map((conflict, i) => (
+                  <li key={i}>• {conflict}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {mappingValidation.warnings.length > 0 && (
+            <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <div className="text-yellow-400 font-semibold">⚠️ Avisos</div>
+              </div>
+              <ul className="mt-2 space-y-1 text-sm text-yellow-300">
+                {mappingValidation.warnings.map((warning, i) => (
+                  <li key={i}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       <p className="text-sm text-gold-300/70">
         Mapeie os campos estáticos do cabeçalho e as colunas da tabela de dados:

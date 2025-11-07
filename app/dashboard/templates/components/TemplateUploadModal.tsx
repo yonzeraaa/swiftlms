@@ -55,8 +55,22 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [originalCategory, setOriginalCategory] = useState<string | null>(null)
   const [selectedSheet, setSelectedSheet] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const supabase = createClient()
   const isEditMode = !!template
+
+  // Cleanup ao desmontar componente
+  useEffect(() => {
+    return () => {
+      // Limpar interval se existir
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+      }
+      // Liberar referências de arquivo
+      setFile(null)
+      setAnalysis(null)
+    }
+  }, [])
 
   const normalizeStoredAnalysis = (raw: any): TemplateAnalysis => {
     const safeHeaders = Array.isArray(raw?.headers) ? raw.headers : []
@@ -152,6 +166,31 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
     }
   }
 
+  const validateFile = (file: File): { valid: boolean; error?: string } => {
+    // Validar tamanho (máximo 10MB)
+    const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB em bytes
+    if (file.size > MAX_FILE_SIZE) {
+      return {
+        valid: false,
+        error: 'Arquivo muito grande. O tamanho máximo é 10MB.',
+      }
+    }
+
+    // Validar tipo MIME
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ]
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.xlsx')) {
+      return {
+        valid: false,
+        error: 'Por favor, envie apenas arquivos Excel (.xlsx)',
+      }
+    }
+
+    return { valid: true }
+  }
+
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -159,24 +198,32 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0]
-      if (
-        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-        file.name.endsWith('.xlsx')
-      ) {
-        setFile(file)
-        if (!name) setName(file.name.replace('.xlsx', ''))
+      const validation = validateFile(file)
 
-        // Analisar template automaticamente
-        await analyzeTemplateFile(file)
-      } else {
-        alert('Por favor, envie apenas arquivos .xlsx')
+      if (!validation.valid) {
+        alert(validation.error)
+        return
       }
+
+      setFile(file)
+      if (!name) setName(file.name.replace('.xlsx', ''))
+
+      // Analisar template automaticamente
+      await analyzeTemplateFile(file)
     }
   }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
+      const validation = validateFile(file)
+
+      if (!validation.valid) {
+        alert(validation.error)
+        e.target.value = '' // Limpar input
+        return
+      }
+
       setFile(file)
       if (!name) setName(file.name.replace('.xlsx', ''))
 
@@ -289,13 +336,13 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
 
         // Se está substituindo arquivo, fazer re-upload
         if (replaceFile && file) {
-          // Upload do novo arquivo
-          const timestamp = Date.now()
+          // Upload do novo arquivo usando UUID (evita race conditions)
+          const uniqueId = crypto.randomUUID()
           const sanitizedFileName = file.name
             .replace(/\s+/g, '_')
             .replace(/[^a-zA-Z0-9._-]/g, '')
             .toLowerCase()
-          const fileName = `${category}/${timestamp}_${sanitizedFileName}`
+          const fileName = `${category}/${uniqueId}_${sanitizedFileName}`
 
           // Deletar arquivo antigo
           if (template.storage_path) {
@@ -372,17 +419,17 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
       }
 
       // Simular progress (storage upload não tem callback de progress)
-      const progressInterval = setInterval(() => {
+      progressIntervalRef.current = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 10, 90))
       }, 200)
 
-      // Gerar caminho único para o arquivo (sem espaços e caracteres especiais)
-      const timestamp = Date.now()
+      // Gerar caminho único para o arquivo usando UUID (evita race conditions)
+      const uniqueId = crypto.randomUUID()
       const sanitizedFileName = file.name
         .replace(/\s+/g, '_')  // Substitui espaços por underscore
         .replace(/[^a-zA-Z0-9._-]/g, '')  // Remove caracteres especiais
         .toLowerCase()
-      const fileName = `${category}/${timestamp}_${sanitizedFileName}`
+      const fileName = `${category}/${uniqueId}_${sanitizedFileName}`
 
       // Upload para Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -392,7 +439,10 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           upsert: false,
         })
 
-      clearInterval(progressInterval)
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
+      }
 
       if (uploadError) throw uploadError
 
