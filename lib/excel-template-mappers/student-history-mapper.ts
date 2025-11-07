@@ -43,7 +43,7 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
 
   const supabase = createClient()
 
-  // Buscar dados do aluno com enrollment (sem forçar INNER JOIN em lesson_progress)
+  // Buscar dados do aluno com enrollment (pegar a matrícula mais recente)
   const { data: enrollment, error: enrollmentError } = await supabase
     .from('enrollments')
     .select(`
@@ -58,6 +58,8 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
       user:profiles(full_name, email)
     `)
     .eq('user_id', userId)
+    .order('enrolled_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (enrollmentError) {
