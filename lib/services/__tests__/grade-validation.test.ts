@@ -2,11 +2,12 @@
  * Testes para o serviço de validação de notas
  */
 
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { validateGradeConsistency } from '../grade-validation'
 
 // Mock do Supabase
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn()
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn()
 }))
 
 describe('validateGradeConsistency', () => {
@@ -14,19 +15,19 @@ describe('validateGradeConsistency', () => {
 
   beforeEach(async () => {
     mockSupabase = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      single: jest.fn(),
-      maybeSingle: jest.fn()
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn(),
+      maybeSingle: vi.fn()
     }
 
     const supabaseModule = await import('@/lib/supabase/server')
-    ;(supabaseModule.createClient as jest.Mock).mockResolvedValue(mockSupabase)
+    ;(supabaseModule.createClient as any).mockResolvedValue(mockSupabase)
   })
 
   afterEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('deve validar dados consistentes com sucesso', async () => {
@@ -59,9 +60,9 @@ describe('validateGradeConsistency', () => {
 
     mockSupabase.from
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
           data: {
             user_id: 'user123',
             test_id: 'test123',
@@ -74,14 +75,14 @@ describe('validateGradeConsistency', () => {
         })
       })
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
         data: attemptData
       })
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
           data: {
             id: 'test123',
             course_id: 'course123',
@@ -99,9 +100,9 @@ describe('validateGradeConsistency', () => {
   it('deve detectar best_score inconsistente', async () => {
     mockSupabase.from
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
           data: {
             user_id: 'user123',
             test_id: 'test123',
@@ -114,17 +115,17 @@ describe('validateGradeConsistency', () => {
         })
       })
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
         data: [
           { score: 90, submitted_at: '2025-01-01T11:00:00Z' },
           { score: 100, submitted_at: '2025-01-01T12:00:00Z' }
         ]
       })
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
           data: {
             id: 'test123',
             course_id: 'course123',
@@ -143,9 +144,9 @@ describe('validateGradeConsistency', () => {
   it('deve detectar total_attempts inconsistente', async () => {
     mockSupabase.from
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
           data: {
             user_id: 'user123',
             test_id: 'test123',
@@ -158,17 +159,17 @@ describe('validateGradeConsistency', () => {
         })
       })
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
         data: [
           { score: 90, submitted_at: '2025-01-01T11:00:00Z' },
           { score: 100, submitted_at: '2025-01-01T12:00:00Z' }
         ]
       })
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
           data: {
             id: 'test123',
             course_id: 'course123',
@@ -186,15 +187,15 @@ describe('validateGradeConsistency', () => {
   it('deve detectar tentativas sem registro em test_grades', async () => {
     mockSupabase.from
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
           data: null
         })
       })
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
         data: [
           { score: 90, submitted_at: '2025-01-01T11:00:00Z' }
         ]
@@ -209,9 +210,9 @@ describe('validateGradeConsistency', () => {
   it('deve retornar detalhes completos da validação', async () => {
     mockSupabase.from
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        maybeSingle: jest.fn().mockResolvedValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
           data: {
             user_id: 'user123',
             test_id: 'test123',
@@ -224,17 +225,17 @@ describe('validateGradeConsistency', () => {
         })
       })
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
         data: [
           { score: 90, submitted_at: '2025-01-01T11:00:00Z' },
           { score: 100, submitted_at: '2025-01-01T12:00:00Z' }
         ]
       })
       .mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockReturnThis(),
-        single: jest.fn().mockResolvedValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        single: vi.fn().mockResolvedValue({
           data: {
             id: 'test123',
             course_id: 'course123',

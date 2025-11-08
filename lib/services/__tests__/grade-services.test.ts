@@ -2,11 +2,12 @@
  * Testes para o serviço de atribuição de notas
  */
 
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { assignMaxGradeToStudent } from '../grade-services'
 
 // Mock do Supabase
-jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn()
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn()
 }))
 
 describe('assignMaxGradeToStudent', () => {
@@ -14,21 +15,21 @@ describe('assignMaxGradeToStudent', () => {
 
   beforeEach(async () => {
     mockSupabase = {
-      from: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      single: jest.fn(),
-      maybeSingle: jest.fn(),
-      insert: jest.fn().mockReturnThis(),
-      upsert: jest.fn().mockReturnThis()
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      single: vi.fn(),
+      maybeSingle: vi.fn(),
+      insert: vi.fn().mockReturnThis(),
+      upsert: vi.fn().mockReturnThis()
     }
 
     const supabaseModule = await import('@/lib/supabase/server')
-    ;(supabaseModule.createClient as jest.Mock).mockResolvedValue(mockSupabase)
+    ;(supabaseModule.createClient as any).mockResolvedValue(mockSupabase)
   })
 
   afterEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('deve falhar se usuário não for admin', async () => {
