@@ -116,7 +116,9 @@ export default function StudentGradesReport({
       const response = await fetch(`/api/admin/student-grades/${userId}?${params.toString()}`)
 
       if (!response.ok) {
-        throw new Error('Erro ao buscar notas do aluno')
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }))
+        console.error('Erro da API:', response.status, errorData)
+        throw new Error(errorData.error || `Erro ${response.status} ao buscar notas do aluno`)
       }
 
       const result = await response.json()
