@@ -232,17 +232,6 @@ export async function PUT(request: Request) {
     }
 
     // Criar solicitação de certificado
-    console.log('Tentando criar solicitação com dados:', {
-      enrollment_id: enrollmentId,
-      user_id: user.id,
-      course_id: courseId,
-      total_lessons: eligibility.totalLessons,
-      completed_lessons: eligibility.completedLessons,
-      status: 'pending',
-      request_date: new Date().toISOString(),
-      certificate_type: certificateType
-    })
-
     const { data: newRequest, error } = await supabase
       .from('certificate_requests')
       .insert({
@@ -252,8 +241,7 @@ export async function PUT(request: Request) {
         total_lessons: eligibility.totalLessons,
         completed_lessons: eligibility.completedLessons,
         status: 'pending',
-        request_date: new Date().toISOString(),
-        certificate_type: certificateType
+        request_date: new Date().toISOString()
       })
       .select()
       .single()
@@ -307,20 +295,18 @@ export async function PUT(request: Request) {
         action: 'certificate_requested',
         entity_type: 'certificate_request',
         entity_id: newRequest.id,
-        entity_name: `Certificado ${certificateType === 'lato-sensu' ? 'Lato Sensu' : 'Técnico'} para curso ${courseId}`,
+        entity_name: `Certificado para curso ${courseId}`,
         metadata: {
           course_id: courseId,
           enrollment_id: enrollmentId,
           progress: eligibility.progressPercentage,
-          test_score: eligibility.bestTestScore,
-          certificate_type: certificateType
+          test_score: eligibility.bestTestScore
         }
       })
 
     return NextResponse.json({
       success: true,
       request: newRequest,
-      certificateType,
       message: 'Solicitação de certificado criada com sucesso. Aguarde a aprovação do administrador.'
     })
   } catch (error) {
