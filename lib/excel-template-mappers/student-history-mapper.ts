@@ -94,18 +94,15 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
     }
   })
 
-  // Buscar tentativas de testes com subjects
-  const { data: testAttempts } = await supabase
+  // Buscar tentativas de testes
+  const { data: testAttempts, error: testAttemptsError } = await supabase
     .from('test_attempts')
-    .select(`
-      *,
-      test:tests(
-        *,
-        subject_id,
-        subjects(id, name)
-      )
-    `)
+    .select('*, test:tests(*)')
     .eq('user_id', userId)
+
+  if (testAttemptsError) {
+    console.error('Erro ao buscar test attempts:', testAttemptsError)
+  }
 
   // Calcular média dos testes
   const testScores = testAttempts?.map((ta: any) => ta.score).filter((s: number) => s > 0) || []
