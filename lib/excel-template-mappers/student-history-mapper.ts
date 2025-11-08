@@ -94,10 +94,17 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
     }
   })
 
-  // Buscar tentativas de testes
+  // Buscar tentativas de testes com subjects
   const { data: testAttempts } = await supabase
     .from('test_attempts')
-    .select('*, test:tests(*)')
+    .select(`
+      *,
+      test:tests(
+        *,
+        subject_id,
+        subjects(id, name)
+      )
+    `)
     .eq('user_id', userId)
 
   // Calcular média dos testes
@@ -126,6 +133,33 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  // Buscar notas dos testes por subject (reutilizar testAttempts já buscado)
+  // Criar mapa de melhor nota por subject
+  const bestScoreBySubject = new Map<string, number>()
+  testAttempts?.forEach((attempt: any) => {
+    const subjectId = attempt.test?.subject_id
+    if (subjectId && attempt.score != null) {
+      const currentBest = bestScoreBySubject.get(subjectId) || 0
+      if (attempt.score > currentBest) {
+        bestScoreBySubject.set(subjectId, attempt.score)
+      }
+    }
+  })
+
+  // Buscar todos os subjects para fazer matching com lessons
+  const { data: subjects } = await supabase
+    .from('subjects')
+    .select('id, name')
+
+  // Criar mapa de subject_id por código (primeiros 7 chars do name)
+  const subjectByCode = new Map<string, any>()
+  subjects?.forEach((subject: any) => {
+    const code = subject.name?.substring(0, 7) // Ex: DLA0202
+    if (code) {
+      subjectByCode.set(code, subject)
+    }
+  })
 
   // Processar módulos e disciplinas com validações defensivas
   const modulesData: ModuleRowData[] = []
@@ -159,27 +193,19 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
 
     // Disciplinas do módulo
     const lessons = courseModule.lessons || []
-    const lessonCount = lessons.length || 0
-
-    // Calcular horas por disciplina proporcionalmente
-    const hoursPerLesson = lessonCount > 0 ? Math.round(moduleWorkload / lessonCount) : 0
 
     lessons.forEach((lesson: any, lessonIndex: number) => {
       // Buscar progresso do mapa criado anteriormente
       const progress = progressByLessonId.get(lesson.id)
 
-      // Usar duration_minutes se existir, senão usar distribuição proporcional
-      let lessonWorkload = 0
-      if (lesson.duration_minutes && lesson.duration_minutes > 0) {
-        lessonWorkload = Helpers.minutesToHours(lesson.duration_minutes)
-      } else {
-        lessonWorkload = hoursPerLesson
-      }
+      // Extrair código da lesson (primeiros 7 chars do título)
+      const lessonCode = lesson.title?.substring(0, 7) || ''
 
-      // Nota: lesson_progress não tem coluna 'score'
-      // As pontuações das disciplinas não estão disponíveis no sistema
+      // Buscar subject correspondente
+      const subject = subjectByCode.get(lessonCode)
 
-      totalWorkload += lessonWorkload
+      // Buscar nota do teste deste subject
+      const lessonScore = subject ? (bestScoreBySubject.get(subject.id) || 0) : 0
 
       if (progress?.completed_at) {
         try {
@@ -192,12 +218,17 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
         }
       }
 
+      if (typeof lessonScore === 'number' && lessonScore > 0) {
+        totalScore += lessonScore
+        scoreCount++
+      }
+
       modulesData.push({
         code: Formatters.lessonCode(moduleIndex, lessonIndex),
         name: ` Disciplina ${lesson.title || 'Sem título'}`,
-        workload: lessonWorkload,
+        workload: 0, // Sem horas para disciplinas individuais
         completion_date: Formatters.date(progress?.completed_at),
-        score: '' // Sem score disponível para lições individuais
+        score: lessonScore > 0 ? lessonScore : ''
       })
     })
   })

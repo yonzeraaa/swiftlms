@@ -1736,8 +1736,41 @@ export default function ReportsPage() {
 
       const { data: testAttempts } = await supabase
         .from('test_attempts')
-        .select('*, test:tests(*)')
+        .select(`
+          score,
+          test:tests(
+            id,
+            subject_id,
+            subjects(name)
+          )
+        `)
         .eq('user_id', userId)
+
+      // Criar mapa de melhor nota por subject
+      const bestScoreBySubject = new Map<string, number>()
+      testAttempts?.forEach((attempt: any) => {
+        const subjectId = attempt.test?.subject_id
+        if (subjectId && attempt.score != null) {
+          const currentBest = bestScoreBySubject.get(subjectId) || 0
+          if (attempt.score > currentBest) {
+            bestScoreBySubject.set(subjectId, attempt.score)
+          }
+        }
+      })
+
+      // Buscar todos os subjects para fazer matching com lessons
+      const { data: subjects } = await supabase
+        .from('subjects')
+        .select('id, name')
+
+      // Criar mapa de subject_id por código (primeiros 7 chars do name)
+      const subjectByCode = new Map<string, any>()
+      subjects?.forEach((subject: any) => {
+        const code = subject.name?.substring(0, 7)
+        if (code) {
+          subjectByCode.set(code, subject)
+        }
+      })
 
       const testScores = testAttempts?.map((ta: any) => ta.score) || []
       const avgTests = testScores.length > 0 ? testScores.reduce((a: number, b: number) => a + b, 0) / testScores.length : 0
@@ -1747,10 +1780,6 @@ export default function ReportsPage() {
       const modulesData: any[] = []
       enrollment.course.course_modules?.forEach((module: any, moduleIndex: number) => {
         const moduleTotalHours = module.total_hours || 0
-        const lessonCount = module.lessons?.length || 0
-
-        // Calcular horas por disciplina proporcionalmente
-        const hoursPerLesson = lessonCount > 0 ? Math.round(moduleTotalHours / lessonCount) : 0
 
         modulesData.push({
           codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}`,
@@ -1764,20 +1793,21 @@ export default function ReportsPage() {
         module.lessons?.forEach((lesson: any, lessonIndex: number) => {
           const progress = progressByLessonId.get(lesson.id)
 
-          // Usar duration_minutes se existir, senão usar distribuição proporcional
-          let lessonHours = 0
-          if (lesson.duration_minutes && lesson.duration_minutes > 0) {
-            lessonHours = Math.round(lesson.duration_minutes / 60)
-          } else {
-            lessonHours = hoursPerLesson
-          }
+          // Extrair código da lesson (primeiros 7 chars)
+          const lessonCode = lesson.title?.substring(0, 7) || ''
+
+          // Buscar subject correspondente
+          const subject = subjectByCode.get(lessonCode)
+
+          // Buscar nota do teste deste subject
+          const lessonScore = subject ? (bestScoreBySubject.get(subject.id) || 0) : 0
 
           modulesData.push({
             codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}${(lessonIndex + 1).toString().padStart(2, '0')}`,
             nome: ` Disciplina ${lesson.title}`,
-            carga_horaria: lessonHours,
+            carga_horaria: 0, // Sem horas para disciplinas individuais
             data_finalizacao: progress?.completed_at ? formatDate(progress.completed_at) : '',
-            pontuacao: '', // lesson_progress não tem coluna score
+            pontuacao: lessonScore > 0 ? lessonScore : '',
             isModule: false
           })
         })
