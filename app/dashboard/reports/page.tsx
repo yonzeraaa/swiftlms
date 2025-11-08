@@ -1697,7 +1697,7 @@ export default function ReportsPage() {
           *,
           course:courses(
             *,
-            modules(
+            course_modules(
               *,
               lessons(*)
             )
@@ -1720,6 +1720,20 @@ export default function ReportsPage() {
         return
       }
 
+      // Buscar progresso das lições separadamente
+      const { data: lessonProgressData } = await supabase
+        .from('lesson_progress')
+        .select('*')
+        .eq('user_id', userId)
+
+      // Criar mapa de progresso por lesson_id
+      const progressByLessonId = new Map<string, any>()
+      lessonProgressData?.forEach((progress: any) => {
+        if (progress.lesson_id) {
+          progressByLessonId.set(progress.lesson_id, progress)
+        }
+      })
+
       const { data: testAttempts } = await supabase
         .from('test_attempts')
         .select('*, test:tests(*)')
@@ -1731,7 +1745,7 @@ export default function ReportsPage() {
       const mediaGeral = ((avgTests * 1) + (tccScore * 2)) / 3
 
       const modulesData: any[] = []
-      enrollment.course.modules?.forEach((module: any, moduleIndex: number) => {
+      enrollment.course.course_modules?.forEach((module: any, moduleIndex: number) => {
         modulesData.push({
           codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}`,
           nome: `Módulo ${module.title}`,
@@ -1742,13 +1756,16 @@ export default function ReportsPage() {
         })
 
         module.lessons?.forEach((lesson: any, lessonIndex: number) => {
-          const progress = lesson.lesson_progress?.[0]
+          const progress = progressByLessonId.get(lesson.id)
+          // Converter minutos para horas
+          const hoursFromMinutes = Math.round((lesson.duration_minutes || 0) / 60)
+
           modulesData.push({
             codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}${(lessonIndex + 1).toString().padStart(2, '0')}`,
             nome: ` Disciplina ${lesson.title}`,
-            carga_horaria: lesson.duration_minutes || 0,
+            carga_horaria: hoursFromMinutes,
             data_finalizacao: progress?.completed_at ? formatDate(progress.completed_at) : '',
-            pontuacao: progress?.score || 0,
+            pontuacao: progress?.score || '',
             isModule: false
           })
         })
