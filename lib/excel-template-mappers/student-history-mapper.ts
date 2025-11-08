@@ -172,10 +172,11 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
   console.log('=== DEBUG: Subjects ===')
   console.log('Total subjects:', subjects?.length)
 
-  // Criar mapa de subject_id por código (primeiros 7 chars do name)
+  // Criar mapa de subject_id por código (extrair código antes do hífen)
   const subjectByCode = new Map<string, any>()
   subjects?.forEach((subject: any, index: number) => {
-    const code = subject.name?.substring(0, 7) // Ex: DLA0202
+    // Extrair código antes do hífen: "DLA0202-NOME" -> "DLA0202"
+    const code = subject.name?.split('-')[0]?.trim()
     if (code) {
       subjectByCode.set(code, subject)
       if (index < 5) {
@@ -223,11 +224,21 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
       // Buscar progresso do mapa criado anteriormente
       const progress = progressByLessonId.get(lesson.id)
 
-      // Extrair código da lesson (primeiros 7 chars do título)
-      const lessonCode = lesson.title?.substring(0, 7) || ''
+      // Extrair código da lesson
+      // Formato: "DLA010101-Título" ou "ACMD010101-Título"
+      // Pegar tudo antes do hífen e depois pegar os primeiros N chars (variável)
+      const lessonFullCode = lesson.title?.split('-')[0]?.trim() || ''
 
-      // Buscar subject correspondente
-      const subject = subjectByCode.get(lessonCode)
+      // Tentar diferentes tamanhos de código (de 8 até 4 caracteres)
+      // Ex: ACMD0101 (8), DCIM060 (7), DLA0101 (7), etc.
+      let subject = null
+      let lessonCode = ''
+
+      for (let codeLength = 8; codeLength >= 4 && !subject; codeLength--) {
+        lessonCode = lessonFullCode.substring(0, codeLength)
+        subject = subjectByCode.get(lessonCode)
+        if (subject) break
+      }
 
       // Buscar nota do teste deste subject
       const lessonScore = subject ? (bestScoreBySubject.get(subject.id) || 0) : 0
@@ -236,7 +247,8 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
       if (lessonIndex < 3) {
         console.log(`=== Lesson ${lessonIndex} ===`, {
           title: lesson.title,
-          code: lessonCode,
+          fullCode: lessonFullCode,
+          matchedCode: lessonCode,
           subjectFound: !!subject,
           subjectId: subject?.id,
           subjectName: subject?.name,
