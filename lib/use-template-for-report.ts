@@ -12,7 +12,7 @@ import { fetchAccessData, mapAccessDataForTemplate } from './excel-template-mapp
 export async function generateReportWithTemplate(
   category: string,
   templateId?: string,
-  params?: { userId?: string; dateRange?: { start: string; end: string } }
+  params?: { userId?: string; courseId?: string; dateRange?: { start: string; end: string } }
 ): Promise<Blob | null> {
   const supabase = createClient()
 
@@ -52,7 +52,7 @@ export async function generateReportWithTemplate(
       if (!params?.userId) {
         throw new Error('userId é obrigatório para relatório de histórico do aluno')
       }
-      const historyData = await fetchStudentHistoryData(params.userId)
+      const historyData = await fetchStudentHistoryData(params.userId, params.courseId)
       reportData = mapStudentHistoryDataForTemplate(historyData)
     } else if (category === 'grades') {
       const gradesData = await fetchGradesData()

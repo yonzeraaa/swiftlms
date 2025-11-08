@@ -60,6 +60,9 @@ export default function ReportsPage() {
   const [students, setStudents] = useState<Profile[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [studentCourses, setStudentCourses] = useState<Array<{ enrollment_id: string, course_id: string, course_title: string }>>([])
+  const [selectedCourse, setSelectedCourse] = useState<string | null>(null)
+  const [modalStep, setModalStep] = useState<'student' | 'course'>('student')
   const supabase = createClient()
 
   useEffect(() => {
@@ -95,6 +98,24 @@ export default function ReportsPage() {
 
     if (data) {
       setStudents(data)
+    }
+  }
+
+  const fetchStudentCourses = async (userId: string) => {
+    const { data } = await supabase
+      .from('enrollments')
+      .select('id, course_id, courses(title)')
+      .eq('user_id', userId)
+      .order('enrolled_at', { ascending: false })
+
+    if (data) {
+      setStudentCourses(
+        data.map((enrollment: any) => ({
+          enrollment_id: enrollment.id,
+          course_id: enrollment.course_id,
+          course_title: enrollment.courses?.title || 'Curso sem título'
+        }))
+      )
     }
   }
 
@@ -1661,7 +1682,7 @@ export default function ReportsPage() {
   }
 
   // Histórico do Aluno (Modelo IPETEC/UCP)
-  const generateStudentHistoryReport = async (userId: string, userName: string) => {
+  const generateStudentHistoryReport = async (userId: string, userName: string, courseId?: string) => {
     setGeneratingReport('student-history')
 
     try {
@@ -1673,7 +1694,7 @@ export default function ReportsPage() {
       }
 
       // Tentar gerar usando template
-      const blob = await generateReportWithTemplate('student-history', selectedTemplate || undefined, { userId })
+      const blob = await generateReportWithTemplate('student-history', selectedTemplate || undefined, { userId, courseId })
 
       if (blob) {
         // Usar template
@@ -1691,7 +1712,7 @@ export default function ReportsPage() {
       }
 
       // Fallback: gerar sem template (método antigo)
-      const { data: enrollment, error: enrollmentError } = await supabase
+      let enrollmentQuery = supabase
         .from('enrollments')
         .select(`
           *,
@@ -1705,6 +1726,15 @@ export default function ReportsPage() {
           user:profiles(full_name, email)
         `)
         .eq('user_id', userId)
+
+      // Se courseId for fornecido, filtrar por ele
+      if (courseId) {
+        enrollmentQuery = enrollmentQuery.eq('course_id', courseId)
+      }
+
+      const { data: enrollment, error: enrollmentError } = await enrollmentQuery
+        .order('enrolled_at', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       if (enrollmentError) {
@@ -2353,120 +2383,202 @@ export default function ReportsPage() {
         </Card>
       </div>
 
-      {/* Modal de Seleção de Aluno para Histórico */}
+      {/* Modal de Seleção de Aluno e Curso para Histórico */}
       <Modal
         isOpen={showStudentHistoryModal}
         onClose={() => {
           setShowStudentHistoryModal(false)
           setSelectedStudent(null)
+          setSelectedCourse(null)
           setSearchQuery('')
+          setModalStep('student')
+          setStudentCourses([])
         }}
-        title="Selecionar Aluno"
+        title={modalStep === 'student' ? 'Selecionar Aluno' : 'Selecionar Curso'}
         size="lg"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gold-300/70">
-            Selecione um aluno para gerar o histórico acadêmico completo
-          </p>
-
-          {/* Campo de Busca */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Buscar aluno por nome ou email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-3 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all"
-            />
-          </div>
-
-          {/* Lista de Alunos */}
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {students
-              .filter(
-                (student) =>
-                  student.full_name
-                    ?.toLowerCase()
-                    .includes(searchQuery.toLowerCase()) ||
-                  student.email?.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((student) => (
-                <button
-                  key={student.id}
-                  onClick={() => setSelectedStudent(student)}
-                  className={`w-full p-4 rounded-lg border text-left transition-all ${
-                    selectedStudent?.id === student.id
-                      ? 'bg-gold-500/10 border-gold-500/50'
-                      : 'bg-navy-800/50 border-navy-600 hover:bg-navy-800 hover:border-gold-500/30'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gold-100">
-                        {student.full_name || 'Usuário desconhecido'}
-                      </p>
-                      <p className="text-xs text-gold-300/70 mt-1">
-                        {student.email}
-                      </p>
-                    </div>
-                    {selectedStudent?.id === student.id && (
-                      <div className="ml-3 flex-shrink-0">
-                        <div className="w-5 h-5 rounded-full bg-gold-500/20 border-2 border-gold-500 flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-gold-500"></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </button>
-              ))}
-
-            {students.filter(
-              (student) =>
-                student.full_name
-                  ?.toLowerCase()
-                  .includes(searchQuery.toLowerCase()) ||
-                student.email?.toLowerCase().includes(searchQuery.toLowerCase())
-            ).length === 0 && (
-              <p className="text-center text-sm text-gold-300/50 py-8">
-                Nenhum aluno encontrado
+          {modalStep === 'student' ? (
+            <>
+              <p className="text-sm text-gold-300/70">
+                Selecione um aluno para gerar o histórico acadêmico
               </p>
-            )}
-          </div>
 
-          {/* Botões */}
-          <div className="flex gap-3 pt-4 border-t border-navy-600">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowStudentHistoryModal(false)
-                setSelectedStudent(null)
-                setSearchQuery('')
-              }}
-              className="flex-1"
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="primary"
-              onClick={async () => {
-                if (selectedStudent) {
-                  setShowStudentHistoryModal(false)
-                  setGeneratingReport('student-history')
-                  await generateStudentHistoryReport(
-                    selectedStudent.id,
-                    selectedStudent.full_name || 'Aluno'
+              {/* Campo de Busca */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Buscar aluno por nome ou email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-3 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all"
+                />
+              </div>
+
+              {/* Lista de Alunos */}
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {students
+                  .filter(
+                    (student) =>
+                      student.full_name
+                        ?.toLowerCase()
+                        .includes(searchQuery.toLowerCase()) ||
+                      student.email?.toLowerCase().includes(searchQuery.toLowerCase())
                   )
-                  setGeneratingReport(null)
-                  setSelectedStudent(null)
-                  setSearchQuery('')
-                }
-              }}
-              disabled={!selectedStudent}
-              className="flex-1"
-            >
-              Gerar Relatório
-            </Button>
-          </div>
+                  .map((student) => (
+                    <button
+                      key={student.id}
+                      onClick={() => setSelectedStudent(student)}
+                      className={`w-full p-4 rounded-lg border text-left transition-all ${
+                        selectedStudent?.id === student.id
+                          ? 'bg-gold-500/10 border-gold-500/50'
+                          : 'bg-navy-800/50 border-navy-600 hover:bg-navy-800 hover:border-gold-500/30'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gold-100">
+                            {student.full_name || 'Usuário desconhecido'}
+                          </p>
+                          <p className="text-xs text-gold-300/70 mt-1">
+                            {student.email}
+                          </p>
+                        </div>
+                        {selectedStudent?.id === student.id && (
+                          <div className="ml-3 flex-shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-gold-500/20 border-2 border-gold-500 flex items-center justify-center">
+                              <div className="w-2 h-2 rounded-full bg-gold-500"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+
+                {students.filter(
+                  (student) =>
+                    student.full_name
+                      ?.toLowerCase()
+                      .includes(searchQuery.toLowerCase()) ||
+                    student.email?.toLowerCase().includes(searchQuery.toLowerCase())
+                ).length === 0 && (
+                  <p className="text-center text-sm text-gold-300/50 py-8">
+                    Nenhum aluno encontrado
+                  </p>
+                )}
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-4 border-t border-navy-600">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowStudentHistoryModal(false)
+                    setSelectedStudent(null)
+                    setSearchQuery('')
+                    setModalStep('student')
+                  }}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    if (selectedStudent) {
+                      await fetchStudentCourses(selectedStudent.id)
+                      setModalStep('course')
+                    }
+                  }}
+                  disabled={!selectedStudent}
+                  className="flex-1"
+                >
+                  Próximo
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gold-300/70">
+                Selecione o curso para gerar o relatório de <span className="font-medium text-gold-100">{selectedStudent?.full_name}</span>
+              </p>
+
+              {/* Lista de Cursos */}
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {studentCourses.length === 0 ? (
+                  <p className="text-center text-sm text-gold-300/50 py-8">
+                    Este aluno não possui matrículas ativas
+                  </p>
+                ) : (
+                  studentCourses.map((course) => (
+                    <button
+                      key={course.enrollment_id}
+                      onClick={() => setSelectedCourse(course.course_id)}
+                      className={`w-full p-4 rounded-lg border text-left transition-all ${
+                        selectedCourse === course.course_id
+                          ? 'bg-gold-500/10 border-gold-500/50'
+                          : 'bg-navy-800/50 border-navy-600 hover:bg-navy-800 hover:border-gold-500/30'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gold-100">
+                            {course.course_title}
+                          </p>
+                        </div>
+                        {selectedCourse === course.course_id && (
+                          <div className="ml-3 flex-shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-gold-500/20 border-2 border-gold-500 flex items-center justify-center">
+                              <div className="w-2 h-2 rounded-full bg-gold-500"></div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              {/* Botões */}
+              <div className="flex gap-3 pt-4 border-t border-navy-600">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setModalStep('student')
+                    setSelectedCourse(null)
+                    setStudentCourses([])
+                  }}
+                  className="flex-1"
+                >
+                  Voltar
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    if (selectedStudent && selectedCourse) {
+                      setShowStudentHistoryModal(false)
+                      setGeneratingReport('student-history')
+                      await generateStudentHistoryReport(
+                        selectedStudent.id,
+                        selectedStudent.full_name || 'Aluno',
+                        selectedCourse
+                      )
+                      setGeneratingReport(null)
+                      setSelectedStudent(null)
+                      setSelectedCourse(null)
+                      setSearchQuery('')
+                      setModalStep('student')
+                      setStudentCourses([])
+                    }
+                  }}
+                  disabled={!selectedCourse}
+                  className="flex-1"
+                >
+                  Gerar Relatório
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

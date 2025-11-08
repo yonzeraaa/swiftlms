@@ -35,7 +35,7 @@ export interface ModuleRowData {
 /**
  * Busca dados completos do histórico do aluno
  */
-export async function fetchStudentHistoryData(userId: string): Promise<StudentHistoryData> {
+export async function fetchStudentHistoryData(userId: string, courseId?: string): Promise<StudentHistoryData> {
   // Validação de entrada
   if (!userId || typeof userId !== 'string') {
     throw new Error('userId inválido ou não fornecido')
@@ -43,8 +43,8 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
 
   const supabase = createClient()
 
-  // Buscar dados do aluno com enrollment (pegar a matrícula mais recente)
-  const { data: enrollment, error: enrollmentError } = await supabase
+  // Buscar dados do aluno com enrollment
+  let enrollmentQuery = supabase
     .from('enrollments')
     .select(`
       *,
@@ -58,6 +58,13 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
       user:profiles(full_name, email)
     `)
     .eq('user_id', userId)
+
+  // Se courseId for fornecido, filtrar por ele
+  if (courseId) {
+    enrollmentQuery = enrollmentQuery.eq('course_id', courseId)
+  }
+
+  const { data: enrollment, error: enrollmentError } = await enrollmentQuery
     .order('enrolled_at', { ascending: false })
     .limit(1)
     .maybeSingle()
