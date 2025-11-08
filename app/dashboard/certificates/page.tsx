@@ -32,6 +32,7 @@ interface CertificateRequest {
   processed_at?: string | null
   processed_by?: string | null
   notes?: string | null
+  certificate_type?: 'technical' | 'lato-sensu' | null
   user?: Profile
   course?: Course
   enrollment?: Enrollment
@@ -422,10 +423,11 @@ export default function CertificatesPage() {
             <table className="w-full min-w-[1100px] table-density density-compact">
               <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
                 <tr className="border-b border-gold-500/20">
-                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[300px]">Aluno</th>
-                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[280px]">Curso</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[280px]">Aluno</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[250px]">Curso</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[120px]">Tipo</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Lições</th>
-                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[140px]">Solicitado em</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[130px]">Solicitado em</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Status</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[200px]">Ações</th>
                 </tr>
@@ -456,6 +458,17 @@ export default function CertificatesPage() {
                           </p>
                           <p className="text-gold-500 text-xs">{request.course?.duration_hours}h</p>
                         </div>
+                      </td>
+                      <td className="py-5 px-6 text-center align-middle">
+                        {request.certificate_type === 'lato-sensu' ? (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gold-500/20 text-gold-300 whitespace-nowrap border border-gold-500/30">
+                            ⭐ Lato Sensu
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 whitespace-nowrap border border-blue-500/30">
+                            🎓 Técnico
+                          </span>
+                        )}
                       </td>
                       <td className="py-5 px-6 text-center align-middle">
                         <span className="text-gold-100 font-semibold text-sm">
@@ -561,11 +574,12 @@ export default function CertificatesPage() {
             <table className="w-full min-w-[1200px] table-density density-compact">
               <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
                 <tr className="border-b border-gold-500/20">
-                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[220px]">Número</th>
-                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[280px]">Aluno</th>
-                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[250px]">Curso</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[200px]">Número</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[250px]">Aluno</th>
+                  <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[230px]">Curso</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[110px]">Tipo</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[80px]">Nota</th>
-                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[140px]">Emitido em</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[130px]">Emitido em</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Status</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[150px]">Ações</th>
                 </tr>
@@ -606,6 +620,17 @@ export default function CertificatesPage() {
                         </p>
                         <p className="text-gold-500 text-xs">{certificate.course_hours}h</p>
                       </div>
+                    </td>
+                    <td className="py-5 px-6 text-center align-middle">
+                      {certificate.certificate_type === 'lato-sensu' ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gold-500/20 text-gold-300 whitespace-nowrap border border-gold-500/30">
+                          ⭐ Lato Sensu
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 whitespace-nowrap border border-blue-500/30">
+                          🎓 Técnico
+                        </span>
+                      )}
                     </td>
                     <td className="py-5 px-6 text-center align-middle">
                       <span className="text-gold-100 font-semibold text-sm">{certificate.grade || 0}%</span>
