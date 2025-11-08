@@ -54,7 +54,14 @@ export default function StudentEvaluationsPage() {
       const result = await response.json()
 
       if (result.success && result.data) {
-        setCourseTests(result.data.courseTests || [])
+        const courseTests = result.data.courseTests || []
+        setCourseTests(courseTests)
+
+        // Expandir automaticamente todos os cursos que têm testes
+        const courseIds = courseTests
+          .filter((ct: CourseWithTests) => ct.tests.length > 0)
+          .map((ct: CourseWithTests) => ct.course.id)
+        setExpandedCourses(new Set(courseIds))
       }
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error)
