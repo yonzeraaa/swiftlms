@@ -1,10 +1,135 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+// Função compartilhada para verificar elegibilidade
+async function checkEligibility(courseId: string, enrollmentId: string, userId: string) {
+  const supabase = await createClient()
+
+  // Buscar enrollment e curso
+  const { data: enrollment } = await supabase
+    .from('enrollments')
+    .select(`
+      *,
+      course:courses(*)
+    `)
+    .eq('id', enrollmentId)
+    .eq('user_id', userId)
+    .single()
+
+  if (!enrollment) {
+    return null
+  }
+
+  // Buscar módulos do curso
+  const { data: modules } = await supabase
+    .from('course_modules')
+    .select('id')
+    .eq('course_id', courseId)
+
+  const moduleIds = modules?.map(m => m.id) || []
+
+  // Verificar progresso das lições
+  const { count: totalLessonsCount } = await supabase
+    .from('lessons')
+    .select('*', { count: 'exact', head: true })
+    .in('module_id', moduleIds)
+
+  const { count: completedLessonsCount } = await supabase
+    .from('lesson_progress')
+    .select('*', { count: 'exact', head: true })
+    .eq('enrollment_id', enrollmentId)
+    .eq('is_completed', true)
+
+  const lessonsCompleted = completedLessonsCount || 0
+  const totalLessons = totalLessonsCount || 0
+  const progressPercentage = totalLessons > 0
+    ? Math.round((lessonsCompleted / totalLessons) * 100)
+    : 0
+
+  // Verificar nota nos testes
+  const { data: testGrades } = await supabase
+    .from('test_grades')
+    .select('best_score')
+    .eq('user_id', userId)
+    .eq('course_id', courseId)
+
+  const bestTestScore = testGrades && testGrades.length > 0
+    ? Math.max(...testGrades.map(g => g.best_score || 0))
+    : 0
+
+  // Verificar requisitos
+  const minimumProgress = 100
+  const minimumTestScore = 70
+
+  const requirementsMet =
+    progressPercentage >= minimumProgress &&
+    bestTestScore >= minimumTestScore
+
+  // Verificar TCC aprovado
+  const { data: approvedTcc } = await supabase
+    .from('tcc_submissions')
+    .select('id')
+    .eq('enrollment_id', enrollmentId)
+    .eq('status', 'approved')
+    .maybeSingle()
+
+  const hasApprovedTcc = !!approvedTcc
+
+  const eligibleCertificates = {
+    technical: requirementsMet,
+    latoSensu: requirementsMet && hasApprovedTcc
+  }
+
+  type CertificateType = 'technical' | 'lato-sensu'
+
+  const { data: existingRequestsRows } = await supabase
+    .from('certificate_requests')
+    .select('id, status, request_date')
+    .eq('enrollment_id', enrollmentId)
+
+  const requestRows = existingRequestsRows ?? []
+  const requestsByType = {} as Partial<Record<CertificateType, typeof requestRows[number]>>
+
+  const { data: existingCertificatesRows } = await supabase
+    .from('certificates')
+    .select('id, approval_status, issued_at')
+    .eq('enrollment_id', enrollmentId)
+
+  const certificateRows = existingCertificatesRows ?? []
+  const certificatesByType = {} as Partial<Record<CertificateType, typeof certificateRows[number]>>
+
+  const technicalRequest = requestsByType.technical
+  const technicalCertificate = certificatesByType.technical && certificatesByType.technical.approval_status === 'approved'
+
+  return {
+    eligible: requirementsMet,
+    progressPercentage,
+    bestTestScore,
+    totalLessons,
+    completedLessons: lessonsCompleted,
+    requirementsMet,
+    minimumProgress,
+    minimumTestScore,
+    hasApprovedTcc,
+    eligibleCertificates,
+    requestsByType: {
+      technical: requestsByType.technical || null,
+      latoSensu: requestsByType['lato-sensu'] || null
+    },
+    approvedCertificatesByType: {
+      technical: certificatesByType.technical || null,
+      latoSensu: certificatesByType['lato-sensu'] || null
+    },
+    hasExistingRequest: !!technicalRequest,
+    requestStatus: technicalRequest?.status,
+    hasApprovedCertificate: !!technicalCertificate
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const { courseId, enrollmentId } = await request.json()
-    
+
     if (!courseId || !enrollmentId) {
       return NextResponse.json(
         { error: 'courseId e enrollmentId são obrigatórios' },
@@ -14,7 +139,7 @@ export async function POST(request: Request) {
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    
+
     if (!user) {
       return NextResponse.json(
         { error: 'Não autorizado' },
@@ -22,157 +147,16 @@ export async function POST(request: Request) {
       )
     }
 
-    // Buscar enrollment e curso
-    const { data: enrollment } = await supabase
-      .from('enrollments')
-      .select(`
-        *,
-        course:courses(*)
-      `)
-      .eq('id', enrollmentId)
-      .eq('user_id', user.id)
-      .single()
+    const eligibility = await checkEligibility(courseId, enrollmentId, user.id)
 
-    if (!enrollment) {
+    if (!eligibility) {
       return NextResponse.json(
         { error: 'Matrícula não encontrada' },
         { status: 404 }
       )
     }
 
-    // Buscar módulos do curso
-    const { data: modules } = await supabase
-      .from('course_modules')
-      .select('id')
-      .eq('course_id', courseId)
-    
-    const moduleIds = modules?.map(m => m.id) || []
-    
-    // Verificar progresso das lições
-    const { count: totalLessonsCount } = await supabase
-      .from('lessons')
-      .select('*', { count: 'exact', head: true })
-      .in('module_id', moduleIds)
-
-    const { count: completedLessonsCount } = await supabase
-      .from('lesson_progress')
-      .select('*', { count: 'exact', head: true })
-      .eq('enrollment_id', enrollmentId)
-      .eq('is_completed', true)
-
-    const lessonsCompleted = completedLessonsCount || 0
-    const totalLessons = totalLessonsCount || 0
-    const progressPercentage = totalLessons > 0 
-      ? Math.round((lessonsCompleted / totalLessons) * 100)
-      : 0
-
-    console.log('Verificação de elegibilidade:', {
-      courseId,
-      enrollmentId,
-      moduleIds,
-      totalLessons,
-      lessonsCompleted,
-      progressPercentage
-    })
-
-    // Verificar nota nos testes
-    const { data: testGrades } = await supabase
-      .from('test_grades')
-      .select('best_score')
-      .eq('user_id', user.id)
-      .eq('course_id', courseId)
-
-    const bestTestScore = testGrades && testGrades.length > 0 
-      ? Math.max(...testGrades.map(g => g.best_score || 0))
-      : 0
-
-    console.log('Notas dos testes:', {
-      testGrades,
-      bestTestScore,
-      userId: user.id,
-      courseId
-    })
-
-    // Verificar requisitos
-    const minimumProgress = 100 // 100% das lições
-    const minimumTestScore = 70 // 70% no teste
-    
-    const requirementsMet =
-      progressPercentage >= minimumProgress &&
-      bestTestScore >= minimumTestScore
-
-    // Verificar TCC aprovado
-    const { data: approvedTcc } = await supabase
-      .from('tcc_submissions')
-      .select('id')
-      .eq('enrollment_id', enrollmentId)
-      .eq('status', 'approved')
-      .maybeSingle()
-
-    const hasApprovedTcc = !!approvedTcc
-
-    const eligibleCertificates = {
-      technical: requirementsMet,
-      latoSensu: requirementsMet && hasApprovedTcc
-    }
-
-    console.log('Requisitos:', {
-      requirementsMet,
-      progressCheck: `${progressPercentage}% >= ${minimumProgress}%`,
-      scoreCheck: `${bestTestScore}% >= ${minimumTestScore}%`,
-      hasApprovedTcc
-    })
-
-    type CertificateType = 'technical' | 'lato-sensu'
-
-    const { data: existingRequestsRows } = await supabase
-      .from('certificate_requests')
-      .select('id, status, request_date')
-      .eq('enrollment_id', enrollmentId)
-
-    const requestRows = existingRequestsRows ?? []
-
-    // Note: certificate_type field doesn't exist in certificate_requests table
-    // Using a simplified approach without type differentiation for now
-    const requestsByType = {} as Partial<Record<CertificateType, typeof requestRows[number]>>
-
-    const { data: existingCertificatesRows } = await supabase
-      .from('certificates')
-      .select('id, approval_status, issued_at')
-      .eq('enrollment_id', enrollmentId)
-
-    const certificateRows = existingCertificatesRows ?? []
-
-    // Note: certificate_type field doesn't exist in certificates table
-    // Using a simplified approach without type differentiation for now
-    const certificatesByType = {} as Partial<Record<CertificateType, typeof certificateRows[number]>>
-
-    const technicalRequest = requestsByType.technical
-    const technicalCertificate = certificatesByType.technical && certificatesByType.technical.approval_status === 'approved'
-
-    return NextResponse.json({
-      eligible: requirementsMet,
-      progressPercentage,
-      bestTestScore,
-      totalLessons,
-      completedLessons: lessonsCompleted,
-      requirementsMet,
-      minimumProgress,
-      minimumTestScore,
-      hasApprovedTcc,
-      eligibleCertificates,
-      requestsByType: {
-        technical: requestsByType.technical || null,
-        latoSensu: requestsByType['lato-sensu'] || null
-      },
-      approvedCertificatesByType: {
-        technical: certificatesByType.technical || null,
-        latoSensu: certificatesByType['lato-sensu'] || null
-      },
-      hasExistingRequest: !!technicalRequest,
-      requestStatus: technicalRequest?.status,
-      hasApprovedCertificate: !!technicalCertificate
-    })
+    return NextResponse.json(eligibility)
   } catch (error) {
     console.error('Erro ao verificar elegibilidade:', error)
     return NextResponse.json(
@@ -206,13 +190,14 @@ export async function PUT(request: Request) {
     }
 
     // Verificar elegibilidade primeiro
-    const eligibilityRequest = new Request(request.url, {
-      method: 'POST',
-      headers: request.headers,
-      body: JSON.stringify({ courseId, enrollmentId })
-    })
-    const eligibilityResponse = await POST(eligibilityRequest)
-    const eligibility = await eligibilityResponse.json()
+    const eligibility = await checkEligibility(courseId, enrollmentId, user.id)
+
+    if (!eligibility) {
+      return NextResponse.json(
+        { error: 'Matrícula não encontrada' },
+        { status: 404 }
+      )
+    }
 
     const eligibleKey = certificateType === 'lato-sensu' ? 'latoSensu' : 'technical'
 
