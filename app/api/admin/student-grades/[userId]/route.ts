@@ -21,21 +21,24 @@ export async function GET(
       )
     }
 
-    // Verificar se é admin
+    const { userId } = await context.params
+
+    // Verificar se é admin OU se o usuário está acessando suas próprias notas
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (!profile || profile.role !== 'admin') {
+    const isAdmin = profile?.role === 'admin'
+    const isOwnGrades = user.id === userId
+
+    if (!isAdmin && !isOwnGrades) {
       return NextResponse.json(
-        { error: 'Apenas administradores podem acessar este recurso' },
+        { error: 'Você não tem permissão para acessar estas notas' },
         { status: 403 }
       )
     }
-
-    const { userId } = await context.params
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
