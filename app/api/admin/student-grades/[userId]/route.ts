@@ -85,10 +85,10 @@ export async function GET(
         subject_id,
         course_id,
         is_active,
-        subjects (
+        subjects!tests_subject_id_fkey (
           name
         ),
-        courses (
+        courses!tests_course_id_fkey (
           title
         )
       `)
