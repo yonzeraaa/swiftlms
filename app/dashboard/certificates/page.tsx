@@ -328,7 +328,7 @@ export default function CertificatesPage() {
     pending: certificates.filter(c => c.approval_status === 'pending').length,
     approved: certificates.filter(c => c.approval_status === 'approved').length,
     rejected: certificates.filter(c => c.approval_status === 'rejected').length,
-    requests: certificateRequests.filter(r => r.status === 'pending').length
+    requests: certificateRequests.filter(r => r.status === 'pending').length + certificates.filter(c => c.approval_status === 'pending').length
   }
 
   if (loading) {
@@ -426,15 +426,34 @@ export default function CertificatesPage() {
                   <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider w-[280px]">Aluno</th>
                   <th scope="col" className="text-left text-gold-200 font-medium uppercase text-xs tracking-wider min-w-[250px]">Curso</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[120px]">Tipo</th>
-                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Lições</th>
+                  <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Nota</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[130px]">Solicitado em</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[100px]">Status</th>
                   <th scope="col" className="text-center text-gold-200 font-medium uppercase text-xs tracking-wider w-[200px]">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gold-500/10">
-                {certificateRequests.filter(r => r.status === 'pending').length > 0 ? (
-                  certificateRequests.filter(r => r.status === 'pending').map((request) => (
+                {(() => {
+                  // Combinar certificate_requests pendentes e certificates pendentes
+                  const pendingRequests = certificateRequests.filter(r => r.status === 'pending')
+                  const pendingCertificates = certificates.filter(c => c.approval_status === 'pending')
+                  const hasAnyPending = pendingRequests.length > 0 || pendingCertificates.length > 0
+
+                  if (!hasAnyPending) {
+                    return (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center">
+                          <AlertCircle className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
+                          <p className="text-gold-300">Nenhuma requisição pendente</p>
+                        </td>
+                      </tr>
+                    )
+                  }
+
+                  return (
+                    <>
+                      {/* Mostrar requests de certificate_requests */}
+                      {pendingRequests.map((request) => (
                     <tr key={request.id} className="hover:bg-navy-800/30 transition-colors">
                       <td className="py-5 px-6 align-middle">
                         <div className="flex items-start gap-3">
@@ -472,7 +491,7 @@ export default function CertificatesPage() {
                       </td>
                       <td className="py-5 px-6 text-center align-middle">
                         <span className="text-gold-100 font-semibold text-sm">
-                          {request.completed_lessons}/{request.total_lessons}
+                          {request.completed_lessons ? `${request.completed_lessons}/${request.total_lessons}` : '-'}
                         </span>
                       </td>
                       <td className="py-5 px-6 text-center align-middle">
@@ -518,15 +537,130 @@ export default function CertificatesPage() {
                         </div>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center">
-                      <AlertCircle className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
-                      <p className="text-gold-300">Nenhuma requisição pendente</p>
-                    </td>
-                  </tr>
-                )}
+                  ))}
+
+                      {/* Mostrar certificados pendentes que não têm request */}
+                      {pendingCertificates.map((cert: any) => (
+                        <tr key={cert.id} className="hover:bg-navy-800/30 transition-colors">
+                          <td className="py-5 px-6 align-middle">
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                <User className="w-4 h-4 text-gold-400" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-gold-100 font-medium text-sm truncate" title={cert.user?.full_name || undefined}>
+                                  {cert.user?.full_name || 'Sem nome'}
+                                </p>
+                                <p className="text-gold-500 text-xs truncate" title={cert.user?.email || undefined}>
+                                  {cert.user?.email}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-5 px-6 align-middle">
+                            <div className="space-y-1">
+                              <p className="text-gold-100 text-sm leading-tight line-clamp-2" title={cert.course?.title || undefined}>
+                                {cert.course?.title}
+                              </p>
+                              <p className="text-gold-500 text-xs">{cert.course_hours}h</p>
+                            </div>
+                          </td>
+                          <td className="py-5 px-6 text-center align-middle">
+                            {cert.certificate_type === 'lato-sensu' ? (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gold-500/20 text-gold-300 whitespace-nowrap border border-gold-500/30">
+                                ⭐ Lato Sensu
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300 whitespace-nowrap border border-blue-500/30">
+                                🎓 Técnico
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-5 px-6 text-center align-middle">
+                            <span className="text-gold-100 font-semibold text-sm">
+                              {cert.grade || 0}%
+                            </span>
+                          </td>
+                          <td className="py-5 px-6 text-center align-middle">
+                            <div className="flex items-center justify-center gap-1.5 text-gold-300">
+                              <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
+                              <span className="text-xs whitespace-nowrap">
+                                {cert.issued_at ? new Date(cert.issued_at).toLocaleDateString('pt-BR') : '-'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-5 px-6 text-center align-middle">
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 whitespace-nowrap">
+                              Pendente
+                            </span>
+                          </td>
+                          <td className="py-5 px-6 align-middle">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="primary"
+                                size="sm"
+                                onClick={async () => {
+                                  if (!confirm('Aprovar este certificado?')) return
+                                  try {
+                                    const { data, error } = await supabase
+                                      .from('certificates')
+                                      .update({
+                                        approval_status: 'approved',
+                                        approved_at: new Date().toISOString()
+                                      })
+                                      .eq('id', cert.id)
+
+                                    if (error) throw error
+                                    alert('Certificado aprovado com sucesso!')
+                                    await fetchData()
+                                  } catch (error) {
+                                    console.error('Erro ao aprovar:', error)
+                                    alert('Erro ao aprovar certificado')
+                                  }
+                                }}
+                                icon={<CheckCheck className="w-4 h-4" />}
+                                title="Aprovar"
+                                className="!px-3 !py-1.5"
+                              >
+                                Aprovar
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={async () => {
+                                  const reason = prompt('Motivo da rejeição:')
+                                  if (!reason) return
+                                  try {
+                                    const { data, error } = await supabase
+                                      .from('certificates')
+                                      .update({
+                                        approval_status: 'rejected',
+                                        rejection_reason: reason,
+                                        approved_at: new Date().toISOString()
+                                      })
+                                      .eq('id', cert.id)
+
+                                    if (error) throw error
+                                    alert('Certificado rejeitado')
+                                    await fetchData()
+                                  } catch (error) {
+                                    console.error('Erro ao rejeitar:', error)
+                                    alert('Erro ao rejeitar certificado')
+                                  }
+                                }}
+                                icon={<X className="w-4 h-4 flex-shrink-0" />}
+                                title="Rejeitar"
+                                className="!px-3 !py-1.5"
+                              >
+                                Rejeitar
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  )
+                })()}
               </tbody>
             </table>
           </div>
