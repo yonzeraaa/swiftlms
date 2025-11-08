@@ -52,7 +52,10 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
         *,
         course_modules(
           *,
-          lessons(*)
+          module_subjects(
+            *,
+            subject:subjects(*)
+          )
         )
       ),
       user:profiles(full_name, email)
@@ -82,24 +85,6 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
   if (!enrollment.course) {
     throw new Error('Curso não encontrado para a matrícula')
   }
-
-  // Buscar todo o progresso de lições do aluno separadamente
-  const { data: lessonProgressData } = await supabase
-    .from('lesson_progress')
-    .select('*')
-    .eq('user_id', userId)
-
-  // Criar mapa de progresso por lesson_id para acesso eficiente
-  const progressByLessonId = new Map<string, any>()
-  lessonProgressData?.forEach((progress: any) => {
-    if (progress.lesson_id) {
-      // Manter apenas o progresso mais recente por lição
-      const existing = progressByLessonId.get(progress.lesson_id)
-      if (!existing || new Date(progress.updated_at) > new Date(existing.updated_at)) {
-        progressByLessonId.set(progress.lesson_id, progress)
-      }
-    }
-  })
 
   // Buscar tentativas de testes
   const { data: testAttempts, error: testAttemptsError } = await supabase
@@ -171,35 +156,11 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
   console.log('Best scores by subject (total):', bestScoreBySubject.size)
   console.log('First 5 scores:', Array.from(bestScoreBySubject.entries()).slice(0, 5))
 
-  // Buscar todos os subjects para fazer matching com lessons
-  const { data: subjects } = await supabase
-    .from('subjects')
-    .select('id, name')
-
-  console.log('=== DEBUG: Subjects ===')
-  console.log('Total subjects:', subjects?.length)
-
-  // Criar mapa de subject_id por código (extrair código antes do hífen)
-  const subjectByCode = new Map<string, any>()
-  subjects?.forEach((subject: any, index: number) => {
-    // Extrair código antes do hífen: "DLA0202-NOME" -> "DLA0202"
-    const code = subject.name?.split('-')[0]?.trim()
-    if (code) {
-      subjectByCode.set(code, subject)
-      if (index < 5) {
-        console.log(`Subject ${index}:`, { code, name: subject.name, id: subject.id })
-      }
-    }
-  })
-
-  console.log('Subject codes mapped:', subjectByCode.size)
-
   // Processar módulos e disciplinas com validações defensivas
   const modulesData: ModuleRowData[] = []
   let totalWorkload = 0
   let totalScore = 0
   let scoreCount = 0
-  const completionDates: Date[] = []
 
   // Validar se existem módulos
   const modules = enrollment.course.course_modules || []
@@ -213,90 +174,61 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
     if (!courseModule) return
 
     // Linha do módulo
-    const moduleWorkload = courseModule.total_hours || 0
-    totalWorkload += moduleWorkload
-
     modulesData.push({
       code: Formatters.moduleCode(moduleIndex),
       name: `Módulo ${courseModule.title || 'Sem título'}`,
-      workload: moduleWorkload,
+      workload: 0, // Será a soma das horas das disciplinas
       completion_date: '',
       score: ''
     })
 
     // Disciplinas do módulo
-    const lessons = courseModule.lessons || []
+    const moduleSubjects = courseModule.module_subjects || []
 
-    lessons.forEach((lesson: any, lessonIndex: number) => {
-      // Buscar progresso do mapa criado anteriormente
-      const progress = progressByLessonId.get(lesson.id)
+    moduleSubjects.forEach((moduleSubject: any, subjectIndex: number) => {
+      const subject = moduleSubject.subject
 
-      // Extrair código da lesson
-      // Formato: "DLA010101-Título" ou "ACMD010101-Título"
-      // Pegar tudo antes do hífen e depois pegar os primeiros N chars (variável)
-      const lessonFullCode = lesson.title?.split('-')[0]?.trim() || ''
-
-      // Tentar diferentes tamanhos de código (de 10 até 4 caracteres)
-      // Ex: ACMD010101 (10), DCIM0601 (8), DLA0101 (7), etc.
-      let subject = null
-      let lessonCode = ''
-
-      for (let codeLength = 10; codeLength >= 4 && !subject; codeLength--) {
-        lessonCode = lessonFullCode.substring(0, codeLength)
-        subject = subjectByCode.get(lessonCode)
-        if (subject) break
-      }
+      if (!subject) return
 
       // Buscar nota do teste deste subject
-      const lessonScore = subject ? (bestScoreBySubject.get(subject.id) || 0) : 0
+      const subjectScore = bestScoreBySubject.get(subject.id) || 0
 
-      // Log apenas das primeiras 3 lessons para debug
-      if (lessonIndex < 3) {
-        console.log(`=== Lesson ${lessonIndex} ===`, {
-          title: lesson.title,
-          fullCode: lessonFullCode,
-          matchedCode: lessonCode,
-          subjectFound: !!subject,
-          subjectId: subject?.id,
-          subjectName: subject?.name,
-          scoreFromMap: subject ? bestScoreBySubject.get(subject.id) : 'N/A',
-          finalScore: lessonScore
+      // Log apenas das primeiras 3 subjects para debug
+      if (subjectIndex < 3) {
+        console.log(`=== Subject ${subjectIndex} ===`, {
+          name: subject.name,
+          id: subject.id,
+          hours: subject.hours,
+          scoreFromMap: bestScoreBySubject.get(subject.id),
+          finalScore: subjectScore
         })
       }
 
-      if (progress?.completed_at) {
-        try {
-          const completedDate = new Date(progress.completed_at)
-          if (!isNaN(completedDate.getTime())) {
-            completionDates.push(completedDate)
-          }
-        } catch (e) {
-          console.warn('Data de conclusão inválida:', progress.completed_at)
-        }
-      }
-
-      if (typeof lessonScore === 'number' && lessonScore > 0) {
-        totalScore += lessonScore
+      if (typeof subjectScore === 'number' && subjectScore > 0) {
+        totalScore += subjectScore
         scoreCount++
       }
 
+      // Adicionar horas da disciplina ao total
+      const subjectHours = subject.hours || 0
+      totalWorkload += subjectHours
+
       modulesData.push({
-        code: Formatters.lessonCode(moduleIndex, lessonIndex),
-        name: ` Disciplina ${lesson.title || 'Sem título'}`,
-        workload: 0, // Sem horas para disciplinas individuais
-        completion_date: Formatters.date(progress?.completed_at),
-        score: lessonScore > 0 ? lessonScore : ''
+        code: Formatters.lessonCode(moduleIndex, subjectIndex),
+        name: ` ${subject.name || 'Disciplina sem nome'}`,
+        workload: subjectHours,
+        completion_date: '', // Subjects não têm data de conclusão individual
+        score: subjectScore > 0 ? subjectScore : ''
       })
     })
   })
 
-  // Calcular duração total em dias
+  // Calcular duração total em dias (da matrícula até conclusão ou data atual)
   let totalDurationDays = '0 Dias'
-  if (completionDates.length > 1) {
-    const sortedDates = completionDates.sort((a, b) => a.getTime() - b.getTime())
-    const firstDate = sortedDates[0]
-    const lastDate = sortedDates[sortedDates.length - 1]
-    const days = differenceInDays(lastDate, firstDate)
+  if (enrollment.enrolled_at) {
+    const startDate = new Date(enrollment.enrolled_at)
+    const endDate = enrollment.completed_at ? new Date(enrollment.completed_at) : new Date()
+    const days = differenceInDays(endDate, startDate)
     totalDurationDays = `${days} Dias`
   }
 
