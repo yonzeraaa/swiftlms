@@ -18,6 +18,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Obter parâmetro opcional de course_id da query string
+    const { searchParams } = new URL(request.url)
+    const filterCourseId = searchParams.get('course_id')
+
     // Buscar cursos em que o aluno está matriculado
     const { data: enrollments, error: enrollmentsError } = await supabase
       .from('enrollments')
@@ -47,8 +51,19 @@ export async function GET(request: NextRequest) {
 
     const courseIds = enrollments.map((e: any) => e.course_id)
 
-    // Buscar testes ativos desses cursos
-    const { data: testsData, error: testsError } = await supabase
+    // Verificar se o aluno está matriculado no curso solicitado
+    if (filterCourseId && !courseIds.includes(filterCourseId)) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          courseTests: [],
+          enrollments: []
+        }
+      })
+    }
+
+    // Construir query de testes
+    let testsQuery = supabase
       .from('tests')
       .select(`
         *,
@@ -57,6 +72,13 @@ export async function GET(request: NextRequest) {
       `)
       .in('course_id', courseIds)
       .eq('is_active', true)
+
+    // Aplicar filtro por course_id se fornecido
+    if (filterCourseId) {
+      testsQuery = testsQuery.eq('course_id', filterCourseId)
+    }
+
+    const { data: testsData, error: testsError } = await testsQuery
       .order('created_at', { ascending: false })
 
     if (testsError) {

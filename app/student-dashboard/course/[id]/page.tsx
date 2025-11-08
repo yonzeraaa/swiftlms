@@ -80,10 +80,13 @@ export default function CoursePage() {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set())
   const [reviews, setReviews] = useState<any[]>([])
+  const [courseTests, setCourseTests] = useState<any[]>([])
+  const [loadingTests, setLoadingTests] = useState(true)
 
   useEffect(() => {
     if (courseId) {
       fetchCourseData()
+      fetchCourseTests()
     }
   }, [courseId])
 
@@ -379,6 +382,30 @@ export default function CoursePage() {
       router.push('/student-dashboard/my-courses')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchCourseTests = async () => {
+    try {
+      setLoadingTests(true)
+      const response = await fetch(`/api/student/tests?course_id=${courseId}`)
+
+      if (!response.ok) {
+        throw new Error('Erro ao buscar testes')
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        // Extrair apenas os testes (sem agrupar por curso)
+        const tests = result.data.courseTests?.[0]?.tests || []
+        setCourseTests(tests)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar testes do curso:', error)
+      setCourseTests([])
+    } finally {
+      setLoadingTests(false)
     }
   }
 
@@ -1158,23 +1185,114 @@ export default function CoursePage() {
                 content: (
                   <Card>
                     <div className="space-y-4">
-                      {reviews.length === 0 ? (
-                        <p className="text-gold-300">Ainda não há avaliações para este curso.</p>
+                      {loadingTests ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Spinner />
+                        </div>
+                      ) : courseTests.length === 0 ? (
+                        <div className="text-center py-8">
+                          <FileText className="w-16 h-16 text-gold-400/30 mx-auto mb-4" />
+                          <p className="text-gold-300">Ainda não há testes disponíveis para este curso.</p>
+                        </div>
                       ) : (
-                        reviews.map((r, idx) => (
-                          <div key={idx} className="p-3 rounded-lg bg-navy-900/40 border border-gold-500/10">
-                            <div className="flex items-center gap-2">
-                              {Array.from({ length: 5 }).map((_, i) => (
-                                <Star key={i} className={`w-4 h-4 ${i < (r.rating || 0) ? 'text-gold-400' : 'text-gold-600'}`} />
-                              ))}
-                            </div>
-                            {r.title && <p className="text-gold-200 font-medium mt-1">{r.title}</p>}
-                            {r.comment && <p className="text-gold-300/80 text-sm mt-1">{r.comment}</p>}
-                            {r.created_at && (
-                              <p className="text-gold-500/60 text-xs mt-2">{new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
-                            )}
-                          </div>
-                        ))
+                        <div className="space-y-3">
+                          {courseTests.map((test: any) => {
+                            const hasGrade = test.grade && test.grade.best_score !== null
+                            const isPassing = hasGrade && test.grade.best_score >= (test.passing_score || 70)
+                            const attemptsLeft = (test.max_attempts || 3) - (test.grade?.total_attempts || 0)
+                            const canRetake = !isPassing && attemptsLeft > 0
+
+                            return (
+                              <div
+                                key={test.id}
+                                className="p-4 rounded-lg bg-navy-900/40 border border-gold-500/10 hover:border-gold-500/30 transition-all"
+                              >
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <FileText className="w-5 h-5 text-gold-400" />
+                                      <h4 className="text-gold-200 font-medium">{test.title}</h4>
+                                    </div>
+
+                                    {test.description && (
+                                      <p className="text-gold-300/70 text-sm mb-3">{test.description}</p>
+                                    )}
+
+                                    <div className="flex flex-wrap gap-3 text-sm">
+                                      {test.duration_minutes && (
+                                        <div className="flex items-center gap-1 text-gold-400">
+                                          <Clock className="w-4 h-4" />
+                                          <span>{test.duration_minutes} min</span>
+                                        </div>
+                                      )}
+                                      {test.question_count && (
+                                        <div className="flex items-center gap-1 text-gold-400">
+                                          <FileText className="w-4 h-4" />
+                                          <span>{test.question_count} questões</span>
+                                        </div>
+                                      )}
+                                      {test.passing_score && (
+                                        <div className="flex items-center gap-1 text-gold-400">
+                                          <Award className="w-4 h-4" />
+                                          <span>Mínimo: {test.passing_score}%</span>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {hasGrade && (
+                                      <div className="mt-3 flex items-center gap-3">
+                                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                          isPassing
+                                            ? 'bg-green-500/20 text-green-400'
+                                            : 'bg-yellow-500/20 text-yellow-400'
+                                        }`}>
+                                          Melhor nota: {test.grade.best_score}%
+                                        </div>
+                                        <span className="text-gold-500/60 text-xs">
+                                          {test.grade.total_attempts} {test.grade.total_attempts === 1 ? 'tentativa' : 'tentativas'}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex flex-col gap-2">
+                                    {!hasGrade ? (
+                                      <Button
+                                        variant="primary"
+                                        size="sm"
+                                        onClick={() => router.push(`/student-dashboard/evaluations/${test.id}`)}
+                                      >
+                                        <Play className="w-4 h-4 mr-1" />
+                                        Iniciar
+                                      </Button>
+                                    ) : (
+                                      <>
+                                        <Button
+                                          variant="secondary"
+                                          size="sm"
+                                          onClick={() => router.push(`/student-dashboard/evaluations/${test.id}/results`)}
+                                        >
+                                          <Eye className="w-4 h-4 mr-1" />
+                                          Ver Resultado
+                                        </Button>
+                                        {canRetake && (
+                                          <Button
+                                            variant="primary"
+                                            size="sm"
+                                            onClick={() => router.push(`/student-dashboard/evaluations/${test.id}`)}
+                                          >
+                                            <BarChart3 className="w-4 h-4 mr-1" />
+                                            Refazer ({attemptsLeft})
+                                          </Button>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
                       )}
                     </div>
                   </Card>
