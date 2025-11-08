@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 import { productionCSP, developmentCSP, apiCSP, formatCSP } from './app/lib/csp-config'
 import type { Database } from './lib/database.types'
+import { logger } from './lib/utils/logger'
 
 export async function ensureUserEnrollmentForPreview(
   supabase: SupabaseClient<Database>,
@@ -14,7 +15,7 @@ export async function ensureUserEnrollmentForPreview(
       .select('id')
 
     if (coursesError) {
-      console.error('[MIDDLEWARE] Failed to load courses for preview enrollment:', coursesError)
+      logger.error('Failed to load courses for preview enrollment', coursesError, { context: 'MIDDLEWARE' })
       return
     }
 
@@ -28,7 +29,7 @@ export async function ensureUserEnrollmentForPreview(
       .eq('user_id', userId)
 
     if (enrollmentsError) {
-      console.error('[MIDDLEWARE] Failed to load admin enrollments:', enrollmentsError)
+      logger.error('Failed to load admin enrollments', enrollmentsError, { context: 'MIDDLEWARE' })
       return
     }
 
@@ -56,10 +57,10 @@ export async function ensureUserEnrollmentForPreview(
       .insert(newEnrollments)
 
     if (insertError) {
-      console.error('[MIDDLEWARE] Failed to auto-enroll admin for preview:', insertError)
+      logger.error('Failed to auto-enroll admin for preview', insertError, { context: 'MIDDLEWARE' })
     }
   } catch (error) {
-    console.error('[MIDDLEWARE] Unexpected error ensuring preview enrollment:', error)
+    logger.error('Unexpected error ensuring preview enrollment', error, { context: 'MIDDLEWARE' })
   }
 }
 
@@ -125,6 +126,59 @@ export async function middleware(request: NextRequest) {
   response.headers.delete('Server')
   response.headers.delete('Date')
 
+  // SECURITY FIX: Helper to reapply security headers after cookie operations
+  const reapplySecurityHeaders = (res: NextResponse) => {
+    // Security headers
+    res.headers.set('X-Content-Type-Options', 'nosniff')
+    res.headers.set('X-Frame-Options', 'DENY')
+    res.headers.set('X-XSS-Protection', '1; mode=block')
+    res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
+    res.headers.set('X-DNS-Prefetch-Control', 'off')
+    res.headers.set('X-Download-Options', 'noopen')
+    res.headers.set('X-Permitted-Cross-Domain-Policies', 'none')
+
+    // CSP
+    let cspToApply: string
+    if (isAPI) {
+      cspToApply = formatCSP(apiCSP)
+    } else if (isDevelopment) {
+      cspToApply = formatCSP(developmentCSP)
+    } else {
+      cspToApply = formatCSP(productionCSP)
+    }
+    res.headers.set('Content-Security-Policy', cspToApply)
+
+    // HSTS
+    res.headers.set(
+      'Strict-Transport-Security',
+      'max-age=63072000; includeSubDomains; preload'
+    )
+
+    // CORS for API routes
+    if (isAPI) {
+      const origin = request.headers.get('origin')
+      const allowedOrigins = isDevelopment
+        ? ['http://localhost:3000']
+        : process.env.NEXT_PUBLIC_APP_URL
+          ? [process.env.NEXT_PUBLIC_APP_URL]
+          : []
+
+      if (origin && allowedOrigins.includes(origin)) {
+        res.headers.set('Access-Control-Allow-Origin', origin)
+        res.headers.set('Access-Control-Allow-Credentials', 'true')
+        res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
+        res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        res.headers.set('Access-Control-Max-Age', '3600')
+      }
+    }
+
+    // Remove fingerprinting headers
+    res.headers.delete('X-Powered-By')
+    res.headers.delete('Server')
+    res.headers.delete('Date')
+  }
+
   // Create Supabase server client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -143,23 +197,19 @@ export async function middleware(request: NextRequest) {
             httpOnly: true,
             path: '/',
             // Usar domínio customizado apenas para cookies do Supabase
-            ...(process.env.NEXT_PUBLIC_COOKIE_DOMAIN && name.includes('sb-') 
+            ...(process.env.NEXT_PUBLIC_COOKIE_DOMAIN && name.includes('sb-')
               ? { domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN }
               : {})
           }
-          
+
           request.cookies.set({
             name,
             value,
             ...secureOptions,
           })
-          
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          
+
+          // SECURITY FIX: Reuse response object instead of creating new one
+          // This preserves security headers set earlier
           response.cookies.set({
             name,
             value,
@@ -171,21 +221,19 @@ export async function middleware(request: NextRequest) {
             ...options,
             path: '/',
             // Usar domínio customizado apenas para cookies do Supabase
-            ...(process.env.NEXT_PUBLIC_COOKIE_DOMAIN && name.includes('sb-') 
+            ...(process.env.NEXT_PUBLIC_COOKIE_DOMAIN && name.includes('sb-')
               ? { domain: process.env.NEXT_PUBLIC_COOKIE_DOMAIN }
               : {})
           }
-          
+
           request.cookies.set({
             name,
             value: '',
             ...removeOptions,
           })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
+
+          // SECURITY FIX: Reuse response object instead of creating new one
+          // This preserves security headers set earlier
           response.cookies.set({
             name,
             value: '',
@@ -199,31 +247,29 @@ export async function middleware(request: NextRequest) {
   // Tentar obter sessão e fazer refresh se necessário
   let { data: { session } } = await supabase.auth.getSession()
   
-  // Log para debug
+  // SECURITY FIX: Use secure logger without exposing cookie names or tokens
   const path = request.nextUrl.pathname
-  console.log('[MIDDLEWARE]', {
+  logger.debug('Processing request', {
     path,
     hasSession: !!session,
-    cookies: request.cookies.getAll().map(c => c.name).filter(n => n.includes('sb-')),
-    timestamp: new Date().toISOString()
-  })
-  
+  }, { context: 'MIDDLEWARE' })
+
   // Se não há sessão mas há refresh token, tentar refresh
   if (!session) {
     const refreshToken = request.cookies.get('sb-refresh-token')?.value
     const authToken = request.cookies.get('sb-mdzgnktlsmkjecdbermo-auth-token')?.value
-    
+
     if (refreshToken || authToken) {
-      console.log('[MIDDLEWARE] Sem sessão mas com tokens, tentando refresh')
+      logger.debug('No session but tokens present, attempting refresh', undefined, { context: 'MIDDLEWARE' })
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-      
+
       if (refreshError) {
-        console.log('[MIDDLEWARE] Erro no refresh:', refreshError.message)
+        logger.warn('Session refresh failed', { message: refreshError.message }, { context: 'MIDDLEWARE' })
       }
-      
+
       if (refreshData?.session) {
         session = refreshData.session
-        console.log('[MIDDLEWARE] Sessão recuperada via refresh')
+        logger.debug('Session recovered via refresh', undefined, { context: 'MIDDLEWARE' })
       }
     }
   }
@@ -237,7 +283,7 @@ export async function middleware(request: NextRequest) {
     
     // Se a sessão expirou, fazer refresh
     if (timeUntilExpiry < noMargin) {
-      console.log('[MIDDLEWARE] Sessão próxima de expirar, fazendo refresh')
+      logger.debug('Session expiring soon, refreshing', undefined, { context: 'MIDDLEWARE' })
       const { data: refreshData } = await supabase.auth.refreshSession()
       if (refreshData.session) {
         session = refreshData.session
@@ -311,7 +357,10 @@ export async function middleware(request: NextRequest) {
     }
 
     if (profile?.role === 'admin') {
-      await ensureUserEnrollmentForPreview(supabase, session.user.id)
+      // SECURITY FIX: Removed DB operations from middleware (Edge runtime)
+      // TODO: Move enrollment sync to dedicated endpoint /api/preview/ensure-enrollment
+      // Call it explicitly when admin enables "view mode" instead of on every navigation
+      // await ensureUserEnrollmentForPreview(supabase, session.user.id)
       return response
     }
     
@@ -326,26 +375,22 @@ export async function middleware(request: NextRequest) {
       const isAdminViewMode = request.cookies.get('isAdminViewMode')?.value === 'true'
       const adminViewId = request.cookies.get('adminViewId')?.value
       
-      // Log for debugging
-      console.log('[MIDDLEWARE] Instructor accessing student dashboard:', {
+      // SECURITY FIX: Log without exposing sensitive cookie values
+      logger.debug('Instructor accessing student dashboard', {
         role: profile.role,
-        userId: session.user.id,
         hasQueryParam: hasViewModeQuery,
-        cookies: {
-          viewAsStudent,
-          isAdminViewMode,
-          adminViewId
-        },
+        hasViewPermission: hasViewModeQuery || viewAsStudent || isAdminViewMode,
         path: request.nextUrl.pathname,
-        timestamp: new Date().toISOString()
-      })
+      }, { context: 'MIDDLEWARE' })
       
       // Allow access if ANY of these conditions are met
       const hasViewPermission = hasViewModeQuery || viewAsStudent || isAdminViewMode || adminViewId === session.user.id
       
       if (hasViewPermission) {
-        console.log('[MIDDLEWARE] Instructor allowed - view mode active')
-        await ensureUserEnrollmentForPreview(supabase, session.user.id)
+        logger.debug('Instructor allowed - view mode active', undefined, { context: 'MIDDLEWARE' })
+        // SECURITY FIX: Removed DB operations from middleware (Edge runtime)
+        // TODO: Move enrollment sync to dedicated endpoint /api/preview/ensure-enrollment
+        // await ensureUserEnrollmentForPreview(supabase, session.user.id)
 
         // If access is granted via query param, set cookies for future requests
         if (hasViewModeQuery && (!viewAsStudent || !isAdminViewMode)) {
@@ -367,13 +412,13 @@ export async function middleware(request: NextRequest) {
             maxAge: 3600,
             secure: process.env.NODE_ENV === 'production'
           })
-          console.log('[MIDDLEWARE] Setting cookies from query parameter for instructor')
+          logger.debug('Setting view mode cookies for instructor', undefined, { context: 'MIDDLEWARE' })
         }
-        
+
         return response
       } else {
         // Instructor without view mode - redirect to dashboard
-        console.log('[MIDDLEWARE] Instructor redirected - no view mode')
+        logger.debug('Instructor redirected - no view mode', undefined, { context: 'MIDDLEWARE' })
         const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = '/dashboard'
         return NextResponse.redirect(redirectUrl)
