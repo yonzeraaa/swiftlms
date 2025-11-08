@@ -430,9 +430,10 @@ export default function CourseStructureManager({
                     <span>•</span>
                     <span>{moduleLessonsList.length} aulas</span>
                     <span>•</span>
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1" title="Horas calculadas automaticamente">
                       <Clock className="w-4 h-4" />
                       {formattedHours.replace('.', ',')}h
+                      <span className="text-xs">⚡</span>
                     </span>
                   </div>
                 </div>

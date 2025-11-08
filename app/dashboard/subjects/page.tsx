@@ -870,18 +870,18 @@ export default function SubjectsPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gold-200 mb-2">
-                  Carga Horária
+                  Carga Horária (Calculada Automaticamente)
                 </label>
                 <input
                   type="number"
                   value={formData.hours}
-                  onChange={(e) => setFormData({ ...formData, hours: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  placeholder="Ex: 60"
-                  min="0"
-                  step="1"
+                  readOnly
+                  className="w-full px-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-lg text-gold-300 cursor-not-allowed"
+                  placeholder="Calculado automaticamente"
                 />
-                <p className="text-xs text-gold-300 mt-1">Número de horas da disciplina</p>
+                <p className="text-xs text-gold-300 mt-1">
+                  ⚡ Horas calculadas automaticamente com base no curso: Total do curso ÷ módulos ÷ disciplinas
+                </p>
               </div>
 
               {editingSubject && currentModuleOrder !== null && (

@@ -394,9 +394,9 @@ export default function BrowseCoursesPage() {
                                             </Badge>
                                           )}
                                           {subject.hours && subject.hours > 0 && (
-                                            <div className="flex items-center gap-1 text-gold-300/60">
+                                            <div className="flex items-center gap-1 text-gold-300/60" title="Horas calculadas automaticamente">
                                               <Clock className="w-3 h-3" />
-                                              <span className="text-xs">{subject.hours}h</span>
+                                              <span className="text-xs">{subject.hours}h ⚡</span>
                                             </div>
                                           )}
                                         </div>
