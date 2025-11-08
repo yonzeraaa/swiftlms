@@ -137,15 +137,30 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
   // Buscar notas dos testes por subject (reutilizar testAttempts já buscado)
   // Criar mapa de melhor nota por subject
   const bestScoreBySubject = new Map<string, number>()
+
+  console.log('Debug - Total test attempts:', testAttempts?.length)
+
   testAttempts?.forEach((attempt: any) => {
     const subjectId = attempt.test?.subject_id
-    if (subjectId && attempt.score != null) {
+    const score = attempt.score
+
+    console.log('Debug - Attempt:', {
+      subjectId,
+      score,
+      hasTest: !!attempt.test,
+      testStructure: attempt.test ? Object.keys(attempt.test) : []
+    })
+
+    if (subjectId && score != null) {
       const currentBest = bestScoreBySubject.get(subjectId) || 0
-      if (attempt.score > currentBest) {
-        bestScoreBySubject.set(subjectId, attempt.score)
+      if (Number(score) > currentBest) {
+        bestScoreBySubject.set(subjectId, Number(score))
+        console.log(`Debug - Updated best score for subject ${subjectId}: ${score}`)
       }
     }
   })
+
+  console.log('Debug - Best scores by subject:', Array.from(bestScoreBySubject.entries()))
 
   // Buscar todos os subjects para fazer matching com lessons
   const { data: subjects } = await supabase
@@ -206,6 +221,14 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
 
       // Buscar nota do teste deste subject
       const lessonScore = subject ? (bestScoreBySubject.get(subject.id) || 0) : 0
+
+      console.log('Debug - Lesson:', {
+        title: lesson.title,
+        code: lessonCode,
+        subjectFound: !!subject,
+        subjectId: subject?.id,
+        score: lessonScore
+      })
 
       if (progress?.completed_at) {
         try {
