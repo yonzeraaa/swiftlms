@@ -63,13 +63,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Construir query de testes
+    // TEMPORÁRIO: Removendo joins para testar
     let testsQuery = supabase
       .from('tests')
-      .select(`
-        *,
-        course:courses(*),
-        subject:subjects(*)
-      `)
+      .select('*')
       .eq('is_active', true)
 
     // Aplicar filtro por course_id se fornecido, caso contrário buscar de todos os cursos matriculados
@@ -79,7 +76,7 @@ export async function GET(request: NextRequest) {
       testsQuery = testsQuery.in('course_id', courseIds)
     }
 
-    const { data: testsData, error: testsError } = await testsQuery
+    let { data: testsData, error: testsError } = await testsQuery
       .order('created_at', { ascending: false })
 
     if (testsError) {
@@ -89,6 +86,38 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Buscar dados de courses e subjects separadamente para evitar problemas com RLS em joins
+    const testCourseIds = [...new Set(testsData?.map((t: any) => t.course_id).filter(Boolean))]
+    const testSubjectIds = [...new Set(testsData?.map((t: any) => t.subject_id).filter(Boolean))]
+
+    const coursesMap = new Map()
+    const subjectsMap = new Map()
+
+    if (testCourseIds.length > 0) {
+      const { data: coursesData } = await supabase
+        .from('courses')
+        .select('*')
+        .in('id', testCourseIds)
+
+      coursesData?.forEach((c: any) => coursesMap.set(c.id, c))
+    }
+
+    if (testSubjectIds.length > 0) {
+      const { data: subjectsData } = await supabase
+        .from('subjects')
+        .select('*')
+        .in('id', testSubjectIds)
+
+      subjectsData?.forEach((s: any) => subjectsMap.set(s.id, s))
+    }
+
+    // Enriquecer testes com dados de courses e subjects
+    testsData = testsData?.map((test: any) => ({
+      ...test,
+      course: test.course_id ? coursesMap.get(test.course_id) : null,
+      subject: test.subject_id ? subjectsMap.get(test.subject_id) : null
+    }))
 
     // Buscar notas do aluno nesses testes
     let grades = null
