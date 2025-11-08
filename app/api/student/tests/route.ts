@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
       ...test,
       course: test.course_id ? coursesMap.get(test.course_id) : null,
       subject: test.subject_id ? subjectsMap.get(test.subject_id) : null
-    }))
+    })) || null
 
     // Buscar notas do aluno nesses testes
     let grades = null
