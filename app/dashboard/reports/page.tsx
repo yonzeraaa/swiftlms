@@ -1746,10 +1746,16 @@ export default function ReportsPage() {
 
       const modulesData: any[] = []
       enrollment.course.course_modules?.forEach((module: any, moduleIndex: number) => {
+        const moduleTotalHours = module.total_hours || 0
+        const lessonCount = module.lessons?.length || 0
+
+        // Calcular horas por disciplina proporcionalmente
+        const hoursPerLesson = lessonCount > 0 ? Math.round(moduleTotalHours / lessonCount) : 0
+
         modulesData.push({
           codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}`,
           nome: `Módulo ${module.title}`,
-          carga_horaria: module.total_hours || 0,
+          carga_horaria: moduleTotalHours,
           data_finalizacao: '',
           pontuacao: '',
           isModule: true
@@ -1757,13 +1763,19 @@ export default function ReportsPage() {
 
         module.lessons?.forEach((lesson: any, lessonIndex: number) => {
           const progress = progressByLessonId.get(lesson.id)
-          // Converter minutos para horas
-          const hoursFromMinutes = Math.round((lesson.duration_minutes || 0) / 60)
+
+          // Usar duration_minutes se existir, senão usar distribuição proporcional
+          let lessonHours = 0
+          if (lesson.duration_minutes && lesson.duration_minutes > 0) {
+            lessonHours = Math.round(lesson.duration_minutes / 60)
+          } else {
+            lessonHours = hoursPerLesson
+          }
 
           modulesData.push({
             codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}${(lessonIndex + 1).toString().padStart(2, '0')}`,
             nome: ` Disciplina ${lesson.title}`,
-            carga_horaria: hoursFromMinutes,
+            carga_horaria: lessonHours,
             data_finalizacao: progress?.completed_at ? formatDate(progress.completed_at) : '',
             pontuacao: progress?.score || '',
             isModule: false
