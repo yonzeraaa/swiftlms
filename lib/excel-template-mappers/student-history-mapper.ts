@@ -134,10 +134,22 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
   // Criar mapa de melhor nota por subject usando os testAttempts já buscados
   const bestScoreBySubject = new Map<string, number>()
 
-  testAttempts?.forEach((attempt: any) => {
+  console.log('=== DEBUG: Test Attempts ===')
+  console.log('Total attempts:', testAttempts?.length)
+
+  testAttempts?.forEach((attempt: any, index: number) => {
     // A estrutura é: attempt.test.subject_id
     const subjectId = attempt.test?.subject_id
     const score = attempt.score
+
+    if (index < 3) {
+      console.log(`Attempt ${index}:`, {
+        score,
+        test_id: attempt.test?.id,
+        subject_id: subjectId,
+        hasTest: !!attempt.test
+      })
+    }
 
     if (subjectId && score != null) {
       const currentBest = bestScoreBySubject.get(subjectId) || 0
@@ -149,19 +161,30 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
     }
   })
 
+  console.log('Best scores by subject (total):', bestScoreBySubject.size)
+  console.log('First 5 scores:', Array.from(bestScoreBySubject.entries()).slice(0, 5))
+
   // Buscar todos os subjects para fazer matching com lessons
   const { data: subjects } = await supabase
     .from('subjects')
     .select('id, name')
 
+  console.log('=== DEBUG: Subjects ===')
+  console.log('Total subjects:', subjects?.length)
+
   // Criar mapa de subject_id por código (primeiros 7 chars do name)
   const subjectByCode = new Map<string, any>()
-  subjects?.forEach((subject: any) => {
+  subjects?.forEach((subject: any, index: number) => {
     const code = subject.name?.substring(0, 7) // Ex: DLA0202
     if (code) {
       subjectByCode.set(code, subject)
+      if (index < 5) {
+        console.log(`Subject ${index}:`, { code, name: subject.name, id: subject.id })
+      }
     }
   })
+
+  console.log('Subject codes mapped:', subjectByCode.size)
 
   // Processar módulos e disciplinas com validações defensivas
   const modulesData: ModuleRowData[] = []
@@ -208,6 +231,19 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
 
       // Buscar nota do teste deste subject
       const lessonScore = subject ? (bestScoreBySubject.get(subject.id) || 0) : 0
+
+      // Log apenas das primeiras 3 lessons para debug
+      if (lessonIndex < 3) {
+        console.log(`=== Lesson ${lessonIndex} ===`, {
+          title: lesson.title,
+          code: lessonCode,
+          subjectFound: !!subject,
+          subjectId: subject?.id,
+          subjectName: subject?.name,
+          scoreFromMap: subject ? bestScoreBySubject.get(subject.id) : 'N/A',
+          finalScore: lessonScore
+        })
+      }
 
       if (progress?.completed_at) {
         try {
