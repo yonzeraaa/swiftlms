@@ -4,7 +4,7 @@ import { logger } from '@/lib/utils/logger'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -35,7 +35,7 @@ export async function GET(
       )
     }
 
-    const { userId } = params
+    const { userId } = await context.params
     const { searchParams } = new URL(request.url)
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
