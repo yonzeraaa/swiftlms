@@ -84,19 +84,31 @@ async function checkEligibility(courseId: string, enrollmentId: string, userId: 
 
   const { data: existingRequestsRows } = await supabase
     .from('certificate_requests')
-    .select('id, status, request_date')
+    .select('id, status, request_date, certificate_type')
     .eq('enrollment_id', enrollmentId)
 
   const requestRows = existingRequestsRows ?? []
   const requestsByType = {} as Partial<Record<CertificateType, typeof requestRows[number]>>
 
+  // Preencher requestsByType
+  requestRows.forEach(req => {
+    const certType = req.certificate_type === 'lato-sensu' ? 'lato-sensu' : 'technical'
+    requestsByType[certType] = req
+  })
+
   const { data: existingCertificatesRows } = await supabase
     .from('certificates')
-    .select('id, approval_status, issued_at')
+    .select('id, approval_status, issued_at, certificate_type')
     .eq('enrollment_id', enrollmentId)
 
   const certificateRows = existingCertificatesRows ?? []
   const certificatesByType = {} as Partial<Record<CertificateType, typeof certificateRows[number]>>
+
+  // Preencher certificatesByType
+  certificateRows.forEach(cert => {
+    const certType = cert.certificate_type === 'lato-sensu' ? 'lato-sensu' : 'technical'
+    certificatesByType[certType] = cert
+  })
 
   const technicalRequest = requestsByType.technical
   const technicalCertificate = certificatesByType.technical && certificatesByType.technical.approval_status === 'approved'
