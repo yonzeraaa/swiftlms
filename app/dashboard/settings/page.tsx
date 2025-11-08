@@ -38,6 +38,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [currentUser, setCurrentUser] = useState<Profile | null>(null)
+  const [versionInfo, setVersionInfo] = useState<{
+    version: string
+    gitHash: string
+    gitDate: string
+    buildDate: string
+  } | null>(null)
   const [profileForm, setProfileForm] = useState({
     full_name: '',
     email: '',
@@ -76,7 +82,27 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchUserData()
+    fetchVersion()
   }, [])
+
+  const fetchVersion = async () => {
+    try {
+      const response = await fetch('/version.json')
+      if (response.ok) {
+        const data = await response.json()
+        setVersionInfo(data)
+      }
+    } catch (error) {
+      console.error('Error fetching version:', error)
+      // Fallback para versão padrão
+      setVersionInfo({
+        version: '1.0.0',
+        gitHash: 'unknown',
+        gitDate: new Date().toISOString(),
+        buildDate: new Date().toISOString()
+      })
+    }
+  }
 
   const fetchUserData = async () => {
     try {
@@ -632,7 +658,14 @@ export default function SettingsPage() {
             <Globe className="w-5 h-5 text-gold-400" />
             <div>
               <p className="text-gold-400 text-sm">{t('settings.version')}</p>
-              <p className="text-gold-200">1.0.0</p>
+              <p className="text-gold-200 font-mono text-xs">
+                {versionInfo?.version || '1.0.0'}
+              </p>
+              {versionInfo?.gitHash && versionInfo.gitHash !== 'unknown' && (
+                <p className="text-gold-300/50 text-xs mt-0.5">
+                  {versionInfo.gitHash}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-3 p-3 bg-navy-900/30 rounded-lg">
@@ -646,7 +679,14 @@ export default function SettingsPage() {
             <Shield className="w-5 h-5 text-gold-400" />
             <div>
               <p className="text-gold-400 text-sm">{t('settings.lastUpdate')}</p>
-              <p className="text-gold-200">{new Date().toLocaleDateString('pt-BR')}</p>
+              <p className="text-gold-200 text-xs">
+                {versionInfo?.gitDate
+                  ? new Date(versionInfo.gitDate).toLocaleString('pt-BR', {
+                      dateStyle: 'short',
+                      timeStyle: 'short'
+                    })
+                  : new Date().toLocaleDateString('pt-BR')}
+              </p>
             </div>
           </div>
         </div>
