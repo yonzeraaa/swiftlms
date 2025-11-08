@@ -103,188 +103,69 @@ export default function StudentGradesReport({
         setLoadingStates(prev => ({ ...prev, initial: true, grades: true, tcc: true, overrides: true }))
       }
 
-      // Buscar informações do aluno se não foi fornecido o nome
-      let studentName = userName
-      if (!studentName) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, email')
-          .eq('id', userId as any)
-          .single()
-
-        studentName = profile?.full_name || profile?.email || 'Aluno'
-      }
-
-      // Buscar todos os testes ativos com subjects e courses em uma única query
-      const { data: allTests } = await supabase
-        .from('tests')
-        .select(`
-          id,
-          title,
-          subject_id,
-          course_id,
-          is_active,
-          subjects!inner (
-            name
-          ),
-          courses (
-            title
-          )
-        `)
-        .eq('is_active', true)
-
-      // Buscar tentativas do aluno com filtro de data otimizado
-      let attemptsQuery = supabase
-        .from('test_attempts')
-        .select('test_id, score, submitted_at')
-        .eq('user_id', userId)
-
-      // Aplicar filtro de data se fornecido
+      // Construir URL com parâmetros de data se fornecidos
+      const params = new URLSearchParams()
       if (dateRange?.start) {
-        attemptsQuery = attemptsQuery.gte('submitted_at', dateRange.start)
+        params.append('startDate', dateRange.start)
       }
       if (dateRange?.end) {
-        attemptsQuery = attemptsQuery.lte('submitted_at', dateRange.end)
+        params.append('endDate', dateRange.end)
       }
 
-      const { data: attempts } = await attemptsQuery
-      
-      // Criar mapa de tentativas por teste
-      const attemptsByTest = new Map<string, any>()
-      attempts?.forEach((attempt: any) => {
-        if (!attempt.test_id) return
-        const existing = attemptsByTest.get(attempt.test_id)
-        if (!existing || (attempt.score || 0) > (existing.score || 0)) {
-          attemptsByTest.set(attempt.test_id, attempt)
-        }
-      })
-      
-      // Agrupar testes por disciplina
-      const subjectsMap = new Map<string, GradeBySubject>()
-      
-      // Contar testes sem subject_id
-      const testsWithoutSubject = allTests?.filter((t: any) => !t.subject_id) || []
-      if (testsWithoutSubject.length > 0) {
-        console.warn(`⚠️ ${testsWithoutSubject.length} testes sem subject_id:`, testsWithoutSubject)
-      }
-      
-      allTests?.forEach((test: any) => {
-        // Se não tem subject_id, criar uma categoria "Sem Disciplina"
-        const subjectKey = test.subject_id || 'no-subject'
-        const attempt = attemptsByTest.get(test.id)
-        const score = attempt ? (Number(attempt.score) || 0) : 0
-        const completed = !!attempt
-        
-        if (!subjectsMap.has(subjectKey)) {
-          const subjectName = test.subject_id
-            ? ((test.subjects as any)?.name || 'Disciplina não encontrada')
-            : 'Sem Disciplina Definida'
+      // Chamar API server-side que filtra por cursos matriculados e aplica segurança
+      const response = await fetch(`/api/admin/student-grades/${userId}?${params.toString()}`)
 
-          subjectsMap.set(subjectKey, {
-            subjectId: subjectKey,
-            subjectName: subjectName,
-            courseName: (test.courses as any)?.title || 'Sem curso',
-            totalTests: 0,
-            testsCompleted: 0,
-            testsMissed: 0,
-            average: 0,
-            highestScore: 0,
-            lowestScore: 100,
-            tests: []
+      if (!response.ok) {
+        throw new Error('Erro ao buscar notas do aluno')
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        const {
+          gradesBySubject,
+          totalTestsCount,
+          completedTestsCount,
+          testsAverageRaw,
+          tccGradeRaw,
+          overrides: overrideData
+        } = result.data
+
+        // Formatar datas nos testes
+        gradesBySubject.forEach((subject: any) => {
+          subject.tests.forEach((test: any) => {
+            if (test.date) {
+              test.date = formatDate(test.date)
+            }
+          })
+        })
+
+        setTotalTestsCount(totalTestsCount)
+        setCompletedTestsCount(completedTestsCount)
+        setGradesBySubject(gradesBySubject)
+        setTestsAverageRaw(testsAverageRaw)
+        setTccGradeRaw(tccGradeRaw)
+
+        if (overrideData) {
+          setOverrides(overrideData)
+          setOverrideForm({
+            testsAverage: overrideData.tests_average_override != null ? String(Number(overrideData.tests_average_override)) : '',
+            testsWeight: String(Number(overrideData.tests_weight ?? 1)),
+            tccGrade: overrideData.tcc_grade_override != null ? String(Number(overrideData.tcc_grade_override)) : '',
+            tccWeight: String(Number(overrideData.tcc_weight ?? 1))
+          })
+        } else {
+          setOverrides(null)
+          setOverrideForm({
+            testsAverage: '',
+            testsWeight: '1',
+            tccGrade: '',
+            tccWeight: '1'
           })
         }
-        
-        const subject = subjectsMap.get(subjectKey)!
-        subject.totalTests++
-        
-        if (completed) {
-          subject.testsCompleted++
-          if (score > subject.highestScore) subject.highestScore = score
-          if (score < subject.lowestScore) subject.lowestScore = score
-        } else {
-          subject.testsMissed++
-          subject.lowestScore = 0
-        }
-        
-        subject.tests.push({
-          id: test.id,
-          title: test.title,
-          score,
-          completed,
-          date: attempt?.submitted_at ?
-            formatDate(attempt.submitted_at) :
-            undefined
-        })
-      })
-      
-      // Calcular médias
-      const subjectsArray = Array.from(subjectsMap.values())
-      subjectsArray.forEach(subject => {
-        const totalScore = subject.tests.reduce((sum, test) => sum + test.score, 0)
-        subject.average = subject.totalTests > 0 ? totalScore / subject.totalTests : 0
-      })
-      
-      // Calcular estatísticas gerais
-      const totalTests = subjectsArray.reduce((sum, s) => sum + s.totalTests, 0)
-      const completedTests = subjectsArray.reduce((sum, s) => sum + s.testsCompleted, 0)
-      const scoreSum = subjectsArray.reduce((sum, s) => {
-        return sum + s.tests.reduce((acc, test) => acc + test.score, 0)
-      }, 0)
-      const rawTestsAverage = totalTests > 0 ? scoreSum / totalTests : 0
 
-      setTotalTestsCount(totalTests)
-      setCompletedTestsCount(completedTests)
-      setGradesBySubject(subjectsArray)
-      setTestsAverageRaw(rawTestsAverage)
-      setLoadingStates(prev => ({ ...prev, grades: false }))
-
-      // Buscar nota do TCC mais recente (com filtro de data se fornecido)
-      let tccQuery = supabase
-        .from('tcc_submissions')
-        .select('grade, evaluated_at')
-        .eq('user_id', userId as any)
-        .order('evaluated_at', { ascending: false })
-
-      // Aplicar filtro de data se fornecido
-      if (dateRange?.start) {
-        tccQuery = tccQuery.gte('evaluated_at', dateRange.start)
+        setLoadingStates(prev => ({ ...prev, grades: false, tcc: false, overrides: false }))
       }
-      if (dateRange?.end) {
-        tccQuery = tccQuery.lte('evaluated_at', dateRange.end)
-      }
-
-      const { data: tccSubmission } = await tccQuery.limit(1).maybeSingle()
-
-      setTccGradeRaw(tccSubmission?.grade != null ? Number(tccSubmission.grade) : null)
-      setLoadingStates(prev => ({ ...prev, tcc: false }))
-
-      // Buscar overrides existentes
-      const { data: overrideData } = await supabase
-        .from('student_grade_overrides')
-        .select('*')
-        .eq('user_id', userId as any)
-        .maybeSingle()
-
-      if (overrideData) {
-        setOverrides(overrideData)
-        setOverrideForm({
-          testsAverage: overrideData.tests_average_override != null ? String(Number(overrideData.tests_average_override)) : '',
-          testsWeight: String(Number(overrideData.tests_weight ?? 1)),
-          tccGrade: overrideData.tcc_grade_override != null ? String(Number(overrideData.tcc_grade_override)) : '',
-          tccWeight: String(Number(overrideData.tcc_weight ?? 1))
-        })
-      } else {
-        setOverrides(null)
-        setOverrideForm({
-          testsAverage: '',
-          testsWeight: '1',
-          tccGrade: '',
-          tccWeight: '1'
-        })
-      }
-
-      setLoadingStates(prev => ({ ...prev, overrides: false }))
-
     } catch (error) {
       console.error('Erro ao buscar notas do aluno:', error)
       setOverrideError('Não foi possível carregar as notas do aluno. Por favor, tente novamente.')
@@ -293,7 +174,7 @@ export default function StudentGradesReport({
         setLoadingStates(prev => ({ ...prev, initial: false }))
       }
     }
-  }, [supabase, userId, userName, dateRange])
+  }, [userId, dateRange])
 
   useEffect(() => {
     if (userId) {
