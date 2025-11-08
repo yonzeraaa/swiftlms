@@ -229,12 +229,12 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
       // Pegar tudo antes do hífen e depois pegar os primeiros N chars (variável)
       const lessonFullCode = lesson.title?.split('-')[0]?.trim() || ''
 
-      // Tentar diferentes tamanhos de código (de 8 até 4 caracteres)
-      // Ex: ACMD0101 (8), DCIM060 (7), DLA0101 (7), etc.
+      // Tentar diferentes tamanhos de código (de 10 até 4 caracteres)
+      // Ex: ACMD010101 (10), DCIM0601 (8), DLA0101 (7), etc.
       let subject = null
       let lessonCode = ''
 
-      for (let codeLength = 8; codeLength >= 4 && !subject; codeLength--) {
+      for (let codeLength = 10; codeLength >= 4 && !subject; codeLength--) {
         lessonCode = lessonFullCode.substring(0, codeLength)
         subject = subjectByCode.get(lessonCode)
         if (subject) break

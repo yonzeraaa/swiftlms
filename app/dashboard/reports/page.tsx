@@ -1763,10 +1763,10 @@ export default function ReportsPage() {
         .from('subjects')
         .select('id, name')
 
-      // Criar mapa de subject_id por código (primeiros 7 chars do name)
+      // Criar mapa de subject_id por código (extrair código antes do hífen)
       const subjectByCode = new Map<string, any>()
       subjects?.forEach((subject: any) => {
-        const code = subject.name?.substring(0, 7)
+        const code = subject.name?.split('-')[0]?.trim()
         if (code) {
           subjectByCode.set(code, subject)
         }
@@ -1793,11 +1793,18 @@ export default function ReportsPage() {
         module.lessons?.forEach((lesson: any, lessonIndex: number) => {
           const progress = progressByLessonId.get(lesson.id)
 
-          // Extrair código da lesson (primeiros 7 chars)
-          const lessonCode = lesson.title?.substring(0, 7) || ''
+          // Extrair código antes do hífen
+          const lessonFullCode = lesson.title?.split('-')[0]?.trim() || ''
 
-          // Buscar subject correspondente
-          const subject = subjectByCode.get(lessonCode)
+          // Tentar diferentes tamanhos de código (de 10 até 4 caracteres)
+          let subject = null
+          let lessonCode = ''
+
+          for (let codeLength = 10; codeLength >= 4 && !subject; codeLength--) {
+            lessonCode = lessonFullCode.substring(0, codeLength)
+            subject = subjectByCode.get(lessonCode)
+            if (subject) break
+          }
 
           // Buscar nota do teste deste subject
           const lessonScore = subject ? (bestScoreBySubject.get(subject.id) || 0) : 0
