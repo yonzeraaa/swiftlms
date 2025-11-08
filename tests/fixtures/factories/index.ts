@@ -1,0 +1,5 @@
+export * from './base.factory'
+export * from './user.factory'
+export * from './course.factory'
+export * from './enrollment.factory'
+export * from './test.factory'
