@@ -77,6 +77,9 @@ export default function CoursePage() {
   const [certificateStatus, setCertificateStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none')
   const [canRequestCertificate, setCanRequestCertificate] = useState(false)
   const [requestingCertificate, setRequestingCertificate] = useState(false)
+  const [showCertificateModal, setShowCertificateModal] = useState(false)
+  const [hasApprovedTcc, setHasApprovedTcc] = useState(false)
+  const [eligibilityData, setEligibilityData] = useState<any>(null)
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set())
   const [reviews, setReviews] = useState<any[]>([])
@@ -306,48 +309,57 @@ export default function CoursePage() {
       setTotalLessons(totalLessonCount)
       setCompletedLessons(completedLessonCount)
       
-      // Verificar status do certificado e elegibilidade
+      // Verificar elegibilidade completa usando a API
       if (enrollmentData) {
-        // Verificar se já existe certificado ou solicitação
-        const { data: certificateRequest } = await supabase
-          .from('certificate_requests')
-          .select('status')
-          .eq('enrollment_id', enrollmentData.id)
-          .single()
-        
-        const { data: certificate } = await supabase
-          .from('certificates')
-          .select('approval_status')
-          .eq('enrollment_id', enrollmentData.id)
-          .single()
-        
-        if (certificate?.approval_status === 'approved') {
-          setCertificateStatus('approved')
-        } else if (certificateRequest?.status === 'pending') {
-          setCertificateStatus('pending')
-        } else if (certificateRequest?.status === 'rejected') {
-          setCertificateStatus('rejected')
+        try {
+          const response = await fetch('/api/certificates/check-eligibility', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              courseId: courseId,
+              enrollmentId: enrollmentData.id
+            })
+          })
+
+          if (response.ok) {
+            const eligibility = await response.json()
+            setEligibilityData(eligibility)
+            setHasApprovedTcc(eligibility.hasApprovedTcc || false)
+
+            // Determinar status baseado nos dados de elegibilidade
+            const hasTechnicalRequest = eligibility.requestsByType?.technical
+            const hasLatoSensuRequest = eligibility.requestsByType?.latoSensu
+            const hasTechnicalCertificate = eligibility.approvedCertificatesByType?.technical
+            const hasLatoSensuCertificate = eligibility.approvedCertificatesByType?.latoSensu
+
+            // Se tem algum certificado aprovado
+            if (hasTechnicalCertificate || hasLatoSensuCertificate) {
+              setCertificateStatus('approved')
+            }
+            // Se tem alguma solicitação pendente
+            else if (
+              hasTechnicalRequest?.status === 'pending' ||
+              hasLatoSensuRequest?.status === 'pending'
+            ) {
+              setCertificateStatus('pending')
+            }
+            // Se tem alguma solicitação rejeitada
+            else if (
+              hasTechnicalRequest?.status === 'rejected' ||
+              hasLatoSensuRequest?.status === 'rejected'
+            ) {
+              setCertificateStatus('rejected')
+            }
+
+            // Pode solicitar se atende requisitos e não tem solicitação/certificado
+            const canRequestTechnical = eligibility.eligibleCertificates?.technical && !hasTechnicalRequest && !hasTechnicalCertificate
+            const canRequestLatoSensu = eligibility.eligibleCertificates?.latoSensu && !hasLatoSensuRequest && !hasLatoSensuCertificate
+
+            setCanRequestCertificate(canRequestTechnical || canRequestLatoSensu)
+          }
+        } catch (error) {
+          console.error('Erro ao verificar elegibilidade:', error)
         }
-        
-        // Verificar elegibilidade para solicitar certificado
-        const progressPercentage = totalLessonCount > 0 
-          ? (completedLessonCount / totalLessonCount) * 100 
-          : 0
-        
-        // Verificar nota no teste
-        const { data: testGrades } = await supabase
-          .from('test_grades')
-          .select('best_score')
-          .eq('user_id', user.id)
-          .eq('course_id', courseId)
-        
-        const bestScore = testGrades && testGrades.length > 0 
-          ? Math.max(...testGrades.map((g: any) => g.best_score || 0))
-          : 0
-        
-        // Pode solicitar se completou 100% e tem nota >= 70
-        const eligible = progressPercentage >= 100 && bestScore >= 70
-        setCanRequestCertificate(eligible && certificateStatus === 'none')
       }
       
       // If there's a lesson ID in the URL, select that lesson
@@ -503,27 +515,28 @@ export default function CoursePage() {
     }
   }
 
-  const requestCertificate = async () => {
+  const requestCertificate = async (certificateType: 'technical' | 'lato-sensu') => {
     if (!course?.enrollment || !canRequestCertificate) return
-    
+
     setRequestingCertificate(true)
-    
+
     try {
       const response = await fetch('/api/certificates/check-eligibility', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           courseId: course.id,
-          enrollmentId: course.enrollment.id
+          enrollmentId: course.enrollment.id,
+          certificateType: certificateType
         })
       })
-      
+
       const result = await response.json()
-      
+
       if (response.ok && result.success) {
-        setCertificateStatus('pending')
-        setCanRequestCertificate(false)
-        alert('✅ Certificado solicitado com sucesso!\n\nAguarde a aprovação do administrador.')
+        setShowCertificateModal(false)
+        await fetchCourseData() // Recarregar dados para atualizar status
+        alert(`✅ Certificado ${certificateType === 'lato-sensu' ? 'Lato Sensu' : 'Técnico'} solicitado com sucesso!\n\nAguarde a aprovação do administrador.`)
       } else {
         alert(`❌ Erro ao solicitar certificado:\n\n${result.error || 'Erro desconhecido'}`)
       }
@@ -635,49 +648,186 @@ export default function CoursePage() {
 
   const progressPercentage = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
 
-  const CertificatePanel = () => (
-    !isAdmin ? (
+  const CertificatePanel = () => {
+    if (isAdmin) return null
+
+    const technicalRequest = eligibilityData?.requestsByType?.technical
+    const latoSensuRequest = eligibilityData?.requestsByType?.latoSensu
+    const technicalCertificate = eligibilityData?.approvedCertificatesByType?.technical
+    const latoSensuCertificate = eligibilityData?.approvedCertificatesByType?.latoSensu
+
+    const canRequestTechnical = eligibilityData?.eligibleCertificates?.technical && !technicalRequest && !technicalCertificate
+    const canRequestLatoSensu = eligibilityData?.eligibleCertificates?.latoSensu && !latoSensuRequest && !latoSensuCertificate
+
+    return (
       <div className="mt-4 space-y-3">
-        {certificateStatus === 'approved' && (
+        {/* Certificados aprovados */}
+        {technicalCertificate && (
           <div className="flex items-center gap-2 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
             <Award className="w-5 h-5 text-green-400" />
-            <span className="text-green-400">Certificado aprovado! Acesse em \"Meus Certificados\"</span>
+            <span className="text-green-400">Certificado Técnico aprovado! Acesse em \"Meus Certificados\"</span>
           </div>
         )}
-        {certificateStatus === 'pending' && (
+        {latoSensuCertificate && (
+          <div className="flex items-center gap-2 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
+            <Award className="w-5 h-5 text-green-400" />
+            <span className="text-green-400">Certificado Lato Sensu aprovado! Acesse em \"Meus Certificados\"</span>
+          </div>
+        )}
+
+        {/* Solicitações pendentes */}
+        {technicalRequest?.status === 'pending' && (
           <div className="flex items-center gap-2 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
             <Clock className="w-5 h-5 text-yellow-400" />
-            <span className="text-yellow-400">Certificado solicitado - Aguardando aprovação</span>
+            <span className="text-yellow-400">Certificado Técnico solicitado - Aguardando aprovação</span>
           </div>
         )}
-        {certificateStatus === 'rejected' && (
+        {latoSensuRequest?.status === 'pending' && (
+          <div className="flex items-center gap-2 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+            <Clock className="w-5 h-5 text-yellow-400" />
+            <span className="text-yellow-400">Certificado Lato Sensu solicitado - Aguardando aprovação</span>
+          </div>
+        )}
+
+        {/* Solicitações rejeitadas */}
+        {technicalRequest?.status === 'rejected' && (
           <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
             <AlertCircle className="w-5 h-5 text-red-400" />
-            <span className="text-red-400">Certificado rejeitado - Verifique em \"Meus Certificados\"</span>
+            <span className="text-red-400">Certificado Técnico rejeitado - Verifique em \"Meus Certificados\"</span>
           </div>
         )}
+        {latoSensuRequest?.status === 'rejected' && (
+          <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
+            <AlertCircle className="w-5 h-5 text-red-400" />
+            <span className="text-red-400">Certificado Lato Sensu rejeitado - Verifique em \"Meus Certificados\"</span>
+          </div>
+        )}
+
+        {/* Botão para solicitar certificados */}
         {canRequestCertificate && (
           <Button
             variant="primary"
-            onClick={requestCertificate}
-            loading={requestingCertificate}
+            onClick={() => setShowCertificateModal(true)}
             icon={<Send className="w-4 h-4" />}
             className="w-full"
           >
             Solicitar Certificado de Conclusão
           </Button>
         )}
-        {!canRequestCertificate && certificateStatus === 'none' && progressPercentage === 100 && (
-          <div className="flex items-center gap-2 p-3 bg-navy-900/50 border border-gold-500/20 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-gold-400" />
-            <span className="text-gold-400 text-sm">
-              Você precisa atingir nota mínima de 70% no teste para solicitar o certificado
-            </span>
-          </div>
+
+        {/* Mensagens de requisitos não atendidos */}
+        {!canRequestCertificate && !technicalCertificate && !latoSensuCertificate && !technicalRequest && !latoSensuRequest && (
+          <>
+            {eligibilityData && eligibilityData.progressPercentage < 100 && (
+              <div className="flex items-center gap-2 p-3 bg-navy-900/50 border border-gold-500/20 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-gold-400" />
+                <span className="text-gold-400 text-sm">
+                  Complete todas as aulas do curso (atualmente em {Math.round(eligibilityData.progressPercentage)}%)
+                </span>
+              </div>
+            )}
+            {eligibilityData && eligibilityData.progressPercentage >= 100 && eligibilityData.bestTestScore < 70 && (
+              <div className="flex items-center gap-2 p-3 bg-navy-900/50 border border-gold-500/20 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-gold-400" />
+                <span className="text-gold-400 text-sm">
+                  Você precisa atingir nota mínima de 70% no teste (nota atual: {eligibilityData.bestTestScore}%)
+                </span>
+              </div>
+            )}
+          </>
         )}
+
+        {/* Modal de seleção de tipo de certificado */}
+        <AnimatePresence>
+          {showCertificateModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+              onClick={() => setShowCertificateModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-navy-800 rounded-lg p-6 max-w-md w-full border border-gold-500/20"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-xl font-bold text-gold mb-4">Escolha o Tipo de Certificado</h3>
+                <p className="text-gold-300/70 mb-6 text-sm">
+                  Selecione o tipo de certificado que você deseja solicitar:
+                </p>
+
+                <div className="space-y-3">
+                  {/* Certificado Técnico */}
+                  {canRequestTechnical && (
+                    <button
+                      onClick={() => requestCertificate('technical')}
+                      disabled={requestingCertificate}
+                      className="w-full p-4 bg-navy-900/50 border border-gold-500/20 rounded-lg hover:border-gold-500/40 hover:bg-navy-900/70 transition-all text-left group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Award className="w-6 h-6 text-gold-400 flex-shrink-0 mt-1" />
+                        <div className="flex-1">
+                          <h4 className="text-gold-200 font-semibold mb-1 group-hover:text-gold">
+                            Certificado Técnico
+                          </h4>
+                          <p className="text-gold-300/60 text-sm">
+                            Certifica a conclusão do curso com aproveitamento mínimo de 70%
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Certificado Lato Sensu */}
+                  {canRequestLatoSensu && (
+                    <button
+                      onClick={() => requestCertificate('lato-sensu')}
+                      disabled={requestingCertificate}
+                      className="w-full p-4 bg-gradient-to-br from-gold-900/20 to-gold-800/10 border border-gold-500/30 rounded-lg hover:border-gold-500/50 hover:from-gold-900/30 hover:to-gold-800/20 transition-all text-left group"
+                    >
+                      <div className="flex items-start gap-3">
+                        <Star className="w-6 h-6 text-gold-400 flex-shrink-0 mt-1" />
+                        <div className="flex-1">
+                          <h4 className="text-gold font-semibold mb-1 group-hover:text-gold-300">
+                            Certificado Lato Sensu
+                          </h4>
+                          <p className="text-gold-300/70 text-sm">
+                            Certificado de pós-graduação com TCC aprovado
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Mensagem caso nenhum esteja disponível */}
+                  {!canRequestTechnical && !canRequestLatoSensu && (
+                    <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
+                      <p className="text-red-400 text-sm">
+                        Nenhum certificado disponível para solicitação no momento.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowCertificateModal(false)}
+                    disabled={requestingCertificate}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    ) : null
-  )
+    )
+  }
 
   if (loading) {
     return (

@@ -241,7 +241,8 @@ export async function PUT(request: Request) {
         total_lessons: eligibility.totalLessons,
         completed_lessons: eligibility.completedLessons,
         status: 'pending',
-        request_date: new Date().toISOString()
+        request_date: new Date().toISOString(),
+        certificate_type: certificateType
       })
       .select()
       .single()
@@ -295,18 +296,20 @@ export async function PUT(request: Request) {
         action: 'certificate_requested',
         entity_type: 'certificate_request',
         entity_id: newRequest.id,
-        entity_name: `Certificado para curso ${courseId}`,
+        entity_name: `Certificado ${certificateType === 'lato-sensu' ? 'Lato Sensu' : 'Técnico'} para curso ${courseId}`,
         metadata: {
           course_id: courseId,
           enrollment_id: enrollmentId,
           progress: eligibility.progressPercentage,
-          test_score: eligibility.bestTestScore
+          test_score: eligibility.bestTestScore,
+          certificate_type: certificateType
         }
       })
 
     return NextResponse.json({
       success: true,
       request: newRequest,
+      certificateType,
       message: 'Solicitação de certificado criada com sucesso. Aguarde a aprovação do administrador.'
     })
   } catch (error) {
