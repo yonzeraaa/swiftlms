@@ -77,7 +77,7 @@ async function checkEligibility(courseId: string, enrollmentId: string, userId: 
 
   const eligibleCertificates = {
     technical: requirementsMet,
-    latoSensu: requirementsMet && hasApprovedTcc
+    latoSensu: requirementsMet // Admin verifica TCC na aprovação
   }
 
   type CertificateType = 'technical' | 'lato-sensu'

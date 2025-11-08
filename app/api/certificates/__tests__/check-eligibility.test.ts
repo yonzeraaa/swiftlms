@@ -190,7 +190,7 @@ describe('certificate eligibility API', () => {
     expect(payload.progressPercentage).toBe(100)
     expect(payload.bestTestScore).toBe(90)
     expect(payload.eligibleCertificates.technical).toBe(true)
-    expect(payload.eligibleCertificates.latoSensu).toBe(false)
+    expect(payload.eligibleCertificates.latoSensu).toBe(true) // Agora permite solicitação sem TCC
     expect(payload.hasApprovedTcc).toBe(false)
   })
 
@@ -256,7 +256,7 @@ describe('certificate eligibility API', () => {
     expect(payload.hasApprovedTcc).toBe(true)
   })
 
-  it('rejects lato sensu requests when TCC is not approved', async () => {
+  it('allows lato sensu requests even when TCC is not approved', async () => {
     const eligibilityStub = buildEligibilitySupabaseStub({ progressPercentage: 100, bestScore: 90, hasApprovedTcc: false })
     const requestStub = buildEligibilitySupabaseStub({ progressPercentage: 100, bestScore: 90, hasApprovedTcc: false })
 
@@ -270,8 +270,8 @@ describe('certificate eligibility API', () => {
       headers: new Headers()
     } as any)
 
-    expect(response.status).toBe(400)
-    expect(requestStub.tables.certificate_requests.insert).not.toHaveBeenCalled()
+    expect(response.status).toBe(200) // Agora permite solicitação sem TCC
+    expect(requestStub.tables.certificate_requests.insert).toHaveBeenCalled()
   })
 
   it('allows lato sensu requests when TCC is approved', async () => {
