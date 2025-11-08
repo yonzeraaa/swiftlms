@@ -48,7 +48,9 @@ export default function StudentEvaluationsPage() {
           window.location.href = '/'
           return
         }
-        throw new Error('Erro ao buscar testes')
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }))
+        console.error('Erro da API:', response.status, errorData)
+        throw new Error(errorData.error || 'Erro ao buscar testes')
       }
 
       const result = await response.json()

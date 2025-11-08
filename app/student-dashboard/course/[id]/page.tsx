@@ -391,7 +391,9 @@ export default function CoursePage() {
       const response = await fetch(`/api/student/tests?course_id=${courseId}`)
 
       if (!response.ok) {
-        throw new Error('Erro ao buscar testes')
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }))
+        console.error('Erro da API (curso):', response.status, errorData)
+        throw new Error(errorData.error || 'Erro ao buscar testes')
       }
 
       const result = await response.json()

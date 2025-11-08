@@ -70,12 +70,13 @@ export async function GET(request: NextRequest) {
         course:courses(*),
         subject:subjects(*)
       `)
-      .in('course_id', courseIds)
       .eq('is_active', true)
 
-    // Aplicar filtro por course_id se fornecido
+    // Aplicar filtro por course_id se fornecido, caso contrário buscar de todos os cursos matriculados
     if (filterCourseId) {
       testsQuery = testsQuery.eq('course_id', filterCourseId)
+    } else {
+      testsQuery = testsQuery.in('course_id', courseIds)
     }
 
     const { data: testsData, error: testsError } = await testsQuery
