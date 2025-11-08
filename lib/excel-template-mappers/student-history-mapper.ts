@@ -54,7 +54,12 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
           *,
           module_subjects(
             *,
-            subject:subjects(*)
+            subject:subjects(
+              *,
+              subject_lessons(
+                lesson_id
+              )
+            )
           )
         )
       ),
@@ -85,6 +90,24 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
   if (!enrollment.course) {
     throw new Error('Curso não encontrado para a matrícula')
   }
+
+  // Buscar progresso das lições do aluno
+  const { data: lessonProgressData } = await supabase
+    .from('lesson_progress')
+    .select('*')
+    .eq('user_id', userId)
+
+  // Criar mapa de progresso por lesson_id
+  const progressByLessonId = new Map<string, any>()
+  lessonProgressData?.forEach((progress: any) => {
+    if (progress.lesson_id) {
+      // Manter apenas o progresso mais recente por lição
+      const existing = progressByLessonId.get(progress.lesson_id)
+      if (!existing || new Date(progress.updated_at) > new Date(existing.updated_at)) {
+        progressByLessonId.set(progress.lesson_id, progress)
+      }
+    }
+  })
 
   // Buscar tentativas de testes
   const { data: testAttempts, error: testAttemptsError } = await supabase
@@ -193,12 +216,40 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
       // Buscar nota do teste deste subject
       const subjectScore = bestScoreBySubject.get(subject.id) || 0
 
+      // Calcular data de finalização baseada nas lessons vinculadas ao subject
+      let subjectCompletionDate = ''
+      const subjectLessonIds = subject.subject_lessons?.map((sl: any) => sl.lesson_id) || []
+
+      // Buscar a data de conclusão mais recente entre as lessons do subject
+      let latestCompletionDateStr: string | null = null
+      subjectLessonIds.forEach((lessonId: string) => {
+        const progress = progressByLessonId.get(lessonId)
+        if (progress?.completed_at) {
+          try {
+            const completedDate = new Date(progress.completed_at)
+            if (!isNaN(completedDate.getTime())) {
+              if (!latestCompletionDateStr || completedDate > new Date(latestCompletionDateStr)) {
+                latestCompletionDateStr = progress.completed_at
+              }
+            }
+          } catch (e) {
+            console.warn('Data de conclusão inválida:', progress.completed_at)
+          }
+        }
+      })
+
+      if (latestCompletionDateStr) {
+        subjectCompletionDate = Formatters.date(latestCompletionDateStr)
+      }
+
       // Log apenas das primeiras 3 subjects para debug
       if (subjectIndex < 3) {
         console.log(`=== Subject ${subjectIndex} ===`, {
           name: subject.name,
           id: subject.id,
           hours: subject.hours,
+          lessonsCount: subjectLessonIds.length,
+          completionDate: subjectCompletionDate,
           scoreFromMap: bestScoreBySubject.get(subject.id),
           finalScore: subjectScore
         })
@@ -217,7 +268,7 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
         code: Formatters.lessonCode(moduleIndex, subjectIndex),
         name: ` ${subject.name || 'Disciplina sem nome'}`,
         workload: subjectHours,
-        completion_date: '', // Subjects não têm data de conclusão individual
+        completion_date: subjectCompletionDate,
         score: subjectScore > 0 ? subjectScore : ''
       })
     })
