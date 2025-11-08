@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { FileCheck, FileText, Clock, Target, RotateCcw, AlertCircle, ChevronRight, ChevronDown, Search, CheckCircle, Eye, BookOpen, X } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
 import Card from '@/app/components/Card'
@@ -33,7 +32,6 @@ export default function StudentEvaluationsPage() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all')
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedCourses, setExpandedCourses] = useState<Set<string>>(new Set())
-  const supabase = createClient()
 
   useEffect(() => {
     loadTests()
@@ -41,70 +39,22 @@ export default function StudentEvaluationsPage() {
 
   const loadTests = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      // Buscar testes via API server-side (onde a sessão está disponível)
+      const response = await fetch('/api/student/tests')
 
-      // Buscar cursos em que o aluno está matriculado
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select(`
-          course_id,
-          course:courses(*)
-        `)
-        .eq('user_id', user.id)
-
-      if (!enrollments || enrollments.length === 0) {
-        setCourseTests([])
-        setLoading(false)
-        return
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Usuário não autenticado - redirecionar
+          window.location.href = '/'
+          return
+        }
+        throw new Error('Erro ao buscar testes')
       }
 
-      const courseIds = enrollments.map((e: any) => e.course_id)
+      const result = await response.json()
 
-      // Buscar testes ativos desses cursos
-      const { data: testsData } = await supabase
-        .from('tests')
-        .select(`
-          *,
-          course:courses(*),
-          subject:subjects(*)
-        `)
-        .in('course_id', courseIds)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false })
-
-      // Buscar notas do aluno nesses testes
-      if (testsData) {
-        const testIds = testsData.map((t: any) => t.id)
-        const { data: grades } = await supabase
-          .from('test_grades')
-          .select('*')
-          .eq('user_id', user.id)
-          .in('test_id', testIds)
-
-        // Agrupar testes por curso
-        const courseTestsMap = new Map<string, CourseWithTests>()
-
-        enrollments.forEach((enrollment: any) => {
-          if (enrollment.course) {
-            courseTestsMap.set(enrollment.course_id, {
-              course: enrollment.course,
-              tests: []
-            })
-          }
-        })
-
-        testsData.forEach((test: any) => {
-          const courseGroup = courseTestsMap.get(test.course_id)
-          if (courseGroup) {
-            courseGroup.tests.push({
-              ...test,
-              grade: grades?.find((g: any) => g.test_id === test.id) || undefined
-            })
-          }
-        })
-
-        setCourseTests(Array.from(courseTestsMap.values()))
+      if (result.success && result.data) {
+        setCourseTests(result.data.courseTests || [])
       }
     } catch (error) {
       console.error('Erro ao carregar avaliações:', error)
