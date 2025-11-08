@@ -21,6 +21,7 @@ type Profile = Database['public']['Tables']['profiles']['Row']
 interface CertificateWithDetails extends Certificate {
   course: Course
   user: Profile
+  certificate_type?: 'technical' | 'lato-sensu'
 }
 
 interface CertificateRequest {
@@ -603,13 +604,15 @@ export default function CertificatesPage() {
                   fontSize: '14px',
                   marginBottom: '20px'
                 }}>
-                  Certificado Técnico
+                  {selectedCertificate.certificate_type === 'lato-sensu'
+                    ? 'Certificado de Pós-Graduação Lato Sensu'
+                    : 'Certificado Técnico de Conclusão'}
                 </p>
-                
+
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '60px', marginTop: '30px', marginBottom: '30px' }}>
                   <div>
                     <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '14px', marginBottom: '5px' }}>Carga Horária</p>
-                    <p style={{ color: '#FFD700', fontSize: '20px', fontWeight: 'bold' }}>{selectedCertificate.course?.duration_hours || 0} horas</p>
+                    <p style={{ color: '#FFD700', fontSize: '20px', fontWeight: 'bold' }}>{selectedCertificate.course_hours || selectedCertificate.course?.duration_hours || 0} horas</p>
                   </div>
                 </div>
                 
@@ -637,7 +640,36 @@ export default function CertificatesPage() {
               </div>
 
               {/* Instructor Signature */}
-              {/* Instructor Signature - temporariamente removido */}
+              {selectedCertificate.instructor_name && (
+                <div style={{
+                  marginTop: '40px',
+                  display: 'flex',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                      borderTop: '2px solid rgba(255, 215, 0, 0.6)',
+                      width: '250px',
+                      marginBottom: '10px'
+                    }}></div>
+                    <p style={{
+                      color: '#FFD700',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      marginBottom: '3px'
+                    }}>
+                      {selectedCertificate.instructor_name}
+                    </p>
+                    <p style={{
+                      color: '#FFD700',
+                      fontSize: '12px',
+                      opacity: 0.7
+                    }}>
+                      Instrutor Responsável
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
