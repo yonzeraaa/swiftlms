@@ -1777,7 +1777,7 @@ export default function ReportsPage() {
             nome: ` Disciplina ${lesson.title}`,
             carga_horaria: lessonHours,
             data_finalizacao: progress?.completed_at ? formatDate(progress.completed_at) : '',
-            pontuacao: progress?.score || '',
+            pontuacao: '', // lesson_progress não tem coluna score
             isModule: false
           })
         })

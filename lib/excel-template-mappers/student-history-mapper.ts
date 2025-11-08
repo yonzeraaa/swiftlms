@@ -159,12 +159,25 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
 
     // Disciplinas do módulo
     const lessons = courseModule.lessons || []
+    const lessonCount = lessons.length || 0
+
+    // Calcular horas por disciplina proporcionalmente
+    const hoursPerLesson = lessonCount > 0 ? Math.round(moduleWorkload / lessonCount) : 0
 
     lessons.forEach((lesson: any, lessonIndex: number) => {
       // Buscar progresso do mapa criado anteriormente
       const progress = progressByLessonId.get(lesson.id)
-      const lessonWorkload = Helpers.minutesToHours(lesson.duration_minutes || 0)
-      const lessonScore = progress?.score || 0
+
+      // Usar duration_minutes se existir, senão usar distribuição proporcional
+      let lessonWorkload = 0
+      if (lesson.duration_minutes && lesson.duration_minutes > 0) {
+        lessonWorkload = Helpers.minutesToHours(lesson.duration_minutes)
+      } else {
+        lessonWorkload = hoursPerLesson
+      }
+
+      // Nota: lesson_progress não tem coluna 'score'
+      // As pontuações das disciplinas não estão disponíveis no sistema
 
       totalWorkload += lessonWorkload
 
@@ -179,17 +192,12 @@ export async function fetchStudentHistoryData(userId: string): Promise<StudentHi
         }
       }
 
-      if (typeof lessonScore === 'number' && lessonScore > 0) {
-        totalScore += lessonScore
-        scoreCount++
-      }
-
       modulesData.push({
         code: Formatters.lessonCode(moduleIndex, lessonIndex),
         name: ` Disciplina ${lesson.title || 'Sem título'}`,
         workload: lessonWorkload,
         completion_date: Formatters.date(progress?.completed_at),
-        score: lessonScore > 0 ? lessonScore : ''
+        score: '' // Sem score disponível para lições individuais
       })
     })
   })
