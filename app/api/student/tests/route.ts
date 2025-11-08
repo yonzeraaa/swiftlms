@@ -110,14 +110,26 @@ export async function GET(request: NextRequest) {
     // Agrupar testes por curso
     const courseTestsMap = new Map()
 
-    enrollments.forEach((enrollment: any) => {
-      if (enrollment.course) {
-        courseTestsMap.set(enrollment.course_id, {
-          course: enrollment.course,
+    // Se há filtro por curso, criar entrada apenas para aquele curso
+    if (filterCourseId) {
+      const filteredEnrollment = enrollments.find((e: any) => e.course_id === filterCourseId)
+      if (filteredEnrollment?.course) {
+        courseTestsMap.set(filterCourseId, {
+          course: filteredEnrollment.course,
           tests: []
         })
       }
-    })
+    } else {
+      // Caso contrário, criar entrada para todos os cursos matriculados
+      enrollments.forEach((enrollment: any) => {
+        if (enrollment.course) {
+          courseTestsMap.set(enrollment.course_id, {
+            course: enrollment.course,
+            tests: []
+          })
+        }
+      })
+    }
 
     testsData?.forEach((test: any) => {
       const courseGroup = courseTestsMap.get(test.course_id)
