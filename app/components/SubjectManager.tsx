@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import {
+  checkSubjectManagementPermission,
+  getSubjectsForCourse,
+  addSubjectToCourse,
+  removeSubjectFromCourse
+} from '@/lib/actions/subject-manager';
 import { Tables } from '@/lib/database.types';
 import { Plus, X, Loader2, BookOpen, Award } from 'lucide-react';
 import Card from './Card';
@@ -27,8 +32,6 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
   const [saving, setSaving] = useState(false);
   const [canManage, setCanManage] = useState(false);
 
-  const supabase = createClient();
-
   useEffect(() => {
     loadData();
     checkUserRole();
@@ -36,21 +39,17 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
 
   async function checkUserRole() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        
-        // Usuário pode gerenciar se for admin ou instrutor do curso
-        const isAdmin = profile?.role === 'admin';
-        const isInstructor = instructorId === user.id;
-        setCanManage(isAdmin || isInstructor);
+      const result = await checkSubjectManagementPermission(instructorId);
+
+      if (result.success) {
+        setCanManage(result.canManage);
+      } else {
+        console.error('Erro ao verificar papel do usuário:', result.error);
+        setCanManage(false);
       }
     } catch (error) {
       console.error('Erro ao verificar papel do usuário:', error);
+      setCanManage(false);
     }
   }
 
@@ -58,25 +57,14 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
     try {
       setLoading(true);
 
-      // Carregar todas as disciplinas
-      const { data: subjectsData, error: subjectsError } = await supabase
-        .from('subjects')
-        .select('*')
-        .order('name');
+      const result = await getSubjectsForCourse(courseId);
 
-      if (subjectsError) throw subjectsError;
-
-      // Carregar disciplinas do curso
-      const { data: courseSubjectsData, error: courseSubjectsError } = await supabase
-        .from('course_subjects')
-        .select('*, subjects(*)')
-        .eq('course_id', courseId)
-        .order('order_index, is_required');
-
-      if (courseSubjectsError) throw courseSubjectsError;
-
-      setSubjects(subjectsData || []);
-      setCourseSubjects(courseSubjectsData || []);
+      if (result.success) {
+        setSubjects(result.subjects);
+        setCourseSubjects(result.courseSubjects);
+      } else {
+        console.error('Erro ao carregar dados:', result.error);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -90,28 +78,12 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
     try {
       setSaving(true);
 
-      // Obter o próximo order_index
-      const { data: maxOrderData } = await supabase
-        .from('course_subjects')
-        .select('order_index')
-        .eq('course_id', courseId)
-        .order('order_index', { ascending: false })
-        .limit(1)
-        .single();
+      const result = await addSubjectToCourse(courseId, selectedSubjectId, credits, isRequired);
 
-      const nextOrder = maxOrderData ? ((maxOrderData as any).order_index || 0) + 1 : 1;
-
-      const { error } = await supabase
-        .from('course_subjects')
-        .insert({
-          course_id: courseId,
-          subject_id: selectedSubjectId,
-          order_index: nextOrder,
-          credits,
-          is_required: isRequired
-        });
-
-      if (error) throw error;
+      if (!result.success) {
+        alert(result.error || 'Erro ao adicionar disciplina ao curso');
+        return;
+      }
 
       // Recarregar dados
       await loadData();
@@ -123,13 +95,7 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
       setIsRequired(true);
     } catch (error: any) {
       console.error('Erro ao adicionar disciplina:', error);
-      if (error.code === '42501') {
-        alert('Você não tem permissão para adicionar disciplinas. Apenas administradores podem realizar esta ação.');
-      } else if (error.code === '23505') {
-        alert('Esta disciplina já está adicionada a este curso.');
-      } else {
-        alert(`Erro ao adicionar disciplina ao curso: ${error.message || 'Erro desconhecido'}`);
-      }
+      alert(`Erro ao adicionar disciplina ao curso: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setSaving(false);
     }
@@ -139,22 +105,18 @@ export default function SubjectManager({ courseId, courseName, instructorId }: S
     if (!confirm('Tem certeza que deseja remover esta disciplina do curso?')) return;
 
     try {
-      const { error } = await supabase
-        .from('course_subjects')
-        .delete()
-        .eq('id', courseSubjectId);
+      const result = await removeSubjectFromCourse(courseSubjectId);
 
-      if (error) throw error;
+      if (!result.success) {
+        alert(result.error || 'Erro ao remover disciplina do curso');
+        return;
+      }
 
       // Recarregar dados
       await loadData();
     } catch (error: any) {
       console.error('Erro ao remover disciplina:', error);
-      if (error.code === '42501') {
-        alert('Você não tem permissão para remover disciplinas. Apenas administradores podem realizar esta ação.');
-      } else {
-        alert(`Erro ao remover disciplina do curso: ${error.message || 'Erro desconhecido'}`);
-      }
+      alert(`Erro ao remover disciplina do curso: ${error.message || 'Erro desconhecido'}`);
     }
   }
 

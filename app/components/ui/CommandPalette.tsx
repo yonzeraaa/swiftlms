@@ -10,7 +10,7 @@ import {
   Zap, Command as CommandIcon, X
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { signOutAction } from '@/lib/actions/auth'
 
 interface CommandItem {
   id: string
@@ -29,7 +29,6 @@ export default function CommandPalette() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClient()
 
   // Toggle command palette with Cmd+K or Ctrl+K
   useEffect(() => {
@@ -50,7 +49,7 @@ export default function CommandPalette() {
 
   const handleLogout = async () => {
     setLoading(true)
-    await supabase.auth.signOut()
+    await signOutAction()
     router.push('/')
   }
 

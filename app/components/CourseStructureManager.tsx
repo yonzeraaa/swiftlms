@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import {
+  getCourseStructure,
+  reorderCourseModules,
+  reorderModuleSubjects,
+  reorderLessons
+} from '@/lib/actions/course-structure';
 import { 
   BookOpen, 
   Layers, 
@@ -131,8 +136,6 @@ export default function CourseStructureManager({
   const [hasChanges, setHasChanges] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
-  const supabase = createClient();
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -152,42 +155,15 @@ export default function CourseStructureManager({
     try {
       setLoading(true);
 
-      // Carregar módulos do curso
-      const { data: modulesData, error: modulesError } = await supabase
-        .from('course_modules')
-        .select('*')
-        .eq('course_id', courseId as string)
-        .order('order_index');
+      const result = await getCourseStructure(courseId as string);
 
-      if (modulesError) throw modulesError;
-      setModules((modulesData as unknown as Module[]) || []);
-
-      // Para cada módulo, carregar suas disciplinas e aulas
-      const moduleSubjectsMap: Record<string, ModuleSubject[]> = {};
-      const lessonsMap: Record<string, Lesson[]> = {};
-
-      for (const module of ((modulesData as unknown as Module[]) || [])) {
-        // Carregar disciplinas do módulo
-        const { data: subjectsData } = await supabase
-          .from('module_subjects')
-          .select('*, subjects(*)')
-          .eq('module_id', module.id as any)
-          .order('order_index');
-
-        moduleSubjectsMap[module.id] = (subjectsData as unknown as ModuleSubject[]) || [];
-
-        // Carregar aulas do módulo
-        const { data: lessonsData } = await supabase
-          .from('lessons')
-          .select('*')
-          .eq('module_id', module.id as any)
-          .order('order_index');
-
-        lessonsMap[module.id] = (lessonsData as unknown as Lesson[]) || [];
+      if (result.success) {
+        setModules(result.modules as unknown as Module[]);
+        setModuleSubjects(result.moduleSubjects as Record<string, ModuleSubject[]>);
+        setLessons(result.lessons as Record<string, Lesson[]>);
+      } else {
+        console.error('Erro ao carregar estrutura do curso:', result.error);
       }
-
-      setModuleSubjects(moduleSubjectsMap);
-      setLessons(lessonsMap);
 
     } catch (error) {
       console.error('Erro ao carregar estrutura do curso:', error);
@@ -199,14 +175,13 @@ export default function CourseStructureManager({
   async function handleReorderModules(reorderedItems: any[]) {
     try {
       const moduleIds = reorderedItems.map(item => item.id);
-      
-      const { error } = await supabase.rpc('reorder_course_modules' as any, {
-        p_course_id: courseId,
-        p_module_ids: moduleIds
-      });
 
-      if (error) throw error;
-      
+      const result = await reorderCourseModules(courseId as string, moduleIds);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao reordenar módulos');
+      }
+
       // Atualizar estado local
       const orderedModules = moduleIds
         .map(id => modules.find(module => module.id === id))
@@ -226,14 +201,13 @@ export default function CourseStructureManager({
   async function handleReorderSubjects(moduleId: string, reorderedItems: any[]) {
     try {
       const subjectIds = reorderedItems.map(item => item.subject_id || item.id);
-      
-      const { error } = await supabase.rpc('reorder_module_subjects' as any, {
-        p_module_id: moduleId,
-        p_subject_ids: subjectIds
-      });
 
-      if (error) throw error;
-      
+      const result = await reorderModuleSubjects(moduleId, subjectIds);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao reordenar disciplinas');
+      }
+
       // Atualizar estado local
       setModuleSubjects(prev => ({
         ...prev,
@@ -248,14 +222,13 @@ export default function CourseStructureManager({
   async function handleReorderLessons(moduleId: string, reorderedItems: any[]) {
     try {
       const lessonIds = reorderedItems.map(item => item.id);
-      
-      const { error } = await supabase.rpc('reorder_lessons' as any, {
-        p_module_id: moduleId,
-        p_lesson_ids: lessonIds
-      });
 
-      if (error) throw error;
-      
+      const result = await reorderLessons(moduleId, lessonIds);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao reordenar aulas');
+      }
+
       // Atualizar estado local
       setLessons(prev => ({
         ...prev,
