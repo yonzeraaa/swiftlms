@@ -5,50 +5,61 @@ import { Database } from '../database.types'
 let browserClient: any = null
 
 /**
- * Creates a Supabase browser client for PUBLIC/NON-SENSITIVE operations only
+ * ⚠️ PUBLIC-ONLY SUPABASE CLIENT - NO AUTHENTICATION ⚠️
  *
- * ⚠️ SECURITY WARNING - IMPORTANT:
+ * This browser client is configured for PUBLIC, NON-AUTHENTICATED operations ONLY.
  *
- * The browser client (createBrowserClient) stores session tokens in localStorage,
- * which IS accessible to JavaScript. This means:
- * - Any XSS vulnerability can steal authentication tokens from localStorage
- * - Tokens are NOT stored in httpOnly cookies when using the browser SDK
- * - This client should ONLY be used for public data or non-authenticated operations
+ * CONFIGURATION:
+ * - persistSession: false → Does NOT store auth tokens in localStorage
+ * - autoRefreshToken: false → Does NOT auto-refresh tokens
+ * - detectSessionInUrl: false → Does NOT detect sessions from URL
+ * - storage: undefined → No persistent storage for tokens
  *
- * CORRECT ARCHITECTURE FOR AUTHENTICATED DATA:
+ * ❌ DO NOT USE THIS CLIENT FOR:
+ * - Authenticated queries (private tables with RLS)
+ * - User-specific data
+ * - Session management (login, logout, password reset)
+ * - Any operation requiring authentication
  *
- * 1. SERVER-SIDE AUTH (✅ Secure - uses httpOnly cookies):
- *    - Use lib/supabase/server.ts (createServerClient) in:
- *      * Server Components
- *      * Server Actions
- *      * API Routes
- *    - This client reads httpOnly cookies set by middleware
- *    - Tokens never exposed to JavaScript
+ * ✅ USE THIS CLIENT ONLY FOR:
+ * - Public data queries (tables with public read access, no RLS)
+ * - Non-sensitive UI operations
+ * - Public search/filtering
  *
- * 2. CLIENT-SIDE (⚠️ Limited use - tokens in localStorage):
- *    - This browser client should ONLY be used for:
- *      * Public data queries (no authentication required)
- *      * UI helpers that don't touch sensitive data
- *      * File uploads via signed URLs (if using Storage)
- *    - For authenticated data, call server actions instead
+ * 📋 FOR AUTHENTICATED OPERATIONS, USE SERVER ACTIONS:
  *
- * 3. AUTH STATE MANAGEMENT:
- *    - AuthProvider calls server actions (lib/actions/auth.ts)
- *    - Server actions use lib/supabase/server.ts internally
- *    - Client receives sanitized user data (no raw tokens)
+ * Instead of:
+ * ```typescript
+ * const supabase = createClient()
+ * const { data } = await supabase.from('users').select() // ❌ WRONG
+ * ```
  *
- * MIGRATION STATUS:
- * - 25+ pages migrated to server actions (authenticated data server-side)
- * - AuthProvider uses server actions for session management
- * - This client used minimally in codebase
+ * Do this:
+ * ```typescript
+ * import { getUsers } from '@/lib/actions/users'
+ * const { data } = await getUsers() // ✅ CORRECT
+ * ```
  *
- * WHY NOT JUST DISABLE THIS CLIENT?
- * - Some operations (file uploads, public search) may need browser SDK
- * - Real-time features require browser client
- * - Better to have it with clear warnings than break those features
+ * Server actions are in:
+ * - lib/actions/auth.ts - Authentication (login, logout, session)
+ * - lib/actions/admin-*.ts - Admin operations
+ * - lib/actions/student-*.ts - Student operations
+ * - lib/actions/browse-enroll.ts - Public browse + enrollment
+ *
+ * WHY THIS ARCHITECTURE?
+ *
+ * SECURITY: httpOnly Cookies
+ * - Server actions use lib/supabase/server.ts
+ * - Server client reads httpOnly cookies (JS cannot access)
+ * - Tokens never exposed to JavaScript
+ * - XSS attacks cannot steal tokens
+ *
+ * This public client has NO tokens, so there's nothing to steal.
+ * All sensitive operations happen server-side with httpOnly cookies.
  *
  * REFERENCE:
- * https://supabase.com/docs/guides/auth/server-side/creating-a-client
+ * - See SECURITY.md for complete architecture documentation
+ * - https://supabase.com/docs/guides/auth/server-side-rendering
  */
 export function createClient(forceNew = false): any {
   // Force new client if requested
@@ -61,17 +72,22 @@ export function createClient(forceNew = false): any {
     return browserClient
   }
 
-  // Create standard browser client
-  // ⚠️ This stores tokens in localStorage (NOT httpOnly cookies)
-  // Only use for public/non-sensitive operations
+  // Create PUBLIC-ONLY browser client (NO authentication)
+  // This client will NOT have access to user sessions or protected data
   browserClient = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      auth: {
+        persistSession: false,      // ✅ Do NOT store tokens in localStorage
+        autoRefreshToken: false,    // ✅ Do NOT auto-refresh tokens
+        detectSessionInUrl: false,  // ✅ Do NOT detect sessions from URL
+        storage: undefined,         // ✅ No storage - session only in memory (cleared on page refresh)
+      },
       global: {
         headers: {
-          'X-Client-Info': 'swiftedu-web',
-          'X-Client-Version': '2.0'
+          'X-Client-Info': 'swiftedu-web-public',
+          'X-Client-Version': '3.0'
         }
       }
     }
