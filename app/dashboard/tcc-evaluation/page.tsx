@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { FileText, Send, Clock, CheckCircle, XCircle, AlertCircle, Award, User, Calendar, MessageSquare, Download } from 'lucide-react'
 import Card from '@/app/components/Card'
 import Button from '@/app/components/Button'
 import Breadcrumbs from '@/app/components/ui/Breadcrumbs'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { getTccSubmissionsData, evaluateTccSubmission } from '@/lib/actions/admin-tcc'
 
 interface TccSubmission {
   id: string
@@ -43,7 +43,6 @@ export default function TccEvaluationPage() {
     status: 'approved' as 'approved' | 'rejected'
   })
 
-  const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
@@ -52,42 +51,15 @@ export default function TccEvaluationPage() {
 
   const checkAdminAndFetchData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/')
-        return
-      }
+      const result = await getTccSubmissionsData(filter)
 
-      // Verificar se é admin ou instrutor
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      if (!profile || (profile.role !== 'admin' && profile.role !== 'instructor')) {
-        router.push('/dashboard')
-        return
-      }
-
-      // Buscar submissões de TCC
-      let query = supabase
-        .from('tcc_submissions')
-        .select(`
-          *,
-          user:profiles!tcc_submissions_user_id_fkey(full_name, email),
-          course:courses(title)
-        `)
-        .order('submission_date', { ascending: false })
-
-      if (filter !== 'all') {
-        query = query.eq('status', filter)
-      }
-
-      const { data: submissionsData } = await query
-
-      if (submissionsData) {
-        setSubmissions(submissionsData as any)
+      if (result.success) {
+        setSubmissions(result.submissions as any)
+      } else {
+        console.error('Erro ao carregar dados:', result.error)
+        if (result.error === 'Não autenticado') {
+          router.push('/')
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
@@ -100,104 +72,33 @@ export default function TccEvaluationPage() {
     if (!selectedSubmission) return
 
     const grade = parseFloat(evaluationForm.grade)
-    if (isNaN(grade) || grade < 0 || grade > 100) {
-      toast.error('A nota deve ser um número entre 0 e 100')
-      return
-    }
-
-    if (!evaluationForm.feedback) {
-      toast.error('Por favor, forneça um feedback')
-      return
-    }
 
     setEvaluating(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      // Atualizar submissão com avaliação
-      const { error } = await supabase
-        .from('tcc_submissions')
-        .update({
-          grade,
-          feedback: evaluationForm.feedback,
-          status: evaluationForm.status,
-          evaluated_by: user.id,
-          evaluated_at: new Date().toISOString()
-        })
-        .eq('id', selectedSubmission.id)
-
-      if (error) throw error
-
-      // Se aprovado, calcular nota final e atualizar certificado
-      if (evaluationForm.status === 'approved') {
-        // Calcular nota final usando a função do banco
-        const { data: finalGradeData } = await supabase
-          .rpc('calculate_final_grade', {
-            p_enrollment_id: selectedSubmission.enrollment_id
-          })
-
-        if (finalGradeData !== null) {
-          const certificateType = 'lato-sensu' as const
-          // Verificar se já existe certificado
-          const { data: existingCert } = await supabase
-            .from('certificates')
-            .select('id')
-            .eq('enrollment_id', selectedSubmission.enrollment_id)
-            .eq('certificate_type', certificateType)
-            .single()
-
-          if (existingCert) {
-            // Atualizar certificado existente
-            await supabase
-              .from('certificates')
-              .update({
-                tcc_id: selectedSubmission.id,
-                final_grade: finalGradeData,
-                approval_status: 'approved',
-                approved_at: new Date().toISOString(),
-                approved_by: user.id,
-                certificate_type: certificateType
-              })
-              .eq('id', existingCert.id)
-          } else {
-            // Criar novo certificado
-            const certificateNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-            const verificationCode = `VER-${Math.random().toString(36).substr(2, 12).toUpperCase()}`
-
-            await supabase
-              .from('certificates')
-              .insert({
-                user_id: selectedSubmission.user_id,
-                course_id: selectedSubmission.course_id,
-                enrollment_id: selectedSubmission.enrollment_id,
-                certificate_number: certificateNumber,
-                verification_code: verificationCode,
-                tcc_id: selectedSubmission.id,
-                final_grade: finalGradeData,
-                grade: finalGradeData,
-                approval_status: 'approved',
-                approved_at: new Date().toISOString(),
-                approved_by: user.id,
-                certificate_type: certificateType
-              })
-          }
-        }
-      }
-
-      toast.success('TCC avaliado com sucesso!')
-
-      // Limpar formulário
-      setEvaluationForm({
-        grade: '',
-        feedback: '',
-        status: 'approved'
+      const result = await evaluateTccSubmission({
+        submissionId: selectedSubmission.id,
+        grade,
+        feedback: evaluationForm.feedback,
+        status: evaluationForm.status
       })
-      setSelectedSubmission(null)
 
-      // Recarregar dados
-      await checkAdminAndFetchData()
+      if (result.success) {
+        toast.success(result.message || 'TCC avaliado com sucesso!')
+
+        // Limpar formulário
+        setEvaluationForm({
+          grade: '',
+          feedback: '',
+          status: 'approved'
+        })
+        setSelectedSubmission(null)
+
+        // Recarregar dados
+        await checkAdminAndFetchData()
+      } else {
+        toast.error(result.error || 'Erro ao avaliar TCC')
+      }
     } catch (error) {
       console.error('Erro ao avaliar TCC:', error)
       toast.error('Erro ao avaliar TCC. Tente novamente.')

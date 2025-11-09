@@ -8,9 +8,9 @@ import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
+import { getActivitiesData } from '@/lib/actions/admin-activities'
 
 type ActivityLog = Database['public']['Tables']['activity_logs']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -30,7 +30,6 @@ export default function ActivitiesPage() {
     start: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   })
-  const supabase = createClient()
 
   useEffect(() => {
     fetchActivities()
@@ -43,42 +42,17 @@ export default function ActivitiesPage() {
   const fetchActivities = async () => {
     try {
       setLoading(true)
+      const result = await getActivitiesData(dateRange.start, dateRange.end)
 
-      // Fetch activities within date range
-      const { data: activityLogs, error } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .gte('created_at', dateRange.start)
-        .lte('created_at', `${dateRange.end}T23:59:59`)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching activities:', error)
-        return
-      }
-
-      if (activityLogs && activityLogs.length > 0) {
-        // Fetch user profiles for all activities
-        const userIds = [...new Set(activityLogs.map((log: any) => log.user_id).filter((id: any): id is string => id !== null))]
-        const { data: userProfiles } = await supabase
-          .from('profiles')
-          .select('*')
-          .in('id', userIds)
-        
-        const userMap = new Map(userProfiles?.map((user: any) => [user.id, user]) || [])
-
-        // Combine activities with user data
-        const activitiesWithUsers: ActivityWithUser[] = activityLogs.map((log: any) => ({
-          ...log,
-          user: userMap.get(log.user_id!)
-        }))
-
-        setActivities(activitiesWithUsers)
+      if (result.success) {
+        setActivities(result.activities)
       } else {
+        console.error('Error fetching activities:', result.error)
         setActivities([])
       }
     } catch (error) {
       console.error('Error fetching activities:', error)
+      setActivities([])
     } finally {
       setLoading(false)
     }

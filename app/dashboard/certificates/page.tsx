@@ -6,9 +6,16 @@ import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { generateCertificatePDF } from '@/app/lib/certificate-pdf'
+import {
+  getCertificatesData,
+  approveCertificateRequest,
+  rejectCertificateRequest,
+  generateCertificate,
+  deleteCertificate,
+  updateCertificateStatus
+} from '@/lib/actions/admin-certificates'
 
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
 type Certificate = Database['public']['Tables']['certificates']['Row'] & {
@@ -59,7 +66,6 @@ export default function CertificatesPage() {
   const [showRejectionModal, setShowRejectionModal] = useState<string | null>(null)
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const certificateRef = useRef<HTMLDivElement>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     fetchData()
@@ -67,63 +73,15 @@ export default function CertificatesPage() {
 
   const fetchData = async () => {
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const result = await getCertificatesData()
 
-      // Fetch certificate requests with related data
-      const { data: requests } = await supabase
-        .from('certificate_requests' as any)
-        .select('*')
-        .order('request_date', { ascending: false })
-      
-      // Fetch related data for each request
-      const requestsWithRelations = await Promise.all((requests || []).map(async (request: any) => {
-        const [userRes, courseRes] = await Promise.all([
-          supabase.from('profiles').select('*').eq('id', request.user_id).single(),
-          supabase.from('courses').select('*').eq('id', request.course_id).single()
-        ])
-        
-        return {
-          ...request,
-          user: userRes.data,
-          course: courseRes.data
-        }
-      }))
-
-      setCertificateRequests(requestsWithRelations as any)
-
-      // Fetch completed enrollments
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses(*),
-          user:profiles(*)
-        `)
-        .eq('status', 'completed')
-        .order('completed_at', { ascending: false })
-
-      // Fetch existing certificates with user and course data
-      const { data: certs } = await supabase
-        .from('certificates')
-        .select(`
-          *,
-          user:profiles!certificates_user_id_fkey(*),
-          course:courses!certificates_course_id_fkey(*)
-        `)
-        .order('issued_at', { ascending: false })
-
-      // Map certificates to enrollments
-      const enrollmentsWithCerts = enrollments?.map((enrollment: any) => ({
-        ...enrollment,
-        certificate: certs?.find((cert: any) => 
-          cert.enrollment_id === enrollment.id
-        )
-      })) || []
-
-      setCompletedEnrollments(enrollmentsWithCerts as CompletedEnrollment[])
-      setCertificates(certs as Certificate[] || [])
+      if (result.success) {
+        setCertificateRequests(result.certificateRequests as any)
+        setCompletedEnrollments(result.completedEnrollments as any)
+        setCertificates(result.certificates as any)
+      } else {
+        console.error('Error fetching data:', result.error)
+      }
     } catch (error) {
       console.error('Error fetching data:', error)
     } finally {
@@ -133,37 +91,17 @@ export default function CertificatesPage() {
 
   const approveRequest = async (requestId: string) => {
     setProcessingRequest(requestId)
-    
+
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const result = await approveCertificateRequest(requestId)
 
-      const { data, error } = await supabase.rpc('approve_certificate_request' as any, {
-        p_request_id: requestId,
-        p_admin_id: user.id
-      })
-      
-      const result = Array.isArray(data) ? data[0] : data
-
-      if (error) {
-        console.error('Error approving certificate:', error)
-        alert('Erro ao aprovar certificado')
-        return
-      }
-
-      if (result?.success) {
+      if (result.success) {
         await fetchData()
         alert(result.message || 'Certificado aprovado com sucesso!')
-        return
+      } else {
+        console.error('Error approving certificate:', result.error)
+        alert(result.error || 'Erro ao aprovar certificado')
       }
-
-      const fallbackMessage = 'O aluno não cumpriu com todos os requisitos para aprovação e emissão do certificado.'
-      const detailedMessage = typeof result?.message === 'string' && result.message.trim().length > 0
-        ? result.message
-        : fallbackMessage
-
-      console.warn('Certificate approval blocked:', result)
-      alert(detailedMessage)
     } catch (error) {
       console.error('Error:', error)
       alert('Erro ao aprovar certificado')
@@ -179,25 +117,18 @@ export default function CertificatesPage() {
     }
 
     setProcessingRequest(requestId)
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
 
-      const { data, error } = await supabase.rpc('reject_certificate_request' as any, {
-        p_request_id: requestId,
-        p_admin_id: user.id,
-        p_reason: rejectionReason
-      })
-      
-      if (!error && data) {
+    try {
+      const result = await rejectCertificateRequest(requestId, rejectionReason)
+
+      if (result.success) {
         await fetchData()
         alert('Requisição rejeitada')
         setShowRejectionModal(null)
         setRejectionReason('')
       } else {
-        console.error('Error rejecting certificate:', error)
-        alert('Erro ao rejeitar requisição')
+        console.error('Error rejecting certificate:', result.error)
+        alert(result.error || 'Erro ao rejeitar requisição')
       }
     } catch (error) {
       console.error('Error:', error)
@@ -207,54 +138,27 @@ export default function CertificatesPage() {
     }
   }
 
-  const generateCertificate = async (enrollment: CompletedEnrollment) => {
+  const handleGenerateCertificate = async (enrollment: CompletedEnrollment) => {
     setGeneratingCert(enrollment.id)
-    
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
 
-      const certificateNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-      const verificationCode = Math.random().toString(36).substr(2, 16).toUpperCase()
-      
-      // Get instructor name
-      let instructorName = 'SwiftEDU Team'
-      
-      if (enrollment.course.instructor_id) {
-        const { data: instructor } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', enrollment.course.instructor_id)
-          .single()
-        
-        if (instructor?.full_name) {
-          instructorName = instructor.full_name
+    try {
+      const result = await generateCertificate({
+        id: enrollment.id,
+        user_id: enrollment.user_id,
+        course_id: enrollment.course_id,
+        progress_percentage: enrollment.progress_percentage,
+        course: {
+          instructor_id: enrollment.course.instructor_id,
+          duration_hours: enrollment.course.duration_hours
         }
-      }
-      
-      const { error } = await supabase
-        .from('certificates')
-        .insert({
-          user_id: enrollment.user_id,
-          course_id: enrollment.course_id,
-          enrollment_id: enrollment.id,
-          certificate_number: certificateNumber,
-          verification_code: verificationCode,
-          course_hours: enrollment.course.duration_hours || 0,
-          grade: enrollment.progress_percentage || 100,
-          issued_at: new Date().toISOString(),
-          instructor_name: instructorName,
-          approval_status: 'approved',
-          approved_at: new Date().toISOString(),
-          approved_by: user.id
-        })
-      
-      if (!error) {
+      })
+
+      if (result.success) {
         await fetchData()
-        alert('Certificado gerado com sucesso!')
+        alert(result.message || 'Certificado gerado com sucesso!')
       } else {
-        console.error('Error generating certificate:', error)
-        alert('Erro ao gerar certificado')
+        console.error('Error generating certificate:', result.error)
+        alert(result.error || 'Erro ao gerar certificado')
       }
     } catch (error) {
       console.error('Error:', error)
@@ -264,18 +168,18 @@ export default function CertificatesPage() {
     }
   }
 
-  const deleteCertificate = async (certificateId: string) => {
+  const handleDeleteCertificate = async (certificateId: string) => {
     if (!confirm('Tem certeza que deseja excluir este certificado?')) return
 
     try {
-      const { error } = await supabase
-        .from('certificates')
-        .delete()
-        .eq('id', certificateId)
+      const result = await deleteCertificate(certificateId)
 
-      if (!error) {
+      if (result.success) {
         await fetchData()
-        alert('Certificado excluído com sucesso')
+        alert(result.message || 'Certificado excluído com sucesso')
+      } else {
+        console.error('Error deleting certificate:', result.error)
+        alert(result.error || 'Erro ao excluir certificado')
       }
     } catch (error) {
       console.error('Error deleting certificate:', error)
@@ -602,17 +506,13 @@ export default function CertificatesPage() {
                                 onClick={async () => {
                                   if (!confirm('Aprovar este certificado?')) return
                                   try {
-                                    const { data, error } = await supabase
-                                      .from('certificates')
-                                      .update({
-                                        approval_status: 'approved',
-                                        approved_at: new Date().toISOString()
-                                      })
-                                      .eq('id', cert.id)
-
-                                    if (error) throw error
-                                    alert('Certificado aprovado com sucesso!')
-                                    await fetchData()
+                                    const result = await updateCertificateStatus(cert.id, 'approved')
+                                    if (result.success) {
+                                      alert(result.message || 'Certificado aprovado com sucesso!')
+                                      await fetchData()
+                                    } else {
+                                      alert(result.error || 'Erro ao aprovar certificado')
+                                    }
                                   } catch (error) {
                                     console.error('Erro ao aprovar:', error)
                                     alert('Erro ao aprovar certificado')
@@ -631,18 +531,13 @@ export default function CertificatesPage() {
                                   const reason = prompt('Motivo da rejeição:')
                                   if (!reason) return
                                   try {
-                                    const { data, error } = await supabase
-                                      .from('certificates')
-                                      .update({
-                                        approval_status: 'rejected',
-                                        rejection_reason: reason,
-                                        approved_at: new Date().toISOString()
-                                      })
-                                      .eq('id', cert.id)
-
-                                    if (error) throw error
-                                    alert('Certificado rejeitado')
-                                    await fetchData()
+                                    const result = await updateCertificateStatus(cert.id, 'rejected', reason)
+                                    if (result.success) {
+                                      alert(result.message || 'Certificado rejeitado')
+                                      await fetchData()
+                                    } else {
+                                      alert(result.error || 'Erro ao rejeitar certificado')
+                                    }
                                   } catch (error) {
                                     console.error('Erro ao rejeitar:', error)
                                     alert('Erro ao rejeitar certificado')
@@ -816,10 +711,10 @@ export default function CertificatesPage() {
                         >
                           <Download className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="secondary" 
+                        <Button
+                          variant="secondary"
                           size="sm"
-                          onClick={() => deleteCertificate(certificate.id)}
+                          onClick={() => handleDeleteCertificate(certificate.id)}
                           title="Excluir"
                           className="!p-2"
                         >

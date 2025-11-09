@@ -8,10 +8,10 @@ import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useLanguage, useTranslation } from '../../contexts/LanguageContext'
+import { getUserProfileData, updateUserProfile, updateUserPassword } from '@/lib/actions/admin-settings'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -78,7 +78,7 @@ export default function SettingsPage() {
   })
   const [activeTab, setActiveTab] = useState('profile')
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const supabase = createClient()
+  const [userId, setUserId] = useState<string>('')
 
   useEffect(() => {
     fetchUserData()
@@ -94,7 +94,6 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Error fetching version:', error)
-      // Fallback para versão padrão
       setVersionInfo({
         version: '1.0.0',
         gitHash: 'unknown',
@@ -106,27 +105,20 @@ export default function SettingsPage() {
 
   const fetchUserData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const result = await getUserProfileData()
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (profile) {
-        setCurrentUser(profile)
+      if (result.success && result.profile) {
+        setCurrentUser(result.profile)
+        setUserId(result.userId || '')
         setProfileForm({
-          full_name: profile.full_name || '',
-          email: profile.email,
-          phone: profile.phone || '',
-          bio: profile.bio || ''
+          full_name: result.profile.full_name || '',
+          email: result.profile.email,
+          phone: result.profile.phone || '',
+          bio: result.profile.bio || ''
         })
+      } else {
+        console.error('Error fetching user data:', result.error)
       }
-
-      // In a real app, you would fetch user settings from a settings table
-      // For now, we'll use default values
     } catch (error) {
       console.error('Error fetching user data:', error)
     } finally {
@@ -150,32 +142,31 @@ export default function SettingsPage() {
   }
 
   const handleProfileSave = async () => {
-    if (!currentUser) return
+    if (!currentUser || !userId) return
     setSaving(true)
     setMessage(null)
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: profileForm.full_name,
-          phone: profileForm.phone,
-          bio: profileForm.bio,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', currentUser.id)
-
-      if (error) throw error
-
-      setMessage({ type: 'success', text: t('settings.profileUpdated') })
-      
-      // Update local state
-      setCurrentUser({
-        ...currentUser,
+      const result = await updateUserProfile({
+        userId,
         full_name: profileForm.full_name,
         phone: profileForm.phone,
         bio: profileForm.bio
       })
+
+      if (result.success) {
+        setMessage({ type: 'success', text: t('settings.profileUpdated') })
+
+        // Update local state
+        setCurrentUser({
+          ...currentUser,
+          full_name: profileForm.full_name,
+          phone: profileForm.phone,
+          bio: profileForm.bio
+        })
+      } else {
+        setMessage({ type: 'error', text: result.error || t('settings.error') + ' ' + t('settings.profile').toLowerCase() })
+      }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || t('settings.error') + ' ' + t('settings.profile').toLowerCase() })
     } finally {
@@ -198,18 +189,18 @@ export default function SettingsPage() {
     setMessage(null)
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: passwordForm.newPassword
-      })
+      const result = await updateUserPassword(passwordForm.newPassword)
 
-      if (error) throw error
-
-      setMessage({ type: 'success', text: t('settings.passwordChanged') })
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      })
+      if (result.success) {
+        setMessage({ type: 'success', text: t('settings.passwordChanged') })
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        })
+      } else {
+        setMessage({ type: 'error', text: result.error || t('settings.error') + ' ' + t('settings.password').toLowerCase() })
+      }
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || t('settings.error') + ' ' + t('settings.password').toLowerCase() })
     } finally {
