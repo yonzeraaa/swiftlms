@@ -5,26 +5,27 @@ import { Database } from '../database.types'
 let browserClient: any = null
 
 /**
- * Creates a Supabase browser client with default @supabase/ssr storage
+ * Creates a Supabase browser client WITHOUT storing tokens in JS-accessible cookies
  *
- * SECURITY NOTE: @supabase/ssr stores tokens in cookies that are readable by JavaScript.
- * This means any XSS vulnerability can potentially steal authentication tokens.
+ * SECURITY IMPROVEMENT:
+ * - persistSession: false - Client does NOT store tokens in cookies
+ * - autoRefreshToken: false - No automatic token refresh on client
+ * - Authentication is managed server-side via httpOnly cookies
+ * - Client is used ONLY for public operations or when auth is already verified server-side
  *
- * MITIGATION STRATEGIES IN PLACE:
- * - Content Security Policy (CSP) headers in middleware restrict script sources
- * - SameSite=Lax on all cookies prevents CSRF
- * - Secure flag in production ensures HTTPS-only transmission
- * - Input validation with Zod prevents injection attacks
- * - Regular security audits and dependency updates
+ * SERVER-SIDE AUTH FLOW:
+ * 1. Login via /api/auth/login endpoint (sets httpOnly cookies)
+ * 2. Server components/actions use lib/supabase/server.ts (reads httpOnly cookies)
+ * 3. Client components use AuthProvider (calls server actions for session status)
+ * 4. NO tokens exposed to JavaScript - eliminates XSS token theft risk
  *
- * RECOMMENDED FUTURE IMPROVEMENTS:
- * 1. Migrate to server-side data fetching (Server Components, Server Actions)
- * 2. Use tRPC or similar for type-safe server-only API calls
- * 3. Implement a custom auth proxy that adds tokens server-side
- * 4. Consider NextAuth.js with secure session management
+ * USE CASES FOR THIS CLIENT:
+ * - Public data queries (courses catalog, public info)
+ * - Operations where user is already authenticated server-side
+ * - NEVER for authentication or sensitive queries
  */
 export function createClient(forceNew = false): any {
-  // Force new client if requested (useful for auth issues)
+  // Force new client if requested (useful for testing)
   if (forceNew) {
     browserClient = null
   }
@@ -34,16 +35,17 @@ export function createClient(forceNew = false): any {
     return browserClient
   }
 
-  // Create new client with @supabase/ssr default configuration
-  // Tokens will be stored in JS-readable cookies for client-side RLS queries
+  // Create client WITHOUT session persistence
+  // Auth tokens are NEVER stored in JS-accessible cookies
   browserClient = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        detectSessionInUrl: true,
-        persistSession: true,
-        autoRefreshToken: true,
+        detectSessionInUrl: false, // Don't auto-detect session from URL
+        persistSession: false,      // CRITICAL: Don't persist session in cookies
+        autoRefreshToken: false,    // CRITICAL: Don't auto-refresh tokens
+        storage: undefined,         // No storage - session only in memory (cleared on page refresh)
       },
       // Headers para debugging e identificação
       global: {
