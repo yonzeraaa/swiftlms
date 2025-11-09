@@ -1,11 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Calendar, Clock, MapPin, Plus, Trash2, Save } from 'lucide-react'
 import Card from '@/app/components/Card'
 import Button from '@/app/components/Button'
 import toast from 'react-hot-toast'
+import {
+  getStudentSchedules,
+  getAvailableSubjects,
+  addStudentSchedule,
+  deleteStudentSchedule
+} from '@/lib/actions/student-schedules'
 
 interface StudentSchedule {
   id: string
@@ -49,43 +54,27 @@ export default function ScheduleConfig() {
     location: ''
   })
 
-  const supabase = createClient()
-
   useEffect(() => {
     fetchData()
   }, [])
 
   const fetchData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const [schedulesResult, subjectsResult] = await Promise.all([
+        getStudentSchedules(),
+        getAvailableSubjects()
+      ])
 
-      // Buscar horários existentes
-      const { data: schedulesData } = await supabase
-        .from('student_schedules')
-        .select(`
-          *,
-          subject:subjects(name, code)
-        `)
-        .eq('user_id', user.id)
-        .order('weekday')
-        .order('start_time')
-
-      if (schedulesData) {
-        setSchedules(schedulesData as any)
+      if (schedulesResult.success) {
+        setSchedules(schedulesResult.schedules as any)
       }
 
-      // Buscar disciplinas disponíveis
-      const { data: subjectsData } = await supabase
-        .from('subjects')
-        .select('*')
-        .order('name')
-
-      if (subjectsData) {
-        setSubjects(subjectsData)
+      if (subjectsResult.success) {
+        setSubjects(subjectsResult.subjects)
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
+      toast.error('Erro ao carregar dados')
     } finally {
       setLoading(false)
     }
@@ -105,26 +94,16 @@ export default function ScheduleConfig() {
     setSaving(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const result = await addStudentSchedule({
+        subject_id: newSchedule.subject_id,
+        weekday: newSchedule.weekday,
+        start_time: newSchedule.start_time,
+        end_time: newSchedule.end_time,
+        location: newSchedule.location || null
+      })
 
-      const { error } = await supabase
-        .from('student_schedules')
-        .insert({
-          user_id: user.id,
-          subject_id: newSchedule.subject_id,
-          weekday: newSchedule.weekday,
-          start_time: newSchedule.start_time,
-          end_time: newSchedule.end_time,
-          location: newSchedule.location || null
-        })
-
-      if (error) {
-        if (error.message.includes('duplicate key')) {
-          toast.error('Já existe um horário cadastrado para esta disciplina neste dia e horário')
-        } else {
-          throw error
-        }
+      if (!result.success) {
+        toast.error(result.error || 'Erro ao adicionar horário')
       } else {
         toast.success('Horário adicionado com sucesso!')
 
@@ -152,15 +131,14 @@ export default function ScheduleConfig() {
     if (!confirm('Tem certeza que deseja remover este horário?')) return
 
     try {
-      const { error } = await supabase
-        .from('student_schedules')
-        .delete()
-        .eq('id', scheduleId)
+      const result = await deleteStudentSchedule(scheduleId)
 
-      if (error) throw error
-
-      toast.success('Horário removido com sucesso!')
-      await fetchData()
+      if (!result.success) {
+        toast.error(result.error || 'Erro ao remover horário')
+      } else {
+        toast.success('Horário removido com sucesso!')
+        await fetchData()
+      }
     } catch (error) {
       console.error('Erro ao remover horário:', error)
       toast.error('Erro ao remover horário')
