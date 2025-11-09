@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
@@ -29,7 +29,7 @@ export async function fetchEnrollmentsData(dateRange?: {
   start: string
   end: string
 }): Promise<EnrollmentsReportData> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // Definir período padrão se não fornecido
   const start = dateRange?.start || format(new Date(new Date().setDate(1)), 'yyyy-MM-dd')

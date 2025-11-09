@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
@@ -25,7 +25,7 @@ export interface GradeRowData {
  * Busca dados de notas do banco de dados
  */
 export async function fetchGradesData(): Promise<GradesReportData> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     // Buscar tentativas de testes com joins

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { Translators, Calculators, Formatters, Helpers } from './shared-utils'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
@@ -25,7 +25,7 @@ export interface UserRowData {
  * Busca dados de usuários do banco de dados
  */
 export async function fetchUsersData(): Promise<UserReportData> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     // Buscar todos os usuários com suas matrículas e progresso

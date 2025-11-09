@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 
 export interface TemplateMetadata {
   mappings?: Record<string, string | ArrayMapping>
@@ -63,7 +63,7 @@ export class ExcelTemplateEngine {
    * Carrega o template do Supabase Storage
    */
   async loadTemplate(): Promise<void> {
-    const supabase = createClient()
+    const supabase = await createClient()
 
     try {
       // Baixar arquivo do storage

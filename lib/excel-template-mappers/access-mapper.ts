@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
@@ -25,7 +25,7 @@ export interface AccessStatsRowData {
  * Busca dados de acesso dos alunos
  */
 export async function fetchAccessData(): Promise<AccessReportData> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     // Buscar estudantes com suas matrículas e progresso (QUERY OTIMIZADA)

@@ -1,4 +1,6 @@
-import { createClient } from '@/lib/supabase/client'
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
 import { ExcelTemplateEngine } from './excel-template-engine'
 import { fetchUsersData, mapUsersDataForTemplate } from './excel-template-mappers/users-mapper'
 import { fetchStudentHistoryData, mapStudentHistoryDataForTemplate } from './excel-template-mappers/student-history-mapper'
@@ -14,7 +16,7 @@ export async function generateReportWithTemplate(
   templateId?: string,
   params?: { userId?: string; courseId?: string; dateRange?: { start: string; end: string } }
 ): Promise<Blob | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   try {
     // Se não foi especificado template, buscar o ativo para a categoria
@@ -90,7 +92,7 @@ export async function generateReportWithTemplate(
  * Busca templates disponíveis para uma categoria
  */
 export async function getTemplatesForCategory(category: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('excel_templates')

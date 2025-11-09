@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { differenceInDays } from 'date-fns'
 import { Calculators, Formatters, Helpers } from './shared-utils'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
@@ -41,7 +41,7 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
     throw new Error('userId inválido ou não fornecido')
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // Buscar dados do aluno com enrollment
   let enrollmentQuery = supabase
