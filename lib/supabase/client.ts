@@ -5,24 +5,24 @@ import { Database } from '../database.types'
 let browserClient: any = null
 
 /**
- * Custom storage adapter that prevents client-side token persistence
- * SECURITY: This adapter prevents XSS attacks by never storing tokens in JS-accessible storage
+ * Creates a Supabase browser client with default @supabase/ssr storage
+ *
+ * SECURITY NOTE: @supabase/ssr stores tokens in cookies that are readable by JavaScript.
+ * This means any XSS vulnerability can potentially steal authentication tokens.
+ *
+ * MITIGATION STRATEGIES IN PLACE:
+ * - Content Security Policy (CSP) headers in middleware restrict script sources
+ * - SameSite=Lax on all cookies prevents CSRF
+ * - Secure flag in production ensures HTTPS-only transmission
+ * - Input validation with Zod prevents injection attacks
+ * - Regular security audits and dependency updates
+ *
+ * RECOMMENDED FUTURE IMPROVEMENTS:
+ * 1. Migrate to server-side data fetching (Server Components, Server Actions)
+ * 2. Use tRPC or similar for type-safe server-only API calls
+ * 3. Implement a custom auth proxy that adds tokens server-side
+ * 4. Consider NextAuth.js with secure session management
  */
-const secureStorageAdapter = {
-  getItem: async (_key: string): Promise<string | null> => {
-    // Never return stored tokens on client - force server-side auth
-    return null
-  },
-  setItem: async (_key: string, _value: string): Promise<void> => {
-    // Never persist tokens on client - server manages all auth state
-    return
-  },
-  removeItem: async (_key: string): Promise<void> => {
-    // No-op since we never store anything
-    return
-  }
-}
-
 export function createClient(forceNew = false): any {
   // Force new client if requested (useful for auth issues)
   if (forceNew) {
@@ -34,20 +34,16 @@ export function createClient(forceNew = false): any {
     return browserClient
   }
 
-  // Create new client with secure configuration
-  // SECURITY: Custom storage adapter prevents token exposure to XSS
-  // All auth state is managed server-side via httpOnly cookies
+  // Create new client with @supabase/ssr default configuration
+  // Tokens will be stored in JS-readable cookies for client-side RLS queries
   browserClient = createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       auth: {
-        // Session is managed server-side via httpOnly cookies
-        // This prevents XSS attacks from stealing tokens
-        persistSession: false, // Server-side only
         detectSessionInUrl: true,
-        autoRefreshToken: false, // Server handles refresh
-        storage: secureStorageAdapter, // Custom adapter that never persists tokens
+        persistSession: true,
+        autoRefreshToken: true,
       },
       // Headers para debugging e identificação
       global: {
