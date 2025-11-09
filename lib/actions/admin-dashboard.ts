@@ -43,20 +43,10 @@ export async function getAdminDashboardData() {
       .from('enrollments')
       .select('*')
 
-    // Get recent activity logs with user profile
+    // Get recent activity logs (sem join porque foreign key não existe)
     const { data: activities } = await supabase
       .from('activity_logs')
-      .select(`
-        id,
-        user_id,
-        action,
-        entity_type,
-        entity_id,
-        entity_name,
-        metadata,
-        created_at,
-        user:profiles!activity_logs_user_id_fkey(full_name)
-      `)
+      .select('*')
       .order('created_at', { ascending: false})
       .limit(50)
 
@@ -118,18 +108,22 @@ export async function getAdminDashboardData() {
     }
 
     // Transform activities to include formatted fields expected by the client
-    const formattedActivities = activities?.map((activity: any) => ({
-      id: activity.id,
-      userId: activity.user_id,
-      userName: activity.user?.full_name || 'Usuário desconhecido',
-      action: activity.action,
-      entityName: activity.entity_name,
-      entityType: activity.entity_type,
-      metadata: activity.metadata,
-      timestamp: activity.created_at,
-      created_at: activity.created_at,
-      icon: getActivityIcon(activity.entity_type, activity.action)
-    })) || []
+    // Fazer join manual com profiles já que foreign key não existe
+    const formattedActivities = activities?.map((activity: any) => {
+      const userProfile = profiles?.find((p: any) => p.id === activity.user_id)
+      return {
+        id: activity.id,
+        userId: activity.user_id,
+        userName: userProfile?.full_name || 'Usuário desconhecido',
+        action: activity.action,
+        entityName: activity.entity_name,
+        entityType: activity.entity_type,
+        metadata: activity.metadata,
+        timestamp: activity.created_at,
+        created_at: activity.created_at,
+        icon: getActivityIcon(activity.entity_type, activity.action)
+      }
+    }) || []
 
     return {
       profiles: profiles || [],
