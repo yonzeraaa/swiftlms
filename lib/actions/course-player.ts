@@ -35,6 +35,8 @@ export async function getCoursePlayerData(courseId: string) {
 
     // Get enrollment status (skip for admin)
     let enrollment = null
+    let enrollmentModules = null
+
     if (!isAdmin) {
       const { data: enrollmentData } = await supabase
         .from('enrollments')
@@ -44,13 +46,17 @@ export async function getCoursePlayerData(courseId: string) {
         .single()
 
       enrollment = enrollmentData
-    }
 
-    // Get enrollment modules (access control)
-    const { data: enrollmentModules } = await supabase
-      .from('enrollment_modules')
-      .select('module_id')
-      .eq('enrollment_id', enrollment?.id || '')
+      // Get enrollment modules (access control) - only for enrolled students
+      if (enrollment) {
+        const { data: modules } = await supabase
+          .from('enrollment_modules')
+          .select('module_id')
+          .eq('enrollment_id', enrollment.id)
+
+        enrollmentModules = modules
+      }
+    }
 
     // Get course structure with modules, subjects, and lessons
     const { data: modules } = await supabase

@@ -153,11 +153,18 @@ export default function CoursePage() {
       }
 
       // Filter modules based on enrollment access
-      const allowedModuleIds = enrollmentModules?.map((em: any) => em.module_id).filter(Boolean) || null
+      // Admin sees all modules, enrolled students see only their allowed modules
+      let filteredModules = modulesData || []
 
-      const filteredModules = modulesData && allowedModuleIds !== null
-        ? modulesData.filter((module: any) => allowedModuleIds.includes(module.id))
-        : modulesData || []
+      if (!isAdmin && enrollmentModules && enrollmentModules.length > 0) {
+        const allowedModuleIds = enrollmentModules.map((em: any) => em.module_id).filter(Boolean)
+        filteredModules = modulesData.filter((module: any) => allowedModuleIds.includes(module.id))
+        console.log('[DEBUG] Filtering modules for enrolled student. Allowed:', allowedModuleIds.length, 'Total:', modulesData?.length || 0)
+      } else if (isAdmin) {
+        console.log('[DEBUG] Admin mode: showing all', modulesData?.length || 0, 'modules')
+      } else {
+        console.log('[DEBUG] Student with no enrollment_modules: showing all', modulesData?.length || 0, 'modules')
+      }
 
       // Process modules with subjects and lessons with progress
       const modulesWithProgress: ModuleWithSubjects[] = []
