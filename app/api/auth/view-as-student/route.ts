@@ -42,20 +42,17 @@ export async function POST(request: NextRequest) {
       path: '/',
       sameSite: 'lax' as const,
       secure: process.env.NODE_ENV === 'production',
-      httpOnly: false // Allow client-side access
+      httpOnly: true // Prevent client-side access to prevent forgery
     }
 
-    // Set the main view cookie
+    // Set the main view cookie (httpOnly for security)
     cookieStore.set('viewAsStudent', 'true', cookieOptions)
 
-    // Set backup indicator cookie
+    // Set backup indicator cookie (httpOnly for security)
     cookieStore.set('isAdminViewMode', 'true', cookieOptions)
 
-    // Also set admin ID for verification
-    cookieStore.set('adminViewId', user.id, {
-      ...cookieOptions,
-      httpOnly: true // This one should be httpOnly for security
-    })
+    // Also set admin ID for verification (httpOnly for security)
+    cookieStore.set('adminViewId', user.id, cookieOptions)
 
     logger.info('View-as-student mode activated', { userId: user.id, userRole: profile.role }, { context: 'VIEW_AS_STUDENT' })
 
@@ -96,7 +93,7 @@ export async function DELETE(request: NextRequest) {
         path: '/',
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
-        httpOnly: false
+        httpOnly: true
       })
     })
 

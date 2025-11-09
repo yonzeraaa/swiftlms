@@ -34,8 +34,6 @@ declare global {
   }
 }
 
-const STORAGE_KEY = 'google_drive_token'
-
 export default function DriveImportModal({ isOpen, onClose, courseId, onImportComplete }: DriveImportModalProps) {
   const [driveUrl, setDriveUrl] = useState('')
   const [isAuthenticating, setIsAuthenticating] = useState(false)
@@ -95,23 +93,8 @@ useEffect(() => {
   useEffect(() => {
     if (!isOpen) return
 
-    const checkSavedToken = async () => {
-      setIsCheckingToken(true)
-      const savedToken = localStorage.getItem(STORAGE_KEY)
-
-      if (savedToken) {
-        const isValid = await validateToken(savedToken)
-        if (isValid) {
-          setAccessToken(savedToken)
-        } else {
-          localStorage.removeItem(STORAGE_KEY)
-        }
-      }
-
-      setIsCheckingToken(false)
-    }
-
-    checkSavedToken()
+    // Token is not persisted for security - user must re-authenticate each time
+    setIsCheckingToken(false)
   }, [isOpen])
 
   const validateToken = async (token: string): Promise<boolean> => {
@@ -127,7 +110,6 @@ useEffect(() => {
 
   const handleDisconnect = () => {
     setAccessToken(null)
-    localStorage.removeItem(STORAGE_KEY)
     setItems([])
     setDriveUrl('')
   }
@@ -243,8 +225,8 @@ useEffect(() => {
         scope: 'https://www.googleapis.com/auth/drive.readonly',
         callback: (response: any) => {
           if (response.access_token) {
+            // Store token only in memory for security - not persisted
             setAccessToken(response.access_token)
-            localStorage.setItem(STORAGE_KEY, response.access_token)
             setIsAuthenticating(false)
           } else {
             setError('Falha na autenticação')
