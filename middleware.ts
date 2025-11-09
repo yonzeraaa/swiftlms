@@ -393,11 +393,12 @@ export async function middleware(request: NextRequest) {
         // await ensureUserEnrollmentForPreview(supabase, session.user.id)
 
         // If access is granted via query param, set cookies for future requests
+        // SECURITY: httpOnly: true prevents client-side JavaScript from forging these cookies
         if (hasViewModeQuery && (!viewAsStudent || !isAdminViewMode)) {
           response.cookies.set({
             name: 'viewAsStudent',
             value: 'true',
-            httpOnly: false,
+            httpOnly: true,
             sameSite: 'lax',
             path: '/',
             maxAge: 3600,
@@ -406,7 +407,17 @@ export async function middleware(request: NextRequest) {
           response.cookies.set({
             name: 'isAdminViewMode',
             value: 'true',
-            httpOnly: false,
+            httpOnly: true,
+            sameSite: 'lax',
+            path: '/',
+            maxAge: 3600,
+            secure: process.env.NODE_ENV === 'production'
+          })
+          // Also set adminViewId for verification
+          response.cookies.set({
+            name: 'adminViewId',
+            value: session.user.id,
+            httpOnly: true,
             sameSite: 'lax',
             path: '/',
             maxAge: 3600,
