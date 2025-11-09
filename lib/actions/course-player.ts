@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 
 /**
  * Get course player data
@@ -12,7 +11,9 @@ export async function getCoursePlayerData(courseId: string) {
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/')
+    if (!user) {
+      return { success: false, error: 'Unauthorized', redirectTo: '/' }
+    }
 
     // Get course details
     const { data: course, error: courseError } = await supabase

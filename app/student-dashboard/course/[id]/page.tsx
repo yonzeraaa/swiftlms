@@ -123,7 +123,11 @@ export default function CoursePage() {
 
       if (!result || !result.success) {
         console.error('Error fetching course:', result?.error)
-        router.push('/student-dashboard/my-courses')
+        if ('redirectTo' in result && result.redirectTo) {
+          router.push(result.redirectTo)
+        } else {
+          router.push('/student-dashboard/my-courses')
+        }
         return
       }
 
@@ -277,15 +281,23 @@ export default function CoursePage() {
           .flatMap(s => s.lessons)
           .find(l => l.id === lessonId)
         if (lessonToSelect) {
+          console.log('[DEBUG] Selected lesson from URL:', lessonToSelect.title, lessonToSelect)
           setSelectedLesson(lessonToSelect)
+        } else {
+          console.warn('[DEBUG] Lesson ID not found in modules:', lessonId)
         }
       } else if (firstIncompleteLesson) {
         // Otherwise, set the first incomplete lesson as selected
+        console.log('[DEBUG] Selected first incomplete lesson:', firstIncompleteLesson.title, firstIncompleteLesson)
         setSelectedLesson(firstIncompleteLesson)
       } else if (modulesWithProgress.length > 0 &&
                  modulesWithProgress[0].subjects.length > 0 &&
                  modulesWithProgress[0].subjects[0].lessons.length > 0) {
-        setSelectedLesson(modulesWithProgress[0].subjects[0].lessons[0])
+        const firstLesson = modulesWithProgress[0].subjects[0].lessons[0]
+        console.log('[DEBUG] Selected first lesson of first module:', firstLesson.title, firstLesson)
+        setSelectedLesson(firstLesson)
+      } else {
+        console.warn('[DEBUG] No lessons found in any module')
       }
 
     } catch (error) {
