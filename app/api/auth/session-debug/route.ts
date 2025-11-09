@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { logger } from '@/lib/utils/logger'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -74,7 +75,7 @@ export async function GET() {
       }
     })
   } catch (error) {
-    console.error('[SESSION-DEBUG] Error:', error)
+    logger.error('[SESSION-DEBUG] Error:', error, { context: 'AUTH' })
     return NextResponse.json(
       { 
         error: 'Failed to get session debug info',

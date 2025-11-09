@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
 import { assignMaxGradeToStudent } from '@/lib/services/grade-services'
 
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
   } catch (error) {
-    console.error('Erro ao atribuir nota:', error)
+    logger.error('Erro ao atribuir nota:', error, { context: 'ADMIN' })
     return NextResponse.json(
       { error: 'Erro interno do servidor' },
       { status: 500 }

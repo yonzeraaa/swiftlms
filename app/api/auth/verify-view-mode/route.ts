@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Error verifying view mode:', error)
+    logger.error('Error verifying view mode:', error, { context: 'AUTH' })
     return NextResponse.json({ 
       canAccess: false, 
       error: 'Failed to verify' 

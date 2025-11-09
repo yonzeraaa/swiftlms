@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
 
 export async function POST(
@@ -30,7 +31,7 @@ export async function POST(
       .single()
 
     if (testError || !test) {
-      console.error('Erro ao buscar teste:', testError)
+      logger.error('Erro ao buscar teste:', testError, { context: 'TESTS' })
       return NextResponse.json(
         { error: 'Teste não encontrado' },
         { status: 404 }
@@ -38,7 +39,7 @@ export async function POST(
     }
     
     // Buscar gabarito separadamente
-    console.log(`Buscando gabarito para teste ${testId}...`)
+    logger.debug(`Buscando gabarito para teste ${testId}...`)
     let { data: answerKeys, error: keysError } = await supabase
       .from('test_answer_keys')
       .select('*')
@@ -46,14 +47,14 @@ export async function POST(
       .order('question_number')
     
     if (keysError) {
-      console.error('Erro ao buscar gabarito:', keysError)
+      logger.error('Erro ao buscar gabarito:', keysError, { context: 'TESTS' })
       return NextResponse.json(
         { error: 'Erro ao buscar gabarito do teste. Por favor, tente novamente.' },
         { status: 500 }
       )
     }
     
-    console.log(`Gabarito encontrado para teste ${testId}:`, {
+    logger.debug(`Gabarito encontrado para teste ${testId}:`, {
       count: answerKeys?.length || 0,
       questions: answerKeys?.map(k => k.question_number) || [],
       firstKey: answerKeys?.[0] || null
@@ -70,7 +71,7 @@ export async function POST(
         .eq('test_id', testId)
         .limit(1)
       
-      console.log('Verificação direta:', { directCheck, directError })
+      logger.debug('Verificação direta:', { directCheck, directError })
       
       if (!directCheck || directCheck.length === 0) {
         return NextResponse.json(
@@ -87,7 +88,7 @@ export async function POST(
       
       if (retryKeys && retryKeys.length > 0) {
         answerKeys = retryKeys
-        console.log(`Gabarito recuperado na segunda tentativa: ${retryKeys.length} questões`)
+        logger.debug(`Gabarito recuperado na segunda tentativa: ${retryKeys.length} questões`)
       } else {
         return NextResponse.json(
           { error: 'Erro ao carregar gabarito completo. Por favor, tente novamente.' },
@@ -154,14 +155,14 @@ export async function POST(
       justification: key.justification || null
     }))
     
-    console.log(`Calculando nota para teste ${testId}:`)
-    console.log(`- Gabarito: ${answerKeyFormatted.length} questões`)
-    console.log(`- Respostas do aluno:`, answers)
+    logger.debug(`Calculando nota para teste ${testId}:`)
+    logger.debug(`- Gabarito: ${answerKeyFormatted.length} questões`)
+    logger.debug(`- Respostas do aluno:`, answers)
     
     const { score, correctCount, totalQuestions } = calculateScore(answers, answerKeyFormatted)
     const passed = score >= (test.passing_score || 70)
     
-    console.log(`- Resultado: ${correctCount}/${totalQuestions} corretas, nota: ${score}%, ${passed ? 'APROVADO' : 'REPROVADO'}`)
+    logger.debug(`- Resultado: ${correctCount}/${totalQuestions} corretas, nota: ${score}%, ${passed ? 'APROVADO' : 'REPROVADO'}`)
 
     // Salvar tentativa
     const { data: attempt, error: attemptError } = await supabase
@@ -181,7 +182,7 @@ export async function POST(
       .single()
 
     if (attemptError) {
-      console.error('Erro ao salvar tentativa:', attemptError)
+      logger.error('Erro ao salvar tentativa:', attemptError, { context: 'TESTS' })
       return NextResponse.json(
         { error: 'Erro ao salvar tentativa' },
         { status: 500 }
@@ -214,9 +215,9 @@ export async function POST(
         })
 
       if (gradeError) {
-        console.error('Erro ao atualizar nota:', gradeError)
+        logger.error('Erro ao atualizar nota:', gradeError, { context: 'TESTS' })
       } else {
-        console.log(`Nota atualizada: ${score}% (anterior: ${existingGrade?.best_score || 0}%)`)
+        logger.debug(`Nota atualizada: ${score}% (anterior: ${existingGrade?.best_score || 0}%)`)
       }
     } else {
       // Apenas atualizar o número de tentativas e data da última tentativa
@@ -229,7 +230,7 @@ export async function POST(
         .eq('user_id', user.id)
         .eq('test_id', testId)
       
-      console.log(`Nota mantida: ${existingGrade.best_score}% (nova tentativa: ${score}%)`)
+      logger.debug(`Nota mantida: ${existingGrade.best_score}% (nova tentativa: ${score}%)`)
     }
 
     // Se passou no teste, verificar se pode solicitar certificado
@@ -258,7 +259,7 @@ export async function POST(
         const completedCount = completedLessonsCount || 0
         const progressPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
 
-        console.log(`Verificando elegibilidade para certificado: ${progressPercentage}% progresso, nota: ${score}%`)
+        logger.debug(`Verificando elegibilidade para certificado: ${progressPercentage}% progresso, nota: ${score}%`)
 
         const { data: tccApproved } = await supabase
           .from('tcc_submissions')
@@ -313,7 +314,7 @@ export async function POST(
               .single()
 
             if (newRequest && !requestError) {
-              console.log(`Solicitação de certificado (${type}) criada automaticamente:`, newRequest.id)
+              logger.debug(`Solicitação de certificado (${type}) criada automaticamente:`, newRequest.id)
 
               await supabase
                 .from('activity_logs')
@@ -346,7 +347,7 @@ export async function POST(
           }
         }
       } catch (certError) {
-        console.error('Erro ao verificar/criar solicitação de certificado:', certError)
+        logger.error('Erro ao verificar/criar solicitação de certificado:', certError, { context: 'TESTS' })
         // Não falhar a submissão do teste por causa disso
       }
     }
@@ -377,7 +378,7 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error('Erro ao processar submissão:', error)
+    logger.error('Erro ao processar submissão:', error, { context: 'TESTS' })
     return NextResponse.json(
       { error: 'Erro ao processar submissão' },
       { status: 500 }

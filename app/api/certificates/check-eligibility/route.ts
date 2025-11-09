@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
 
 // Função compartilhada para verificar elegibilidade
@@ -170,7 +171,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(eligibility)
   } catch (error) {
-    console.error('Erro ao verificar elegibilidade:', error)
+    logger.error('Erro ao verificar elegibilidade:', error, { context: 'CERTIFICATES' })
     return NextResponse.json(
       { error: 'Erro ao verificar elegibilidade' },
       { status: 500 }
@@ -260,7 +261,7 @@ export async function PUT(request: Request) {
       .single()
 
     if (error) {
-      console.error('Erro ao criar solicitação:', error)
+      logger.error('Erro ao criar solicitação:', error, { context: 'CERTIFICATES' })
       console.error('Detalhes do erro:', {
         message: error.message,
         code: error.code,
@@ -325,7 +326,7 @@ export async function PUT(request: Request) {
       message: 'Solicitação de certificado criada com sucesso. Aguarde a aprovação do administrador.'
     })
   } catch (error) {
-    console.error('Erro ao criar solicitação:', error)
+    logger.error('Erro ao criar solicitação:', error, { context: 'CERTIFICATES' })
     return NextResponse.json(
       { error: 'Erro ao criar solicitação de certificado' },
       { status: 500 }

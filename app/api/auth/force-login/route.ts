@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       }
     })
   } catch (error: any) {
-    console.error('[FORCE-LOGIN] Erro:', error)
+    logger.error('[FORCE-LOGIN] Erro:', error, { context: 'AUTH' })
     return NextResponse.json({
       error: error.message
     }, { status: 500 })

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
@@ -82,7 +83,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('Check view mode error:', error)
+    logger.error('Check view mode error:', error, { context: 'AUTH' })
     return NextResponse.json({
       error: 'Failed to check view mode',
       details: error instanceof Error ? error.message : 'Unknown error',

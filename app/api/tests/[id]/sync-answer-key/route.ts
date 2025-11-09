@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
 import { parseAnswerKeyFromText } from '../../utils/answer-key'
 
@@ -146,7 +147,7 @@ export async function POST(
       answerKey: refreshedKeys
     })
   } catch (error) {
-    console.error('[sync-answer-key] erro', error)
+    logger.error('[sync-answer-key] erro', error, { context: 'TESTS' })
     return NextResponse.json({ error: 'Erro ao sincronizar gabarito' }, { status: 500 })
   }
 }

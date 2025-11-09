@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/lib/database.types'
 
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log('[API] Matriculando alunos:', {
+    logger.debug('[API] Matriculando alunos:', {
       courseId,
       studentCount: studentPayload.length,
       userId: session.user.id
@@ -68,7 +69,7 @@ export async function POST(request: NextRequest) {
       .eq('course_id', courseId)
 
     if (modulesError) {
-      console.error('[API] Erro ao carregar módulos do curso:', modulesError)
+      logger.error('[API] Erro ao carregar módulos do curso:', modulesError, { context: 'COURSES' })
       return NextResponse.json(
         { error: 'Não foi possível carregar módulos do curso' },
         { status: 500 }
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
       .select()
 
     if (error) {
-      console.error('[API] Erro ao criar matrículas:', error)
+      logger.error('[API] Erro ao criar matrículas:', error, { context: 'COURSES' })
       
       // Verificar se é erro de duplicata
       if (error.code === '23505') {
@@ -159,7 +160,7 @@ export async function POST(request: NextRequest) {
         .select('id')
 
       if (moduleInsertError) {
-        console.error('[API] Erro ao vincular módulos à matrícula:', moduleInsertError)
+        logger.error('[API] Erro ao vincular módulos à matrícula:', moduleInsertError, { context: 'COURSES' })
         return NextResponse.json(
           { error: 'Matrículas criadas, mas falha ao vincular módulos.' },
           { status: 500 }
@@ -189,7 +190,7 @@ export async function POST(request: NextRequest) {
       message: `${data.length} aluno(s) matriculado(s) com sucesso`
     })
   } catch (error) {
-    console.error('[API] Erro inesperado:', error)
+    logger.error('[API] Erro inesperado:', error, { context: 'COURSES' })
     return NextResponse.json(
       {
         error:

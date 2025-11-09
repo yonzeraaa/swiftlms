@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import {
   extractQuestionsWithAnswers,
   generateSampleAnswerKey,
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
       })
 
     } catch (fetchError) {
-      console.error('Erro ao buscar documento:', fetchError)
+      logger.error('Erro ao buscar documento:', fetchError, { context: 'TESTS' })
       return NextResponse.json({
         success: true,
         answerKey: generateSampleAnswerKey(),
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Erro ao extrair gabarito:', error)
+    logger.error('Erro ao extrair gabarito:', error, { context: 'TESTS' })
     return NextResponse.json(
       { error: 'Erro ao processar documento' },
       { status: 500 }

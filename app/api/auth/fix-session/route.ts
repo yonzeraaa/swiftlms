@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { logger } from '@/lib/utils/logger'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 
@@ -12,16 +13,16 @@ export async function POST(request: NextRequest) {
     let { data: { session }, error } = await supabase.auth.getSession()
     
     if (!session) {
-      console.log('[FIX-SESSION] Sem sessão, tentando recuperar...')
+      logger.debug('[FIX-SESSION] Sem sessão, tentando recuperar...')
       
       // 2. Tentar fazer refresh
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
       
       if (refreshData?.session) {
         session = refreshData.session
-        console.log('[FIX-SESSION] Sessão recuperada via refresh')
+        logger.debug('[FIX-SESSION] Sessão recuperada via refresh')
       } else {
-        console.log('[FIX-SESSION] Refresh falhou:', refreshError?.message)
+        logger.debug('[FIX-SESSION] Refresh falhou:', refreshError?.message)
         
         // 3. Tentar login com credenciais padrão (apenas para teste)
         const { email, password } = await request.json()
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
           
           if (signInData?.session) {
             session = signInData.session
-            console.log('[FIX-SESSION] Nova sessão criada via login')
+            logger.debug('[FIX-SESSION] Nova sessão criada via login')
           } else {
             return NextResponse.json({
               error: `Falha no login: ${signInError?.message}`
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
     }, { status: 500 })
     
   } catch (error: any) {
-    console.error('[FIX-SESSION] Erro:', error)
+    logger.error('[FIX-SESSION] Erro:', error, { context: 'AUTH' })
     return NextResponse.json({
       error: error.message
     }, { status: 500 })
