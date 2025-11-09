@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 
 /**
  * Get current session status from server-side (httpOnly cookies)
- * SECURITY: Tokens never exposed to JavaScript
+ *
+ * SECURITY: This uses createServerClient which reads httpOnly cookies.
+ * Tokens are never exposed to JavaScript. Client receives only sanitized user data.
  */
 export async function getSessionStatus() {
   try {
@@ -43,7 +45,9 @@ export async function getSessionStatus() {
 
 /**
  * Refresh session server-side
- * SECURITY: Uses httpOnly cookies, no client-side token access
+ *
+ * SECURITY: Uses httpOnly cookies, no client-side token access.
+ * Updates httpOnly cookies via server client.
  */
 export async function refreshSessionAction() {
   try {
@@ -72,7 +76,9 @@ export async function refreshSessionAction() {
 
 /**
  * Sign out server-side
- * SECURITY: Clears httpOnly cookies
+ *
+ * SECURITY: Clears httpOnly cookies via server client.
+ * Client never touches tokens directly.
  */
 export async function signOutAction() {
   try {
