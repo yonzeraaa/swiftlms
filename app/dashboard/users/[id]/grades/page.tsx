@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { getUserGradesProfile } from '@/lib/actions/user-grades'
 import StudentGradesReport from '@/app/components/StudentGradesReport'
 import { ArrowLeft, User, Calendar } from 'lucide-react'
 import Card from '@/app/components/Card'
@@ -19,9 +19,8 @@ export default function AdminStudentGradesPage({ params }: { params: Promise<{ i
   })
   const [loading, setLoading] = useState(true)
   const [isAdmin, setIsAdmin] = useState(false)
-  
+
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     checkAdminAndFetchUser()
@@ -30,39 +29,20 @@ export default function AdminStudentGradesPage({ params }: { params: Promise<{ i
 
   const checkAdminAndFetchUser = async () => {
     try {
-      // Verificar se o usuário atual é admin
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        router.push('/login')
+      const result = await getUserGradesProfile(resolvedParams.id)
+
+      if (!result.success) {
+        console.error('Error fetching student info:', result.error)
+        if (result.shouldRedirect) {
+          router.push(result.shouldRedirect)
+        }
         return
       }
-      
-      const { data: currentProfile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-      
-      if (currentProfile?.role !== 'admin') {
-        router.push('/dashboard')
-        return
-      }
-      
-      setIsAdmin(true)
-      
-      // Buscar informações do aluno
-      const { data: studentProfile } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', resolvedParams.id)
-        .single()
-      
-      if (studentProfile) {
-        setUserName(studentProfile.full_name || studentProfile.email || 'Aluno')
-        setUserEmail(studentProfile.email || '')
-      } else {
-        router.push('/dashboard/users')
+
+      if (result.profile) {
+        setIsAdmin(true)
+        setUserName(result.profile.full_name || result.profile.email || 'Aluno')
+        setUserEmail(result.profile.email || '')
       }
     } catch (error) {
       console.error('Erro ao buscar informações:', error)

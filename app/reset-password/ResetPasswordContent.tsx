@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Lock, Check, AlertCircle, ArrowLeft, Globe } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { setRecoverySession, checkRecoverySession, resetUserPassword } from '@/lib/actions/reset-password'
 import { useTranslation } from '../contexts/LanguageContext'
 import Logo from '../components/Logo'
 import Button from '../components/Button'
@@ -22,7 +22,6 @@ export default function ResetPasswordContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { t, language, setLanguage } = useTranslation()
-  const supabase = createClient()
 
   useEffect(() => {
     const initializeSession = async () => {
@@ -51,23 +50,20 @@ export default function ResetPasswordContent() {
 
         if (accessToken && refreshToken && tokenType === 'recovery') {
           console.log('Estabelecendo sessão com tokens de recuperação...')
-          
-          // Estabelecer sessão com os tokens
-          const { data, error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken
-          })
 
-          if (sessionError) {
-            console.error('Erro ao estabelecer sessão:', sessionError)
-            
-            if (sessionError.message.includes('expired') || sessionError.message.includes('invalid')) {
+          // Estabelecer sessão com os tokens via server action
+          const result = await setRecoverySession(accessToken, refreshToken)
+
+          if (!result.success) {
+            console.error('Erro ao estabelecer sessão:', result.error)
+
+            if (result.error?.includes('expired') || result.error?.includes('invalid')) {
               setStatus('expired')
               setError(t('resetPassword.sessionExpired'))
             } else {
-              setError(sessionError.message || t('resetPassword.sessionError'))
+              setError(result.error || t('resetPassword.sessionError'))
             }
-          } else if (data.session) {
+          } else if (result.session) {
             console.log('Sessão estabelecida com sucesso para reset de senha')
             // Limpar a URL dos tokens por segurança
             window.history.replaceState({}, document.title, '/reset-password')
@@ -81,9 +77,9 @@ export default function ResetPasswordContent() {
           setStatus('expired')
           setError(t('resetPassword.linkExpired'))
         } else {
-          // Verificar se já existe uma sessão válida
-          const { data: { session } } = await supabase.auth.getSession()
-          if (!session) {
+          // Verificar se já existe uma sessão válida via server action
+          const result = await checkRecoverySession()
+          if (!result.success || !result.hasSession) {
             console.log('Nenhuma sessão ativa e nenhum token de recuperação')
             setStatus('expired')
             setError(t('resetPassword.linkExpired'))
@@ -96,7 +92,7 @@ export default function ResetPasswordContent() {
     }
 
     initializeSession()
-  }, [searchParams, t, supabase])
+  }, [searchParams, t])
 
   const validatePasswords = () => {
     if (!password.trim()) {
@@ -128,19 +124,17 @@ export default function ResetPasswordContent() {
     }
 
     try {
-      const { error: updateError } = await supabase.auth.updateUser({
-        password: password
-      })
+      const result = await resetUserPassword(password)
 
-      if (updateError) {
-        console.error('Erro ao redefinir senha:', updateError)
-        
+      if (!result.success) {
+        console.error('Erro ao redefinir senha:', result.error)
+
         // Tratar erros específicos
-        if (updateError.message.includes('expired') || updateError.message.includes('invalid')) {
+        if (result.error?.includes('expired') || result.error?.includes('invalid')) {
           setStatus('expired')
           setError(t('resetPassword.sessionExpired'))
         } else {
-          setError(updateError.message || t('resetPassword.updateError'))
+          setError(result.error || t('resetPassword.updateError'))
         }
         setIsLoading(false)
         return
