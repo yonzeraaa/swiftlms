@@ -8,7 +8,6 @@ import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Ed
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
 import UserCard from '../../components/UserCard'
@@ -17,11 +16,31 @@ import { Chip } from '../../components/Badge'
 import { SkeletonCard } from '../../components/Skeleton'
 import { useToast } from '../../components/Toast'
 import Spinner from '../../components/ui/Spinner'
+import {
+  getAllUsers,
+  getAllCourses,
+  getCourseModules,
+  createNewUser,
+  updateUserStatus as updateUserStatusAction,
+  updateUserProfile,
+  logActivity,
+  type EnrichedProfile
+} from '@/lib/actions/users-management'
 
-type Profile = Tables<'profiles'> & {
-  courses?: Array<{ id: string; title: string }>
-  enrollments?: Array<{ id: string }>
-  tests_created?: Array<{ id: string }>
+type Profile = EnrichedProfile
+
+type CourseBasic = {
+  id: string
+  title: string
+  category: string | null
+}
+
+type CourseModuleBasic = {
+  id: string
+  title: string
+  is_required: boolean | null
+  order_index: number
+  total_hours: number | null
 }
 
 type Course = Tables<'courses'>
@@ -94,16 +113,16 @@ export default function UsersPage() {
   const [newPassword, setNewPassword] = useState('')
   const [updating, setUpdating] = useState(false)
   const [showEnrollModal, setShowEnrollModal] = useState(false)
-  const [courses, setCourses] = useState<Course[]>([])
+  const [courses, setCourses] = useState<CourseBasic[]>([])
   const [loadingCourses, setLoadingCourses] = useState(false)
-  const [modulesByCourse, setModulesByCourse] = useState<Record<string, CourseModule[]>>({})
+  const [modulesByCourse, setModulesByCourse] = useState<Record<string, CourseModuleBasic[]>>({})
   const [selectedCourseId, setSelectedCourseId] = useState('')
   const [requiredModuleIds, setRequiredModuleIds] = useState<string[]>([])
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([])
   const [loadingModules, setLoadingModules] = useState(false)
   const [enrollingStudent, setEnrollingStudent] = useState(false)
   const [enrollError, setEnrollError] = useState<string | null>(null)
-  const supabase = createClient()
+
   const getErrorMessage = (error: unknown, fallback: string) => (
     error instanceof Error ? error.message : fallback
   )
@@ -123,49 +142,7 @@ export default function UsersPage() {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      const enrichedUsers: Profile[] = await Promise.all(
-        (profiles || []).map(async (profile: Tables<'profiles'>) => {
-          if (profile.role === 'student') {
-            const { data: enrollments } = await supabase
-              .from('enrollments')
-              .select('id')
-              .eq('user_id', profile.id)
-
-            return {
-              ...profile,
-              enrollments: enrollments || []
-            } as Profile
-          }
-
-          if (profile.role === 'instructor' || profile.role === 'teacher') {
-            const { data: courses } = await supabase
-              .from('courses')
-              .select('id, title')
-              .eq('instructor_id', profile.id)
-
-            const { data: tests } = await supabase
-              .from('tests')
-              .select('id')
-              .eq('created_by', profile.id)
-
-            return {
-              ...profile,
-              courses: courses || [],
-              tests_created: tests || []
-            } as Profile
-          }
-
-          return { ...profile } as Profile
-        })
-      )
-
+      const enrichedUsers = await getAllUsers()
       setUsers(enrichedUsers)
     } catch (error) {
       console.error('Error fetching users:', error)
@@ -174,7 +151,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [showToast, supabase])
+  }, [showToast])
 
   useEffect(() => {
     const savedViewMode = localStorage.getItem('usersViewMode')
@@ -207,14 +184,13 @@ export default function UsersPage() {
 
     try {
       setLoadingCourses(true)
-      const { data, error } = await supabase
-        .from('courses')
-        .select('id, title, category')
-        .order('title')
+      const result = await getAllCourses()
 
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error)
+      }
 
-      setCourses(data || [])
+      setCourses(result.courses || [])
     } catch (courseError) {
       console.error('Erro ao carregar cursos:', courseError)
       setEnrollError('Não foi possível carregar os cursos disponíveis.')
@@ -223,7 +199,7 @@ export default function UsersPage() {
     }
   }
 
-  const applyModuleDefaults = (modules: CourseModule[]) => {
+  const applyModuleDefaults = (modules: CourseModuleBasic[]) => {
     const required = modules
       .filter(module => module.is_required !== false)
       .map(module => module.id)
@@ -247,15 +223,13 @@ export default function UsersPage() {
 
     try {
       setLoadingModules(true)
-      const { data, error } = await supabase
-        .from('course_modules')
-        .select('id, title, is_required, order_index, total_hours')
-        .eq('course_id', courseId)
-        .order('order_index')
+      const result = await getCourseModules(courseId)
 
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error)
+      }
 
-      const modules = data || []
+      const modules = result.modules || []
       setModulesByCourse(prev => ({ ...prev, [courseId]: modules }))
       applyModuleDefaults(modules)
     } catch (moduleError) {
@@ -354,32 +328,10 @@ export default function UsersPage() {
     setError(null)
 
     try {
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newUserForm.email,
-        password: newUserForm.password,
-        options: {
-          data: {
-            full_name: newUserForm.full_name,
-            role: newUserForm.role
-          }
-        }
-      })
+      const result = await createNewUser(newUserForm)
 
-      if (authError) throw authError
-
-      // Update the profile with the correct role and phone
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ 
-            full_name: newUserForm.full_name,
-            phone: newUserForm.phone,
-            role: newUserForm.role 
-          })
-          .eq('id', authData.user.id)
-
-        if (profileError) throw profileError
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
       // Reset form and close modal
@@ -391,7 +343,7 @@ export default function UsersPage() {
         role: 'student'
       })
       setShowNewUserModal(false)
-      
+
       // Refresh users list
       fetchUsers()
     } catch (error) {
@@ -403,18 +355,17 @@ export default function UsersPage() {
 
   const updateUserStatus = async (userId: string, status: 'active' | 'frozen') => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ status })
-        .eq('id', userId)
+      const result = await updateUserStatusAction(userId, status)
 
-      if (error) throw error
-      
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
       // Update local state
       setUsers(prevUsers =>
         prevUsers.map(user => (user.id === userId ? { ...user, status } : user))
       )
-      
+
       showToast(status === 'active' ? 'Usuário ativado' : 'Usuário desativado')
       setOpenDropdown(null)
     } catch (error) {
@@ -440,16 +391,11 @@ export default function UsersPage() {
     setError(null)
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: editForm.full_name,
-          phone: editForm.phone,
-          role: editForm.role
-        })
-        .eq('id', selectedUser.id)
+      const result = await updateUserProfile(selectedUser.id, editForm)
 
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error)
+      }
 
       // Update local state
       setUsers(prevUsers =>
@@ -525,18 +471,15 @@ export default function UsersPage() {
       setShowDeleteModal(false)
       setSelectedUser(null)
       alert(t('users.userDeleted'))
-      
+
       // Log the deletion
-      await supabase
-        .from('activity_logs')
-        .insert({
-          user_id: (await supabase.auth.getUser()).data.user?.id,
-          action: 'user_deleted',
-          entity_type: 'user',
-          entity_id: selectedUser.id,
-          entity_name: selectedUser.full_name || selectedUser.email,
-          metadata: { deletedUserEmail: selectedUser.email }
-        })
+      await logActivity({
+        action: 'user_deleted',
+        entity_type: 'user',
+        entity_id: selectedUser.id,
+        entity_name: selectedUser.full_name || selectedUser.email,
+        metadata: { deletedUserEmail: selectedUser.email }
+      })
     } catch (error) {
       setError(getErrorMessage(error, t('users.error')))
     } finally {
