@@ -23,9 +23,14 @@ import Card from '../../components/Card'
 import Spinner from '../../components/ui/Spinner'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import CourseStructureManager from '../../components/CourseStructureManager'
+import {
+  getHierarchicalData,
+  getAvailableItemsForAssociation,
+  saveAssociations,
+  removeNodeFromStructure
+} from '@/lib/actions/admin-structure'
 
 interface TreeNode {
   id: string
@@ -63,7 +68,6 @@ export default function StructurePage() {
   const [courses, setCourses] = useState<any[]>([])
   const [associationOptions, setAssociationOptions] = useState<AssociationOption[]>([])
   const [showOnlyAvailableOptions, setShowOnlyAvailableOptions] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
     fetchHierarchicalData()
@@ -72,124 +76,13 @@ export default function StructurePage() {
   const fetchHierarchicalData = async () => {
     try {
       setLoading(true)
-
-      // Fetch all data
-      const [coursesRes, modulesRes, subjectsRes, lessonsRes, testsRes] = await Promise.all([
-        supabase.from('courses').select('*').order('title'),
-        supabase.from('course_modules').select('*').order('order_index'),
-        supabase.from('subjects').select('id, code, name, description').order('name'),
-        supabase.from('lessons').select('*').order('order_index'),
-        supabase.from('tests').select('*').order('title')
-      ])
-      
-      // Store courses for manage mode
-      setCourses(coursesRes.data || [])
-      if (coursesRes.data && coursesRes.data.length > 0 && !selectedCourseId) {
-        setSelectedCourseId(coursesRes.data[0].id)
-      }
-
-      // Fetch relationships
-      const [moduleSubjectsRes, subjectLessonsRes] = await Promise.all([
-        supabase.from('module_subjects').select('*').order('order_index'),
-        supabase.from('subject_lessons').select('*')
-      ])
-
-      const courses = coursesRes.data || []
-      const modules = modulesRes.data || []
-      const subjects = subjectsRes.data || []
-      const lessons = lessonsRes.data || []
-      const tests = testsRes.data || []
-      const moduleSubjects = moduleSubjectsRes.data || []
-      const subjectLessons = subjectLessonsRes.data || []
-
-      // Build tree structure: Course -> Modules -> Subjects -> (Lessons & Tests)
-      const tree: TreeNode[] = courses.map((course: any) => {
-        const courseNode: TreeNode = {
-          id: course.id,
-          type: 'course',
-          title: course.title,
-          data: course,
-          children: []
-        }
-
-        // Add modules to course
-        const courseModules = modules.filter((m: any) => m.course_id === course.id)
-        courseModules.forEach((module: any) => {
-          const moduleNode: TreeNode = {
-            id: module.id,
-            type: 'module',
-            title: module.title,
-            parentId: course.id,
-            data: module,
-            order: module.order_index,
-            children: []
-          }
-
-          // Add subjects to module
-          const moduleSubjectIds = moduleSubjects
-            .filter((ms: any) => ms.module_id === module.id)
-            .map((ms: any) => ms.subject_id)
-          
-          const moduleSubjectsData = subjects.filter((s: any) => moduleSubjectIds.includes(s.id))
-          moduleSubjectsData.forEach((subject: any) => {
-            const subjectNode: TreeNode = {
-              id: subject.id,
-              type: 'subject',
-              title: subject.code ? `${subject.code} - ${subject.name}` : subject.name,
-              parentId: module.id,
-              data: subject,
-              children: []
-            }
-
-            // Add lessons to subject
-            const subjectLessonIds = subjectLessons
-              .filter((sl: any) => sl.subject_id === subject.id)
-              .map((sl: any) => sl.lesson_id)
-            
-            const subjectLessonsData = lessons.filter((l: any) => subjectLessonIds.includes(l.id))
-            subjectLessonsData.forEach((lesson: any) => {
-              subjectNode.children!.push({
-                id: lesson.id,
-                type: 'lesson',
-                title: lesson.title,
-                parentId: subject.id,
-                data: lesson,
-                order: lesson.order_index
-              })
-            })
-
-            // Add tests associated with this subject
-            const subjectTests = tests.filter((t: any) => t.subject_id === subject.id)
-            subjectTests.forEach((test: any) => {
-              subjectNode.children!.push({
-                id: test.id,
-                type: 'test',
-                title: test.title,
-                parentId: subject.id,
-                data: test
-              })
-            })
-
-            // Sort lessons by order
-            if (subjectNode.children) {
-              subjectNode.children.sort((a, b) => {
-                if (a.type === 'lesson' && b.type === 'lesson') {
-                  return (a.order || 0) - (b.order || 0)
-                }
-                return 0
-              })
-            }
-
-            moduleNode.children!.push(subjectNode)
-          })
-
-          courseNode.children!.push(moduleNode)
-        })
-
-        return courseNode
-      })
+      const { tree, courses: fetchedCourses } = await getHierarchicalData()
 
       setTreeData(tree)
+      setCourses(fetchedCourses)
+      if (fetchedCourses && fetchedCourses.length > 0 && !selectedCourseId) {
+        setSelectedCourseId(fetchedCourses[0].id)
+      }
     } catch (error) {
       console.error('Error fetching hierarchical data:', error)
     } finally {
@@ -294,198 +187,36 @@ export default function StructurePage() {
     setAssociationOptions([])
     setShowOnlyAvailableOptions(true)
 
-    // Load available items based on type
     try {
-      let data: any[] = []
-      
-      if (type === 'module' && parent.type === 'course') {
-        // Get all modules for this course (including unassociated ones)
-        const { data: allModules } = await supabase
-          .from('course_modules')
-          .select('*')
-          .eq('course_id', parent.id)
-          .order('order_index')
-        
-        data = allModules || []
-        setAvailableItems(data)
-        return
-      } 
-      else if (type === 'subject' && parent.type === 'module') {
-        // Get all subjects and track their current module associations
-        const [{ data: allSubjects }, { data: subjectLinks }] = await Promise.all([
-          supabase.from('subjects').select('id, code, name, description').order('name'),
-          supabase.from('module_subjects').select('subject_id, module_id')
-        ])
+      const { items, options } = await getAvailableItemsForAssociation(
+        parent.id,
+        parent.type,
+        type
+      )
 
-        const associationMap = new Map<string, string>()
-        subjectLinks?.forEach((link: any) => {
-          if (!associationMap.has(link.subject_id)) {
-            associationMap.set(link.subject_id, link.module_id)
-          }
-        })
-
-        const options: AssociationOption[] = (allSubjects || []).map((subject: any) => {
-          const associatedModuleId = associationMap.get(subject.id) || null
-          const availability: AssociationOption['availability'] = !associatedModuleId
-            ? 'available'
-            : associatedModuleId === parent.id
-            ? 'current'
-            : 'assignedElsewhere'
-
-          return {
-            id: subject.id,
-            displayName: subject.code ? `${subject.code} - ${subject.name}` : subject.name,
-            description: subject.description,
-            availability,
-            statusText:
-              availability === 'available'
-                ? 'Disponível para associação'
-                : availability === 'current'
-                ? 'Já faz parte deste módulo'
-                : 'Associada a outro módulo',
-            statusColorClass:
-              availability === 'available'
-                ? 'text-green-400'
-                : availability === 'current'
-                ? 'text-gold-400'
-                : 'text-orange-300'
-          }
-        })
-
+      if (items.length > 0) {
+        setAvailableItems(items)
+      } else {
         setAssociationOptions(options)
         updateAssociationAvailableItems(options, true)
-        return
-      } 
-      else if ((type === 'lesson' || type === 'test') && parent.type === 'subject') {
-        if (type === 'lesson') {
-          const [{ data: allLessons }, { data: lessonLinks }] = await Promise.all([
-            supabase.from('lessons').select('id, title, description').order('title'),
-            supabase.from('subject_lessons').select('subject_id, lesson_id')
-          ])
-
-          const associationMap = new Map<string, Set<string>>()
-          lessonLinks?.forEach((link: any) => {
-            if (!associationMap.has(link.lesson_id)) {
-              associationMap.set(link.lesson_id, new Set())
-            }
-            associationMap.get(link.lesson_id)!.add(link.subject_id)
-          })
-
-          const options: AssociationOption[] = (allLessons || []).map((lesson: any) => {
-            const associatedSubjects = associationMap.get(lesson.id)
-            const isAssociatedWithCurrent = associatedSubjects?.has(parent.id) || false
-            const availability: AssociationOption['availability'] = !associatedSubjects || associatedSubjects.size === 0
-              ? 'available'
-              : isAssociatedWithCurrent
-              ? 'current'
-              : 'assignedElsewhere'
-
-            const statusText = availability === 'available'
-              ? 'Disponível para associação'
-              : availability === 'current'
-              ? 'Já faz parte desta disciplina'
-              : `Associada a ${associatedSubjects?.size || 0} outra(s) disciplina(s)`
-
-            return {
-              id: lesson.id,
-              displayName: lesson.title,
-              description: lesson.description,
-              availability,
-              statusText,
-              statusColorClass:
-                availability === 'available'
-                  ? 'text-green-400'
-                  : availability === 'current'
-                  ? 'text-gold-400'
-                  : 'text-orange-300'
-            }
-          })
-
-          setAssociationOptions(options)
-          updateAssociationAvailableItems(options, true)
-          return
-        } else {
-          const { data: allTests } = await supabase.from('tests').select('id, title, description, subject_id').order('title')
-
-          const options: AssociationOption[] = (allTests || []).map((test: any) => {
-            const availability: AssociationOption['availability'] = !test.subject_id
-              ? 'available'
-              : test.subject_id === parent.id
-              ? 'current'
-              : 'assignedElsewhere'
-
-            return {
-              id: test.id,
-              displayName: test.title,
-              description: test.description,
-              availability,
-              statusText:
-                availability === 'available'
-                  ? 'Disponível para associação'
-                  : availability === 'current'
-                  ? 'Já faz parte desta disciplina'
-                  : 'Associado a outra disciplina',
-              statusColorClass:
-                availability === 'available'
-                  ? 'text-green-400'
-                  : availability === 'current'
-                  ? 'text-gold-400'
-                  : 'text-orange-300'
-            }
-          })
-
-          setAssociationOptions(options)
-          updateAssociationAvailableItems(options, true)
-          return
-        }
       }
     } catch (error) {
       console.error('Error loading available items:', error)
     }
   }
 
-  const saveAssociations = async () => {
+  const handleSaveAssociations = async () => {
     if (!parentNode || selectedItems.length === 0) return
 
     setAssociating(true)
     try {
-      if (associateType === 'subject' && parentNode.type === 'module') {
-        // Associate subjects with module
-        const associations = selectedItems.map((subjectId, index) => ({
-          module_id: parentNode.id,
-          subject_id: subjectId,
-          order_index: index
-        }))
+      await saveAssociations(
+        parentNode.id,
+        parentNode.type,
+        associateType,
+        selectedItems
+      )
 
-        const { error } = await supabase
-          .from('module_subjects')
-          .insert(associations)
-
-        if (error) throw error
-      } 
-      else if (associateType === 'lesson' && parentNode.type === 'subject') {
-        // Associate lessons with subject
-        const associations = selectedItems.map((lessonId: any) => ({
-          subject_id: parentNode.id,
-          lesson_id: lessonId
-        }))
-
-        const { error } = await supabase
-          .from('subject_lessons')
-          .insert(associations)
-
-        if (error) throw error
-      }
-      else if (associateType === 'test' && parentNode.type === 'subject') {
-        // Update tests to belong to this subject
-        const { error } = await supabase
-          .from('tests')
-          .update({ subject_id: parentNode.id })
-          .in('id', selectedItems)
-
-        if (error) throw error
-      }
-      
       setShowAssociateModal(false)
       fetchHierarchicalData()
     } catch (error) {
@@ -500,65 +231,18 @@ export default function StructurePage() {
     const confirmMessage = node.type === 'module'
       ? `Tem certeza que deseja excluir o módulo "${node.title}"? Isso removerá todas as disciplinas, aulas, testes e dados associados.`
       : node.type === 'subject'
-      ? `Tem certeza que deseja excluir a disciplina "${node.title}"? Isso removerá aulas, testes e dados associados.`
-      : `Tem certeza que deseja remover "${node.title}" desta estrutura?`
+        ? `Tem certeza que deseja excluir a disciplina "${node.title}"? Isso removerá aulas, testes e dados associados.`
+        : `Tem certeza que deseja remover "${node.title}" desta estrutura?`
 
     if (!confirm(confirmMessage)) return
 
-    if (node.type === 'module' || node.type === 'subject') {
-      try {
-        setLoading(true)
-
-        const response = await fetch('/api/structure/delete', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ type: node.type, id: node.id })
-        })
-
-        if (!response.ok) {
-          const payload = await response.json().catch(() => null)
-          throw new Error(payload?.error || 'Não foi possível remover este item da estrutura.')
-        }
-
-        await fetchHierarchicalData()
-      } catch (error) {
-        console.error('Error removing node:', error)
-        alert('Erro ao remover item da estrutura')
-      } finally {
-        setLoading(false)
-      }
-      return
-    }
-
     try {
       setLoading(true)
-
-      if (node.type === 'lesson' && node.parentId) {
-        // Remove association between subject and lesson
-        const { error } = await supabase
-          .from('subject_lessons')
-          .delete()
-          .eq('subject_id', node.parentId)
-          .eq('lesson_id', node.id)
-
-        if (error) throw error
-      }
-      else if (node.type === 'test' && node.parentId) {
-        // Detach test from subject
-        const { error } = await supabase
-          .from('tests')
-          .update({ subject_id: null })
-          .eq('id', node.id)
-
-        if (error) throw error
-      }
-
+      await removeNodeFromStructure(node.type, node.id, node.parentId)
       await fetchHierarchicalData()
     } catch (error) {
       console.error('Error removing node:', error)
-      alert('Erro ao remover item')
+      alert('Erro ao remover item da estrutura')
     } finally {
       setLoading(false)
     }
@@ -985,7 +669,7 @@ export default function StructurePage() {
                 </Button>
                 <Button
                   variant="primary"
-                  onClick={saveAssociations}
+                  onClick={handleSaveAssociations}
                   disabled={selectedItems.length === 0 || associating}
                 >
                   {associating ? 'Confirmando...' : 'Confirmar'}

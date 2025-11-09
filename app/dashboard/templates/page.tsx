@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Plus, FileSpreadsheet, Trash2, Eye, MoreVertical, Download, Copy, Edit3 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../providers/AuthProvider'
 import TemplateUploadModal from './components/TemplateUploadModal'
 import Card from '../../components/Card'
@@ -11,6 +10,12 @@ import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Modal from '../../components/Modal'
 import { useToast } from '../../components/Toast'
 import { DEFAULT_TEMPLATE_ICON, TEMPLATE_CATEGORIES } from './constants'
+import {
+  getTemplates,
+  deleteTemplate,
+  getTemplatePreviewUrl,
+  duplicateTemplate
+} from '@/lib/actions/admin-templates'
 
 interface ExcelTemplate {
   id: string
@@ -37,7 +42,6 @@ export default function TemplatesPage() {
   const [editingTemplate, setEditingTemplate] = useState<ExcelTemplate | null>(null)
   const [templateToDelete, setTemplateToDelete] = useState<ExcelTemplate | null>(null)
   const [deletingTemplate, setDeletingTemplate] = useState(false)
-  const supabase = createClient()
 
   const categories = useMemo(
     () => [
@@ -84,15 +88,7 @@ export default function TemplatesPage() {
   const fetchTemplates = useCallback(async () => {
     try {
       setLoading(true)
-
-      const { data, error } = await supabase
-        .from('excel_templates')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      const list = data || []
+      const list = await getTemplates()
       setAllTemplates(list)
       setTemplates(filterTemplates(list, selectedCategory))
     } catch (error) {
@@ -101,7 +97,7 @@ export default function TemplatesPage() {
     } finally {
       setLoading(false)
     }
-  }, [filterTemplates, selectedCategory, showToast, supabase])
+  }, [filterTemplates, selectedCategory, showToast])
 
   useEffect(() => {
     fetchTemplates()
@@ -115,23 +111,7 @@ export default function TemplatesPage() {
     if (!templateToDelete) return
     try {
       setDeletingTemplate(true)
-      const bucket = templateToDelete.storage_bucket || 'excel-templates'
-
-      // Deletar arquivo do storage
-      const { error: storageError } = await supabase.storage
-        .from(bucket)
-        .remove([templateToDelete.storage_path])
-
-      if (storageError) throw storageError
-
-      // Deletar registro do banco
-      const { error: dbError } = await supabase
-        .from('excel_templates')
-        .delete()
-        .eq('id', templateToDelete.id)
-
-      if (dbError) throw dbError
-
+      await deleteTemplate(templateToDelete.id)
       showToast('Template deletado com sucesso!')
       setTemplateToDelete(null)
       fetchTemplates()
@@ -145,24 +125,8 @@ export default function TemplatesPage() {
 
   const handleDownloadTemplate = async (template: ExcelTemplate) => {
     try {
-      const bucket = template.storage_bucket || 'excel-templates'
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .download(template.storage_path)
-
-      if (error) throw error
-
-      // Criar link de download
-      const url = window.URL.createObjectURL(data)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${template.name}.xlsx`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      showToast('Download iniciado com sucesso!')
+      showToast('Iniciando download...')
+      window.open(`/api/templates/${template.id}/download`, '_blank')
     } catch (error: any) {
       console.error('Erro ao baixar template:', error)
       showToast(`Erro ao baixar template: ${error.message}`)
@@ -171,16 +135,8 @@ export default function TemplatesPage() {
 
   const handlePreviewTemplate = async (template: ExcelTemplate) => {
     try {
-      const bucket = template.storage_bucket || 'excel-templates'
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .createSignedUrl(template.storage_path, 60)
-
-      if (error || !data?.signedUrl) {
-        throw error || new Error('Não foi possível gerar o link de visualização')
-      }
-
-      window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+      const signedUrl = await getTemplatePreviewUrl(template.id)
+      window.open(signedUrl, '_blank', 'noopener,noreferrer')
       showToast('Visualizando template em nova aba')
     } catch (error: any) {
       console.error('Erro ao visualizar template:', error)
@@ -194,39 +150,7 @@ export default function TemplatesPage() {
         throw new Error('Usuário não autenticado')
       }
 
-      const bucket = template.storage_bucket || 'excel-templates'
-      const timestamp = Date.now()
-
-      const pathParts = template.storage_path.split('/')
-      const originalFileName = pathParts.pop() || template.storage_path
-      const extensionIndex = originalFileName.lastIndexOf('.')
-      const extension = extensionIndex !== -1 ? originalFileName.slice(extensionIndex) : ''
-      const baseName = extensionIndex !== -1 ? originalFileName.slice(0, extensionIndex) : originalFileName
-      const directory = pathParts.join('/')
-      const newFileName = `${baseName}_copia_${timestamp}${extension}`
-      const newStoragePath = directory ? `${directory}/${newFileName}` : newFileName
-
-      const { error: copyError } = await supabase.storage
-        .from(bucket)
-        .copy(template.storage_path, newStoragePath)
-
-      if (copyError) throw copyError
-
-      const { error: insertError } = await supabase
-        .from('excel_templates')
-        .insert({
-          name: `${template.name} (Cópia)`,
-          description: template.description,
-          category: template.category,
-          storage_path: newStoragePath,
-          storage_bucket: bucket,
-          created_by: user.id,
-          is_active: template.is_active,
-          metadata: template.metadata,
-        })
-
-      if (insertError) throw insertError
-
+      await duplicateTemplate(template.id, user.id)
       showToast('Template duplicado com sucesso!')
       fetchTemplates()
     } catch (error: any) {
