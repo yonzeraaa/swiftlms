@@ -6,13 +6,13 @@ import { useState, useEffect } from 'react'
 import { BookOpen, Clock, Users, Award, Play, Search, Filter, TrendingUp, Sparkles } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { StaggerTransition, StaggerItem, FadeTransition } from '../../components/ui/PageTransition'
 import Spinner from '../../components/ui/Spinner'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
+import { getMyEnrollments } from '@/lib/actions/browse-enroll'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
@@ -33,7 +33,6 @@ export default function MyCoursesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'completed'>('all')
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     fetchMyCourses()
@@ -41,190 +40,19 @@ export default function MyCoursesPage() {
 
   const fetchMyCourses = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      setLoading(true)
+      const result = await getMyEnrollments()
+
+      if (!result.success) {
+        console.error('Error fetching courses:', result.error)
         router.push('/')
         return
       }
 
-      // Fetch enrollments with course details
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses(*)
-        `)
-        .eq('user_id', user.id)
-        .order('enrolled_at', { ascending: false })
-
-      if (enrollments) {
-        const coursesWithDetails: EnrolledCourse[] = []
-
-        for (const enrollment of enrollments) {
-          if (enrollment.course) {
-            // Fetch modules with subjects and lessons for each course
-            const { data: modules } = await supabase
-              .from('course_modules')
-              .select(`
-                *,
-                module_subjects (
-                  subject:subjects (
-                    *,
-                    subject_lessons (
-                      lesson:lessons (*)
-                    )
-                  ),
-                  order_index
-                )
-              `)
-              .eq('course_id', enrollment.course.id)
-              .order('order_index')
-
-            // Fetch modules assigned to this enrollment
-            let allowedModuleIds: string[] | null = null
-            const { data: enrollmentModules, error: enrollmentModulesError } = await supabase
-              .from('enrollment_modules')
-              .select('module_id')
-              .eq('enrollment_id', enrollment.id)
-
-            if (enrollmentModulesError) {
-              console.error('Erro ao carregar módulos da matrícula:', enrollmentModulesError)
-            } else if (enrollmentModules) {
-              allowedModuleIds = enrollmentModules
-                .map((moduleEntry: { module_id: string | null }) => moduleEntry.module_id)
-                .filter((moduleId: string | null): moduleId is string => typeof moduleId === 'string')
-            }
-
-            // Fetch lesson progress
-            const { data: lessonProgress } = await supabase
-              .from('lesson_progress')
-              .select('*')
-              .eq('enrollment_id', enrollment.id)
-
-            // Calculate total and completed lessons
-            let totalLessons = 0
-            let completedLessons = 0
-            let nextLesson: Lesson | undefined
-            const allLessons: Lesson[] = []
-
-            const filteredModules = modules && allowedModuleIds !== null
-              ? (modules as any[]).filter((module: any) => allowedModuleIds?.includes(module.id))
-              : modules || []
-
-            if (filteredModules.length > 0) {
-              // Extract lessons from the nested structure
-              filteredModules.forEach((module: any) => {
-                const moduleSubjects = (module as any).module_subjects || []
-                
-                // Sort module_subjects by order_index
-                moduleSubjects.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
-                
-                moduleSubjects.forEach((moduleSubject: any) => {
-                  if (moduleSubject.subject && moduleSubject.subject.subject_lessons) {
-                    moduleSubject.subject.subject_lessons.forEach((subjectLesson: any) => {
-                      if (subjectLesson.lesson) {
-                        const lesson = subjectLesson.lesson
-                        allLessons.push(lesson)
-                        totalLessons++
-                        
-                        const progress = lessonProgress?.find((lp: any) => lp.lesson_id === lesson.id)
-                        if (progress?.is_completed) {
-                          completedLessons++
-                        } else if (!nextLesson) {
-                          nextLesson = lesson
-                        }
-                      }
-                    })
-                  }
-                })
-              })
-            }
-            
-            // Calculate progress percentage
-            const progressPercentage = totalLessons > 0 
-              ? Math.round((completedLessons / totalLessons) * 100)
-              : 0
-            
-            // Update enrollment progress and status if needed
-            const isCompleted = progressPercentage === 100
-            const shouldUpdateStatus = isCompleted && enrollment.status !== 'completed'
-            const shouldUpdateProgress = enrollment.progress_percentage !== progressPercentage
-            
-            if (shouldUpdateProgress || shouldUpdateStatus) {
-              const updateData: any = { 
-                progress_percentage: progressPercentage,
-                updated_at: new Date().toISOString()
-              }
-              
-              // Update status to completed if course is 100% complete
-              if (shouldUpdateStatus) {
-                updateData.status = 'completed'
-                updateData.completed_at = new Date().toISOString()
-              }
-              
-              const { data: updatedEnrollment, error } = await supabase
-                .from('enrollments')
-                .update(updateData)
-                .eq('id', enrollment.id)
-                .select()
-                .single()
-              
-              // Update local enrollment object with new data
-              if (updatedEnrollment && !error) {
-                enrollment.status = updatedEnrollment.status
-                enrollment.progress_percentage = updatedEnrollment.progress_percentage
-                enrollment.completed_at = updatedEnrollment.completed_at
-              }
-              
-              // Generate certificate if course is completed and doesn't have one
-              if (isCompleted) {
-                const { data: existingCert } = await supabase
-                  .from('certificates')
-                  .select('id')
-                  .eq('user_id', user.id)
-                  .eq('course_id', enrollment.course.id)
-                  .single()
-                
-                if (!existingCert) {
-                  const certificateNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-                  const verificationCode = Math.random().toString(36).substr(2, 16).toUpperCase()
-                  
-                  await supabase
-                    .from('certificates')
-                    .insert({
-                      user_id: user.id,
-                      course_id: enrollment.course.id,
-                      enrollment_id: enrollment.id,
-                      certificate_number: certificateNumber,
-                      verification_code: verificationCode,
-                      course_hours: enrollment.course.duration_hours || 0,
-                      grade: 100,
-                      issued_at: new Date().toISOString(),
-                      instructor_name: 'SwiftEDU'
-                    })
-                }
-              }
-            }
-
-            coursesWithDetails.push({
-              ...enrollment.course,
-              enrollment: {
-                ...enrollment,
-                status: progressPercentage === 100 ? 'completed' : enrollment.status,
-                progress_percentage: progressPercentage
-              },
-              modules: filteredModules,
-              totalLessons,
-              completedLessons,
-              nextLesson
-            })
-          }
-        }
-
-        setCourses(coursesWithDetails)
-      }
+      setCourses(result.data as EnrolledCourse[])
     } catch (error) {
       console.error('Error fetching courses:', error)
+      router.push('/')
     } finally {
       setLoading(false)
     }

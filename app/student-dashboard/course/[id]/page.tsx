@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { 
-  BookOpen, 
-  Clock, 
-  Play, 
-  CheckCircle2, 
-  Lock, 
+import {
+  BookOpen,
+  Clock,
+  Play,
+  CheckCircle2,
+  Lock,
   ArrowLeft,
   FileText,
   Video,
@@ -26,7 +26,6 @@ import {
 import Card from '../../../components/Card'
 import Button from '../../../components/Button'
 import Tabs from '../../../components/Tabs'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import ProgressRing from '../../../components/ui/ProgressRing'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -34,6 +33,7 @@ import VideoPlayer from '../../components/VideoPlayer'
 import DocumentViewer from '../../components/DocumentViewer'
 import Spinner from '../../../components/ui/Spinner'
 import Breadcrumbs from '../../../components/ui/Breadcrumbs'
+import { getCoursePlayerData, markLessonComplete as markLessonCompleteAction, updateEnrollmentProgress } from '@/lib/actions/course-player'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
@@ -66,7 +66,6 @@ export default function CoursePage() {
   const searchParams = useSearchParams()
   const courseId = params.id as string
   const lessonId = searchParams.get('lesson')
-  const supabase = createClient()
 
   const [course, setCourse] = useState<CourseWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
@@ -85,6 +84,7 @@ export default function CoursePage() {
   const [reviews, setReviews] = useState<any[]>([])
   const [courseTests, setCourseTests] = useState<any[]>([])
   const [loadingTests, setLoadingTests] = useState(true)
+  const [userId, setUserId] = useState<string>('')
 
   useEffect(() => {
     if (courseId) {
@@ -119,109 +119,41 @@ export default function CoursePage() {
 
   const fetchCourseData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/')
-        return
-      }
+      const result = await getCoursePlayerData(courseId)
 
-      // Fetch course details
-      const { data: courseData, error: courseError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('id', courseId)
-        .single()
-
-      if (courseError || !courseData) {
-        console.error('Error fetching course:', courseError)
+      if (!result || !result.success) {
+        console.error('Error fetching course:', result?.error)
         router.push('/student-dashboard/my-courses')
         return
       }
 
-      // Check if user is admin
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-      
-      const isAdmin = profileData?.role === 'admin'
-      setIsAdmin(isAdmin)
+      const {
+        course: courseData,
+        isAdmin,
+        enrollment: enrollmentData,
+        enrollmentModules,
+        modules: modulesData,
+        progress: progressData,
+        reviews: courseReviews,
+        instructor: instructorInfo,
+        userId: uid
+      } = result
 
-      // Fetch enrollment (skip for admin)
-      let enrollmentData = null
-      if (!isAdmin) {
-        const { data: enrollment } = await supabase
-          .from('enrollments')
-          .select('*')
-          .eq('course_id', courseId)
-          .eq('user_id', user.id)
-          .single()
+      setIsAdmin(isAdmin || false)
+      setUserId(uid || '')
 
-        if (!enrollment) {
-          router.push('/student-dashboard/courses')
-          return
-        }
-        enrollmentData = enrollment
+      // Check enrollment for non-admin
+      if (!isAdmin && !enrollmentData) {
+        router.push('/student-dashboard/courses')
+        return
       }
 
-      // Fetch module assignments for this enrollment
-      let allowedModuleIds: string[] | null = null
-      if (enrollmentData) {
-        const { data: enrollmentModules, error: enrollmentModulesError } = await supabase
-          .from('enrollment_modules')
-          .select('module_id')
-          .eq('enrollment_id', enrollmentData.id)
+      // Filter modules based on enrollment access
+      const allowedModuleIds = enrollmentModules?.map((em: any) => em.module_id).filter(Boolean) || null
 
-        if (enrollmentModulesError) {
-          console.error('Erro ao carregar módulos da matrícula:', enrollmentModulesError)
-        } else {
-          allowedModuleIds = (enrollmentModules || [])
-            .map((moduleEntry: { module_id: string | null }) => moduleEntry.module_id)
-            .filter((moduleId: string | null): moduleId is string => typeof moduleId === 'string')
-        }
-      }
-
-      // Fetch modules with subjects and lessons, limited to assigned modules when applicable
-      let modulesData: any[] = []
-
-      if (allowedModuleIds !== null && allowedModuleIds.length === 0) {
-        modulesData = []
-      } else {
-        let modulesQuery = supabase
-          .from('course_modules')
-          .select(`
-            *,
-            module_subjects (
-              subject:subjects (
-                *,
-                subject_lessons (
-                  lesson:lessons (*)
-                )
-              ),
-              order_index
-            )
-          `)
-          .eq('course_id', courseId)
-          .order('order_index')
-
-        if (allowedModuleIds && allowedModuleIds.length > 0) {
-          modulesQuery = modulesQuery.in('id', allowedModuleIds)
-        }
-
-        const { data } = await modulesQuery
-        modulesData = data || []
-      }
-
-      // Fetch lesson progress (only for enrolled students)
-      let progressData: any[] = []
-      if (enrollmentData) {
-        const { data } = await supabase
-          .from('lesson_progress')
-          .select('*')
-          .eq('enrollment_id', enrollmentData.id)
-        progressData = data || []
-      }
+      const filteredModules = modulesData && allowedModuleIds !== null
+        ? modulesData.filter((module: any) => allowedModuleIds.includes(module.id))
+        : modulesData || []
 
       // Process modules with subjects and lessons with progress
       const modulesWithProgress: ModuleWithSubjects[] = []
@@ -229,85 +161,61 @@ export default function CoursePage() {
       let completedLessonCount = 0
       let firstIncompleteLesson: Lesson | null = null
 
-      if (modulesData) {
-        for (const module of modulesData) {
-          const subjectsWithLessons: SubjectWithLessons[] = []
-          
-          // Extract subjects from module_subjects
-          const moduleSubjects = (module as any).module_subjects || []
-          
-          // Sort module_subjects by order_index
-          moduleSubjects.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
-          
-          for (const moduleSubject of moduleSubjects) {
-            if (moduleSubject.subject) {
-              const subject = moduleSubject.subject
-              const lessonsInSubject: (Lesson & { progress?: LessonProgress })[] = []
-              
-              // Extract lessons from subject_lessons
-              if (subject.subject_lessons) {
-                for (const subjectLesson of subject.subject_lessons) {
-                  if (subjectLesson.lesson) {
-                    const lesson = subjectLesson.lesson
-                    const progress = progressData?.find(p => p.lesson_id === lesson.id)
-                    
-                    if (progress?.is_completed) {
-                      completedLessonCount++
-                    } else if (!firstIncompleteLesson) {
-                      firstIncompleteLesson = lesson
-                    }
-                    
-                    totalLessonCount++
-                    lessonsInSubject.push({ ...lesson, progress })
+      for (const module of filteredModules) {
+        const subjectsWithLessons: SubjectWithLessons[] = []
+
+        const moduleSubjects = (module as any).module_subjects || []
+        moduleSubjects.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
+
+        for (const moduleSubject of moduleSubjects) {
+          if (moduleSubject.subject) {
+            const subject = moduleSubject.subject
+            const lessonsInSubject: (Lesson & { progress?: LessonProgress })[] = []
+
+            if (subject.subject_lessons) {
+              for (const subjectLesson of subject.subject_lessons) {
+                if (subjectLesson.lesson) {
+                  const lesson = subjectLesson.lesson
+                  const progress = progressData?.find((p: any) => p.lesson_id === lesson.id)
+
+                  if (progress?.is_completed) {
+                    completedLessonCount++
+                  } else if (!firstIncompleteLesson) {
+                    firstIncompleteLesson = lesson
                   }
+
+                  totalLessonCount++
+                  lessonsInSubject.push({ ...lesson, progress })
                 }
               }
-
-              // Sort lessons by order_index
-              lessonsInSubject.sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-
-              // Add subject with its lessons
-              subjectsWithLessons.push({
-                ...subject,
-                lessons: lessonsInSubject,
-                order_index: moduleSubject.order_index || 0
-              })
             }
-          }
 
-          modulesWithProgress.push({
-            ...module,
-            subjects: subjectsWithLessons
-          })
-        }
-      }
+            lessonsInSubject.sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
 
-      // Fetch instructor info (if exists)
-      let instructorInfo = undefined
-      if (courseData.instructor_id) {
-        const { data: instructorData } = await supabase
-          .from('profiles')
-          .select('full_name, avatar_url')
-          .eq('id', courseData.instructor_id)
-          .single()
-
-        if (instructorData) {
-          instructorInfo = {
-            name: instructorData.full_name || 'Instrutor',
-            avatar: instructorData.avatar_url || undefined
+            subjectsWithLessons.push({
+              ...subject,
+              lessons: lessonsInSubject,
+              order_index: moduleSubject.order_index || 0
+            })
           }
         }
+
+        modulesWithProgress.push({
+          ...module,
+          subjects: subjectsWithLessons
+        })
       }
 
       setCourse({
         ...courseData,
         modules: modulesWithProgress,
         enrollment: enrollmentData || undefined,
-        instructor: instructorInfo
+        instructor: instructorInfo || undefined
       })
 
       setTotalLessons(totalLessonCount)
       setCompletedLessons(completedLessonCount)
+      setReviews(courseReviews || [])
       
       // Verificar elegibilidade completa usando a API
       if (enrollmentData) {
@@ -374,20 +282,11 @@ export default function CoursePage() {
       } else if (firstIncompleteLesson) {
         // Otherwise, set the first incomplete lesson as selected
         setSelectedLesson(firstIncompleteLesson)
-      } else if (modulesWithProgress.length > 0 && 
-                 modulesWithProgress[0].subjects.length > 0 && 
+      } else if (modulesWithProgress.length > 0 &&
+                 modulesWithProgress[0].subjects.length > 0 &&
                  modulesWithProgress[0].subjects[0].lessons.length > 0) {
         setSelectedLesson(modulesWithProgress[0].subjects[0].lessons[0])
       }
-
-      // Fetch course reviews (lightweight)
-      const { data: courseReviews } = await supabase
-        .from('course_reviews')
-        .select('rating, title, comment, created_at')
-        .eq('course_id', courseId)
-        .order('created_at', { ascending: false })
-
-      setReviews(courseReviews || [])
 
     } catch (error) {
       console.error('Error fetching course data:', error)
@@ -473,40 +372,19 @@ export default function CoursePage() {
     if (!course?.enrollment) return
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
       // Mark all lessons as complete
       const allLessons = course.modules.flatMap(m => m.subjects).flatMap(s => s.lessons)
-      
+
       for (const lesson of allLessons) {
-        await supabase
-          .from('lesson_progress')
-          .upsert({
-            enrollment_id: course.enrollment.id,
-            lesson_id: lesson.id,
-            user_id: user.id,
-            is_completed: true,
-            completed_at: new Date().toISOString()
-          })
+        await markLessonCompleteAction(lesson.id, course.enrollment.id)
       }
 
       // Update enrollment progress to 100%
-      const updateData: any = { 
-        progress_percentage: 100,
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      
-      await supabase
-        .from('enrollments')
-        .update(updateData)
-        .eq('id', course.enrollment.id)
-      
+      await updateEnrollmentProgress(course.enrollment.id, 100)
+
       // Show success message
       alert('🎉 Todas as aulas foram marcadas como concluídas!\n\n📜 Seu certificado será emitido pela administração em breve.')
-      
+
       // Refresh course data
       await fetchCourseData()
     } catch (error) {
@@ -552,63 +430,33 @@ export default function CoursePage() {
     if (!course?.enrollment) return
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const result = await markLessonCompleteAction(lessonId, course.enrollment.id)
 
-      const { error } = await supabase
-        .from('lesson_progress')
-        .upsert({
-          enrollment_id: course.enrollment.id,
-          lesson_id: lessonId,
-          user_id: user.id,
-          is_completed: true,
-          completed_at: new Date().toISOString()
-        })
-
-      if (!error) {
+      if (result.success) {
         // Calculate new progress
         const newCompletedLessons = completedLessons + 1
-        const progressPercentage = totalLessons > 0 
+        const progressPercentage = totalLessons > 0
           ? Math.round((newCompletedLessons / totalLessons) * 100)
           : 0
-        
-        // Update enrollment progress and status if course is completed
-        const updateData: any = { 
-          progress_percentage: progressPercentage,
-          updated_at: new Date().toISOString()
-        }
-        
-        // If course is 100% complete, update status
+
+        // Update enrollment progress
+        await updateEnrollmentProgress(course.enrollment.id, progressPercentage)
+
+        // Show success message if course is completed
         if (progressPercentage === 100) {
-          updateData.status = 'completed'
-          updateData.completed_at = new Date().toISOString()
-          
-          // Update enrollment
-          await supabase
-            .from('enrollments')
-            .update(updateData)
-            .eq('id', course.enrollment.id)
-          
-          // Show success message (certificate will be issued by admin)
           alert('🎉 Parabéns! Você concluiu este curso com sucesso!\n\n📜 Seu certificado será emitido pela administração em breve.')
-        } else {
-          // Just update progress
-          await supabase
-            .from('enrollments')
-            .update(updateData)
-            .eq('id', course.enrollment.id)
         }
-        
+
         // Auto-advance to next lesson
         let nextLesson = null
-        
+
         // Find current lesson in the hierarchy
         for (let moduleIndex = 0; moduleIndex < course.modules.length; moduleIndex++) {
           const module = course.modules[moduleIndex]
           for (let subjectIndex = 0; subjectIndex < module.subjects.length; subjectIndex++) {
             const subject = module.subjects[subjectIndex]
             const lessonIndex = subject.lessons.findIndex(l => l.id === lessonId)
-            
+
             if (lessonIndex !== -1) {
               // Try next lesson in same subject
               if (lessonIndex < subject.lessons.length - 1) {
@@ -633,11 +481,11 @@ export default function CoursePage() {
           }
           if (nextLesson) break
         }
-        
+
         if (nextLesson) {
           setSelectedLesson(nextLesson)
         }
-        
+
         // Refresh course data
         await fetchCourseData()
       }

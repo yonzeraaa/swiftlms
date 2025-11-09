@@ -18,20 +18,26 @@ export async function getMyEnrollments() {
       .from('enrollments')
       .select(`
         *,
-        courses (*)
+        course:courses(*)
       `)
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+      .order('enrolled_at', { ascending: false })
 
     if (error) {
       console.error('Error fetching enrollments:', error)
-      return []
+      return { success: false, data: [], error: error.message }
+    }
+
+    if (!enrollments) {
+      return { success: true, data: [] }
     }
 
     // For each enrollment, get modules and progress
-    const enrichedEnrollments = await Promise.all(
-      (enrollments || []).map(async (enrollment: any) => {
-        const courseId = enrollment.course_id
+    const coursesWithDetails = await Promise.all(
+      enrollments.map(async (enrollment: any) => {
+        if (!enrollment.course) return null
+
+        const courseId = enrollment.course.id
 
         // Get course modules with subjects and lessons
         const { data: modules } = await supabase
@@ -39,10 +45,13 @@ export async function getMyEnrollments() {
           .select(`
             *,
             module_subjects (
-              subjects (
+              subject:subjects (
                 *,
-                lessons (*)
-              )
+                subject_lessons (
+                  lesson:lessons (*)
+                )
+              ),
+              order_index
             )
           `)
           .eq('course_id', courseId)
@@ -54,25 +63,64 @@ export async function getMyEnrollments() {
           .select('module_id')
           .eq('enrollment_id', enrollment.id)
 
-        // Get lesson progress
-        const { data: progress } = await supabase
+        // Get lesson progress for this enrollment
+        const { data: lessonProgress } = await supabase
           .from('lesson_progress')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('enrollment_id', enrollment.id)
+
+        // Calculate totals
+        let totalLessons = 0
+        let completedLessons = 0
+        let nextLesson = null
+        const allowedModuleIds = enrollmentModules?.map((em: any) => em.module_id).filter(Boolean) || null
+
+        const filteredModules = modules && allowedModuleIds !== null
+          ? modules.filter((module: any) => allowedModuleIds.includes(module.id))
+          : modules || []
+
+        for (const module of filteredModules) {
+          const moduleSubjects = (module as any).module_subjects || []
+          moduleSubjects.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
+
+          for (const moduleSubject of moduleSubjects) {
+            if (moduleSubject.subject && moduleSubject.subject.subject_lessons) {
+              for (const subjectLesson of moduleSubject.subject.subject_lessons) {
+                if (subjectLesson.lesson) {
+                  const lesson = subjectLesson.lesson
+                  totalLessons++
+
+                  const progress = lessonProgress?.find((lp: any) => lp.lesson_id === lesson.id)
+                  if (progress?.is_completed) {
+                    completedLessons++
+                  } else if (!nextLesson) {
+                    nextLesson = lesson
+                  }
+                }
+              }
+            }
+          }
+        }
 
         return {
-          ...enrollment,
-          modules: modules || [],
-          enrollmentModules: enrollmentModules || [],
-          progress: progress || []
+          ...enrollment.course,
+          enrollment: enrollment,
+          modules: filteredModules,
+          totalLessons,
+          completedLessons,
+          nextLesson
         }
       })
     )
 
-    return enrichedEnrollments
+    return {
+      success: true,
+      data: coursesWithDetails.filter(Boolean),
+      userId: user.id
+    }
   } catch (error) {
     console.error('Error fetching my enrollments:', error)
-    return []
+    return { success: false, data: [], error: 'Erro ao carregar cursos' }
   }
 }
 
@@ -369,5 +417,88 @@ export async function getCalendarData() {
       enrollments: [],
       tests: []
     }
+  }
+}
+
+/**
+ * Update enrollment progress and status
+ * SECURITY: Server-side only, no token exposure
+ */
+export async function updateEnrollmentProgressAndStatus(
+  enrollmentId: string,
+  progressPercentage: number,
+  courseId: string
+) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Não autenticado' }
+    }
+
+    const isCompleted = progressPercentage === 100
+    const updateData: any = {
+      progress_percentage: progressPercentage,
+      updated_at: new Date().toISOString()
+    }
+
+    if (isCompleted) {
+      updateData.status = 'completed'
+      updateData.completed_at = new Date().toISOString()
+    }
+
+    const { data: updatedEnrollment, error } = await supabase
+      .from('enrollments')
+      .update(updateData)
+      .eq('id', enrollmentId)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Error updating enrollment:', error)
+      return { success: false, error: error.message }
+    }
+
+    // Generate certificate if course is completed
+    if (isCompleted) {
+      const { data: existingCert } = await supabase
+        .from('certificates')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('course_id', courseId)
+        .single()
+
+      if (!existingCert) {
+        const certificateNumber = `CERT-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+        const verificationCode = Math.random().toString(36).substr(2, 16).toUpperCase()
+
+        const { data: course } = await supabase
+          .from('courses')
+          .select('duration_hours')
+          .eq('id', courseId)
+          .single()
+
+        await supabase
+          .from('certificates')
+          .insert({
+            user_id: user.id,
+            course_id: courseId,
+            enrollment_id: enrollmentId,
+            certificate_number: certificateNumber,
+            verification_code: verificationCode,
+            course_hours: course?.duration_hours || 0,
+            grade: 100,
+            issued_at: new Date().toISOString(),
+            instructor_name: 'SwiftEDU'
+          })
+      }
+    }
+
+    return { success: true, enrollment: updatedEnrollment }
+  } catch (error: any) {
+    console.error('Error updating enrollment progress:', error)
+    return { success: false, error: error?.message || 'Erro desconhecido' }
   }
 }

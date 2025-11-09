@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import TestViewer from '@/app/components/TestViewer'
 import TestResults from '@/app/components/TestResults'
 import { SkeletonCard } from '@/app/components/Skeleton'
@@ -10,6 +9,7 @@ import { Tables } from '@/lib/database.types'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from '@/app/contexts/LanguageContext'
+import { getTestForTaking } from '@/lib/actions/evaluations'
 
 type Test = Tables<'tests'>
 
@@ -27,7 +27,6 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
   } | null>(null)
   
   const router = useRouter()
-  const supabase = createClient()
   const { t } = useTranslation()
 
   useEffect(() => {
@@ -37,62 +36,28 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
   const loadTestData = async () => {
     try {
       const { id } = await params
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-        return
-      }
+      const result = await getTestForTaking(id)
 
-      // Buscar teste
-      const { data: testData, error: testError } = await supabase
-        .from('tests')
-        .select('*')
-        .eq('id', id)
-        .single()
-
-      if (testError || !testData) {
-        console.error('Erro ao carregar teste:', testError)
+      if (!result.success) {
+        alert(result.error)
         router.push('/student-dashboard/evaluations')
         return
       }
 
-      if (!testData.is_active) {
+      if (!result.test || !result.test.is_active) {
         alert(t('test.notAvailable'))
         router.push('/student-dashboard/evaluations')
         return
       }
 
-      setTest(testData)
+      setTest(result.test as Test)
+      setEnrollmentId(result.enrollment?.id || null)
 
-      // Buscar enrollment
-      const { data: enrollment } = await supabase
-        .from('enrollments')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('course_id', testData.course_id || '')
-        .single()
-
-      if (!enrollment) {
-        alert(t('test.enrollmentRequired'))
-        router.push('/student-dashboard/evaluations')
-        return
-      }
-
-      setEnrollmentId(enrollment.id)
-
-      // Verificar tentativas
-      const { data: attempts } = await supabase
-        .from('test_attempts')
-        .select('*')
-        .eq('test_id', id)
-        .eq('user_id', user.id)
-        .order('attempt_number', { ascending: false })
-
-      const maxAttempts = testData.max_attempts || 3
-      const attemptCount = attempts ? attempts.length : 0
+      // Check if max attempts reached
+      const maxAttempts = result.test.max_attempts || 3
+      const attemptCount = result.attempts?.length || 0
 
       if (attemptCount >= maxAttempts) {
-        // Mostrar resultados da última tentativa
         router.push(`/student-dashboard/evaluations/${id}/results`)
         return
       }
@@ -105,28 +70,27 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
-  const handleTestComplete = (attemptId: string, score: number, passed: boolean) => {
-    // Buscar dados completos da tentativa
-    supabase
-      .from('test_attempts')
-      .select('*')
-      .eq('id', attemptId)
-      .single()
-      .then(({ data }: any) => {
-        if (data) {
-          const answers = data.answers as Record<string, string>
-          const totalQuestions = Object.keys(answers).length
-          
-          setAttemptData({
-            id: attemptId,
-            score,
-            passed,
-            correctCount: Math.round(score * totalQuestions / 100),
-            totalQuestions
-          })
-          setShowResults(true)
-        }
-      })
+  const handleTestComplete = async (attemptId: string, score: number, passed: boolean) => {
+    try {
+      const response = await fetch('/api/test-attempts/' + attemptId)
+      const data = await response.json()
+
+      if (data) {
+        const answers = data.answers as Record<string, string>
+        const totalQuestions = Object.keys(answers).length
+
+        setAttemptData({
+          id: attemptId,
+          score,
+          passed,
+          correctCount: Math.round(score * totalQuestions / 100),
+          totalQuestions
+        })
+        setShowResults(true)
+      }
+    } catch (error) {
+      console.error('Error fetching attempt data:', error)
+    }
   }
 
   if (loading) {

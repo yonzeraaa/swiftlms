@@ -30,13 +30,20 @@ export async function getCoursePlayerData(courseId: string) {
       .eq('id', user.id)
       .single()
 
-    // Get enrollment status
-    const { data: enrollment } = await supabase
-      .from('enrollments')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('course_id', courseId)
-      .single()
+    const isAdmin = profile?.role === 'admin'
+
+    // Get enrollment status (skip for admin)
+    let enrollment = null
+    if (!isAdmin) {
+      const { data: enrollmentData } = await supabase
+        .from('enrollments')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('course_id', courseId)
+        .single()
+
+      enrollment = enrollmentData
+    }
 
     // Get enrollment modules (access control)
     const { data: enrollmentModules } = await supabase
@@ -50,11 +57,13 @@ export async function getCoursePlayerData(courseId: string) {
       .select(`
         *,
         module_subjects (
-          order_index,
-          subjects (
+          subject:subjects (
             *,
-            lessons (*)
-          )
+            subject_lessons (
+              lesson:lessons (*)
+            )
+          ),
+          order_index
         )
       `)
       .eq('course_id', courseId)
@@ -69,21 +78,43 @@ export async function getCoursePlayerData(courseId: string) {
     // Get course reviews
     const { data: reviews } = await supabase
       .from('course_reviews')
-      .select('*')
+      .select('rating, title, comment, created_at')
       .eq('course_id', courseId)
+      .order('created_at', { ascending: false })
+
+    // Get instructor info
+    let instructorInfo = null
+    if (course.instructor_id) {
+      const { data: instructorData } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', course.instructor_id)
+        .single()
+
+      if (instructorData) {
+        instructorInfo = {
+          name: instructorData.full_name || 'Instrutor',
+          avatar: instructorData.avatar_url || undefined
+        }
+      }
+    }
 
     return {
+      success: true,
       course,
       userRole: profile?.role || 'student',
+      isAdmin,
       enrollment,
       enrollmentModules: enrollmentModules || [],
       modules: modules || [],
       progress: progress || [],
-      reviews: reviews || []
+      reviews: reviews || [],
+      instructor: instructorInfo,
+      userId: user.id
     }
   } catch (error) {
     console.error('Error fetching course player data:', error)
-    return null
+    return { success: false, error: 'Erro ao carregar dados do curso' }
   }
 }
 
@@ -91,7 +122,7 @@ export async function getCoursePlayerData(courseId: string) {
  * Mark lesson as complete
  * SECURITY: Server-side only, no token exposure
  */
-export async function markLessonComplete(lessonId: string, timeSpent: number = 0) {
+export async function markLessonComplete(lessonId: string, enrollmentId: string) {
   try {
     const supabase = await createClient()
 
@@ -103,13 +134,11 @@ export async function markLessonComplete(lessonId: string, timeSpent: number = 0
     const { error } = await supabase
       .from('lesson_progress')
       .upsert({
-        user_id: user.id,
+        enrollment_id: enrollmentId,
         lesson_id: lessonId,
-        completed: true,
-        completed_at: new Date().toISOString(),
-        time_spent: timeSpent
-      }, {
-        onConflict: 'user_id,lesson_id'
+        user_id: user.id,
+        is_completed: true,
+        completed_at: new Date().toISOString()
       })
 
     if (error) {
