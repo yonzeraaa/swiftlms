@@ -10,10 +10,10 @@ import Logo from './components/Logo'
 import Button from './components/Button'
 import ContactModal from './components/ContactModal'
 import ForgotPasswordModal from './components/ForgotPasswordModal'
-import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from './contexts/LanguageContext'
 import type { Language } from './contexts/LanguageContext'
 import { fadeInUp, staggerContainer, staggerItem, shake } from '@/lib/animation-presets'
+import { checkAuthStatus } from '@/lib/actions/browse-enroll'
 
 export default function LoginPage() {
   const { t, language, setLanguage } = useTranslation()
@@ -30,21 +30,15 @@ export default function LoginPage() {
   const [contactModalOpen, setContactModalOpen] = useState(false)
   const [forgotPasswordModalOpen, setForgotPasswordModalOpen] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
-  
+
   // Check if user is already logged in and redirect, also handle forgot-password param
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
+      const authStatus = await checkAuthStatus()
+
+      if (authStatus.isAuthenticated) {
         // User is already logged in, redirect to appropriate dashboard
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-        
-        const redirectUrl = profile?.role === 'student' ? '/student-dashboard' : '/dashboard'
+        const redirectUrl = authStatus.role === 'student' ? '/student-dashboard' : '/dashboard'
         router.push(redirectUrl)
       } else {
         // Check for forgot-password parameter
@@ -57,7 +51,7 @@ export default function LoginPage() {
       }
     }
     checkAuth()
-  }, [supabase, router])
+  }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

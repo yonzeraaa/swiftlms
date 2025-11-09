@@ -4,6 +4,35 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 /**
+ * Check if user is authenticated and get their role
+ * SECURITY: Server-side only, no token exposure
+ */
+export async function checkAuthStatus() {
+  try {
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      return { isAuthenticated: false, role: null }
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
+
+    return {
+      isAuthenticated: true,
+      role: profile?.role || null
+    }
+  } catch (error) {
+    console.error('Error checking auth status:', error)
+    return { isAuthenticated: false, role: null }
+  }
+}
+
+/**
  * Get all user enrollments with courses
  * SECURITY: Server-side only, no token exposure
  */
@@ -132,10 +161,8 @@ export async function getBrowsableCourses() {
   try {
     const supabase = await createClient()
 
-    // Get user (may be null for public browsing)
     const { data: { user } } = await supabase.auth.getUser()
 
-    // Get all published courses
     const { data: courses, error } = await supabase
       .from('courses')
       .select('*')
@@ -144,17 +171,22 @@ export async function getBrowsableCourses() {
 
     if (error) {
       console.error('Error fetching courses:', error)
-      return []
+      return {
+        courses: [],
+        instructors: [],
+        userEnrollments: [],
+        allEnrollments: [],
+        reviews: [],
+        modules: []
+      }
     }
 
-    // Get instructors
     const instructorIds = [...new Set(courses?.map((c: any) => c.instructor_id).filter(Boolean))]
     const { data: instructors } = await supabase
       .from('profiles')
       .select('id, full_name, email')
       .in('id', instructorIds)
 
-    // Get user's enrollments if authenticated
     let userEnrollments: any[] = []
     if (user) {
       const { data: enrollments } = await supabase
@@ -164,17 +196,14 @@ export async function getBrowsableCourses() {
       userEnrollments = enrollments || []
     }
 
-    // Get all enrollments count for each course
     const { data: allEnrollments } = await supabase
       .from('enrollments')
       .select('course_id')
 
-    // Get reviews for each course
     const { data: reviews } = await supabase
       .from('course_reviews')
       .select('course_id, rating')
 
-    // Get course modules for preview
     const courseIds = courses?.map((c: any) => c.id) || []
     const { data: modules } = await supabase
       .from('course_modules')
@@ -182,14 +211,22 @@ export async function getBrowsableCourses() {
         id,
         course_id,
         title,
+        description,
+        order_index,
         module_subjects (
-          subjects (
+          order_index,
+          subject:subjects (
+            id,
+            name,
             title,
-            lessons (id, title)
+            description,
+            code,
+            hours
           )
         )
       `)
       .in('course_id', courseIds)
+      .order('order_index')
 
     return {
       courses: courses || [],

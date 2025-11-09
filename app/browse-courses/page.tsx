@@ -6,14 +6,13 @@ import { useState, useEffect } from 'react'
 import { ArrowLeft, BookOpen, Clock, Users, Star, ChevronDown, ChevronUp } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createClient } from '@/lib/supabase/client'
+import { getBrowsableCourses } from '@/lib/actions/browse-enroll'
 import Logo from '../components/Logo'
 import Button from '../components/Button'
 import Card from '../components/Card'
 import Badge from '../components/Badge'
 import Spinner from '../components/ui/Spinner'
 
-// Types baseadas na estrutura existente
 type Course = {
   id: string
   title: string
@@ -59,7 +58,6 @@ export default function BrowseCoursesPage() {
   const [error, setError] = useState<string | null>(null)
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     fetchPublicCourses()
@@ -70,70 +68,42 @@ export default function BrowseCoursesPage() {
       setLoading(true)
       setError(null)
 
-      // Buscar cursos publicados com módulos e disciplinas
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select(`
-          id,
-          title,
-          description,
-          summary,
-          category,
-          difficulty,
-          duration_hours,
-          is_published,
-          course_modules (
-            id,
-            title,
-            description,
-            order_index,
-            course_id,
-            module_subjects (
-              order_index,
-              subject:subjects (
-                id,
-                name,
-                description,
-                code,
-                hours
-              )
-            )
-          )
-        `)
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
+      const result = await getBrowsableCourses()
 
-      if (coursesError) throw coursesError
-
-      // Processar dados para estrutura hierárquica
       const processedCourses: CourseWithStructure[] = []
 
-      if (coursesData) {
-        for (const course of coursesData) {
+      if (result.courses) {
+        for (const course of result.courses) {
           const modulesWithSubjects: ModuleWithSubjects[] = []
 
-          // Processar módulos
-          const modules = (course as any).course_modules || []
-          modules.sort((a: any, b: any) => a.order_index - b.order_index)
+          const modules = result.modules?.filter((m: any) => m.course_id === course.id) || []
+          modules.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
 
           for (const module of modules) {
             const subjectsWithDetails: SubjectWithDetails[] = []
 
-            // Processar disciplinas do módulo
             const moduleSubjects = (module as any).module_subjects || []
-            moduleSubjects.sort((a: any, b: any) => a.order_index - b.order_index)
+            moduleSubjects.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
 
             for (const moduleSubject of moduleSubjects) {
               if (moduleSubject.subject) {
                 subjectsWithDetails.push({
-                  ...moduleSubject.subject,
-                  order_index: moduleSubject.order_index
+                  id: moduleSubject.subject.id,
+                  name: moduleSubject.subject.name || moduleSubject.subject.title,
+                  description: moduleSubject.subject.description,
+                  code: moduleSubject.subject.code,
+                  hours: moduleSubject.subject.hours,
+                  order_index: moduleSubject.order_index || 0
                 })
               }
             }
 
             modulesWithSubjects.push({
-              ...module,
+              id: module.id,
+              title: module.title,
+              description: module.description,
+              order_index: module.order_index || 0,
+              course_id: module.course_id,
               subjects: subjectsWithDetails
             })
           }
@@ -147,7 +117,6 @@ export default function BrowseCoursesPage() {
 
       setCourses(processedCourses)
 
-      // Auto-expandir primeiro módulo de cada curso
       if (processedCourses.length > 0) {
         const firstModules = processedCourses
           .map(course => course.modules[0]?.id)
