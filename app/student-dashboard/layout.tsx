@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { getCookie } from '../lib/utils/cookies'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../providers/AuthProvider'
 import { 
@@ -64,32 +63,31 @@ export default function StudentDashboardLayout({
 
   useEffect(() => {
     fetchStudentInfo()
-    // Check if in admin view mode with small delay to ensure cookies are set
-    const checkViewMode = () => {
-      // Try multiple cookie checks for redundancy
-      const viewMode1 = getCookie('isAdminViewMode') === 'true'
-      const viewMode2 = getCookie('viewAsStudent') === 'true'
-      const adminViewId = getCookie('adminViewId')
-      
-      const isInViewMode = viewMode1 || viewMode2 || !!adminViewId
-      
-      console.log('[STUDENT-LAYOUT] View mode check:', {
-        isAdminViewMode: viewMode1,
-        viewAsStudent: viewMode2,
-        adminViewId: !!adminViewId,
-        final: isInViewMode
-      })
-      
-      setIsAdminViewMode(isInViewMode)
+    // Check if in admin view mode via API (httpOnly cookies can't be read client-side)
+    const checkViewMode = async () => {
+      try {
+        const response = await fetch('/api/auth/view-mode-status', {
+          credentials: 'include',
+          cache: 'no-store'
+        })
+
+        if (response.ok) {
+          const { isViewMode, isAdmin: adminStatus } = await response.json()
+          setIsAdminViewMode(isViewMode)
+          setIsAdmin(adminStatus)
+
+          console.log('[STUDENT-LAYOUT] View mode status:', {
+            isViewMode,
+            isAdmin: adminStatus
+          })
+        }
+      } catch (error) {
+        console.error('[STUDENT-LAYOUT] Error checking view mode:', error)
+        setIsAdminViewMode(false)
+      }
     }
-    
-    // Check immediately
+
     checkViewMode()
-    
-    // Also check after a small delay to handle cookie propagation
-    const timer = setTimeout(checkViewMode, 100)
-    
-    return () => clearTimeout(timer)
   }, [])
 
   const fetchStudentInfo = async () => {
@@ -345,17 +343,14 @@ export default function StudentDashboardLayout({
                   <button
                     onClick={async () => {
                       if (isAdminViewMode) {
-                        // If in view mode, clear cookies and return to admin
+                        // If in view mode, call API to clear httpOnly cookies server-side
                         try {
-                          document.cookie = 'viewAsStudent=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-                          document.cookie = 'isAdminViewMode=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
-                          
                           const response = await fetch('/api/auth/view-as-student', {
                             method: 'DELETE',
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'include'
                           })
-                          
+
                           if (response.ok) {
                             const data = await response.json()
                             await new Promise(resolve => setTimeout(resolve, data.delay || 100))

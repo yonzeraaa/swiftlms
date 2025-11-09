@@ -4,32 +4,61 @@
 
 This document outlines known security risks in SwiftLMS and the mitigation strategies currently in place. It also provides recommendations for future architectural improvements.
 
+## 🚨 Critical Status Update
+
+### What's Fixed ✅
+- Removed all backdoor/debug endpoints (7 endpoints)
+- Removed localStorage token storage
+- Removed BroadcastChannel token sync
+- Secured Google OAuth tokens (memory-only)
+- Secured view-as-student cookies (httpOnly)
+- Fixed middleware cookie bypass
+- All API endpoints have CSRF protection
+- Rate limiting on authentication
+
+### What's NOT Fixed ⚠️
+- **Auth tokens still in JS-readable cookies** (Supabase client requirement for RLS)
+- XSS attacks can still steal tokens from document.cookie
+- ~50 pages using client-side Supabase queries with exposed tokens
+
+### Why Not Fixed Yet
+Fixing requires migrating ~50 client components to server actions. This is in progress but incomplete (see `MIGRATION-GUIDE.md`).
+
 ---
 
-## ⚠️ Known Risk: Client-Side Token Exposure
+## ⚠️ UNRESOLVED RISK: Client-Side Token Exposure
 
-### The Issue
+### The Issue (STILL PRESENT)
 
-**Location:** `lib/supabase/client.ts`
+**Status:** ⚠️ **NOT FIXED** - Tokens remain in JS-accessible storage
+**Location:** `lib/supabase/client.ts` + ~50 client components
 
 The `@supabase/ssr` library stores authentication tokens (access token and refresh token) in **JavaScript-readable cookies**. This means:
 
-1. Any XSS (Cross-Site Scripting) vulnerability could allow an attacker to read these tokens
-2. Once stolen, tokens can be used to impersonate the user
-3. Tokens remain valid until they expire (typically 1 hour for access, 7 days for refresh)
+1. ❌ Any XSS (Cross-Site Scripting) vulnerability could allow an attacker to read these tokens
+2. ❌ Once stolen, tokens can be used to impersonate the user until expiration
+3. ❌ Tokens remain valid for 1 hour (access) to 7 days (refresh)
+4. ❌ ~50 client components currently depend on this insecure pattern
 
-### Why We Can't Just "Fix" It
-
-The application uses **Row-Level Security (RLS)** in Supabase. Client-side components make direct queries like:
-
+**Example vulnerable code:**
 ```typescript
-// app/student-dashboard/page.tsx:33
-const { data: courses } = await supabase
-  .from('enrollments')
-  .select('*')
+// app/student-dashboard/page.tsx (and 49 other pages)
+'use client'
+import { createClient } from '@/lib/supabase/client'  // ← Exposes tokens
+
+const supabase = createClient()
+const { data } = await supabase.from('enrollments').select('*')  // ← Sends tokens
 ```
 
-These queries **require** the client to send auth tokens to Supabase. If we block token storage entirely (like with a custom adapter that returns `null`), all client-side data fetching breaks.
+### Why We Haven't Fixed It Yet
+
+The application uses **Row-Level Security (RLS)** in Supabase. Client-side components make direct database queries that **require** the client to send auth tokens to Supabase.
+
+**Attempted Fix (Reverted):**
+We tried a custom storage adapter that blocked token persistence, but it broke all client-side RLS queries across ~50 pages. Rolling back was necessary to maintain functionality.
+
+**Proper Fix (In Progress):**
+Migrate all client-side database queries to server actions. This is a large refactor (~50 pages) that will take time.
 
 ### Current Mitigation Strategies
 
