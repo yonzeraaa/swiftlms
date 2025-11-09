@@ -17,15 +17,23 @@ export async function getTCCSubmissionData() {
     // Get enrollments with courses
     const { data: enrollments } = await supabase
       .from('enrollments')
-      .select(`*, courses (*)`)
+      .select(`
+        id,
+        course_id,
+        course:courses(id, title)
+      `)
       .eq('user_id', user.id)
+      .eq('status', 'active')
 
-    // Get existing TCC submissions
+    // Get existing TCC submissions with course info
     const { data: submissions } = await supabase
       .from('tcc_submissions')
-      .select('*')
-      .eq('student_id', user.id)
-      .order('created_at', { ascending: false })
+      .select(`
+        *,
+        course:courses(title)
+      `)
+      .eq('user_id', user.id)
+      .order('submission_date', { ascending: false })
 
     // Get admin email for contact
     const { data: admins } = await supabase
@@ -67,8 +75,8 @@ export async function submitTCC(data: {
     // Check if submission already exists
     const { data: existing } = await supabase
       .from('tcc_submissions')
-      .select('id')
-      .eq('student_id', user.id)
+      .select('id, status')
+      .eq('user_id', user.id)
       .eq('enrollment_id', data.enrollment_id)
       .single()
 
@@ -78,9 +86,10 @@ export async function submitTCC(data: {
         .from('tcc_submissions')
         .update({
           title: data.title,
-          document_url: data.document_url,
+          file_url: data.document_url,
           description: data.description,
-          updated_at: new Date().toISOString()
+          submission_date: new Date().toISOString(),
+          status: 'pending'
         })
         .eq('id', existing.id)
 
@@ -93,11 +102,11 @@ export async function submitTCC(data: {
       const { error } = await supabase
         .from('tcc_submissions')
         .insert({
-          student_id: user.id,
+          user_id: user.id,
           course_id: data.course_id,
           enrollment_id: data.enrollment_id,
           title: data.title,
-          document_url: data.document_url,
+          file_url: data.document_url,
           description: data.description,
           status: 'pending'
         })

@@ -10,11 +10,11 @@ import Card from '../components/Card'
 import Button from '../components/Button'
 import PremiumLoader, { PremiumSkeleton } from '../components/ui/PremiumLoader'
 import ProgressChart from '../components/ProgressChart'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../contexts/LanguageContext'
 import { useRouter } from 'next/navigation'
 import { SkeletonStatCard } from '../components/Skeleton'
+import { getStudentDashboardData } from '@/lib/actions/browse-enroll'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
@@ -58,7 +58,6 @@ export default function StudentDashboard() {
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const { t } = useTranslation()
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     checkUserAndFetchData()
@@ -66,75 +65,23 @@ export default function StudentDashboard() {
 
   const checkUserAndFetchData = async () => {
     try {
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser()
-      if (userError || !user) {
-        router.push('/')
-        return
-      }
-
-      // Check user role - admins and students can access
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      // Allow students and admins (instructors need view mode, handled by middleware)
-      if (profile?.role !== 'student' && profile?.role !== 'admin' && profile?.role !== 'instructor') {
-        router.push('/')
-        return
-      }
-
-      setUser(user)
-      await fetchStudentData(user.id)
+      await fetchStudentData()
     } catch (error) {
       console.error('Error checking user:', error)
       router.push('/')
     }
   }
 
-  const fetchStudentData = async (userId: string) => {
+  const fetchStudentData = async () => {
     try {
-      // Fetch enrollments with course details
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses(*)
-        `)
-        .eq('user_id', userId)
-        .order('enrolled_at', { ascending: false })
+      const data = await getStudentDashboardData()
 
-      // Fetch user progress statistics using the database function
-      const { data: progressStats, error: statsError } = await supabase
-        .rpc('get_user_progress_stats', { p_user_id: userId })
-        .single() as { 
-          data: {
-            total_enrolled_courses: number
-            completed_courses: number
-            in_progress_courses: number
-            total_lessons: number
-            completed_lessons: number
-            total_hours_content: number
-            hours_completed: number
-            overall_progress: number
-            current_streak: number
-            total_certificates?: number
-          } | null
-          error: any
-        }
-
-      if (statsError) {
-        console.error('Error fetching progress stats:', statsError)
+      if (!data) {
+        router.push('/')
+        return
       }
 
-      // Fetch lesson progress for last accessed calculation
-      const { data: lessonProgress } = await supabase
-        .from('lesson_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .order('last_accessed_at', { ascending: false })
+      const { profile, enrollments, stats: progressStats, recentProgress: lessonProgress, activities } = data
 
       // Process enrollments for display
       const enrolledCoursesData: EnrolledCourse[] = []
@@ -144,7 +91,7 @@ export default function StudentDashboard() {
           if (enrollment.course) {
             // Find last accessed lesson for this enrollment
             const lastAccessedLesson = lessonProgress?.find((lp: any) => lp.enrollment_id === enrollment.id)
-            
+
             enrolledCoursesData.push({
               ...enrollment.course,
               enrollment: enrollment,
@@ -156,21 +103,19 @@ export default function StudentDashboard() {
       }
 
       // Set statistics from database function or calculate fallback
-      if (progressStats && !statsError) {
-        console.log('Using database stats:', progressStats)
+      if (progressStats && typeof progressStats === 'object' && 'total_enrolled_courses' in progressStats) {
         setStats({
-          enrolledCourses: progressStats.total_enrolled_courses || 0,
-          completedCourses: progressStats.completed_courses || 0,
-          hoursLearned: Math.round(progressStats.hours_completed || 0),
-          certificates: progressStats.total_certificates || 0, // Only show existing certificates
-          currentStreak: progressStats.current_streak || 0,
-          overallProgress: progressStats.overall_progress || 0
+          enrolledCourses: (progressStats as any).total_enrolled_courses || 0,
+          completedCourses: (progressStats as any).completed_courses || 0,
+          hoursLearned: Math.round((progressStats as any).hours_completed || 0),
+          certificates: (progressStats as any).total_certificates || 0,
+          currentStreak: (progressStats as any).current_streak || 0,
+          overallProgress: (progressStats as any).overall_progress || 0
         })
       } else {
-        console.log('Using fallback stats calculation')
         // Fallback calculation if function fails
         const totalProgress = enrolledCoursesData.reduce((sum, course) => sum + course.progress, 0)
-        const overallProgress = enrolledCoursesData.length > 0 
+        const overallProgress = enrolledCoursesData.length > 0
           ? Math.round(totalProgress / enrolledCoursesData.length)
           : 0
 
@@ -186,14 +131,7 @@ export default function StudentDashboard() {
 
       setEnrolledCourses(enrolledCoursesData)
 
-      // Fetch recent activities
-      const { data: activities } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(5)
-
+      // Process recent activities
       if (activities) {
         const formattedActivities: RecentActivity[] = activities.map((activity: any) => ({
           id: activity.id,

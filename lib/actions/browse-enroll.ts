@@ -230,15 +230,17 @@ export async function getStudentDashboardData() {
       .eq('id', user.id)
       .single()
 
-    // Get enrollments
+    // Get enrollments with courses
     const { data: enrollments } = await supabase
       .from('enrollments')
-      .select(`*, courses (*)`)
+      .select(`*, course:courses (*)`)
       .eq('user_id', user.id)
+      .order('enrolled_at', { ascending: false })
 
     // Get progress stats using RPC
     const { data: stats } = await supabase
-      .rpc('get_user_progress_stats', { user_id_param: user.id })
+      .rpc('get_user_progress_stats', { p_user_id: user.id })
+      .single()
 
     // Get recent lesson progress
     const { data: recentProgress } = await supabase
@@ -254,7 +256,7 @@ export async function getStudentDashboardData() {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
-      .limit(10)
+      .limit(5)
 
     return {
       profile,
@@ -346,6 +348,7 @@ export async function getStudentProgress() {
       .from('enrollments')
       .select(`*, courses (*)`)
       .eq('user_id', user.id)
+      .order('enrolled_at', { ascending: false })
 
     // Get enrollment modules for all enrollments
     const enrollmentIds = enrollments?.map((e: any) => e.id) || []
@@ -359,11 +362,20 @@ export async function getStudentProgress() {
     const { data: modules } = await supabase
       .from('course_modules')
       .select(`
-        *,
-        lessons (*)
+        id,
+        course_id,
+        title,
+        order_index
       `)
       .in('course_id', courseIds)
       .order('order_index')
+
+    // Get all lessons
+    const moduleIds = modules?.map((m: any) => m.id) || []
+    const { data: lessons } = await supabase
+      .from('lessons')
+      .select('id, module_id')
+      .in('module_id', moduleIds)
 
     // Get lesson progress
     const { data: progress } = await supabase
@@ -371,11 +383,27 @@ export async function getStudentProgress() {
       .select('*')
       .eq('user_id', user.id)
 
+    // Get progress stats using RPC
+    const { data: stats } = await supabase
+      .rpc('get_user_progress_stats', { p_user_id: user.id })
+      .single()
+
+    // Get weekly progress (last 7 days)
+    const { data: weeklyProgress } = await supabase
+      .from('lesson_progress')
+      .select('completed_at')
+      .eq('user_id', user.id)
+      .eq('is_completed', true)
+      .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+
     return {
       enrollments: enrollments || [],
       enrollmentModules: enrollmentModules || [],
       modules: modules || [],
-      progress: progress || []
+      lessons: lessons || [],
+      progress: progress || [],
+      stats: stats || null,
+      weeklyProgress: weeklyProgress || []
     }
   } catch (error) {
     console.error('Error fetching student progress:', error)
@@ -417,6 +445,65 @@ export async function getCalendarData() {
       enrollments: [],
       tests: []
     }
+  }
+}
+
+/**
+ * Get course preview modules
+ * SECURITY: Server-side only, no token exposure
+ */
+export async function getCoursePreview(courseId: string) {
+  try {
+    const supabase = await createClient()
+
+    // Fetch modules with preview lessons
+    const { data: modules, error } = await supabase
+      .from('course_modules')
+      .select(`
+        *,
+        module_subjects!inner(
+          *,
+          subjects(
+            *,
+            subject_lessons(
+              *,
+              lessons!inner(
+                *
+              )
+            )
+          )
+        )
+      `)
+      .eq('course_id', courseId)
+      .order('order_index')
+
+    if (error) {
+      console.error('Error fetching course preview:', error)
+      return []
+    }
+
+    // Filter only preview lessons
+    if (modules) {
+      const modulesWithPreview = modules.map((module: any) => ({
+        ...module,
+        module_subjects: module.module_subjects?.map((ms: any) => ({
+          ...ms,
+          subjects: {
+            ...ms.subjects,
+            subject_lessons: ms.subjects?.subject_lessons?.filter((sl: any) =>
+              sl.lessons?.is_preview === true
+            ) || []
+          }
+        })).filter((ms: any) => ms.subjects?.subject_lessons?.length > 0)
+      })).filter((m: any) => m.module_subjects?.length > 0)
+
+      return modulesWithPreview
+    }
+
+    return []
+  } catch (error) {
+    console.error('Error fetching course preview:', error)
+    return []
   }
 }
 

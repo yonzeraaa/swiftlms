@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { 
-  ArrowLeft, 
-  BarChart3, 
-  Clock, 
+import {
+  ArrowLeft,
+  BarChart3,
+  Clock,
   CheckCircle2,
   Target,
   Calendar,
@@ -13,13 +13,13 @@ import {
 } from 'lucide-react'
 import Card from '../../../../components/Card'
 import Button from '../../../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import ProgressRing from '../../../../components/ui/ProgressRing'
 import Breadcrumbs from '../../../../components/ui/Breadcrumbs'
 import HeatMap from '../../../../components/ui/HeatMap'
 import Spinner from '../../../../components/ui/Spinner'
 import { DashboardBento } from '../../../../components/ui/BentoGrid'
+import { getCourseProgressDetail } from '@/lib/actions/browse-enroll'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
@@ -45,7 +45,6 @@ export default function CourseProgressPage() {
   const params = useParams()
   const router = useRouter()
   const courseId = params.id as string
-  const supabase = createClient()
 
   const [course, setCourse] = useState<Course | null>(null)
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null)
@@ -60,67 +59,31 @@ export default function CourseProgressPage() {
 
   const fetchProgressData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/')
-        return
-      }
+      const data = await getCourseProgressDetail(courseId)
 
-      // Fetch course and enrollment
-      const [courseResult, enrollmentResult] = await Promise.all([
-        supabase.from('courses').select('*').eq('id', courseId).single(),
-        supabase.from('enrollments').select('*').eq('course_id', courseId).eq('user_id', user.id).single()
-      ])
-
-      if (courseResult.error || !courseResult.data) {
+      if (!data) {
         router.push('/student-dashboard/my-courses')
         return
       }
 
-      if (enrollmentResult.error || !enrollmentResult.data) {
+      const { course: courseData, enrollment: enrollmentData, enrollmentModules, modules, progress } = data
+
+      if (!courseData || !enrollmentData) {
         router.push('/student-dashboard/courses')
         return
       }
 
-      setCourse(courseResult.data)
-      setEnrollment(enrollmentResult.data)
-
-      // Fetch module assignments for this enrollment
-      let allowedModuleIds: string[] | null = null
-      const { data: enrollmentModules, error: enrollmentModulesError } = await supabase
-        .from('enrollment_modules')
-        .select('module_id')
-        .eq('enrollment_id', enrollmentResult.data.id)
-
-      if (enrollmentModulesError) {
-        console.error('Erro ao carregar módulos da matrícula:', enrollmentModulesError)
-      } else if (enrollmentModules) {
-        allowedModuleIds = enrollmentModules
-          .map((moduleEntry: { module_id: string | null }) => moduleEntry.module_id)
-          .filter((moduleId: string | null): moduleId is string => typeof moduleId === 'string')
-      }
-
-      // Fetch detailed progress data
-      const { data: modules } = await supabase
-        .from('course_modules')
-        .select(`
-          *,
-          lessons(*)
-        `)
-        .eq('course_id', courseId)
-
-      const { data: lessonProgress } = await supabase
-        .from('lesson_progress')
-        .select('*')
-        .eq('enrollment_id', enrollmentResult.data.id)
+      setCourse(courseData)
+      setEnrollment(enrollmentData)
 
       // Calculate progress statistics
       let totalLessons = 0
       let completedLessons = 0
       const recentActivity: ProgressData['recentActivity'] = []
 
-      const filteredModules = modules && allowedModuleIds !== null
-        ? (modules as any[]).filter((module: any) => allowedModuleIds?.includes(module.id))
+      const allowedModuleIds = enrollmentModules?.map((em: any) => em.module_id).filter(Boolean) || null
+      const filteredModules = modules && allowedModuleIds
+        ? modules.filter((module: any) => allowedModuleIds.includes(module.id))
         : modules || []
 
       if (filteredModules.length > 0) {
@@ -129,19 +92,19 @@ export default function CourseProgressPage() {
           totalLessons += lessons.length
 
           lessons.forEach((lesson: any) => {
-            const progress = lessonProgress?.find((lp: any) => lp.lesson_id === lesson.id)
-            if (progress?.is_completed) {
+            const lessonProgress = progress?.find((lp: any) => lp.lesson_id === lesson.id)
+            if (lessonProgress?.is_completed) {
               completedLessons++
-              if (progress.completed_at) {
+              if (lessonProgress.completed_at) {
                 recentActivity.push({
-                  date: progress.completed_at,
+                  date: lessonProgress.completed_at,
                   lesson: lesson.title,
                   type: 'completed'
                 })
               }
-            } else if (progress?.started_at) {
+            } else if (lessonProgress?.started_at) {
               recentActivity.push({
-                date: progress.started_at,
+                date: lessonProgress.started_at,
                 lesson: lesson.title,
                 type: 'started'
               })
@@ -154,22 +117,20 @@ export default function CourseProgressPage() {
       recentActivity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
       // Generate real weekly activity data from lesson progress
-      const weeklyActivity = generateWeeklyActivity(lessonProgress || [])
+      const weeklyActivity = generateWeeklyActivity(progress || [])
 
       // Calculate real time spent from lesson progress
       let actualTimeSpent = 0
-      if (lessonProgress && lessonProgress.length > 0) {
-        // Estimate based on completed lessons and duration
-        lessonProgress.forEach((lp: any) => {
+      if (progress && progress.length > 0) {
+        progress.forEach((lp: any) => {
           if (lp.is_completed && lp.completed_at && lp.started_at) {
             const startTime = new Date(lp.started_at).getTime()
             const endTime = new Date(lp.completed_at).getTime()
-            const lessonTime = Math.round((endTime - startTime) / (1000 * 60)) // minutes
+            const lessonTime = Math.round((endTime - startTime) / (1000 * 60))
             actualTimeSpent += lessonTime
           }
         })
-        
-        // If no specific durations found, estimate 20 minutes per completed lesson
+
         if (actualTimeSpent === 0) {
           actualTimeSpent = completedLessons * 20
         }
@@ -178,28 +139,28 @@ export default function CourseProgressPage() {
       // Generate milestones
       const progressPercentage = totalLessons > 0 ? (completedLessons / totalLessons) : 0
       const milestones = [
-        { 
-          title: 'Primeira aula concluída', 
+        {
+          title: 'Primeira aula concluída',
           completed: completedLessons >= 1,
           completedAt: completedLessons >= 1 ? recentActivity.find(a => a.type === 'completed')?.date : undefined
         },
-        { 
-          title: '25% do curso concluído', 
+        {
+          title: '25% do curso concluído',
           completed: progressPercentage >= 0.25,
           completedAt: progressPercentage >= 0.25 ? recentActivity[Math.floor(recentActivity.length * 0.75)]?.date : undefined
         },
-        { 
-          title: '50% do curso concluído', 
+        {
+          title: '50% do curso concluído',
           completed: progressPercentage >= 0.5,
           completedAt: progressPercentage >= 0.5 ? recentActivity[Math.floor(recentActivity.length * 0.5)]?.date : undefined
         },
-        { 
-          title: '75% do curso concluído', 
+        {
+          title: '75% do curso concluído',
           completed: progressPercentage >= 0.75,
           completedAt: progressPercentage >= 0.75 ? recentActivity[Math.floor(recentActivity.length * 0.25)]?.date : undefined
         },
-        { 
-          title: 'Curso concluído', 
+        {
+          title: 'Curso concluído',
           completed: progressPercentage === 1,
           completedAt: progressPercentage === 1 ? recentActivity[0]?.date : undefined
         }

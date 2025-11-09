@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import { Tables } from '@/lib/database.types'
 import TestResults from '@/app/components/TestResults'
 import { SkeletonCard } from '@/app/components/Skeleton'
@@ -11,6 +10,7 @@ import Link from 'next/link'
 import { useTranslation } from '@/app/contexts/LanguageContext'
 import Card from '@/app/components/Card'
 import Button from '@/app/components/Button'
+import { getTestResults } from '@/lib/actions/evaluations'
 
 type Test = Tables<'tests'>
 type TestAttempt = Tables<'test_attempts'>
@@ -22,9 +22,8 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
   const [testGrade, setTestGrade] = useState<TestGrade | null>(null)
   const [loading, setLoading] = useState(true)
   const [canRetry, setCanRetry] = useState(false)
-  
+
   const router = useRouter()
-  const supabase = createClient()
   const { t } = useTranslation()
 
   useEffect(() => {
@@ -34,19 +33,14 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
   const loadTestResults = async () => {
     try {
       const { id } = await params
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        router.push('/login')
+      const data = await getTestResults(id)
+
+      if (!data) {
+        router.push('/student-dashboard/evaluations')
         return
       }
 
-      // Buscar dados do teste
-      const { data: testData } = await supabase
-        .from('tests')
-        .select('*')
-        .eq('id', id)
-        .single()
+      const { test: testData, attempt, grade } = data
 
       if (!testData) {
         router.push('/student-dashboard/evaluations')
@@ -55,21 +49,12 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
 
       setTest(testData)
 
-      // Buscar última tentativa do usuário
-      const { data: attempts } = await supabase
-        .from('test_attempts')
-        .select('*')
-        .eq('test_id', id)
-        .eq('user_id', user.id)
-        .order('attempt_number', { ascending: false })
-        .limit(1)
+      if (attempt) {
+        setLatestAttempt(attempt)
 
-      if (attempts && attempts.length > 0) {
-        setLatestAttempt(attempts[0])
-        
         // Verificar se pode tentar novamente
         const maxAttempts = testData.max_attempts || 3
-        const attemptCount = attempts[0].attempt_number || 1
+        const attemptCount = attempt.attempt_number || 1
         setCanRetry(attemptCount < maxAttempts)
       } else {
         // Se não há tentativas, redirecionar para fazer o teste
@@ -77,16 +62,8 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
         return
       }
 
-      // Buscar nota do teste
-      const { data: gradeData } = await supabase
-        .from('test_grades')
-        .select('*')
-        .eq('test_id', id)
-        .eq('user_id', user.id)
-        .single()
-
-      if (gradeData) {
-        setTestGrade(gradeData)
+      if (grade) {
+        setTestGrade(grade)
       }
 
     } catch (error) {

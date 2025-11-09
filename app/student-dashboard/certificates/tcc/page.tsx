@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { FileText, Upload, Send, Clock, CheckCircle, XCircle, AlertCircle, Mail, Award, BookOpen } from 'lucide-react'
 import Card from '@/app/components/Card'
 import Button from '@/app/components/Button'
 import Breadcrumbs from '@/app/components/ui/Breadcrumbs'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
+import { getTCCSubmissionData, submitTCC } from '@/lib/actions/tcc-submissions'
 
 interface TccSubmission {
   id: string
@@ -48,7 +48,6 @@ export default function TccSubmissionPage() {
   })
   const [adminEmail, setAdminEmail] = useState('admin@swiftedu.com')
 
-  const supabase = createClient()
   const router = useRouter()
 
   useEffect(() => {
@@ -57,22 +56,14 @@ export default function TccSubmissionPage() {
 
   const fetchData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const data = await getTCCSubmissionData()
+
+      if (!data) {
         router.push('/')
         return
       }
 
-      // Buscar matrículas do aluno
-      const { data: enrollmentsData } = await supabase
-        .from('enrollments')
-        .select(`
-          id,
-          course_id,
-          course:courses(id, title)
-        `)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
+      const { enrollments: enrollmentsData, submissions: tccData, adminEmail: adminEmailData } = data
 
       if (enrollmentsData) {
         setEnrollments(enrollmentsData as any)
@@ -81,30 +72,12 @@ export default function TccSubmissionPage() {
         }
       }
 
-      // Buscar submissões de TCC existentes
-      const { data: tccData } = await supabase
-        .from('tcc_submissions')
-        .select(`
-          *,
-          course:courses(title)
-        `)
-        .eq('user_id', user.id)
-        .order('submission_date', { ascending: false })
-
       if (tccData) {
         setTccSubmissions(tccData as any)
       }
 
-      // Buscar email do admin
-      const { data: adminProfile } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('role', 'admin')
-        .limit(1)
-        .single()
-
-      if (adminProfile) {
-        setAdminEmail(adminProfile.email)
+      if (adminEmailData) {
+        setAdminEmail(adminEmailData)
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
@@ -129,9 +102,6 @@ export default function TccSubmissionPage() {
     setSubmitting(true)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
       const enrollment = enrollments.find(e => e.id === selectedEnrollment)
       if (!enrollment) return
 
@@ -145,39 +115,18 @@ export default function TccSubmissionPage() {
         return
       }
 
-      // Criar ou atualizar submissão
-      const submissionData = {
-        user_id: user.id,
+      // Submit using server action
+      const result = await submitTCC({
+        title: formData.title,
         course_id: enrollment.course_id,
         enrollment_id: selectedEnrollment,
-        title: formData.title,
-        description: formData.description || null,
-        file_url: formData.file_url || null,
-        status: 'pending' as const
-      }
+        document_url: formData.file_url || undefined,
+        description: formData.description || undefined
+      })
 
-      let result
-      if (existingSubmission) {
-        // Atualizar submissão existente
-        result = await supabase
-          .from('tcc_submissions')
-          .update({
-            ...submissionData,
-            submission_date: new Date().toISOString()
-          })
-          .eq('id', existingSubmission.id)
-          .select()
-          .single()
-      } else {
-        // Criar nova submissão
-        result = await supabase
-          .from('tcc_submissions')
-          .insert(submissionData)
-          .select()
-          .single()
+      if (!result.success) {
+        throw new Error(result.error)
       }
-
-      if (result.error) throw result.error
 
       toast.success('TCC enviado com sucesso! O administrador foi notificado.')
 

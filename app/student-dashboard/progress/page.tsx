@@ -8,10 +8,10 @@ import Card from '../../components/Card'
 import Spinner from '../../components/ui/Spinner'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import ProgressChart from '../../components/ProgressChart'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { useRouter } from 'next/navigation'
+import { getStudentProgress } from '@/lib/actions/browse-enroll'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
@@ -57,7 +57,6 @@ export default function ProgressPage() {
   })
   const { t } = useTranslation()
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     fetchProgressData()
@@ -65,139 +64,99 @@ export default function ProgressPage() {
 
   const fetchProgressData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const data = await getStudentProgress()
+
+      if (!data) {
         router.push('/')
         return
       }
 
-      // Fetch user progress stats
-      const { data: progressStats } = await supabase
-        .rpc('get_user_progress_stats', { p_user_id: user.id })
-        .single()
+      const { enrollments, enrollmentModules, modules, lessons, progress, stats, weeklyProgress: weeklyData } = data
 
-      if (progressStats) {
+      // Set stats
+      if (stats && typeof stats === 'object' && 'total_enrolled_courses' in stats) {
         setTotalStats({
-          totalCourses: progressStats.total_enrolled_courses || 0,
-          completedCourses: progressStats.completed_courses || 0,
-          totalLessons: progressStats.total_lessons || 0,
-          completedLessons: progressStats.completed_lessons || 0,
-          totalHours: Math.round(progressStats.total_hours_content || 0),
-          completedHours: Math.round(progressStats.hours_completed || 0),
-          averageProgress: progressStats.overall_progress || 0,
-          currentStreak: progressStats.current_streak || 0
+          totalCourses: (stats as any).total_enrolled_courses || 0,
+          completedCourses: (stats as any).completed_courses || 0,
+          totalLessons: (stats as any).total_lessons || 0,
+          completedLessons: (stats as any).completed_lessons || 0,
+          totalHours: Math.round((stats as any).total_hours_content || 0),
+          completedHours: Math.round((stats as any).hours_completed || 0),
+          averageProgress: (stats as any).overall_progress || 0,
+          currentStreak: (stats as any).current_streak || 0
         })
       }
 
-      // Fetch detailed course progress
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses(*)
-        `)
-        .eq('user_id', user.id)
-        .order('enrolled_at', { ascending: false })
+      // Process course progress
+      const progressData: CourseProgress[] = []
 
-      if (enrollments) {
-        const progressData: CourseProgress[] = []
+      for (const enrollment of enrollments) {
+        if (enrollment.course) {
+          // Get allowed modules for this enrollment
+          const allowedModuleIds = enrollmentModules
+            .filter((em: any) => em.enrollment_id === enrollment.id)
+            .map((em: any) => em.module_id)
+            .filter(Boolean)
 
-        for (const enrollment of enrollments) {
-          if (enrollment.course) {
-            // Get modules for this course
-            const { data: modules } = await supabase
-              .from('course_modules')
-              .select('*')
-              .eq('course_id', enrollment.course_id)
-              .order('order_index')
+          // Get modules for this course
+          const courseModules = modules.filter((m: any) =>
+            m.course_id === enrollment.course_id &&
+            (allowedModuleIds.length === 0 || allowedModuleIds.includes(m.id))
+          )
 
-            // Fetch allowed modules for this enrollment
-            let allowedModuleIds: string[] | null = null
-            const { data: enrollmentModules, error: enrollmentModulesError } = await supabase
-              .from('enrollment_modules')
-              .select('module_id')
-              .eq('enrollment_id', enrollment.id)
+          const moduleProgress = []
+          let totalCourseLessons = 0
+          let totalCompletedLessons = 0
 
-            if (enrollmentModulesError) {
-              console.error('Erro ao carregar módulos da matrícula:', enrollmentModulesError)
-            } else if (enrollmentModules) {
-              allowedModuleIds = enrollmentModules
-                .map((moduleEntry: { module_id: string | null }) => moduleEntry.module_id)
-                .filter((moduleId: string | null): moduleId is string => typeof moduleId === 'string')
-            }
+          for (const module of courseModules) {
+            // Get lessons for this module
+            const moduleLessons = lessons.filter((l: any) => l.module_id === module.id)
+            const moduleLessonIds = moduleLessons.map((l: any) => l.id)
 
-            const moduleProgress = []
-            let totalCourseLessons = 0
-            let totalCompletedLessons = 0
+            // Get completed lessons for this module
+            const completedLessons = progress.filter((p: any) =>
+              p.enrollment_id === enrollment.id &&
+              p.is_completed &&
+              moduleLessonIds.includes(p.lesson_id)
+            )
 
-            const filteredModules = modules && allowedModuleIds !== null
-              ? (modules as any[]).filter((module: any) => allowedModuleIds?.includes(module.id))
-              : modules || []
+            const moduleTotalLessons = moduleLessons.length
+            const moduleCompletedLessons = completedLessons.length
 
-            if (filteredModules.length > 0) {
-              for (const module of filteredModules) {
-                // Get lessons for this module
-                const { data: lessons } = await supabase
-                  .from('lessons')
-                  .select('id')
-                  .eq('module_id', module.id)
+            totalCourseLessons += moduleTotalLessons
+            totalCompletedLessons += moduleCompletedLessons
 
-                const moduleLessonIds = lessons?.map((l: any) => l.id) || []
-
-                // Get completed lessons for this module
-                const { data: completedLessons } = await supabase
-                  .from('lesson_progress')
-                  .select('lesson_id')
-                  .eq('enrollment_id', enrollment.id)
-                  .eq('is_completed', true)
-                  .in('lesson_id', moduleLessonIds)
-
-                const moduleTotalLessons = lessons?.length || 0
-                const moduleCompletedLessons = completedLessons?.length || 0
-
-                totalCourseLessons += moduleTotalLessons
-                totalCompletedLessons += moduleCompletedLessons
-
-                moduleProgress.push({
-                  id: module.id,
-                  title: module.title,
-                  totalLessons: moduleTotalLessons,
-                  completedLessons: moduleCompletedLessons,
-                  progress: moduleTotalLessons > 0
-                    ? Math.round((moduleCompletedLessons / moduleTotalLessons) * 100)
-                    : 0
-                })
-              }
-            }
-
-            const courseProgressPercentage = totalCourseLessons > 0
-              ? Math.round((totalCompletedLessons / totalCourseLessons) * 100)
-              : 0
-
-            progressData.push({
-              course: enrollment.course,
-              enrollment,
-              totalLessons: totalCourseLessons,
-              completedLessons: totalCompletedLessons,
-              progress: courseProgressPercentage,
-              hoursCompleted: Math.round((enrollment.course.duration_hours || 0) * courseProgressPercentage / 100),
-              lastActivity: enrollment.enrolled_at || undefined,
-              modules: moduleProgress
+            moduleProgress.push({
+              id: module.id,
+              title: module.title,
+              totalLessons: moduleTotalLessons,
+              completedLessons: moduleCompletedLessons,
+              progress: moduleTotalLessons > 0
+                ? Math.round((moduleCompletedLessons / moduleTotalLessons) * 100)
+                : 0
             })
           }
-        }
 
-        setCoursesProgress(progressData)
+          const courseProgressPercentage = totalCourseLessons > 0
+            ? Math.round((totalCompletedLessons / totalCourseLessons) * 100)
+            : 0
+
+          progressData.push({
+            course: enrollment.course,
+            enrollment,
+            totalLessons: totalCourseLessons,
+            completedLessons: totalCompletedLessons,
+            progress: courseProgressPercentage,
+            hoursCompleted: Math.round((enrollment.course.duration_hours || 0) * courseProgressPercentage / 100),
+            lastActivity: enrollment.enrolled_at || undefined,
+            modules: moduleProgress
+          })
+        }
       }
 
-      // Fetch weekly progress
-      const { data: weeklyData } = await supabase
-        .from('lesson_progress')
-        .select('completed_at')
-        .eq('user_id', user.id)
-        .eq('is_completed', true)
-        .gte('completed_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      setCoursesProgress(progressData)
 
+      // Process weekly progress
       if (weeklyData) {
         const progressByDay: { [key: string]: number } = {}
         const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -208,9 +167,9 @@ export default function ProgressPage() {
         })
 
         // Count lessons per day
-        weeklyData.forEach((progress: any) => {
-          if (progress.completed_at) {
-            const date = new Date(progress.completed_at)
+        weeklyData.forEach((progressItem: any) => {
+          if (progressItem.completed_at) {
+            const date = new Date(progressItem.completed_at)
             const dayName = days[date.getDay()]
             progressByDay[dayName]++
           }

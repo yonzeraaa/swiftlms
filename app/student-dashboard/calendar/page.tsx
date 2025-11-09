@@ -8,9 +8,9 @@ import Spinner from '../../components/ui/Spinner'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
+import { getCalendarData } from '@/lib/actions/browse-enroll'
 
 type Test = Database['public']['Tables']['tests']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -45,7 +45,6 @@ export default function CalendarPage() {
   const [filter, setFilter] = useState<'all' | 'test' | 'lesson' | 'deadline' | 'live_class'>('all')
   const [enrolledCourses, setEnrolledCourses] = useState<Array<Course & { enrollment: Enrollment }>>([])
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     fetchCalendarData()
@@ -53,35 +52,20 @@ export default function CalendarPage() {
 
   const fetchCalendarData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const data = await getCalendarData()
+
+      if (!data) {
         router.push('/')
         return
       }
 
-      // Fetch enrolled courses
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses(*)
-        `)
-        .eq('user_id', user.id)
-        .eq('status', 'active')
+      const { enrollments, tests } = data
 
       if (enrollments) {
         const coursesWithEnrollment = enrollments
           .filter((e: any) => e.course)
           .map((e: any) => ({ ...e.course, enrollment: e } as Course & { enrollment: Enrollment }))
         setEnrolledCourses(coursesWithEnrollment)
-
-        // Fetch tests for enrolled courses
-        const courseIds = coursesWithEnrollment.map((c: any) => c.id)
-        const { data: tests } = await supabase
-          .from('tests')
-          .select('*')
-          .in('course_id', courseIds)
-          .eq('is_published', true)
 
         const calendarEvents: CalendarEvent[] = []
 

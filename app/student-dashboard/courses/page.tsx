@@ -8,11 +8,11 @@ import Spinner from '../../components/ui/Spinner'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { StaggerTransition, StaggerItem, FadeTransition } from '../../components/ui/PageTransition'
+import { getBrowsableCourses, getCoursePreview } from '@/lib/actions/browse-enroll'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -40,14 +40,13 @@ export default function ExploreCourses() {
   const [showDetailsModal, setShowDetailsModal] = useState(false)
   const [showFiltersModal, setShowFiltersModal] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  
+
   // Advanced filters
   const [minRating, setMinRating] = useState<number>(0)
   const [maxDuration, setMaxDuration] = useState<number>(100)
   const [instructor, setInstructor] = useState<string>('all')
-  
+
   const router = useRouter()
-  const supabase = createClient()
 
   const categories = [
     { value: 'all', label: 'Todas as Categorias' },
@@ -74,51 +73,20 @@ export default function ExploreCourses() {
 
   const fetchCourses = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const data = await getBrowsableCourses()
+
+      if (!data || !('courses' in data)) {
         router.push('/')
         return
       }
 
-      // Fetch published courses
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('is_published', true)
-
-      if (coursesError) throw coursesError
-
-      // Fetch instructors
-      const instructorIds = [...new Set(coursesData?.map((c: any) => c.instructor_id).filter((id: any): id is string => id !== null) || [])]
-      const { data: instructors } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', instructorIds)
-
-      // Fetch all enrollments for counting
-      const { data: allEnrollments } = await supabase
-        .from('enrollments')
-        .select('course_id, status')
-        .in('status', ['active', 'completed'])
-
-      // Fetch user's enrollments
-      const { data: userEnrollments } = await supabase
-        .from('enrollments')
-        .select('*')
-        .eq('user_id', user.id)
-
-      // Fetch course ratings
-      const { data: reviews } = await supabase
-        .from('course_reviews')
-        .select('course_id, rating')
-
       // Process courses with additional data
-      const coursesWithDetails: CourseWithDetails[] = (coursesData || []).map((course: any) => {
-        const instructor = instructors?.find((i: any) => i.id === course.instructor_id)
-        const courseEnrollments = allEnrollments?.filter((e: any) => e.course_id === course.id) || []
-        const courseReviews = reviews?.filter((r: any) => r.course_id === course.id) || []
-        const userEnrollment = userEnrollments?.find((e: any) => e.course_id === course.id)
-        
+      const coursesWithDetails: CourseWithDetails[] = (data.courses || []).map((course: any) => {
+        const instructor = data.instructors?.find((i: any) => i.id === course.instructor_id)
+        const courseEnrollments = data.allEnrollments?.filter((e: any) => e.course_id === course.id) || []
+        const courseReviews = data.reviews?.filter((r: any) => r.course_id === course.id) || []
+        const userEnrollment = data.userEnrollments?.find((e: any) => e.course_id === course.id)
+
         const averageRating = courseReviews.length > 0
           ? courseReviews.reduce((sum: any, r: any) => sum + r.rating, 0) / courseReviews.length
           : 0
@@ -197,46 +165,8 @@ export default function ExploreCourses() {
     setLoadingPreview(true)
 
     try {
-      // Buscar módulos do curso com aulas marcadas como preview
-      const { data: modules } = await supabase
-        .from('course_modules')
-        .select(`
-          *,
-          module_subjects!inner(
-            *,
-            subjects(
-              *,
-              subject_lessons(
-                *,
-                lessons!inner(
-                  *
-                )
-              )
-            )
-          )
-        `)
-        .eq('course_id', course.id)
-        .order('order_index')
-
-      // Filtrar apenas aulas marcadas como preview
-      if (modules) {
-        const modulesWithPreview = modules.map((module: any) => ({
-          ...module,
-          module_subjects: module.module_subjects?.map((ms: any) => ({
-            ...ms,
-            subjects: {
-              ...ms.subjects,
-              subject_lessons: ms.subjects?.subject_lessons?.filter((sl: any) => 
-                sl.lessons?.is_preview === true
-              ) || []
-            }
-          })).filter((ms: any) => ms.subjects?.subject_lessons?.length > 0)
-        })).filter((m: any) => m.module_subjects?.length > 0)
-
-        setPreviewModules(modulesWithPreview)
-      } else {
-        setPreviewModules([])
-      }
+      const modules = await getCoursePreview(course.id)
+      setPreviewModules(modules || [])
     } catch (error) {
       console.error('Erro ao carregar preview:', error)
       setPreviewModules([])
