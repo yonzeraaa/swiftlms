@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import DocumentViewer from './DocumentViewer'
 import TestAnswerPanel from './TestAnswerPanel'
 import { Tables } from '@/lib/database.types'
-import { createClient } from '@/lib/supabase/client'
+import { getTestAnswerKey } from '@/lib/actions/test-viewer'
 import { Clock, AlertCircle, FileText, Settings } from 'lucide-react'
 import Card from './Card'
 import Button from './Button'
@@ -94,8 +94,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
   const [loadingQuestions, setLoadingQuestions] = useState(false)
   const [showQuestionConfig, setShowQuestionConfig] = useState(false)
   const [manualQuestionCount, setManualQuestionCount] = useState('10')
-  
-  const supabase = createClient()
+
   const { t } = useTranslation()
 
   const loadAnswerKeyMetadata = useCallback(async () => {
@@ -111,14 +110,10 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
         console.warn('Falha ao sincronizar gabarito antes da leitura', syncError)
       }
 
-      const { data, error } = await supabase
-        .from('test_answer_keys')
-        .select('question_number, correct_answer')
-        .eq('test_id', test.id)
-        .order('question_number', { ascending: false })
+      const result = await getTestAnswerKey(test.id)
 
-      if (data && data.length > 0 && !error) {
-        const typedData = data as AnswerKeyRow[]
+      if (result.success && result.data && result.data.length > 0) {
+        const typedData = result.data as AnswerKeyRow[]
 
         const maxQuestionNumber = typedData.reduce((max: number, row: AnswerKeyRow) => {
           const questionNumber = row.question_number || 0
@@ -149,7 +144,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
     } finally {
       setLoadingQuestions(false)
     }
-  }, [supabase, test.id])
+  }, [test.id])
 
   const handleSetQuestionCount = () => {
     const count = parseInt(manualQuestionCount)
@@ -199,29 +194,18 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
     return () => clearInterval(timer)
   }, [timeRemaining])
 
+  // Poll for answer key changes every 30 seconds (replaces realtime subscription)
   useEffect(() => {
     if (!test.id) return
 
-    const channel = supabase
-      .channel(`test-answer-key-${test.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'test_answer_keys',
-          filter: `test_id=eq.${test.id}`
-        },
-        () => {
-          loadAnswerKeyMetadata()
-        }
-      )
-      .subscribe()
+    const interval = setInterval(() => {
+      loadAnswerKeyMetadata()
+    }, 30000) // Poll every 30 seconds
 
     return () => {
-      supabase.removeChannel(channel)
+      clearInterval(interval)
     }
-  }, [supabase, test.id, loadAnswerKeyMetadata])
+  }, [test.id, loadAnswerKeyMetadata])
 
   useEffect(() => {
     if (typeof window === 'undefined') return

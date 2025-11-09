@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { X, Mail, Send, Check, AlertCircle } from 'lucide-react'
 import { useTranslation } from '../contexts/LanguageContext'
 import Button from './Button'
-import { createClient } from '@/lib/supabase/client'
+import { sendPasswordResetEmail } from '@/lib/actions/forgot-password'
 
 interface ForgotPasswordModalProps {
   isOpen: boolean
@@ -17,7 +17,6 @@ export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordM
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClient()
 
   if (!isOpen) return null
 
@@ -44,30 +43,15 @@ export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordM
     }
 
     try {
-      // Verificar se o usuário existe na base de dados
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', email.toLowerCase().trim())
-        .single()
+      const result = await sendPasswordResetEmail(email)
 
-      if (profileError || !profileData) {
-        setError(t('forgotPassword.emailNotFound'))
-        setIsLoading(false)
-        return
-      }
-
-      // Se o usuário existe, enviar email de recuperação
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        email.toLowerCase().trim(),
-        {
-          redirectTo: `${window.location.origin}/reset-password`,
+      if (!result.success) {
+        // Check if error is about user not found
+        if (result.error?.includes('não encontrado') || result.error?.includes('not found')) {
+          setError(t('forgotPassword.emailNotFound'))
+        } else {
+          setError(result.error || t('forgotPassword.sendError'))
         }
-      )
-
-      if (resetError) {
-        console.error('Erro ao enviar email de recuperação:', resetError)
-        setError(t('forgotPassword.sendError'))
         setIsLoading(false)
         return
       }
@@ -75,7 +59,7 @@ export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordM
       // Sucesso
       setStatus('success')
       setIsLoading(false)
-      
+
       // Fechar modal após 3 segundos
       setTimeout(() => {
         onClose()
