@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { X, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Info, FileText, Settings, AlertTriangle, RotateCw } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
 import Card from '../../../components/Card'
@@ -10,6 +9,7 @@ import { createSuggestedMapping, validateMapping, type TemplateAnalysis, type Su
 import { extractArrayMapping, extractStaticMappings, buildMetadata } from '@/lib/template-utils'
 import MappingEditor from './MappingEditor'
 import { TEMPLATE_CATEGORIES } from '../constants'
+import { deleteTemplateFile, uploadTemplateFile, updateTemplate, createTemplate } from '@/lib/actions/template-upload'
 
 interface ExcelTemplate {
   id: string
@@ -56,7 +56,6 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   const [selectedSheet, setSelectedSheet] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const supabase = createClient()
   const isEditMode = !!template
 
   // Cleanup ao desmontar componente
@@ -344,27 +343,25 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
             .toLowerCase()
           const fileName = `${category}/${uniqueId}_${sanitizedFileName}`
 
-          // Deletar arquivo antigo
+          // Deletar arquivo antigo usando server action
           if (template.storage_path) {
-            await supabase.storage
-              .from('excel-templates')
-              .remove([template.storage_path])
+            const deleteResult = await deleteTemplateFile(template.storage_path)
+            if (!deleteResult.success) {
+              throw new Error(deleteResult.error || 'Erro ao deletar arquivo antigo')
+            }
           }
 
-          // Upload novo arquivo
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('excel-templates')
-            .upload(fileName, file, {
-              cacheControl: '3600',
-              upsert: false,
-            })
+          // Upload novo arquivo usando server action
+          const uploadResult = await uploadTemplateFile(file, fileName)
 
-          if (uploadError) throw uploadError
+          if (!uploadResult.success || !uploadResult.data) {
+            throw new Error(uploadResult.error || 'Erro ao fazer upload do arquivo')
+          }
 
           setUploadProgress(60)
 
           // Atualizar com novo caminho
-          template.storage_path = uploadData.path
+          template.storage_path = uploadResult.data.path
         }
 
         // Construir metadata atualizado
@@ -378,7 +375,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
 
         setUploadProgress(80)
 
-        // Atualizar banco de dados
+        // Atualizar banco de dados usando server action
         const updateData: any = {
           name,
           description: description || null,
@@ -395,12 +392,11 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           updateData.metadata = metadata
         }
 
-        const { error: dbError } = await supabase
-          .from('excel_templates')
-          .update(updateData)
-          .eq('id', template.id)
+        const updateResult = await updateTemplate(template.id, updateData)
 
-        if (dbError) throw dbError
+        if (!updateResult.success) {
+          throw new Error(updateResult.error || 'Erro ao atualizar template')
+        }
 
         setUploadProgress(100)
         setUploadStatus('success')
@@ -431,20 +427,17 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         .toLowerCase()
       const fileName = `${category}/${uniqueId}_${sanitizedFileName}`
 
-      // Upload para Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('excel-templates')
-        .upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false,
-        })
+      // Upload para Supabase Storage usando server action
+      const uploadResult = await uploadTemplateFile(file, fileName)
 
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current)
         progressIntervalRef.current = null
       }
 
-      if (uploadError) throw uploadError
+      if (!uploadResult.success || !uploadResult.data) {
+        throw new Error(uploadResult.error || 'Erro ao fazer upload do arquivo')
+      }
 
       setUploadProgress(95)
 
@@ -473,21 +466,23 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         }
       }
 
-      // Salvar metadata no banco de dados
+      // Salvar metadata no banco de dados usando server action
       if (!user) throw new Error('Usuário não autenticado')
 
-      const { error: dbError } = await supabase.from('excel_templates').insert({
+      const createResult = await createTemplate({
         name,
         description: description || null,
         category,
-        storage_path: uploadData.path,
+        storage_path: uploadResult.data.path,
         storage_bucket: 'excel-templates',
         created_by: user.id,
         is_active: true,
         metadata: metadata
       })
 
-      if (dbError) throw dbError
+      if (!createResult.success) {
+        throw new Error(createResult.error || 'Erro ao criar template')
+      }
 
       setUploadProgress(100)
       setUploadStatus('success')

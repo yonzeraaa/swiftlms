@@ -13,7 +13,6 @@ import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import DataTable, { Column } from '../../components/reports/DataTable'
 import StatusBadge from '../../components/reports/StatusBadge'
 import SkeletonLoader from '../../components/reports/SkeletonLoader'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { ExcelExporter, exportReportToExcel, PivotTableConfig, CellFormatting } from '@/lib/excel-export'
@@ -24,6 +23,14 @@ import { fetchGradesData } from '@/lib/excel-template-mappers/grades-mapper'
 import { fetchEnrollmentsData } from '@/lib/excel-template-mappers/enrollments-mapper'
 import { fetchAccessData } from '@/lib/excel-template-mappers/access-mapper'
 import { getReportData, getReportTemplates, getStudentsForReport, getStudentCourses } from '@/lib/actions/admin-reports'
+import {
+  getGradesReportData,
+  getGradesHistoryReportData,
+  getEnrollmentReportData,
+  getAccessReportData,
+  getUsersReportData,
+  getStudentHistoryReportData
+} from '@/lib/actions/reports-data'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -161,33 +168,15 @@ export default function ReportsPage() {
 
   // Função auxiliar para processar e exportar dados de notas
   const processAndExportGrades = async (testAttempts: any[]) => {
-    const supabase = createClient()
-    // Buscar TODOS os testes ativos do sistema
-    const { data: allTests } = await supabase
-      .from('tests')
-      .select('*')
-      .eq('is_active', true)
-    
-    // Buscar todos os alunos
-    const { data: allStudents } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('role', 'student')
-      .eq('status', 'active')
-    
-    // Buscar dados dos cursos e disciplinas
-    const courseIds = [...new Set(allTests?.map((t: any) => t.course_id).filter((id: any): id is string => Boolean(id)) || [])]
-    const subjectIds = [...new Set(allTests?.map((t: any) => t.subject_id).filter((id: any): id is string => Boolean(id)) || [])]
-    
-    const { data: courses } = courseIds.length > 0 ? await supabase
-      .from('courses')
-      .select('id, title')
-      .in('id', courseIds) : { data: [] }
-    
-    const { data: subjects } = subjectIds.length > 0 ? await supabase
-      .from('subjects')
-      .select('id, name')
-      .in('id', subjectIds) : { data: [] }
+    // Buscar dados usando server action
+    const result = await getGradesReportData()
+
+    if (!result.success || !result.data) {
+      alert('Erro ao buscar dados de notas')
+      return
+    }
+
+    const { tests: allTests, students: allStudents, courses, subjects } = result.data
     
     // Mapear cursos e disciplinas por ID
     const courseMap = new Map<string, string>()
@@ -438,76 +427,30 @@ export default function ReportsPage() {
 
   const generateGradesHistoryReport = async () => {
     setGeneratingReport('grades')
-    const supabase = createClient()
 
     try {
       console.log('Buscando test_attempts...')
 
-      // Buscar test_attempts - usando campos corretos (submitted_at ou started_at)
-      const { data: testAttempts, error: resultsError } = await supabase
-        .from('test_attempts')
-        .select(`
-          *,
-          test:tests!inner(
-            title,
-            course_id,
-            subject_id
-          ),
-          user:profiles!test_attempts_user_id_fkey(
-            full_name,
-            email
-          )
-        `)
-        .or(`submitted_at.not.is.null,started_at.not.is.null`)  // Pelo menos uma data deve existir
-        .order('submitted_at', { ascending: false, nullsFirst: false })
-        .limit(100) // Limitar a 100 registros mais recentes
-      
-      console.log('Test attempts encontrados:', testAttempts?.length || 0)
-      
-      if (resultsError) {
-        console.error('Erro ao buscar resultados de testes:', resultsError)
-        alert('Erro ao buscar dados de notas: ' + resultsError.message)
+      // Buscar test_attempts usando server action
+      const result = await getGradesHistoryReportData(dateRange)
+
+      if (!result.success) {
+        console.error('Erro ao buscar resultados de testes:', result.error)
+        alert('Erro ao buscar dados de notas: ' + result.error)
         setGeneratingReport(null)
         return
       }
-      
-      if (!testAttempts || testAttempts.length === 0) {
-        // Se não encontrou com filtro, tentar sem filtro algum
-        console.log('Tentando buscar sem filtros...')
-        const { data: allTestAttempts, error: allError } = await supabase
-          .from('test_attempts')
-          .select(`
-            *,
-            test:tests!inner(
-              title,
-              course_id,
-              subject_id
-            ),
-            user:profiles!test_attempts_user_id_fkey(
-              full_name,
-              email
-            )
-          `)
-          .limit(100)
-        
-        if (allError) {
-          console.error('Erro ao buscar todos os test_attempts:', allError)
-          alert('Erro ao buscar dados: ' + allError.message)
-          setGeneratingReport(null)
-          return
-        }
-        
-        if (!allTestAttempts || allTestAttempts.length === 0) {
-          alert('Nenhum resultado de teste encontrado no banco de dados')
-          setGeneratingReport(null)
-          return
-        }
-        
-        console.log('Usando todos os test_attempts encontrados:', allTestAttempts.length)
-        await processAndExportGrades(allTestAttempts)
+
+      const testAttempts = result.data || []
+
+      console.log('Test attempts encontrados:', testAttempts.length)
+
+      if (testAttempts.length === 0) {
+        alert('Nenhum resultado de teste encontrado no banco de dados')
+        setGeneratingReport(null)
         return
       }
-      
+
       // Chamar função auxiliar para processar e exportar
       await processAndExportGrades(testAttempts)
     } catch (error) {
@@ -612,53 +555,19 @@ export default function ReportsPage() {
 
   const generateEnrollmentAndCompletionReport = async () => {
     setGeneratingReport('enrollments')
-    const supabase = createClient()
 
     try {
-      // Buscar matrículas reais do período
-      const { data: enrollments, error: enrollError } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses!inner(title),
-          user:profiles!enrollments_user_id_fkey(full_name, email)
-        `)
-        .gte('enrolled_at', dateRange.start)
-        .lte('enrolled_at', dateRange.end)
-        .order('enrolled_at', { ascending: false })
-      
-      // Buscar progresso das lições
-      const enrollmentIds = enrollments?.map((e: any) => e.id) || []
-      const { data: lessonProgress } = await supabase
-        .from('lesson_progress')
-        .select('*')
-        .in('enrollment_id', enrollmentIds)
-      
-      if (enrollError) {
-        console.error('Erro ao buscar matrículas:', enrollError)
+      // Buscar dados usando server action
+      const result = await getEnrollmentReportData(dateRange)
+
+      if (!result.success || !result.data) {
+        console.error('Erro ao buscar matrículas:', result.error)
         alert('Erro ao buscar dados de matrículas')
         setGeneratingReport(null)
         return
       }
-      
-      // Buscar conclusões do período
-      const { data: completedEnrollments, error: completedError } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses!inner(title),
-          user:profiles!enrollments_user_id_fkey(full_name, email),
-          certificates(*)
-        `)
-        .eq('status', 'completed')
-        .not('completed_at', 'is', null)
-        .gte('completed_at', dateRange.start)
-        .lte('completed_at', dateRange.end)
-        .order('completed_at', { ascending: false })
-      
-      if (completedError) {
-        console.error('Erro ao buscar conclusões:', completedError)
-      }
+
+      const { enrollments, lessonProgress, completedEnrollments } = result.data
       
       // Processar dados de matrículas
       const enrollmentData = (enrollments || []).map((e: any) => {
@@ -900,45 +809,21 @@ export default function ReportsPage() {
 
   const generateAccessReport = async () => {
     setGeneratingReport('access')
-    const supabase = createClient()
 
     try {
       console.log('Gerando relatório de acesso com dados reais...')
 
-      // Buscar todos os profiles de estudantes
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', 'student')
-        .order('full_name')
-      
-      if (profilesError) {
-        console.error('Erro ao buscar profiles:', profilesError)
+      // Buscar dados usando server action
+      const result = await getAccessReportData()
+
+      if (!result.success || !result.data) {
+        console.error('Erro ao buscar dados de acesso:', result.error)
+        alert('Erro ao buscar dados de acesso')
+        setGeneratingReport(null)
+        return
       }
-      
-      // Buscar todas as matrículas ativas
-      const { data: enrollments, error: enrollmentsError } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses(title),
-          user:profiles(full_name, email)
-        `)
-        .in('status', ['active', 'completed'])
-      
-      if (enrollmentsError) {
-        console.error('Erro ao buscar enrollments:', enrollmentsError)
-      }
-      
-      // Buscar progresso das lições
-      const { data: lessonProgress, error: progressError } = await supabase
-        .from('lesson_progress')
-        .select('*')
-        .order('last_accessed_at', { ascending: false })
-      
-      if (progressError) {
-        console.error('Erro ao buscar lesson_progress:', progressError)
-      }
+
+      const { students: profiles, enrollments, lessonProgress, courses } = result.data
       
       // Processar dados dos estudantes
       const studentAccessData = []
@@ -1030,11 +915,7 @@ export default function ReportsPage() {
       
       // Engajamento por curso
       const courseEngagement = []
-      const { data: courses } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('status', 'published')
-      
+
       if (courses && courses.length > 0) {
         for (let c = 0; c < courses.length; c++) {
           const course = courses[c]
@@ -1435,28 +1316,19 @@ export default function ReportsPage() {
   // Relatório de Usuários (Modelo IPETEC/UCP)
   const generateUsersReport = async () => {
     setGeneratingReport('users')
-    const supabase = createClient()
 
     try {
-      // Buscar todos os usuários com suas matrículas e progresso
-      const { data: users, error: usersError } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          enrollments(
-            *,
-            course:courses(title, slug),
-            lesson_progress(*)
-          )
-        `)
-        .order('full_name', { ascending: true })
+      // Buscar dados usando server action
+      const result = await getUsersReportData()
 
-      if (usersError) {
-        console.error('Erro ao buscar usuários:', usersError)
+      if (!result.success) {
+        console.error('Erro ao buscar usuários:', result.error)
         alert('Erro ao buscar dados de usuários')
         setGeneratingReport(null)
         return
       }
+
+      const users = result.data
 
       // Processar dados dos usuários
       const usersData = users?.flatMap((user: any) => {
@@ -1578,7 +1450,6 @@ export default function ReportsPage() {
   // Histórico do Aluno (Modelo IPETEC/UCP)
   const generateStudentHistoryReport = async (userId: string, userName: string, courseId?: string) => {
     setGeneratingReport('student-history')
-    const supabase = createClient()
 
     try {
       // Validação inicial
@@ -1606,50 +1477,17 @@ export default function ReportsPage() {
         return
       }
 
-      // Fallback: gerar sem template (método antigo)
-      let enrollmentQuery = supabase
-        .from('enrollments')
-        .select(`
-          *,
-          course:courses(
-            *,
-            course_modules(
-              *,
-              lessons(*)
-            )
-          ),
-          user:profiles(full_name, email)
-        `)
-        .eq('user_id', userId)
+      // Fallback: gerar sem template usando server action
+      const result = await getStudentHistoryReportData(userId, courseId)
 
-      // Se courseId for fornecido, filtrar por ele
-      if (courseId) {
-        enrollmentQuery = enrollmentQuery.eq('course_id', courseId)
-      }
-
-      const { data: enrollment, error: enrollmentError } = await enrollmentQuery
-        .order('enrolled_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (enrollmentError) {
-        console.error('Erro ao buscar enrollment:', enrollmentError)
-        alert(`Erro ao buscar histórico do aluno: ${enrollmentError.message}`)
+      if (!result.success || !result.data) {
+        console.error('Erro ao buscar histórico:', result.error)
+        alert(`Erro ao buscar histórico do aluno: ${result.error}`)
         setGeneratingReport(null)
         return
       }
 
-      if (!enrollment) {
-        alert('Nenhuma matrícula encontrada para este aluno')
-        setGeneratingReport(null)
-        return
-      }
-
-      // Buscar progresso das lições separadamente
-      const { data: lessonProgressData } = await supabase
-        .from('lesson_progress')
-        .select('*')
-        .eq('user_id', userId)
+      const { enrollment, lessonProgress: lessonProgressData, testAttempts, subjects } = result.data
 
       // Criar mapa de progresso por lesson_id
       const progressByLessonId = new Map<string, any>()
@@ -1658,18 +1496,6 @@ export default function ReportsPage() {
           progressByLessonId.set(progress.lesson_id, progress)
         }
       })
-
-      const { data: testAttempts } = await supabase
-        .from('test_attempts')
-        .select(`
-          score,
-          test:tests(
-            id,
-            subject_id,
-            subjects(name)
-          )
-        `)
-        .eq('user_id', userId)
 
       // Criar mapa de melhor nota por subject
       const bestScoreBySubject = new Map<string, number>()
@@ -1682,11 +1508,6 @@ export default function ReportsPage() {
           }
         }
       })
-
-      // Buscar todos os subjects para fazer matching com lessons
-      const { data: subjects } = await supabase
-        .from('subjects')
-        .select('id, name')
 
       // Criar mapa de subject_id por código (extrair código antes do hífen)
       const subjectByCode = new Map<string, any>()
