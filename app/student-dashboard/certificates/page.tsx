@@ -8,11 +8,11 @@ import Spinner from '../../components/ui/Spinner'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { generateCertificatePDF } from '@/app/lib/certificate-pdf'
+import { getUserCertificatesData } from '@/lib/actions/certificates'
 
 type Certificate = Database['public']['Tables']['certificates']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -66,7 +66,6 @@ export default function CertificatesPage() {
   const [activeTab, setActiveTab] = useState<'approved' | 'pending'>('approved')
   const certificateRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     fetchCertificates()
@@ -74,44 +73,9 @@ export default function CertificatesPage() {
 
   const fetchCertificates = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/')
-        return
-      }
-
-      // Fetch approved certificates with course details
-      const { data: certificatesData, error } = await supabase
-        .from('certificates')
-        .select(`
-          *,
-          course:courses(*),
-          user:profiles!certificates_user_id_fkey(*)
-        `)
-        .eq('user_id', user.id)
-        .eq('approval_status', 'approved')
-        .order('issued_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching certificates:', error)
-      } else if (certificatesData) {
-        setCertificates(certificatesData as any as CertificateWithDetails[])
-      }
-
-      // Fetch pending certificate requests
-      const { data: requestsData } = await supabase
-        .from('certificate_requests')
-        .select(`
-          *,
-          course:courses(*)
-        `)
-        .eq('user_id', user.id)
-        .in('status', ['pending', 'rejected'])
-        .order('request_date', { ascending: false })
-
-      if (requestsData) {
-        setCertificateRequests(requestsData as any as CertificateRequest[])
-      }
+      const data = await getUserCertificatesData()
+      setCertificates(data.certificates)
+      setCertificateRequests(data.requests)
     } catch (error) {
       console.error('Error fetching certificates:', error)
     } finally {
