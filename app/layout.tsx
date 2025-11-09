@@ -41,6 +41,7 @@ import { ToastProvider } from './components/Toast'
 import PremiumToastProvider from './components/ui/ToastProvider'
 import { AuthProvider } from './providers/AuthProvider'
 import PerfMetrics from './components/PerfMetrics'
+import InactivityLogout from './components/InactivityLogout'
 
 export default function RootLayout({
   children,
@@ -61,6 +62,7 @@ export default function RootLayout({
             <LanguageProvider>
               <ToastProvider>
                 <PremiumToastProvider />
+                <InactivityLogout />
                 <main id="main-content">
                   {children}
                 </main>
