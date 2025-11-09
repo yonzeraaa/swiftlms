@@ -50,10 +50,21 @@ export async function getAdminDashboardData() {
       .limit(50)
 
     // Calculate statistics
+    const totalStudents = profiles?.filter((p: any) => p.role === 'student').length || 0
+    const totalInstructors = profiles?.filter((p: any) => p.role === 'instructor').length || 0
+    const publishedCourses = courses?.filter((c: any) => c.is_published).length || 0
+    const completedEnrollments = enrollments?.filter((e: any) => e.status === 'completed').length || 0
+    const totalEnrollments = enrollments?.length || 0
+    const completionRate = totalEnrollments > 0 ? Math.round((completedEnrollments / totalEnrollments) * 100) : 0
+
     const stats = {
-      totalUsers: profiles?.length || 0,
+      totalStudents,
+      totalInstructors,
       totalCourses: courses?.length || 0,
-      totalEnrollments: enrollments?.length || 0,
+      publishedCourses,
+      totalEnrollments,
+      completedEnrollments,
+      completionRate,
       activeUsers: profiles?.filter((p: any) => p.status === 'active').length || 0
     }
 

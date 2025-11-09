@@ -6,11 +6,19 @@ import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
-import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
 import { useAuth } from '../../providers/AuthProvider'
 import DriveImportModal from '../../components/DriveImportModal'
+import {
+  getCoursesData,
+  getEnrolledStudents,
+  createCourse as createCourseAction,
+  updateCourse as updateCourseAction,
+  deleteCourse as deleteCourseAction,
+  toggleCoursePublishStatus,
+  unenrollStudent as unenrollStudentAction
+} from '@/lib/actions/admin-courses'
 
 interface Course {
   id: string
@@ -85,7 +93,6 @@ export default function CoursesPage() {
   // Usar o contexto global de autenticação
   const { session, user, isLoading: authLoading, refreshSession } = useAuth()
   const isAuthenticated = !!session
-  const supabase = createClient()
   const { t } = useTranslation()
   
   const [newCourseForm, setNewCourseForm] = useState<NewCourseForm>({
@@ -125,64 +132,11 @@ export default function CoursesPage() {
   })
 
   useEffect(() => {
-    // Check auth status on mount and set up listener
-    const initializeAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      console.log('[COURSES_PAGE] Initial auth check:', {
-        hasSession: !!session,
-        userId: session?.user?.id,
-        url: window.location.href
-      })
-      
-      if (!session) {
-        console.warn('[COURSES_PAGE] No session on mount, checking stored auth...')
-        
-        // Check for stored session in localStorage
-        const keys = Object.keys(localStorage).filter(key => key.startsWith('sb-'))
-        console.log('[COURSES_PAGE] Found Supabase keys in localStorage:', keys.length)
-        
-        // If we have stored auth, try to restore it
-        if (keys.length > 0) {
-          const newClient = createClient(true) // Force new client
-          const { data: { session: restoredSession } } = await newClient.auth.getSession()
-          
-          if (restoredSession) {
-            console.log('[COURSES_PAGE] Session restored from localStorage')
-          } else {
-            console.error('[COURSES_PAGE] Could not restore session')
-          }
-        }
-      }
-      
-      // Fetch data regardless (let individual functions handle auth)
+    // Fetch data when authenticated (using useAuth provider)
+    if (session && !authLoading) {
       fetchCourses()
-      fetchInstructors()
     }
-    
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
-      console.log('[COURSES_PAGE] Auth state changed:', event, { hasSession: !!session })
-      
-      if (event === 'SIGNED_OUT') {
-        // User signed out, redirect to login
-        window.location.href = '/'
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log('[COURSES_PAGE] Token refreshed successfully')
-      } else if (event === 'SIGNED_IN' && session) {
-        console.log('[COURSES_PAGE] User signed in, refreshing data')
-        // Refresh data when user signs in
-        fetchCourses()
-        fetchInstructors()
-      }
-    })
-    
-    initializeAuth()
-    
-    // Cleanup subscription on unmount
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
+  }, [session, authLoading])
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -196,58 +150,18 @@ export default function CoursesPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [openDropdown])
 
-  const fetchInstructors = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .eq('role', 'instructor')
-        .order('full_name')
-        
-      if (error) throw error
-      setInstructors(data || [])
-    } catch (error) {
-      console.error('Error fetching instructors:', error)
-    }
-  }
-  
   const fetchCourses = async () => {
     try {
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select(`
-          *,
-          instructor:profiles!courses_instructor_id_fkey(full_name, email)
-        `)
-        .order('created_at', { ascending: false })
+      const result = await getCoursesData()
 
-      if (coursesError) throw coursesError
+      if (!result) {
+        throw new Error('Failed to fetch courses')
+      }
 
-      // Fetch enrollment counts separately
-      const courseIds = coursesData?.map((course: any) => course.id) || []
-      const { data: enrollmentData, error: enrollmentError } = await supabase
-        .from('enrollments')
-        .select('course_id, status')
-        .in('course_id', courseIds)
-        .in('status', ['active', 'completed'])
-
-      if (enrollmentError) throw enrollmentError
-
-      // Count enrollments per course
-      const enrollmentCounts = enrollmentData?.reduce((acc: any, enrollment: any) => {
-        acc[enrollment.course_id] = (acc[enrollment.course_id] || 0) + 1
-        return acc
-      }, {} as Record<string, number>) || {}
-
-      // Transform data to include enrollment count
-      const transformedData = coursesData?.map((course: any) => ({
-        ...course,
-        _count: {
-          enrollments: enrollmentCounts[course.id] || 0
-        }
-      })) || []
+      const transformedData = result.courses || []
 
       setCourses(transformedData)
+      setInstructors(result.instructors || [])
     } catch (error) {
       console.error('Error fetching courses:', error)
     } finally {
@@ -258,24 +172,14 @@ export default function CoursesPage() {
   const createCourse = async () => {
     setCreating(true)
     setError(null)
-    
+
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not authenticated')
-      
-      const { data, error } = await supabase
-        .from('courses')
-        .insert({
-          ...newCourseForm,
-          instructor_id: user.id,
-          is_published: false,
-          slug: newCourseForm.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-        })
-        .select()
-        
-      if (error) throw error
-      
+      const result = await createCourseAction(newCourseForm)
+
+      if (!result.success) {
+        throw new Error(result.error || t('courses.createError'))
+      }
+
       // Reset form and close modal
       setNewCourseForm({
         title: '',
@@ -288,7 +192,7 @@ export default function CoursesPage() {
         is_featured: false
       })
       setShowNewCourseModal(false)
-      
+
       // Refresh courses
       fetchCourses()
     } catch (error: any) {
@@ -302,15 +206,14 @@ export default function CoursesPage() {
     if (!selectedCourse) return
     setUpdating(true)
     setError(null)
-    
+
     try {
-      const { error } = await supabase
-        .from('courses')
-        .update(editForm)
-        .eq('id', selectedCourse.id)
-        
-      if (error) throw error
-      
+      const result = await updateCourseAction(selectedCourse.id, editForm)
+
+      if (!result.success) {
+        throw new Error(result.error || t('courses.updateError'))
+      }
+
       setShowEditModal(false)
       setSelectedCourse(null)
       fetchCourses()
@@ -325,15 +228,14 @@ export default function CoursesPage() {
     if (!selectedCourse) return
     setUpdating(true)
     setError(null)
-    
+
     try {
-      const { error } = await supabase
-        .from('courses')
-        .delete()
-        .eq('id', selectedCourse.id)
-        
-      if (error) throw error
-      
+      const result = await deleteCourseAction(selectedCourse.id)
+
+      if (!result.success) {
+        throw new Error(result.error || t('courses.deleteError'))
+      }
+
       setShowDeleteModal(false)
       setSelectedCourse(null)
       fetchCourses()
@@ -346,16 +248,15 @@ export default function CoursesPage() {
   
   const togglePublishStatus = async (course: Course) => {
     try {
-      const { error } = await supabase
-        .from('courses')
-        .update({ is_published: !course.is_published })
-        .eq('id', course.id)
-        
-      if (error) throw error
-      
+      const result = await toggleCoursePublishStatus(course.id, course.is_published || false)
+
+      if (!result.success || result.newStatus === null) {
+        throw new Error(result.error)
+      }
+
       // Update local state
-      setCourses(courses.map(c => 
-        c.id === course.id ? { ...c, is_published: !c.is_published } : c
+      setCourses(courses.map(c =>
+        c.id === course.id ? { ...c, is_published: result.newStatus } : c
       ))
       setOpenDropdown(null)
     } catch (error) {
@@ -392,30 +293,29 @@ export default function CoursesPage() {
   
   const openManageStudentsModal = async (course: Course) => {
     console.log('[MANAGE_STUDENTS] Opening modal for course:', course.id, course.title)
-    
+
     // Verificar autenticação usando o contexto global
     if (!session) {
       console.warn('[MANAGE_STUDENTS] Não autenticado, tentando refresh...')
       await refreshSession()
-      
+
       // Aguardar um momento para o estado atualizar
       await new Promise(resolve => setTimeout(resolve, 100))
-      
-      // Verificar novamente
-      const { data: { session: currentSession } } = await supabase.auth.getSession()
-      if (!currentSession) {
+
+      // Verificar novamente usando useAuth
+      if (!session) {
         console.error('[MANAGE_STUDENTS] Falha na autenticação')
         alert('Sua sessão expirou. Por favor, faça login novamente.')
         window.location.href = '/'
         return
       }
     }
-    
+
     console.log('[MANAGE_STUDENTS] Sessão válida:', {
       userId: user?.id,
       email: user?.email
     })
-    
+
     setSelectedCourse(course)
     setShowManageStudentsModal(true)
     setOpenDropdown(null)
@@ -425,22 +325,13 @@ export default function CoursesPage() {
   const fetchEnrolledStudents = async (courseId: string) => {
     setLoadingEnrolledStudents(true)
     try {
-      const { data, error } = await supabase
-        .from('enrollments')
-        .select(`
-          *,
-          user:profiles!enrollments_user_id_fkey(
-            id,
-            full_name,
-            email
-          )
-        `)
-        .eq('course_id', courseId)
-        .in('status', ['active', 'completed', 'paused'])
-        .order('enrolled_at', { ascending: false })
-      
-      if (error) throw error
-      setEnrolledStudents(data || [])
+      const result = await getEnrolledStudents(courseId)
+
+      if (!result || !result.success) {
+        throw new Error(result?.error || 'Failed to fetch enrolled students')
+      }
+
+      setEnrolledStudents(result.students || [])
     } catch (error) {
       console.error('Error fetching enrolled students:', error)
       setEnrolledStudents([])
@@ -453,23 +344,22 @@ export default function CoursesPage() {
     if (!confirm(`Tem certeza que deseja desmatricular ${studentName} deste curso?`)) {
       return
     }
-    
+
     try {
-      const { error } = await supabase
-        .from('enrollments')
-        .delete()
-        .eq('id', enrollmentId)
-      
-      if (error) throw error
-      
+      const result = await unenrollStudentAction(enrollmentId)
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
       // Refresh enrolled students list
       if (selectedCourse) {
         await fetchEnrolledStudents(selectedCourse.id)
       }
-      
+
       // Refresh courses to update enrollment count
       await fetchCourses()
-      
+
       alert(`Aluno ${studentName} foi desmatriculado com sucesso!`)
     } catch (error: any) {
       console.error('Error unenrolling student:', error)

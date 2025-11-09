@@ -7,14 +7,9 @@ import { Users, BookOpen, GraduationCap, TrendingUp, Clock, Award, Activity, Fil
 import StatCard from '../components/StatCard'
 import Card from '../components/Card'
 import Button from '../components/Button'
-import { createClient } from '@/lib/supabase/client'
-import { Database } from '@/lib/database.types'
 import { useTranslation } from '../contexts/LanguageContext'
 import { SkeletonStatCard } from '../components/Skeleton'
-
-type Profile = Database['public']['Tables']['profiles']['Row']
-type Course = Database['public']['Tables']['courses']['Row']
-type Enrollment = Database['public']['Tables']['enrollments']['Row']
+import { getAdminDashboardData } from '@/lib/actions/admin-dashboard'
 
 interface Stats {
   totalStudents: number
@@ -58,7 +53,6 @@ export default function DashboardPage() {
   })
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([])
   const [popularCourses, setPopularCourses] = useState<PopularCourse[]>([])
-  const supabase = createClient()
 
   useEffect(() => {
     fetchDashboardData()
@@ -66,179 +60,69 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch users statistics
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('role, status, created_at')
+      const result = await getAdminDashboardData()
 
-      const students = profiles?.filter((p: any) => p.role === 'student') || []
-      const instructors = profiles?.filter((p: any) => p.role === 'instructor') || []
-      const activeUsers = profiles?.filter((p: any) => p.status === 'active') || []
+      if (!result) {
+        console.error('Error fetching dashboard data')
+        return
+      }
 
-      // Fetch courses
-      const { data: courses } = await supabase
-        .from('courses')
-        .select('*')
+      const fetchedStats = result.stats
+      const fetchedPopularCourses = result.coursePopularity
+      const fetchedActivities = result.activities
 
-      const totalCourses = courses?.length || 0
-      const publishedCourses = courses?.filter((c: any) => c.is_published === true).length || 0
+      // Transform activities to match component format
+      const activities: RecentActivity[] = fetchedActivities.map((activity: any) => {
+        const date = new Date(activity.timestamp)
+        const now = new Date()
+        const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
 
-      // Fetch enrollments with full data
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select('*')
-        .in('status', ['active', 'completed'])
+        let timeAgo = ''
+        if (diffInMinutes < 60) {
+          timeAgo = `${diffInMinutes} ${t('dashboard.minutesAgo')}`
+        } else if (diffInMinutes < 1440) {
+          timeAgo = `${Math.floor(diffInMinutes / 60)} ${t('dashboard.hoursAgo')}`
+        } else {
+          timeAgo = `${Math.floor(diffInMinutes / 1440)} ${t('dashboard.daysAgo')}`
+        }
 
-      const totalEnrollments = enrollments?.length || 0
-      const completedEnrollments = enrollments?.filter((e: any) => e.status === 'completed').length || 0
-      const completionRate = totalEnrollments > 0 
-        ? Math.round((completedEnrollments / totalEnrollments) * 100) 
-        : 0
+        let actionText = ''
+        switch (activity.action) {
+          case 'user_created':
+            actionText = t('dashboard.userJoined')
+            break
+          case 'course_created':
+            actionText = t('dashboard.createdCourse')
+            break
+          case 'course_published':
+            actionText = t('dashboard.publishedCourse')
+            break
+          case 'enrolled_in_course':
+            actionText = t('dashboard.enrolledInCourse')
+            break
+          case 'student_enrolled':
+            actionText = t('dashboard.newStudentEnrolled')
+            break
+          case 'completed_course':
+            actionText = t('dashboard.completedCourse')
+            break
+          default:
+            actionText = activity.action
+        }
 
-      // Calculate popular courses
-      const courseEnrollmentMap = new Map<string, number>()
-      enrollments?.forEach((enrollment: any) => {
-        const count = courseEnrollmentMap.get(enrollment.course_id) || 0
-        courseEnrollmentMap.set(enrollment.course_id, count + 1)
-      })
-
-      const popularCoursesData: PopularCourse[] = []
-      let maxEnrollments = 0
-      
-      courses?.forEach((course: any) => {
-        const enrollmentCount = courseEnrollmentMap.get(course.id) || 0
-        if (enrollmentCount > 0) {
-          maxEnrollments = Math.max(maxEnrollments, enrollmentCount)
-          popularCoursesData.push({
-            id: course.id,
-            name: course.title,
-            students: enrollmentCount,
-            percentage: 0
-          })
+        return {
+          userId: activity.userId,
+          userName: activity.userName,
+          action: actionText,
+          entityName: activity.entityName,
+          timestamp: timeAgo,
+          icon: activity.icon as 'user' | 'course' | 'enrollment' | 'award'
         }
       })
 
-      // Calculate percentages and sort
-      popularCoursesData.forEach((course: any) => {
-        course.percentage = maxEnrollments > 0 
-          ? Math.round((course.students / maxEnrollments) * 100)
-          : 0
-      })
-      
-      popularCoursesData.sort((a, b) => b.students - a.students)
-      setPopularCourses(popularCoursesData.slice(0, 4))
-
-      // Fetch recent activities from activity_logs
-      const { data: activityLogs, error: activityError } = await supabase
-        .from('activity_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10)
-        
-      if (activityError) {
-        console.error('Error fetching activities:', activityError)
-      }
-
-      const activities: RecentActivity[] = []
-      
-      if (activityLogs && activityLogs.length > 0) {
-        // Fetch user profiles for all activities
-        const userIds = [...new Set(activityLogs.map((log: any) => log.user_id).filter((id: any): id is string => id !== null))]
-        const { data: userProfiles } = await supabase
-          .from('profiles')
-          .select('id, full_name, email')
-          .in('id', userIds)
-        
-        const userMap = new Map(userProfiles?.map((user: any) => [user.id, user]) || [])
-
-        for (const log of activityLogs) {
-          const date = new Date(log.created_at)
-          const now = new Date()
-          const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
-          
-          let timeAgo = ''
-          if (diffInMinutes < 60) {
-            timeAgo = `${diffInMinutes} ${t('dashboard.minutesAgo')}`
-          } else if (diffInMinutes < 1440) {
-            timeAgo = `${Math.floor(diffInMinutes / 60)} ${t('dashboard.hoursAgo')}`
-          } else {
-            timeAgo = `${Math.floor(diffInMinutes / 1440)} ${t('dashboard.daysAgo')}`
-          }
-
-          // Get user info from the map
-          const user: any = log.user_id ? userMap.get(log.user_id) : undefined
-          if (!user && log.user_id) {
-            console.warn('User not found for activity:', log.user_id)
-            // Still show the activity with user_id as fallback
-            activities.push({
-              userId: log.user_id,
-              userName: 'Unknown User',
-              action: log.action,
-              entityName: log.entity_name || undefined,
-              timestamp: timeAgo,
-              icon: 'enrollment'
-            })
-            continue
-          }
-
-          let actionText = ''
-          let icon: 'user' | 'course' | 'enrollment' | 'award' = 'enrollment'
-          
-          switch (log.action) {
-            case 'user_created':
-              actionText = t('dashboard.userJoined')
-              icon = 'user'
-              break
-            case 'course_created':
-              actionText = t('dashboard.createdCourse')
-              icon = 'course'
-              break
-            case 'course_published':
-              actionText = t('dashboard.publishedCourse')
-              icon = 'course'
-              break
-            case 'enrolled_in_course':
-              actionText = t('dashboard.enrolledInCourse')
-              icon = 'enrollment'
-              break
-            case 'student_enrolled':
-              actionText = t('dashboard.newStudentEnrolled')
-              icon = 'enrollment'
-              break
-            case 'completed_course':
-              actionText = t('dashboard.completedCourse')
-              icon = 'award'
-              break
-            default:
-              actionText = log.action
-          }
-
-          activities.push({
-            userId: user?.id || log.user_id || '',
-            userName: user ? (user.full_name || user.email) : 'Unknown User',
-            action: actionText,
-            entityName: log.entity_name || undefined,
-            timestamp: timeAgo,
-            icon
-          })
-        }
-      }
-
-      console.log('Total activities found:', activityLogs?.length || 0)
-      console.log('Activities processed:', activities.length)
-      setRecentActivities(activities.slice(0, 5))
-
-      // Set stats
-      setStats({
-        totalStudents: students.length,
-        totalInstructors: instructors.length,
-        totalCourses,
-        publishedCourses,
-        totalEnrollments,
-        completedEnrollments,
-        completionRate,
-        activeUsers: activeUsers.length
-      })
+      setRecentActivities(activities)
+      setPopularCourses(fetchedPopularCourses)
+      setStats(fetchedStats)
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {
