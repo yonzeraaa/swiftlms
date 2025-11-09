@@ -8,8 +8,15 @@ import Button from '../../components/Button'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
+import {
+  getModulesData,
+  createModule,
+  updateModule,
+  deleteModule,
+  bulkDeleteModules,
+  updateModulesOrder
+} from '@/lib/actions/admin-modules'
 import {
   DndContext,
   closestCenter,
@@ -272,9 +279,7 @@ export default function ModulesPage() {
   const [selectedModules, setSelectedModules] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
   const [sortMode, setSortMode] = useState<'code' | 'structure'>('code')
-  
-  const supabase = createClient()
-  
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -293,41 +298,17 @@ export default function ModulesPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      
-      // Fetch modules with course info
-      const { data: modulesData, error: modulesError } = await supabase
-        .from('course_modules')
-        .select('*, courses!inner(id, title)')
-        .order('order_index')
 
-      if (modulesError) throw modulesError
+      const data = await getModulesData()
 
-      // Fetch all courses for the dropdown
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .order('title')
-
-      if (coursesError) throw coursesError
-
-      setModules(modulesData || [])
-      setCourses(coursesData || [])
-
-      // Fetch stats for each module
-      if (modulesData && modulesData.length > 0) {
-        const { data: moduleSubjects } = await supabase
-          .from('module_subjects')
-          .select('module_id')
-
-        if (moduleSubjects) {
-          const stats: { [key: string]: { subjects: number } } = {}
-          modulesData.forEach((module: any) => {
-            const subjectCount = moduleSubjects.filter((ms: any) => ms.module_id === module.id).length
-            stats[module.id] = { subjects: subjectCount }
-          })
-          setModuleStats(stats)
-        }
+      if (!data) {
+        setMessage({ type: 'error', text: 'Erro ao carregar módulos' })
+        return
       }
+
+      setModules(data.modules)
+      setCourses(data.courses)
+      setModuleStats(data.moduleStats)
     } catch (error) {
       console.error('Error fetching data:', error)
       setMessage({ type: 'error', text: 'Erro ao carregar módulos' })
@@ -342,116 +323,40 @@ export default function ModulesPage() {
     setMessage(null)
 
     try {
-      const newOrderIndex = parseInt(formData.order_index) || 0
-      
-      if (editingModule) {
-        // Check if another module has the same order_index
-        const { data: existingModule } = await supabase
-          .from('course_modules')
-          .select('id, order_index')
-          .eq('course_id', formData.course_id)
-          .eq('order_index', newOrderIndex)
-          .neq('id', editingModule.id)
-          .single()
-        
-        if (existingModule) {
-          // Swap order indices using a temporary value to avoid unique constraint violation
-          const currentOrderIndex = editingModule.order_index || 0
-          const tempOrder = 999999
-          
-          // Step 1: Move editing module to temporary order
-          const { error: tempError } = await supabase
-            .from('course_modules')
-            .update({ order_index: tempOrder })
-            .eq('id', editingModule.id)
-          
-          if (tempError) throw tempError
-          
-          // Step 2: Move existing module to current module's order
-          const { error: swapError } = await supabase
-            .from('course_modules')
-            .update({ order_index: currentOrderIndex })
-            .eq('id', existingModule.id)
-          
-          if (swapError) throw swapError
-        }
-        
-        // Update the current module
-        const { error } = await supabase
-          .from('course_modules')
-          .update({
-            title: formData.title,
-            description: formData.description,
-            course_id: formData.course_id,
-            order_index: newOrderIndex,
-            is_required: formData.is_required,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingModule.id)
-
-        if (error) throw error
-        setMessage({ type: 'success', text: 'Módulo atualizado com sucesso!' })
-      } else {
-        // Check if another module has the same order_index for new modules
-        const { data: existingModule } = await supabase
-          .from('course_modules')
-          .select('id')
-          .eq('course_id', formData.course_id)
-          .eq('order_index', newOrderIndex)
-          .single()
-        
-        if (existingModule) {
-          // Increment all modules with order >= newOrderIndex
-          const { data: modulesToShift } = await supabase
-            .from('course_modules')
-            .select('id, order_index')
-            .eq('course_id', formData.course_id)
-            .gte('order_index', newOrderIndex)
-            .order('order_index', { ascending: false })
-          
-          if (modulesToShift) {
-            for (const module of modulesToShift) {
-              await supabase
-                .from('course_modules')
-                .update({ order_index: (module.order_index || 0) + 1 })
-                .eq('id', module.id)
-            }
-          }
-        }
-        
-        // Create new module
-        const { error } = await supabase
-          .from('course_modules')
-          .insert({
-            title: formData.title,
-            description: formData.description,
-            course_id: formData.course_id,
-            order_index: newOrderIndex,
-            is_required: formData.is_required
-          })
-
-        if (error) throw error
-        setMessage({ type: 'success', text: 'Módulo criado com sucesso!' })
+      const moduleData = {
+        title: formData.title,
+        description: formData.description,
+        course_id: formData.course_id,
+        order_index: parseInt(formData.order_index) || 0,
+        is_required: formData.is_required
       }
 
-      // Reset form and refresh data
+      let result
+      if (editingModule) {
+        result = await updateModule(editingModule.id, moduleData)
+        if (result.success) {
+          setMessage({ type: 'success', text: 'Módulo atualizado com sucesso!' })
+        }
+      } else {
+        result = await createModule(moduleData)
+        if (result.success) {
+          setMessage({ type: 'success', text: 'Módulo criado com sucesso!' })
+        }
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao salvar módulo')
+      }
+
       setFormData({ title: '', description: '', course_id: '', order_index: '0', is_required: true })
       setEditingModule(null)
       setShowModal(false)
       await fetchData()
     } catch (error: any) {
       console.error('Error saving module:', error)
-      let errorMessage = 'Erro ao salvar módulo'
-      
-      if (error.message?.includes('row-level security')) {
-        errorMessage = 'Erro de permissão. Verifique se você tem autorização para realizar esta ação.'
-      } else if (error.message) {
-        errorMessage = error.message
-      }
-      
-      setMessage({ 
-        type: 'error', 
-        text: errorMessage 
+      setMessage({
+        type: 'error',
+        text: error.message || 'Erro ao salvar módulo'
       })
     } finally {
       setSubmitting(false)
@@ -476,39 +381,37 @@ export default function ModulesPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('course_modules')
-        .delete()
-        .eq('id', module.id)
+      const result = await deleteModule(module.id)
 
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao excluir módulo')
+      }
 
       setMessage({ type: 'success', text: 'Módulo excluído com sucesso!' })
       await fetchData()
     } catch (error: any) {
       console.error('Error deleting module:', error)
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Erro ao excluir módulo' 
+      setMessage({
+        type: 'error',
+        text: error.message || 'Erro ao excluir módulo'
       })
     }
   }
 
   const handleBulkDelete = async () => {
     if (selectedModules.size === 0) return
-    
+
     if (!confirm(`Tem certeza que deseja excluir ${selectedModules.size} módulos permanentemente? Isso removerá todas as associações com disciplinas.`)) return
 
     setIsDeleting(true)
     setMessage({ type: 'info', text: 'Excluindo módulos...' })
-    
-    try {
-      const { error } = await supabase
-        .from('course_modules')
-        .delete()
-        .in('id', Array.from(selectedModules))
 
-      if (error) throw error
+    try {
+      const result = await bulkDeleteModules(Array.from(selectedModules))
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao excluir módulos')
+      }
 
       setMessage({ type: 'success', text: `${selectedModules.size} módulos excluídos com sucesso!` })
       setSelectedModules(new Set())
@@ -581,71 +484,36 @@ export default function ModulesPage() {
     // Save to database
     setIsSaving(true)
     setMessage({ type: 'info', text: 'Salvando nova ordem...' })
-    
+
     try {
-      // Get only the modules from the same course to avoid conflicts
       const courseId = reorderedModules[0]?.course_id
       if (!courseId) throw new Error('Course ID not found')
 
-      // Filter modules by course
       const courseModules = reorderedModules.filter(m => m.course_id === courseId)
-      
-      // Create update promises with temporary indices first
-      const tempUpdates = courseModules.map((module, index) => 
-        supabase
-          .from('course_modules')
-          .update({ 
-            order_index: 100000 + index,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', module.id)
-          .select()
-      )
 
-      // Execute all temporary updates
-      const tempResults = await Promise.all(tempUpdates)
-      
-      // Check for errors in temporary updates
-      const tempErrors = tempResults.filter(r => r.error)
-      if (tempErrors.length > 0) {
-        throw new Error(`Failed to update temporary indices: ${tempErrors[0].error?.message || 'Unknown error'}`)
-      }
+      const modulesToUpdate = courseModules.map((module, index) => ({
+        id: module.id,
+        order_index: index
+      }))
 
-      // Create final update promises
-      const finalUpdates = courseModules.map((module, index) => 
-        supabase
-          .from('course_modules')
-          .update({ 
-            order_index: index,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', module.id)
-          .select()
-      )
+      const result = await updateModulesOrder(modulesToUpdate)
 
-      // Execute all final updates
-      const finalResults = await Promise.all(finalUpdates)
-      
-      // Check for errors in final updates
-      const finalErrors = finalResults.filter(r => r.error)
-      if (finalErrors.length > 0) {
-        throw new Error(`Failed to update final indices: ${finalErrors[0].error?.message || 'Unknown error'}`)
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao atualizar ordem')
       }
 
       setMessage({ type: 'success', text: '✓ Ordem atualizada com sucesso!' })
-      
-      // Refresh data to ensure consistency
+
       setTimeout(() => {
         fetchData()
       }, 500)
-      
+
     } catch (error: any) {
       console.error('Error reordering modules:', error)
-      setMessage({ 
-        type: 'error', 
-        text: `Erro ao reordenar: ${error.message || 'Tente novamente'}` 
+      setMessage({
+        type: 'error',
+        text: `Erro ao reordenar: ${error.message || 'Tente novamente'}`
       })
-      // Revert to original order
       setModules(originalModules)
     } finally {
       setIsSaving(false)

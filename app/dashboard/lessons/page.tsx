@@ -9,10 +9,17 @@ import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import VideoPlayer from '../../components/VideoPlayer'
 import DocumentViewer from '../../components/DocumentViewer'
+import {
+  getLessonsData,
+  createLesson,
+  updateLesson,
+  deleteLesson,
+  bulkDeleteLessons,
+  toggleLessonPreview
+} from '@/lib/actions/admin-lessons'
 
 type Lesson = Database['public']['Tables']['lessons']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
@@ -65,8 +72,6 @@ export default function LessonsPage() {
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([])
   const [selectAllLessons, setSelectAllLessons] = useState(false)
   const [bulkDeletingLessons, setBulkDeletingLessons] = useState(false)
-  
-  const supabase = createClient()
 
   useEffect(() => {
     fetchData()
@@ -75,61 +80,16 @@ export default function LessonsPage() {
   const fetchData = async () => {
     try {
       setLoading(true)
-      
-      // Fetch lessons with their relationships
-      const { data: lessonsData, error: lessonsError } = await supabase
-        .from('lessons')
-        .select(`
-          *,
-          subject_lessons (
-            subject_id,
-            subjects (
-              id,
-              name,
-              code
-            )
-          ),
-          course_modules (
-            id,
-            title,
-            courses (
-              id,
-              title
-            )
-          )
-        `)
-        .order('created_at', { ascending: false })
 
-      if (lessonsError) {
-        console.error('Error fetching lessons:', lessonsError)
-        throw lessonsError
+      const data = await getLessonsData()
+
+      if (!data) {
+        setMessage({ type: 'error', text: 'Erro ao carregar aulas' })
+        return
       }
 
-      console.log('Lessons fetched:', lessonsData?.length || 0, 'lessons')
-      setLessons(lessonsData || [])
-
-      // Fetch lesson progress stats
-      if (lessonsData && lessonsData.length > 0) {
-        const { data: progressData } = await supabase
-          .from('lesson_progress')
-          .select('lesson_id, is_completed')
-
-        if (progressData) {
-          const progressStats: { [key: string]: { completed: number, total: number } } = {}
-          
-          progressData.forEach((progress: any) => {
-            if (!progressStats[progress.lesson_id]) {
-              progressStats[progress.lesson_id] = { completed: 0, total: 0 }
-            }
-            progressStats[progress.lesson_id].total++
-            if (progress.is_completed) {
-              progressStats[progress.lesson_id].completed++
-            }
-          })
-
-          setLessonProgress(progressStats)
-        }
-      }
+      setLessons(data.lessons)
+      setLessonProgress(data.lessonProgress)
     } catch (error) {
       console.error('Error fetching data:', error)
       setMessage({ type: 'error', text: 'Erro ao carregar aulas' })
@@ -146,47 +106,40 @@ export default function LessonsPage() {
     try {
       const lessonData = {
         title: formData.title,
-        description: formData.description || null,
+        description: formData.description,
         content_type: formData.content_type,
-        content_url: formData.content_url || null,
-        content: formData.content || null,
-        duration_minutes: formData.duration_minutes ? parseInt(formData.duration_minutes) : null,
+        content_url: formData.content_url,
+        content: formData.content,
+        duration_minutes: formData.duration_minutes ? parseInt(formData.duration_minutes) : undefined,
         order_index: parseInt(formData.order_index),
-        is_preview: formData.is_preview,
-        updated_at: new Date().toISOString()
+        is_preview: formData.is_preview
       }
 
+      let result
       if (editingLesson) {
-        // Update existing lesson
-        const { error } = await supabase
-          .from('lessons')
-          .update(lessonData)
-          .eq('id', editingLesson.id)
-
-        if (error) throw error
-        setMessage({ type: 'success', text: 'Aula atualizada com sucesso!' })
+        result = await updateLesson(editingLesson.id, lessonData)
+        if (result.success) {
+          setMessage({ type: 'success', text: 'Aula atualizada com sucesso!' })
+        }
       } else {
-        // Create new lesson
-        const { error } = await supabase
-          .from('lessons')
-          .insert({
-            ...lessonData,
-            created_at: new Date().toISOString()
-          })
-
-        if (error) throw error
-        setMessage({ type: 'success', text: 'Aula criada com sucesso!' })
+        result = await createLesson(lessonData)
+        if (result.success) {
+          setMessage({ type: 'success', text: 'Aula criada com sucesso!' })
+        }
       }
 
-      // Reset form and refresh data
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao salvar aula')
+      }
+
       resetForm()
       setShowModal(false)
       await fetchData()
     } catch (error: any) {
       console.error('Error saving lesson:', error)
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Erro ao salvar aula' 
+      setMessage({
+        type: 'error',
+        text: error.message || 'Erro ao salvar aula'
       })
     } finally {
       setSubmitting(false)
@@ -214,20 +167,19 @@ export default function LessonsPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('lessons')
-        .delete()
-        .eq('id', lesson.id)
+      const result = await deleteLesson(lesson.id)
 
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao excluir aula')
+      }
 
       setMessage({ type: 'success', text: 'Aula excluída com sucesso!' })
       await fetchData()
     } catch (error: any) {
       console.error('Error deleting lesson:', error)
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Erro ao excluir aula' 
+      setMessage({
+        type: 'error',
+        text: error.message || 'Erro ao excluir aula'
       })
     }
   }
@@ -336,12 +288,11 @@ export default function LessonsPage() {
     setBulkDeletingLessons(true)
 
     try {
-      const { error } = await supabase
-        .from('lessons')
-        .delete()
-        .in('id', selectedLessonIds)
+      const result = await bulkDeleteLessons(selectedLessonIds)
 
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao excluir aulas')
+      }
 
       setMessage({ type: 'success', text: `${selectedLessonIds.length} aula(s) excluída(s) com sucesso!` })
       setSelectedLessonIds([])
@@ -685,22 +636,21 @@ export default function LessonsPage() {
                         <button
                           onClick={async () => {
                             try {
-                              const { error } = await supabase
-                                .from('lessons')
-                                .update({ is_preview: !lesson.is_preview })
-                                .eq('id', lesson.id)
-                              
-                              if (error) throw error
-                              
-                              setMessage({ 
-                                type: 'success', 
-                                text: `Aula ${!lesson.is_preview ? 'marcada como' : 'removida de'} preview` 
+                              const result = await toggleLessonPreview(lesson.id, lesson.is_preview || false)
+
+                              if (!result.success) {
+                                throw new Error(result.error || 'Erro ao atualizar preview')
+                              }
+
+                              setMessage({
+                                type: 'success',
+                                text: `Aula ${result.newStatus ? 'marcada como' : 'removida de'} preview`
                               })
                               await fetchData()
                             } catch (error: any) {
-                              setMessage({ 
-                                type: 'error', 
-                                text: 'Erro ao atualizar status de preview' 
+                              setMessage({
+                                type: 'error',
+                                text: error.message || 'Erro ao atualizar status de preview'
                               })
                             }
                           }}

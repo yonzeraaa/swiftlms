@@ -3,7 +3,6 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles, MoreVertical, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
 import Card from '../../components/Card'
@@ -16,6 +15,15 @@ import { SkeletonCard } from '../../components/Skeleton'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
 import { Chip } from '../../components/Badge'
+import {
+  getTestsData,
+  createTest,
+  updateTest,
+  deleteTest,
+  bulkDeleteTests,
+  updateTestAnswerKeys,
+  getTestAnswerKeys
+} from '@/lib/actions/admin-tests'
 
 type Test = Tables<'tests'> & { answer_key_count?: number }
 type Course = Tables<'courses'>
@@ -49,8 +57,7 @@ export default function TestsManagementPage() {
   const [selectedTests, setSelectedTests] = useState<string[]>([])
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [testSortMode, setTestSortMode] = useState<'code' | 'title'>('code')
-  
-  const supabase = createClient()
+
   const { t } = useTranslation()
   const { showToast } = useToast()
 
@@ -73,49 +80,18 @@ export default function TestsManagementPage() {
 
   const loadData = async () => {
     try {
-      // Carregar testes
-      const { data: testsData } = await supabase
-        .from('tests')
-        .select('*')
-        .order('created_at', { ascending: false })
-      
-      // Carregar contagem de gabaritos para cada teste
-      if (testsData) {
-        const testsWithAnswerKeys = await Promise.all(
-          testsData.map(async (test: any) => {
-            const { count } = await supabase
-              .from('test_answer_keys')
-              .select('*', { count: 'exact', head: true })
-              .eq('test_id', test.id)
-            
-            return { ...test, answer_key_count: count || 0 }
-          })
-        )
-        setTests(testsWithAnswerKeys)
-        setSelectedTests([])
-      }
-      
-      // Carregar cursos
-      const { data: coursesData } = await supabase
-        .from('courses')
-        .select('*')
-        .order('title')
-      
-      // Carregar disciplinas
-      const { data: subjectsData } = await supabase
-        .from('subjects')
-        .select('*')
-        .order('name')
-      
-      // Carregar módulos
-      const { data: modulesData } = await supabase
-        .from('course_modules')
-        .select('*')
-        .order('title')
+      const data = await getTestsData()
 
-      if (coursesData) setCourses(coursesData)
-      if (subjectsData) setSubjects(subjectsData)
-      if (modulesData) setModules(modulesData)
+      if (!data) {
+        console.error('Erro ao carregar dados de testes')
+        return
+      }
+
+      setTests(data.tests)
+      setCourses(data.courses)
+      setSubjects(data.subjects)
+      setModules(data.modules)
+      setSelectedTests([])
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
@@ -295,46 +271,37 @@ export default function TestsManagementPage() {
     if (formData.subject_id) cleanedData.subject_id = formData.subject_id
     
     try {
+      let testId: string
+
       if (editingTest) {
         setUpdating(true)
-        // Atualizar teste existente
-        const { error } = await supabase
-          .from('tests')
-          .update(cleanedData)
-          .eq('id', editingTest.id)
-        
-        if (error) {
-          console.error('Erro ao atualizar teste:', error)
-          showToast(`Erro ao atualizar teste: ${error.message}`)
+        const result = await updateTest(editingTest.id, cleanedData)
+
+        if (!result.success) {
+          showToast(`Erro ao atualizar teste: ${result.error}`)
           return
         }
-        
-        // Sempre atualizar o gabarito
-        await updateAnswerKeys(editingTest.id)
-        console.log(`Gabarito atualizado: ${gabaritoData.length} questões salvas`)
-        showToast(`Sucesso: Teste e gabarito atualizados! (${gabaritoData.length} questões)`)
+
+        testId = editingTest.id
       } else {
-        // Criar novo teste
-        const { data: newTest, error } = await supabase
-          .from('tests')
-          .insert(cleanedData)
-          .select()
-          .single()
-        
-        if (error) {
-          console.error('Erro ao criar teste:', error)
-          showToast(`Erro ao criar teste: ${error.message}`)
+        const result = await createTest(cleanedData)
+
+        if (!result.success || !result.testId) {
+          showToast(`Erro ao criar teste: ${result.error}`)
           return
         }
-        
-        if (newTest) {
-          // Salvar gabarito
-          await updateAnswerKeys(newTest.id)
-          console.log(`Gabarito salvo: ${gabaritoData.length} questões`)
-          showToast(`Sucesso: Teste criado com gabarito! (${gabaritoData.length} questões)`)
-        }
+
+        testId = result.testId
       }
-      
+
+      const answerKeysResult = await updateTestAnswerKeys(testId, gabaritoData)
+
+      if (!answerKeysResult.success) {
+        showToast(`Aviso: Teste salvo mas houve erro ao salvar gabarito: ${answerKeysResult.error}`)
+      } else {
+        showToast(`Sucesso: Teste ${editingTest ? 'atualizado' : 'criado'} com gabarito! (${gabaritoData.length} questões)`)
+      }
+
       resetForm()
       loadData()
     } catch (error) {
@@ -347,72 +314,15 @@ export default function TestsManagementPage() {
     }
   }
 
-  const updateAnswerKeys = async (testId: string) => {
-    // Deletar gabarito existente
-    await supabase
-      .from('test_answer_keys')
-      .delete()
-      .eq('test_id', testId)
-    
-    // Inserir novo gabarito
-    const answerKeys = gabaritoData.map(item => ({
-      test_id: testId,
-      question_number: item.questionNumber,
-      correct_answer: item.correctAnswer,
-      points: item.points || 10,
-      justification: (item as any).justification || null
-    }))
-    
-    await supabase
-      .from('test_answer_keys')
-      .insert(answerKeys)
-  }
-
   const performDeleteTests = async (testIds: string[]) => {
     if (testIds.length === 0) return
 
     setBulkDeleting(true)
     try {
-      const errors: string[] = []
+      const result = await bulkDeleteTests(testIds)
 
-      const { error: answerKeysError } = await supabase
-        .from('test_answer_keys')
-        .delete()
-        .in('test_id', testIds)
-
-      if (answerKeysError) {
-        console.error('Erro ao deletar answer keys:', answerKeysError)
-        errors.push(`Gabaritos: ${answerKeysError.message}`)
-      }
-
-      const { error: attemptsError } = await supabase
-        .from('test_attempts')
-        .delete()
-        .in('test_id', testIds)
-
-      if (attemptsError) {
-        console.error('Erro ao deletar tentativas:', attemptsError)
-        errors.push(`Tentativas: ${attemptsError.message}`)
-      }
-
-      const { error: gradesError } = await supabase
-        .from('test_grades')
-        .delete()
-        .in('test_id', testIds)
-
-      if (gradesError) {
-        console.error('Erro ao deletar notas:', gradesError)
-        errors.push(`Notas: ${gradesError.message}`)
-      }
-
-      const { error: testsError } = await supabase
-        .from('tests')
-        .delete()
-        .in('id', testIds)
-
-      if (testsError) {
-        console.error('Erro ao deletar testes:', testsError)
-        showToast(`Erro ao excluir testes: ${testsError.message}`)
+      if (!result.success) {
+        showToast(`Erro ao excluir testes: ${result.error}`)
         await loadData()
         return
       }
@@ -424,10 +334,6 @@ export default function TestsManagementPage() {
         showToast(`Sucesso: ${testIds.length} testes excluídos!`)
       } else {
         showToast('Sucesso: Teste excluído!')
-      }
-
-      if (errors.length > 0) {
-        showToast(`Aviso: Nem todos os dados relacionados foram removidos. ${errors.join(' | ')}`)
       }
     } catch (error) {
       console.error('Erro inesperado ao excluir testes:', error)
@@ -530,14 +436,9 @@ export default function TestsManagementPage() {
       max_attempts: test.max_attempts || 3,
       is_active: test.is_active ?? true
     })
-    
-    // Carregar gabarito existente
-    const { data: answerKeys } = await supabase
-      .from('test_answer_keys')
-      .select('*')
-      .eq('test_id', test.id)
-      .order('question_number')
-    
+
+    const answerKeys = await getTestAnswerKeys(test.id)
+
     if (answerKeys && answerKeys.length > 0) {
       const formattedGabarito = answerKeys.map((key: any) => ({
         questionNumber: key.question_number,
@@ -550,7 +451,7 @@ export default function TestsManagementPage() {
       setGabaritoData([])
       console.log('Nenhum gabarito encontrado para este teste')
     }
-    
+
     setEditingTest(test)
     setShowModal(true)
     console.log('Modal deve estar visível:', true)
