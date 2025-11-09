@@ -5,15 +5,15 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import ErrorBoundary from '../components/ErrorBoundary'
 import { useAuth } from '../providers/AuthProvider'
-import { 
-  LayoutDashboard, 
-  BookOpen, 
+import {
+  LayoutDashboard,
+  BookOpen,
   GraduationCap,
   Trophy,
   Calendar,
   FileText,
   FileCheck,
-  Settings, 
+  Settings,
   LogOut,
   Menu,
   X,
@@ -25,7 +25,7 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import Logo from '../components/Logo'
-import { createClient } from '@/lib/supabase/client'
+import { getStudentProfile } from '@/lib/actions/student-layout'
 import { useTranslation } from '../contexts/LanguageContext'
 import PageTransition from '../components/ui/PageTransition'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -44,9 +44,8 @@ export default function StudentDashboardLayout({
   const [isAdminViewMode, setIsAdminViewMode] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
   const { t } = useTranslation()
-  
+
   // Auth is handled by AuthProvider automatically
 
   // Save sidebar state to localStorage
@@ -92,19 +91,14 @@ export default function StudentDashboardLayout({
 
   const fetchStudentInfo = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name, email, avatar_url, role')
-          .eq('id', user.id)
-          .single()
-        
-        if (profile) {
-          setStudentName(profile.full_name || profile.email)
-          setStudentAvatar(profile.avatar_url || '')
-          setIsAdmin(profile.role === 'admin')
-        }
+      const result = await getStudentProfile()
+
+      if (result.success && result.profile) {
+        setStudentName(result.profile.full_name || result.profile.email)
+        setStudentAvatar(result.profile.avatar_url || '')
+        setIsAdmin(result.profile.role === 'admin')
+      } else {
+        console.error('Error fetching student info:', result.error)
       }
     } catch (error) {
       console.error('Error fetching student info:', error)
@@ -133,34 +127,8 @@ export default function StudentDashboardLayout({
   const handleLogout = async () => {
     try {
       setLoggingOut(true)
-      
-      // Clear only auth-related localStorage items (preserve user preferences)
-      if (typeof window !== 'undefined') {
-        const authPrefixes = ['sb-', 'supabase', 'auth-token']
-        const keysToRemove = []
-        
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const key = localStorage.key(i)
-          if (key && authPrefixes.some(prefix => key.includes(prefix))) {
-            keysToRemove.push(key)
-          }
-        }
-        
-        // Remove auth keys but preserve app settings
-        keysToRemove.forEach((key: any) => {
-          console.log('Removing auth key:', key)
-          localStorage.removeItem(key)
-        })
-        
-        // Clear auth items from sessionStorage too
-        for (let i = sessionStorage.length - 1; i >= 0; i--) {
-          const key = sessionStorage.key(i)
-          if (key && authPrefixes.some(prefix => key.includes(prefix))) {
-            sessionStorage.removeItem(key)
-          }
-        }
-      }
-      
+
+      // Logout via API route (clears httpOnly cookies server-side)
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
@@ -168,14 +136,14 @@ export default function StudentDashboardLayout({
         },
         credentials: 'include'
       })
-      
+
       const data = await response.json()
-      
+
       if (!response.ok) {
         console.error('Logout API error:', data)
         throw new Error(data.error || 'Logout failed')
       }
-      
+
       // Small delay to ensure cleanup
       await new Promise(resolve => setTimeout(resolve, 200))
       

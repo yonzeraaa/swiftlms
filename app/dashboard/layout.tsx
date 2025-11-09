@@ -30,7 +30,7 @@ import {
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import LogoSwiftEDU from '../components/LogoSwiftEDU'
-import { createClient } from '@/lib/supabase/client'
+import { getPendingCertificatesCount } from '@/lib/actions/dashboard-layout'
 import { useTranslation } from '../contexts/LanguageContext'
 import PageTransition from '../components/ui/PageTransition'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -48,9 +48,8 @@ export default function DashboardLayout({
   const [pendingCertificates, setPendingCertificates] = useState(0)
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
   const { t } = useTranslation()
-  
+
   // Auth is handled by AuthProvider automatically
 
   // Save sidebar state to localStorage
@@ -65,43 +64,29 @@ export default function DashboardLayout({
     localStorage.setItem('sidebarOpen', JSON.stringify(sidebarOpen))
   }, [sidebarOpen])
 
-  // Fetch pending certificate requests count
+  // Fetch pending certificate requests count via server action
   useEffect(() => {
     const fetchPendingCertificates = async () => {
-      const { count } = await supabase
-        .from('certificate_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending')
-      
-      setPendingCertificates(count || 0)
+      const result = await getPendingCertificatesCount()
+
+      if (result.success) {
+        setPendingCertificates(result.count)
+      } else {
+        console.error('Error fetching pending certificates:', result.error)
+        setPendingCertificates(0)
+      }
     }
 
     fetchPendingCertificates()
-    
-    // Comentando temporariamente o realtime que está causando erros
-    // TODO: Reativar quando o problema de conexão for resolvido
-    /*
-    const subscription = supabase
-      .channel('certificate_requests')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'certificate_requests' 
-      }, fetchPendingCertificates)
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('Realtime subscription active for certificate_requests')
-        } else if (status === 'CLOSED') {
-          console.log('Realtime subscription closed for certificate_requests')
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('Realtime subscription error for certificate_requests')
-        }
-      })
+
+    // Note: Realtime subscriptions require browser client with auth
+    // For now, we poll every 30 seconds instead
+    // TODO: Consider implementing server-sent events or polling endpoint
+    const interval = setInterval(fetchPendingCertificates, 30000)
 
     return () => {
-      supabase.removeChannel(subscription)
+      clearInterval(interval)
     }
-    */
   }, [])
 
   const menuItems = [
@@ -130,34 +115,8 @@ export default function DashboardLayout({
   const handleLogout = async () => {
     try {
       setLoggingOut(true)
-      
-      // Clear only auth-related localStorage items (preserve user preferences)
-      if (typeof window !== 'undefined') {
-        const authPrefixes = ['sb-', 'supabase', 'auth-token']
-        const keysToRemove = []
-        
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-          const key = localStorage.key(i)
-          if (key && authPrefixes.some(prefix => key.includes(prefix))) {
-            keysToRemove.push(key)
-          }
-        }
-        
-        // Remove auth keys but preserve app settings
-        keysToRemove.forEach(key => {
-          console.log('Removing auth key:', key)
-          localStorage.removeItem(key)
-        })
-        
-        // Clear auth items from sessionStorage too
-        for (let i = sessionStorage.length - 1; i >= 0; i--) {
-          const key = sessionStorage.key(i)
-          if (key && authPrefixes.some(prefix => key.includes(prefix))) {
-            sessionStorage.removeItem(key)
-          }
-        }
-      }
-      
+
+      // Logout via API route (clears httpOnly cookies server-side)
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         headers: {
@@ -165,17 +124,17 @@ export default function DashboardLayout({
         },
         credentials: 'include'
       })
-      
+
       const data = await response.json()
-      
+
       if (!response.ok) {
         console.error('Logout API error:', data)
         throw new Error(data.error || 'Logout failed')
       }
-      
+
       // Small delay to ensure cleanup
       await new Promise(resolve => setTimeout(resolve, 200))
-      
+
       // Force hard redirect
       window.location.href = '/'
     } catch (error) {
