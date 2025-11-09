@@ -88,3 +88,180 @@ export async function getLessonsForSubject(subjectId: string) {
     return null
   }
 }
+
+export async function createSubject(subjectData: {
+  name: string
+  code?: string
+  description?: string
+  hours?: number
+}) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Não autenticado' }
+    }
+
+    const { error } = await supabase
+      .from('subjects')
+      .insert({
+        name: subjectData.name,
+        code: subjectData.code || null,
+        description: subjectData.description || null,
+        hours: subjectData.hours || null
+      })
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error creating subject:', error)
+    return { success: false, error: error.message || 'Erro ao criar disciplina' }
+  }
+}
+
+export async function updateSubject(subjectId: string, subjectData: {
+  name: string
+  code?: string
+  description?: string
+  hours?: number
+  moduleOrderIndex?: number
+  subjectModuleId?: string
+}) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Não autenticado' }
+    }
+
+    const { error } = await supabase
+      .from('subjects')
+      .update({
+        name: subjectData.name,
+        code: subjectData.code || null,
+        description: subjectData.description || null,
+        hours: subjectData.hours || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', subjectId)
+
+    if (error) throw error
+
+    if (subjectData.subjectModuleId && subjectData.moduleOrderIndex !== undefined) {
+      const { error: orderError } = await supabase
+        .from('module_subjects')
+        .update({ order_index: subjectData.moduleOrderIndex })
+        .eq('id', subjectData.subjectModuleId)
+
+      if (orderError) throw orderError
+    }
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error updating subject:', error)
+    return { success: false, error: error.message || 'Erro ao atualizar disciplina' }
+  }
+}
+
+export async function deleteSubject(subjectId: string) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Não autenticado' }
+    }
+
+    const { error } = await supabase
+      .from('subjects')
+      .delete()
+      .eq('id', subjectId)
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error deleting subject:', error)
+    return { success: false, error: error.message || 'Erro ao deletar disciplina' }
+  }
+}
+
+export async function bulkDeleteSubjects(subjectIds: string[]) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Não autenticado' }
+    }
+
+    await supabase
+      .from('subject_lessons')
+      .delete()
+      .in('subject_id', subjectIds)
+
+    const { error } = await supabase
+      .from('subjects')
+      .delete()
+      .in('id', subjectIds)
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error bulk deleting subjects:', error)
+    return { success: false, error: error.message || 'Erro ao deletar disciplinas' }
+  }
+}
+
+export async function associateLessonsWithSubject(subjectId: string, lessonIds: string[]) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return { success: false, error: 'Não autenticado' }
+    }
+
+    const { error } = await supabase
+      .from('subject_lessons')
+      .insert(
+        lessonIds.map(lessonId => ({
+          subject_id: subjectId,
+          lesson_id: lessonId
+        }))
+      )
+
+    if (error) throw error
+
+    return { success: true }
+  } catch (error: any) {
+    console.error('Error associating lessons:', error)
+    return { success: false, error: error.message || 'Erro ao associar aulas' }
+  }
+}
+
+export async function getModuleSubject(subjectId: string) {
+  try {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+
+    const { data, error } = await supabase
+      .from('module_subjects')
+      .select('order_index, id')
+      .eq('subject_id', subjectId)
+      .single()
+
+    if (error && error.code !== 'PGRST116') throw error
+
+    return data
+  } catch (error) {
+    console.error('Error fetching module subject:', error)
+    return null
+  }
+}

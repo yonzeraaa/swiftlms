@@ -8,8 +8,17 @@ import Button from '../../components/Button'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
-import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
+import {
+  getSubjectsData,
+  createSubject,
+  updateSubject,
+  deleteSubject,
+  bulkDeleteSubjects,
+  getLessonsForSubject,
+  associateLessonsWithSubject,
+  getModuleSubject
+} from '@/lib/actions/admin-subjects'
 
 type Subject = Database['public']['Tables']['subjects']['Row']
 type SubjectLessonView = Database['public']['Views']['subject_lessons_view']['Row']
@@ -59,8 +68,6 @@ export default function SubjectsPage() {
   const [selectAll, setSelectAll] = useState(false)
   const [deletingMultiple, setDeletingMultiple] = useState(false)
   const [subjectSortMode, setSubjectSortMode] = useState<'code' | 'name'>('code')
-  
-  const supabase = createClient()
 
   const sortLessonOptions = (options: LessonAssociationOption[]) => {
     const priority = {
@@ -112,44 +119,17 @@ export default function SubjectsPage() {
   const fetchSubjects = async () => {
     try {
       setLoading(true)
-      
-      // Fetch subjects
-      const { data: subjectsData, error } = await supabase
-        .from('subjects')
-        .select('*')
-        .order('code')
 
-      if (error) throw error
+      const data = await getSubjectsData()
 
-      setSubjects(subjectsData || [])
-
-      // Fetch course count for each subject
-      if (subjectsData && subjectsData.length > 0) {
-        const { data: courseSubjects } = await supabase
-          .from('course_subjects')
-          .select('subject_id')
-
-        if (courseSubjects) {
-          const counts: { [key: string]: number } = {}
-          courseSubjects.forEach((cs: any) => {
-            counts[cs.subject_id] = (counts[cs.subject_id] || 0) + 1
-          })
-          setCourseCount(counts)
-        }
-
-        // Fetch lesson count for each subject
-        const { data: subjectLessons } = await supabase
-          .from('subject_lessons')
-          .select('subject_id')
-
-        if (subjectLessons) {
-          const lessonCounts: { [key: string]: number } = {}
-          subjectLessons.forEach((sl: any) => {
-            lessonCounts[sl.subject_id] = (lessonCounts[sl.subject_id] || 0) + 1
-          })
-          setLessonCount(lessonCounts)
-        }
+      if (!data) {
+        setMessage({ type: 'error', text: 'Erro ao carregar disciplinas' })
+        return
       }
+
+      setSubjects(data.subjects)
+      setCourseCount(data.courseCounts)
+      setLessonCount(data.lessonCounts)
     } catch (error) {
       console.error('Error fetching subjects:', error)
       setMessage({ type: 'error', text: 'Erro ao carregar disciplinas' })
@@ -164,48 +144,32 @@ export default function SubjectsPage() {
     setMessage(null)
 
     try {
-      if (editingSubject) {
-        // Update existing subject
-        const { error } = await supabase
-          .from('subjects')
-          .update({
-            name: formData.name,
-            code: formData.code,
-            description: formData.description,
-            hours: formData.hours ? parseInt(formData.hours) : null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingSubject.id)
-
-        if (error) throw error
-        
-        // Atualizar ordem no módulo se aplicável
-        if (subjectModuleId && formData.moduleOrderIndex !== '') {
-          const { error: orderError } = await supabase
-            .from('module_subjects')
-            .update({ order_index: parseInt(formData.moduleOrderIndex) })
-            .eq('id', subjectModuleId)
-          
-          if (orderError) throw orderError
-        }
-        
-        setMessage({ type: 'success', text: 'Disciplina atualizada com sucesso!' })
-      } else {
-        // Create new subject
-        const { error } = await supabase
-          .from('subjects')
-          .insert({
-            name: formData.name,
-            code: formData.code,
-            description: formData.description,
-            hours: formData.hours ? parseInt(formData.hours) : null
-          })
-
-        if (error) throw error
-        setMessage({ type: 'success', text: 'Disciplina criada com sucesso!' })
+      const subjectData = {
+        name: formData.name,
+        code: formData.code,
+        description: formData.description,
+        hours: formData.hours ? parseInt(formData.hours) : undefined,
+        moduleOrderIndex: formData.moduleOrderIndex ? parseInt(formData.moduleOrderIndex) : undefined,
+        subjectModuleId: subjectModuleId || undefined
       }
 
-      // Reset form and refresh data
+      let result
+      if (editingSubject) {
+        result = await updateSubject(editingSubject.id, subjectData)
+        if (result.success) {
+          setMessage({ type: 'success', text: 'Disciplina atualizada com sucesso!' })
+        }
+      } else {
+        result = await createSubject(subjectData)
+        if (result.success) {
+          setMessage({ type: 'success', text: 'Disciplina criada com sucesso!' })
+        }
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao salvar disciplina')
+      }
+
       setFormData({ name: '', code: '', description: '', hours: '', moduleOrderIndex: '' })
       setEditingSubject(null)
       setCurrentModuleOrder(null)
@@ -214,9 +178,9 @@ export default function SubjectsPage() {
       await fetchSubjects()
     } catch (error: any) {
       console.error('Error saving subject:', error)
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Erro ao salvar disciplina' 
+      setMessage({
+        type: 'error',
+        text: error.message || 'Erro ao salvar disciplina'
       })
     } finally {
       setSubmitting(false)
@@ -232,14 +196,9 @@ export default function SubjectsPage() {
       hours: subject.hours?.toString() || '',
       moduleOrderIndex: ''
     })
-    
-    // Buscar a ordem atual no módulo se a disciplina estiver associada a algum módulo
-    const { data: moduleSubject } = await supabase
-      .from('module_subjects')
-      .select('order_index, id')
-      .eq('subject_id', subject.id)
-      .single()
-    
+
+    const moduleSubject = await getModuleSubject(subject.id)
+
     if (moduleSubject) {
       setCurrentModuleOrder(moduleSubject.order_index)
       setSubjectModuleId(moduleSubject.id)
@@ -248,7 +207,7 @@ export default function SubjectsPage() {
       setCurrentModuleOrder(null)
       setSubjectModuleId(null)
     }
-    
+
     setShowModal(true)
   }
 
@@ -258,30 +217,28 @@ export default function SubjectsPage() {
     }
 
     try {
-      // Check if subject is being used
       const usageCount = courseCount[subject.id] || 0
       if (usageCount > 0) {
-        setMessage({ 
-          type: 'error', 
-          text: `Não é possível excluir. Esta disciplina está vinculada a ${usageCount} curso(s).` 
+        setMessage({
+          type: 'error',
+          text: `Não é possível excluir. Esta disciplina está vinculada a ${usageCount} curso(s).`
         })
         return
       }
 
-      const { error } = await supabase
-        .from('subjects')
-        .delete()
-        .eq('id', subject.id)
+      const result = await deleteSubject(subject.id)
 
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao excluir disciplina')
+      }
 
       setMessage({ type: 'success', text: 'Disciplina excluída com sucesso!' })
       await fetchSubjects()
     } catch (error: any) {
       console.error('Error deleting subject:', error)
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Erro ao excluir disciplina' 
+      setMessage({
+        type: 'error',
+        text: error.message || 'Erro ao excluir disciplina'
       })
     }
   }
@@ -324,66 +281,25 @@ export default function SubjectsPage() {
     setMessage(null)
 
     try {
-      // Verificar se as disciplinas estão sendo usadas
-      const { data: usedSubjects } = await supabase
-        .from('module_subjects')
-        .select('subject_id')
-        .in('subject_id', selectedSubjects)
+      const result = await bulkDeleteSubjects(selectedSubjects)
 
-      const usedIds = usedSubjects?.map((ms: any) => ms.subject_id) || []
-      const safeToDelete = selectedSubjects.filter((id: any) => !usedIds.includes(id))
-      const cannotDelete = selectedSubjects.filter((id: any) => usedIds.includes(id))
-
-      if (cannotDelete.length > 0) {
-        const cannotDeleteNames = subjects
-          .filter((s: any) => cannotDelete.includes(s.id))
-          .map((s: any) => s.name)
-          .join(', ')
-        
-        if (safeToDelete.length === 0) {
-          setMessage({ 
-            type: 'error', 
-            text: `Não foi possível excluir as disciplinas selecionadas pois estão sendo usadas em módulos` 
-          })
-          return
-        } else {
-          setMessage({ 
-            type: 'error', 
-            text: `Algumas disciplinas não puderam ser excluídas pois estão em uso: ${cannotDeleteNames}` 
-          })
-        }
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao excluir disciplinas')
       }
 
-      if (safeToDelete.length > 0) {
-        // Primeiro, remover associações com aulas
-        await supabase
-          .from('subject_lessons')
-          .delete()
-          .in('subject_id', safeToDelete)
+      setMessage({
+        type: 'success',
+        text: `${selectedSubjects.length} disciplina(s) excluída(s) com sucesso`
+      })
 
-        // Depois, excluir as disciplinas
-        const { error } = await supabase
-          .from('subjects')
-          .delete()
-          .in('id', safeToDelete)
-
-        if (error) throw error
-
-        setMessage({ 
-          type: 'success', 
-          text: `${safeToDelete.length} disciplina(s) excluída(s) com sucesso` 
-        })
-        
-        // Limpar seleção e recarregar
-        setSelectedSubjects([])
-        setSelectAll(false)
-        await fetchSubjects()
-      }
+      setSelectedSubjects([])
+      setSelectAll(false)
+      await fetchSubjects()
     } catch (error: any) {
       console.error('Error deleting subjects:', error)
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Erro ao excluir disciplinas' 
+      setMessage({
+        type: 'error',
+        text: error.message || 'Erro ao excluir disciplinas'
       })
     } finally {
       setDeletingMultiple(false)
@@ -409,13 +325,13 @@ export default function SubjectsPage() {
     setCurrentLessonAssociations([])
 
     try {
-      const [{ data: lessonsData, error: lessonsError }, { data: lessonLinks, error: lessonLinksError }] = await Promise.all([
-        supabase.from('lessons').select('id, title, description, content_type, duration_minutes').order('title'),
-        supabase.from('subject_lessons').select('subject_id, lesson_id')
-      ])
+      const data = await getLessonsForSubject(subject.id)
 
-      if (lessonsError) throw lessonsError
-      if (lessonLinksError) throw lessonLinksError
+      if (!data) {
+        throw new Error('Erro ao carregar aulas')
+      }
+
+      const { lessons: lessonsData, lessonLinks } = data
 
       const associationMap = new Map<string, Set<string>>()
       lessonLinks?.forEach((link: any) => {
@@ -425,7 +341,7 @@ export default function SubjectsPage() {
         associationMap.get(link.lesson_id)!.add(link.subject_id)
       })
 
-      const options: LessonAssociationOption[] = (lessonsData || []).map((lesson: Lesson) => {
+      const options: LessonAssociationOption[] = (lessonsData || []).map((lesson: any) => {
         const associatedSubjects = associationMap.get(lesson.id)
         const isAssociatedWithCurrent = associatedSubjects?.has(subject.id) || false
         const otherAssociations = associatedSubjects
@@ -482,19 +398,12 @@ export default function SubjectsPage() {
       const toAdd = selectedLessonOptions.filter(id => !currentLessonAssociations.includes(id))
 
       if (toAdd.length > 0) {
-        const { error } = await supabase
-          .from('subject_lessons')
-          .insert(
-            toAdd.map((lessonId: any) => ({
-              subject_id: selectedSubjectForLessons.id,
-              lesson_id: lessonId
-            }))
-          )
+        const result = await associateLessonsWithSubject(selectedSubjectForLessons.id, toAdd)
 
-        if (error) throw error
-      }
+        if (!result.success) {
+          throw new Error(result.error || 'Erro ao associar aulas')
+        }
 
-      if (toAdd.length > 0) {
         setMessage({ type: 'success', text: 'Aulas associadas com sucesso!' })
       }
 
