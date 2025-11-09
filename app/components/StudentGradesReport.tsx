@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, ChangeEvent } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { saveGradeOverrides, resetGradeOverrides } from '@/lib/actions/student-grades'
 import { ExcelExporter } from '@/lib/excel-export'
 import { formatDate } from '@/lib/reports/formatters'
 import Card from './Card'
@@ -94,8 +94,6 @@ export default function StudentGradesReport({
   const [overrideError, setOverrideError] = useState<string | null>(null)
   const [assigningGrade, setAssigningGrade] = useState<string | null>(null)
   const [assigningAllGrades, setAssigningAllGrades] = useState(false)
-
-  const supabase = createClient()
 
   const fetchStudentGrades = useCallback(async (options?: { skipLoading?: boolean }) => {
     try {
@@ -324,13 +322,10 @@ export default function StudentGradesReport({
         tcc_weight: tccWeightValue
       }
 
-      const { error } = await supabase
-        .from('student_grade_overrides')
-        .upsert(payload, { onConflict: 'user_id' })
+      const result = await saveGradeOverrides(payload)
 
-      if (error) {
-        console.error('Erro ao salvar ajustes:', error)
-        throw new Error(error.message || 'Falha ao comunicar com o banco de dados')
+      if (!result.success) {
+        throw new Error(result.error || 'Falha ao salvar ajustes')
       }
 
       setOverrideMessage('✓ Ajustes salvos com sucesso.')
@@ -351,14 +346,10 @@ export default function StudentGradesReport({
     setOverrideError(null)
 
     try {
-      const { error } = await supabase
-        .from('student_grade_overrides')
-        .delete()
-        .eq('user_id', userId as any)
+      const result = await resetGradeOverrides(userId)
 
-      if (error) {
-        console.error('Erro ao remover ajustes:', error)
-        throw new Error(error.message || 'Falha ao comunicar com o banco de dados')
+      if (!result.success) {
+        throw new Error(result.error || 'Falha ao remover ajustes')
       }
 
       setOverrides(null)
