@@ -8,10 +8,17 @@ import Card from '../../components/Card'
 import Spinner from '../../components/ui/Spinner'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
-import { createClient } from '@/lib/supabase/client'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useRouter } from 'next/navigation'
+import {
+  getUserProfile,
+  updateUserProfile,
+  uploadAvatar,
+  deleteOldAvatar,
+  updateUserPassword,
+  exportUserData
+} from '@/lib/actions/student-settings'
 
 interface ProfileForm {
   full_name: string
@@ -45,7 +52,6 @@ export default function StudentSettingsPage() {
   const { t, language, setLanguage } = useTranslation()
   const { theme, setTheme } = useTheme()
   const router = useRouter()
-  const supabase = createClient()
 
   // Forms
   const [profileForm, setProfileForm] = useState<ProfileForm>({
@@ -76,27 +82,14 @@ export default function StudentSettingsPage() {
 
   const fetchUserData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const profile = await getUserProfile()
+
+      if (!profile) {
         router.push('/')
         return
       }
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (profile) {
-        setProfileForm({
-          full_name: profile.full_name || '',
-          email: profile.email,
-          phone: profile.phone || '',
-          bio: profile.bio || '',
-          avatar_url: profile.avatar_url || ''
-        })
-      }
+      setProfileForm(profile)
 
       // Load preferences from localStorage or database
       const savedPreferences = localStorage.getItem('userPreferences')
@@ -128,11 +121,11 @@ export default function StudentSettingsPage() {
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0]) return
-    
+
     const file = e.target.files[0]
     const fileExt = file.name.split('.').pop()
     const fileName = `${Math.random()}.${fileExt}`
-    
+
     // Validate file type
     const validTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp']
     if (!fileExt || !validTypes.includes(fileExt.toLowerCase())) {
@@ -145,51 +138,33 @@ export default function StudentSettingsPage() {
       setMessage({ type: 'error', text: 'A imagem deve ter no máximo 5MB' })
       return
     }
-    
+
     setUploadingAvatar(true)
     setMessage(null)
-    
+
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not found')
-      
-      // Upload image to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase
-        .storage
-        .from('avatars')
-        .upload(`${user.id}/${fileName}`, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
-      
-      if (uploadError) throw uploadError
-      
-      // Get public URL
-      const { data: { publicUrl } } = supabase
-        .storage
-        .from('avatars')
-        .getPublicUrl(`${user.id}/${fileName}`)
-      
-      // Update profile with new avatar URL
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ 
-          avatar_url: publicUrl,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
-      
-      if (updateError) throw updateError
-      
-      // Update local state
-      setProfileForm(prev => ({ ...prev, avatar_url: publicUrl }))
-      setMessage({ type: 'success', text: 'Foto atualizada com sucesso!' })
-      
+      // Read file as ArrayBuffer
+      const fileBuffer = await file.arrayBuffer()
+
+      // Upload via server action
+      const result = await uploadAvatar({
+        fileName,
+        fileBuffer,
+        contentType: file.type
+      })
+
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+
       // Delete old avatar if exists
       if (profileForm.avatar_url && profileForm.avatar_url.includes('supabase')) {
-        const oldPath = profileForm.avatar_url.split('/').slice(-2).join('/')
-        await supabase.storage.from('avatars').remove([oldPath])
+        await deleteOldAvatar(profileForm.avatar_url)
       }
+
+      // Update local state
+      setProfileForm(prev => ({ ...prev, avatar_url: result.publicUrl }))
+      setMessage({ type: 'success', text: 'Foto atualizada com sucesso!' })
     } catch (error: any) {
       setMessage({ type: 'error', text: error.message || 'Erro ao fazer upload da imagem' })
     } finally {
@@ -203,21 +178,16 @@ export default function StudentSettingsPage() {
     setMessage(null)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('User not found')
+      const result = await updateUserProfile({
+        full_name: profileForm.full_name,
+        phone: profileForm.phone,
+        bio: profileForm.bio,
+        avatar_url: profileForm.avatar_url
+      })
 
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: profileForm.full_name,
-          phone: profileForm.phone,
-          bio: profileForm.bio,
-          avatar_url: profileForm.avatar_url,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id)
-
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error)
+      }
 
       setMessage({ type: 'success', text: t('settings.profileUpdated') })
     } catch (error: any) {
@@ -245,11 +215,11 @@ export default function StudentSettingsPage() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: passwordForm.newPassword
-      })
+      const result = await updateUserPassword(passwordForm.newPassword)
 
-      if (error) throw error
+      if (!result.success) {
+        throw new Error(result.error)
+      }
 
       setMessage({ type: 'success', text: t('settings.passwordUpdated') })
       setPasswordForm({
@@ -287,27 +257,14 @@ export default function StudentSettingsPage() {
 
   const handleExportData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const result = await exportUserData()
 
-      // Fetch all user data
-      const [profile, enrollments, progress, activities] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('enrollments').select('*, course:courses(title)').eq('user_id', user.id),
-        supabase.from('lesson_progress').select('*').eq('user_id', user.id),
-        supabase.from('activity_logs').select('*').eq('user_id', user.id)
-      ])
-
-      const userData = {
-        profile: profile.data,
-        enrollments: enrollments.data,
-        progress: progress.data,
-        activities: activities.data,
-        exportedAt: new Date().toISOString()
+      if (!result.success) {
+        throw new Error(result.error)
       }
 
       // Create and download JSON file
-      const blob = new Blob([JSON.stringify(userData, null, 2)], { type: 'application/json' })
+      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
