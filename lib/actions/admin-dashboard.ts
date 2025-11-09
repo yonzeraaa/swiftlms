@@ -42,10 +42,20 @@ export async function getAdminDashboardData() {
       .from('enrollments')
       .select('*')
 
-    // Get recent activity logs
+    // Get recent activity logs with user profile
     const { data: activities } = await supabase
       .from('activity_logs')
-      .select('*')
+      .select(`
+        id,
+        user_id,
+        action,
+        entity_type,
+        entity_id,
+        entity_name,
+        metadata,
+        created_at,
+        user:profiles!activity_logs_user_id_fkey(full_name)
+      `)
       .order('created_at', { ascending: false})
       .limit(50)
 
@@ -80,11 +90,51 @@ export async function getAdminDashboardData() {
       progress: enrollment.progress || 0
     })) || []
 
+    // Helper function to determine icon based on entity_type and action
+    const getActivityIcon = (entityType: string, action: string): 'user' | 'course' | 'enrollment' | 'award' => {
+      // Certificate-related actions
+      if (entityType === 'certificate' || entityType === 'certificate_request' || action.includes('certificate')) {
+        return 'award'
+      }
+      // Course-related actions
+      if (entityType === 'course' || action.includes('course')) {
+        return 'course'
+      }
+      // Enrollment-related actions
+      if (entityType === 'enrollment' || action.includes('enroll')) {
+        return 'enrollment'
+      }
+      // User-related actions
+      if (entityType === 'user' || action.includes('user')) {
+        return 'user'
+      }
+      // Lesson-related actions
+      if (entityType === 'lesson') {
+        return 'course'
+      }
+      // Default fallback
+      return 'user'
+    }
+
+    // Transform activities to include formatted fields expected by the client
+    const formattedActivities = activities?.map((activity: any) => ({
+      id: activity.id,
+      userId: activity.user_id,
+      userName: activity.user?.full_name || 'Usuário desconhecido',
+      action: activity.action,
+      entityName: activity.entity_name,
+      entityType: activity.entity_type,
+      metadata: activity.metadata,
+      timestamp: activity.created_at,
+      created_at: activity.created_at,
+      icon: getActivityIcon(activity.entity_type, activity.action)
+    })) || []
+
     return {
       profiles: profiles || [],
       courses: courses || [],
       enrollments: enrollments || [],
-      activities: activities || [],
+      activities: formattedActivities,
       stats,
       coursePopularity,
       completionRates

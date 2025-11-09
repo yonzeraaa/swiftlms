@@ -91,6 +91,12 @@ export default function DashboardPage() {
           case 'user_created':
             actionText = t('dashboard.userJoined')
             break
+          case 'user_deleted':
+            actionText = t('dashboard.userDeleted')
+            break
+          case 'user_permanently_deleted':
+            actionText = t('dashboard.userPermanentlyDeleted')
+            break
           case 'course_created':
             actionText = t('dashboard.createdCourse')
             break
@@ -103,8 +109,26 @@ export default function DashboardPage() {
           case 'student_enrolled':
             actionText = t('dashboard.newStudentEnrolled')
             break
+          case 'enroll_students':
+            actionText = t('dashboard.enrolledStudents')
+            break
           case 'completed_course':
             actionText = t('dashboard.completedCourse')
+            break
+          case 'lesson_completed':
+            actionText = t('dashboard.lessonCompleted')
+            break
+          case 'certificate_requested':
+            actionText = t('dashboard.certificateRequested')
+            break
+          case 'certificate_auto_requested':
+            actionText = t('dashboard.certificateAutoRequested')
+            break
+          case 'certificate_approved':
+            actionText = t('dashboard.certificateApproved')
+            break
+          case 'certificate_rejected':
+            actionText = t('dashboard.certificateRejected')
             break
           default:
             actionText = activity.action
