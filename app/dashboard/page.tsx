@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Users, BookOpen, GraduationCap, TrendingUp, Clock, Award, Activity, FileText, UserPlus, BookPlus, ArrowUpRight, Sparkles } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import Card from '../components/Card'
@@ -41,6 +42,7 @@ interface PopularCourse {
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const { t } = useTranslation()
+  const router = useRouter()
   const [stats, setStats] = useState<Stats>({
     totalStudents: 0,
     totalInstructors: 0,
@@ -67,12 +69,18 @@ export default function DashboardPage() {
         return
       }
 
+      // Check for authorization errors
+      if ('unauthorized' in result && result.unauthorized) {
+        router.push(result.redirectTo || '/')
+        return
+      }
+
       const fetchedStats = result.stats
       const fetchedPopularCourses = result.coursePopularity
       const fetchedActivities = result.activities
 
       // Transform activities to match component format
-      const activities: RecentActivity[] = fetchedActivities.map((activity: any) => {
+      const activities: RecentActivity[] = (fetchedActivities || []).map((activity: any) => {
         const date = new Date(activity.timestamp)
         const now = new Date()
         const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
@@ -145,8 +153,10 @@ export default function DashboardPage() {
       })
 
       setRecentActivities(activities)
-      setPopularCourses(fetchedPopularCourses)
-      setStats(fetchedStats)
+      setPopularCourses(fetchedPopularCourses || [])
+      if (fetchedStats) {
+        setStats(fetchedStats)
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
     } finally {

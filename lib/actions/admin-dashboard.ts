@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 
 /**
  * Get admin dashboard data
@@ -12,7 +11,9 @@ export async function getAdminDashboardData() {
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) redirect('/')
+    if (!user) {
+      return { unauthorized: true, redirectTo: '/' }
+    }
 
     // Check if user is admin
     const { data: profile } = await supabase
@@ -22,7 +23,7 @@ export async function getAdminDashboardData() {
       .single()
 
     if (profile?.role !== 'admin' && profile?.role !== 'instructor') {
-      redirect('/student-dashboard')
+      return { unauthorized: true, redirectTo: '/student-dashboard' }
     }
 
     // Get all users with statistics
