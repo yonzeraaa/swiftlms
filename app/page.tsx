@@ -63,87 +63,59 @@ export default function LoginPage() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-    
-    console.log('Attempting login with email:', email)
-    
+
     try {
-      // Login direto via cliente (como funciona em /test-auth)
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Usar endpoint seguro com CSRF, rate limiting e validação
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          email,
+          password,
+        }),
       })
-      
-      if (error) {
-        console.error('Login error:', error)
-        // Handle specific error messages
-        if (error.message?.includes('Invalid login credentials')) {
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        // Tratar erros específicos
+        if (response.status === 429) {
+          setError(data.error || t('login.tooManyAttempts'))
+        } else if (response.status === 401) {
           setError(t('login.invalidCredentials'))
-        } else if (error.message?.includes('Email not confirmed')) {
-          setError(t('login.confirmEmail'))
+        } else if (response.status === 403) {
+          setError(t('login.blockedRequest'))
         } else {
-          setError(error.message || t('login.loginError'))
+          setError(data.error || t('login.loginError'))
         }
         setShowError(true)
         setIsLoading(false)
         return
       }
-      
-      if (data.user && data.session) {
-        console.log('Login successful, user:', data.user.email)
 
+      if (data.success) {
         // Mostrar feedback de sucesso
         setSuccess(true)
 
-        // Sincronizar sessão com o servidor imediatamente após o login
-        console.log('Sincronizando sessão com o servidor...')
-        try {
-          const syncResponse = await fetch('/api/auth/sync-session', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              access_token: data.session.access_token,
-              refresh_token: data.session.refresh_token
-            })
-          })
-          
-          const syncResult = await syncResponse.json()
-          
-          if (!syncResponse.ok) {
-            console.error('Erro ao sincronizar sessão:', syncResult.error)
-          } else {
-            console.log('Sessão sincronizada com sucesso!')
-          }
-        } catch (syncError) {
-          console.error('Erro ao sincronizar sessão:', syncError)
-        }
-        
-        // Get user profile to determine redirect
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', data.user.id)
-          .single()
-        
-        const redirectUrl = profile?.role === 'student' 
-          ? '/student-dashboard' 
-          : '/dashboard'
-        
-        console.log('Redirecting to:', redirectUrl)
-        
+        // Iniciar gestão de sessão (renovação automática e detecção de inatividade)
+        const { SessionManager } = await import('@/lib/auth/session-manager')
+        const sessionManager = SessionManager.getInstance()
+        sessionManager.startSession()
+
         // Pequeno delay para garantir que cookies sejam definidos
         await new Promise(resolve => setTimeout(resolve, 300))
-        
-        // Recarregar a página completamente (como em /test-auth)
-        window.location.href = redirectUrl
+
+        // Redirecionar para dashboard apropriado
+        window.location.href = data.redirectUrl
       } else {
         setError(t('login.loginError'))
+        setShowError(true)
         setIsLoading(false)
       }
     } catch (err) {
-      console.error('Login failed:', err)
       setError(t('login.unexpectedError'))
       setShowError(true)
       setIsLoading(false)

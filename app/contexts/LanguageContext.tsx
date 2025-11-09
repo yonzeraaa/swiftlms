@@ -340,6 +340,8 @@ const translations: Record<Language, Record<string, string>> = {
     'login.viewCourses': 'Ver Cursos Disponíveis',
     'login.contactPrompt': 'Interessado em algum curso?',
     'login.contactButton': 'Fale Conosco',
+    'login.tooManyAttempts': 'Muitas tentativas de login. Por favor, aguarde alguns minutos.',
+    'login.blockedRequest': 'Requisição bloqueada por segurança. Tente novamente.',
     
     // Forgot Password
     'forgotPassword.title': 'Recuperar Senha',
@@ -636,7 +638,9 @@ const translations: Record<Language, Record<string, string>> = {
     'login.viewCourses': 'View Available Courses',
     'login.contactPrompt': 'Interested in any course?',
     'login.contactButton': 'Contact Us',
-    
+    'login.tooManyAttempts': 'Too many login attempts. Please wait a few minutes.',
+    'login.blockedRequest': 'Request blocked for security. Please try again.',
+
     // Forgot Password
     'forgotPassword.title': 'Reset Password',
     'forgotPassword.subtitle': 'Enter your email to receive instructions',
@@ -893,7 +897,9 @@ const translations: Record<Language, Record<string, string>> = {
     'login.viewCourses': 'Ver Cursos Disponibles',
     'login.contactPrompt': '¿Interesado en algún curso?',
     'login.contactButton': 'Contáctanos',
-    
+    'login.tooManyAttempts': 'Demasiados intentos de inicio de sesión. Por favor, espere unos minutos.',
+    'login.blockedRequest': 'Solicitud bloqueada por seguridad. Intente nuevamente.',
+
     // Forgot Password
     'forgotPassword.title': 'Recuperar Contraseña',
     'forgotPassword.subtitle': 'Ingrese su correo para recibir instrucciones',
