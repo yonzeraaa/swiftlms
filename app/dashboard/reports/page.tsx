@@ -23,6 +23,7 @@ import { fetchUsersData } from '@/lib/excel-template-mappers/users-mapper'
 import { fetchGradesData } from '@/lib/excel-template-mappers/grades-mapper'
 import { fetchEnrollmentsData } from '@/lib/excel-template-mappers/enrollments-mapper'
 import { fetchAccessData } from '@/lib/excel-template-mappers/access-mapper'
+import { getReportData, getReportTemplates, getStudentsForReport, getStudentCourses } from '@/lib/actions/admin-reports'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -63,7 +64,6 @@ export default function ReportsPage() {
   const [studentCourses, setStudentCourses] = useState<Array<{ enrollment_id: string, course_id: string, course_title: string }>>([])
   const [selectedCourse, setSelectedCourse] = useState<string | null>(null)
   const [modalStep, setModalStep] = useState<'student' | 'course'>('student')
-  const supabase = createClient()
 
   useEffect(() => {
     // Validar datas antes de buscar dados
@@ -72,143 +72,32 @@ export default function ReportsPage() {
       return
     }
     setDateError(null)
-    fetchReportData()
-    fetchTemplates()
+    fetchReportDataWrapper()
+    fetchTemplatesWrapper()
   }, [dateRange])
 
-  const fetchTemplates = async () => {
-    const { data } = await supabase
-      .from('excel_templates')
-      .select('*')
-      .eq('is_active', true)
-      .order('name')
-
-    if (data) {
-      setTemplates(data)
-    }
+  const fetchTemplatesWrapper = async () => {
+    const data = await getReportTemplates()
+    setTemplates(data)
   }
 
-  const fetchStudents = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('role', 'student')
-      .eq('status', 'active')
-      .order('full_name')
-
-    if (data) {
-      setStudents(data)
-    }
+  const fetchStudentsWrapper = async () => {
+    const data = await getStudentsForReport()
+    setStudents(data)
   }
 
-  const fetchStudentCourses = async (userId: string) => {
-    const { data } = await supabase
-      .from('enrollments')
-      .select('id, course_id, courses(title)')
-      .eq('user_id', userId)
-      .order('enrolled_at', { ascending: false })
-
-    if (data) {
-      setStudentCourses(
-        data.map((enrollment: any) => ({
-          enrollment_id: enrollment.id,
-          course_id: enrollment.course_id,
-          course_title: enrollment.courses?.title || 'Curso sem título'
-        }))
-      )
-    }
+  const fetchStudentCoursesWrapper = async (userId: string) => {
+    const data = await getStudentCourses(userId)
+    setStudentCourses(data)
   }
 
-  const fetchReportData = async () => {
+  const fetchReportDataWrapper = async () => {
     try {
       setLoading(true)
-
-      // Fetch profiles
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('*')
-
-      const students = profiles?.filter((p: any) => p.role === 'student') || []
-      const instructors = profiles?.filter((p: any) => p.role === 'instructor') || []
-      const activeStudents = students.filter((s: any) => s.status === 'active').length
-
-      // Fetch courses
-      const { data: courses } = await supabase
-        .from('courses')
-        .select('*')
-
-      // Fetch enrollments
-      const { data: enrollments } = await supabase
-        .from('enrollments')
-        .select('*')
-        .gte('enrolled_at', dateRange.start)
-        .lte('enrolled_at', dateRange.end)
-        .in('status', ['active', 'completed'])
-
-      const completedCourses = enrollments?.filter((e: any) => e.status === 'completed').length || 0
-      const totalEnrollments = enrollments?.length || 0
-      const averageCompletionRate = totalEnrollments > 0 
-        ? Math.round((completedCourses / totalEnrollments) * 100)
-        : 0
-
-      // Courses per category
-      const categoryMap = new Map<string, number>()
-      courses?.forEach((course: any) => {
-        const count = categoryMap.get(course.category) || 0
-        categoryMap.set(course.category, count + 1)
-      })
-      const coursesPerCategory = Array.from(categoryMap.entries()).map(([category, count]) => ({
-        category,
-        count
-      }))
-
-      // Enrollments by month
-      const monthMap = new Map<string, number>()
-      enrollments?.forEach((enrollment: any) => {
-        if (enrollment.enrolled_at) {
-          const date = new Date(enrollment.enrolled_at)
-          const month = date.toLocaleDateString('pt-BR', { 
-            month: 'short', 
-            year: 'numeric' 
-          })
-          const count = monthMap.get(month) || 0
-          monthMap.set(month, count + 1)
-        }
-      })
-      const enrollmentsByMonth = Array.from(monthMap.entries()).map(([month, count]) => ({
-        month,
-        count
-      }))
-
-      // Top courses
-      const courseEnrollmentMap = new Map<string, { title: string; count: number }>()
-      enrollments?.forEach((enrollment: any) => {
-        const course = courses?.find((c: any) => c.id === enrollment.course_id)
-        if (course) {
-          const existing = courseEnrollmentMap.get(course.id) || { title: course.title, count: 0 }
-          courseEnrollmentMap.set(course.id, { 
-            title: course.title, 
-            count: existing.count + 1 
-          })
-        }
-      })
-      const topCourses = Array.from(courseEnrollmentMap.values())
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5)
-        .map(({ title, count }) => ({ title, enrollments: count }))
-
-      setReportData({
-        totalStudents: students.length,
-        totalInstructors: instructors.length,
-        totalCourses: courses?.length || 0,
-        totalEnrollments,
-        completedCourses,
-        averageCompletionRate,
-        activeStudents,
-        coursesPerCategory,
-        enrollmentsByMonth,
-        topCourses
-      })
+      const data = await getReportData(dateRange.start, dateRange.end)
+      if (data) {
+        setReportData(data)
+      }
     } catch (error) {
       console.error('Error fetching report data:', error)
     } finally {
@@ -223,7 +112,7 @@ export default function ReportsPage() {
       // Tentar gerar com template primeiro
       if (reportType === 'student-history') {
         // Abrir modal de seleção de aluno
-        await fetchStudents()
+        await fetchStudentsWrapper()
         setShowStudentHistoryModal(true)
         setGeneratingReport(null)
         return
@@ -272,6 +161,7 @@ export default function ReportsPage() {
 
   // Função auxiliar para processar e exportar dados de notas
   const processAndExportGrades = async (testAttempts: any[]) => {
+    const supabase = createClient()
     // Buscar TODOS os testes ativos do sistema
     const { data: allTests } = await supabase
       .from('tests')
@@ -548,10 +438,11 @@ export default function ReportsPage() {
 
   const generateGradesHistoryReport = async () => {
     setGeneratingReport('grades')
-    
+    const supabase = createClient()
+
     try {
       console.log('Buscando test_attempts...')
-      
+
       // Buscar test_attempts - usando campos corretos (submitted_at ou started_at)
       const { data: testAttempts, error: resultsError } = await supabase
         .from('test_attempts')
@@ -721,7 +612,8 @@ export default function ReportsPage() {
 
   const generateEnrollmentAndCompletionReport = async () => {
     setGeneratingReport('enrollments')
-    
+    const supabase = createClient()
+
     try {
       // Buscar matrículas reais do período
       const { data: enrollments, error: enrollError } = await supabase
@@ -1008,10 +900,11 @@ export default function ReportsPage() {
 
   const generateAccessReport = async () => {
     setGeneratingReport('access')
-    
+    const supabase = createClient()
+
     try {
       console.log('Gerando relatório de acesso com dados reais...')
-      
+
       // Buscar todos os profiles de estudantes
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
@@ -1542,6 +1435,7 @@ export default function ReportsPage() {
   // Relatório de Usuários (Modelo IPETEC/UCP)
   const generateUsersReport = async () => {
     setGeneratingReport('users')
+    const supabase = createClient()
 
     try {
       // Buscar todos os usuários com suas matrículas e progresso
@@ -1684,6 +1578,7 @@ export default function ReportsPage() {
   // Histórico do Aluno (Modelo IPETEC/UCP)
   const generateStudentHistoryReport = async (userId: string, userName: string, courseId?: string) => {
     setGeneratingReport('student-history')
+    const supabase = createClient()
 
     try {
       // Validação inicial
@@ -2486,7 +2381,7 @@ export default function ReportsPage() {
                   variant="primary"
                   onClick={async () => {
                     if (selectedStudent) {
-                      await fetchStudentCourses(selectedStudent.id)
+                      await fetchStudentCoursesWrapper(selectedStudent.id)
                       setModalStep('course')
                     }
                   }}
