@@ -39,7 +39,7 @@ export async function getTestForTaking(testId: string) {
     const { data: attempts, error: attemptsError } = await supabase
       .from('test_attempts')
       .select('*')
-      .eq('student_id', user.id)
+      .eq('user_id', user.id)
       .eq('test_id', testId)
       .order('created_at', { ascending: false })
 
@@ -79,7 +79,7 @@ export async function getTestResults(testId: string) {
     const { data: attempt } = await supabase
       .from('test_attempts')
       .select('*')
-      .eq('student_id', user.id)
+      .eq('user_id', user.id)
       .eq('test_id', testId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -89,7 +89,7 @@ export async function getTestResults(testId: string) {
     const { data: grade } = await supabase
       .from('test_grades')
       .select('*')
-      .eq('student_id', user.id)
+      .eq('user_id', user.id)
       .eq('test_id', testId)
       .single()
 
