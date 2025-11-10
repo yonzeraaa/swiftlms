@@ -151,9 +151,9 @@ export async function getGradeOverrides(userId: string) {
     if (!user) return null
 
     const { data: overrides } = await supabase
-      .from('grade_overrides')
+      .from('student_grade_overrides')
       .select('*')
-      .eq('student_id', userId)
+      .eq('user_id', userId)
       .single()
 
     return overrides
@@ -176,12 +176,12 @@ export async function getTCCGrade(userId: string) {
 
     const { data: tccAttempt } = await supabase
       .from('tcc_submissions')
-      .select('final_grade')
-      .eq('student_id', userId)
+      .select('grade')
+      .eq('user_id', userId)
       .eq('status', 'approved')
       .single()
 
-    return tccAttempt?.final_grade || null
+    return tccAttempt?.grade || null
   } catch (error) {
     // TCC might not exist, that's okay
     return null

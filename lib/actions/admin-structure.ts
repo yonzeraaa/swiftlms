@@ -357,7 +357,7 @@ export async function removeNodeFromStructure(nodeType: string, nodeId: string, 
   } else if (nodeType === 'test' && parentId) {
     const { error } = await supabase
       .from('tests')
-      .update({ subject_id: null })
+      .update({ subject_id: null as any })
       .eq('id', nodeId)
 
     if (error) throw error

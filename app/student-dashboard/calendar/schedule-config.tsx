@@ -28,7 +28,7 @@ interface StudentSchedule {
 interface Subject {
   id: string
   name: string
-  code: string
+  code: string | null
 }
 
 const WEEKDAYS = [

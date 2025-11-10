@@ -16,12 +16,12 @@ import Spinner from '../components/ui/Spinner'
 type Course = {
   id: string
   title: string
-  description: string
-  summary: string
+  description: string | null
+  summary: string | null
   category: string
-  difficulty: 'beginner' | 'intermediate' | 'advanced'
+  difficulty: string
   duration_hours: number
-  is_published: boolean
+  is_published: boolean | null
 }
 
 type Subject = {
@@ -101,7 +101,7 @@ export default function BrowseCoursesPage() {
             modulesWithSubjects.push({
               id: module.id,
               title: module.title,
-              description: module.description,
+              description: module.description ?? undefined,
               order_index: module.order_index || 0,
               course_id: module.course_id,
               subjects: subjectsWithDetails

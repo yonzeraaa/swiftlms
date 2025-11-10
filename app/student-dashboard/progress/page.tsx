@@ -91,7 +91,7 @@ export default function ProgressPage() {
       const progressData: CourseProgress[] = []
 
       for (const enrollment of enrollments) {
-        if (enrollment.course) {
+        if (enrollment.courses) {
           // Get allowed modules for this enrollment
           const allowedModuleIds = enrollmentModules
             .filter((em: any) => em.enrollment_id === enrollment.id)
@@ -142,12 +142,12 @@ export default function ProgressPage() {
             : 0
 
           progressData.push({
-            course: enrollment.course,
+            course: enrollment.courses,
             enrollment,
             totalLessons: totalCourseLessons,
             completedLessons: totalCompletedLessons,
             progress: courseProgressPercentage,
-            hoursCompleted: Math.round((enrollment.course.duration_hours || 0) * courseProgressPercentage / 100),
+            hoursCompleted: Math.round((enrollment.courses.duration_hours || 0) * courseProgressPercentage / 100),
             lastActivity: enrollment.enrolled_at || undefined,
             modules: moduleProgress
           })

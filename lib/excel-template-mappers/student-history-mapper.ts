@@ -314,7 +314,7 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
     coordination: process.env.NEXT_PUBLIC_COORDINATION || 'A definir',
     student_name: Helpers.defaultValue(enrollment?.user?.full_name, 'Aluno'),
     approval: Calculators.isApproved(mediaGeral) ? 'Sim' : 'Não',
-    last_access: Formatters.datetime(lastActivity?.created_at) || 'Sem registro',
+    last_access: Formatters.datetime(lastActivity?.created_at ?? null) || 'Sem registro',
     tests_grade: Number.isFinite(avgTests) ? avgTests.toFixed(1) : '0.0',
     tcc_grade: Number.isFinite(tccScore) ? tccScore.toFixed(1) : '0.0',
     general_average: Number.isFinite(mediaGeral) ? mediaGeral.toFixed(1) : '0.0',

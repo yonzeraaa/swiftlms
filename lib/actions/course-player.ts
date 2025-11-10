@@ -176,7 +176,7 @@ export async function updateEnrollmentProgress(enrollmentId: string, progress: n
     const { error } = await supabase
       .from('enrollments')
       .update({
-        progress,
+        progress_percentage: progress,
         updated_at: new Date().toISOString()
       })
       .eq('id', enrollmentId)

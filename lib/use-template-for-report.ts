@@ -70,10 +70,10 @@ export async function generateReportWithTemplate(
     }
 
     // Extrair mapeamentos customizados do template (se existirem)
-    const customMappings = template.metadata?.mappings
+    const customMappings = (template.metadata as any)?.mappings
 
     // Gerar relatório usando template com mapeamentos customizados
-    const engine = new ExcelTemplateEngine(template)
+    const engine = new ExcelTemplateEngine(template as any)
     await engine.loadTemplate()
     await engine.fillTemplate(reportData, customMappings)
     const buffer = await engine.generate()

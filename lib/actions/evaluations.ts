@@ -23,6 +23,10 @@ export async function getTestForTaking(testId: string) {
 
     if (testError) throw testError
 
+    if (!test.course_id) {
+      return { success: false, error: 'Teste não associado a um curso' }
+    }
+
     // Check enrollment
     const { data: enrollment } = await supabase
       .from('enrollments')

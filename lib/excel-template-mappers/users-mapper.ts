@@ -56,13 +56,13 @@ export async function fetchUsersData(): Promise<UserReportData> {
           email: user.email || '',
           phone: user.phone || '',
           course_code: '-',
-          role: Translators.role(user.role),
+          role: Translators.role(user.role || 'student'),
           grade: 0,
           progress: 0,
           enrollment_date: '',
           completed_at: '',
           time_in_system: 0,
-          status: Translators.userStatus(user.status),
+          status: Translators.userStatus(user.status || 'active'),
         })
         continue
       }
@@ -82,14 +82,14 @@ export async function fetchUsersData(): Promise<UserReportData> {
         const diffHours = Calculators.hoursBetween(enrolledDate, new Date())
 
         // Determinar situação
-        const situacao = Translators.enrollmentStatus(enrollment.status, user.status)
+        const situacao = Translators.enrollmentStatus(enrollment.status, user.status || 'active')
 
         usersData.push({
           full_name: Helpers.defaultValue(user.full_name, 'Usuário desconhecido'),
           email: user.email || '',
           phone: user.phone || '',
           course_code: enrollment.course?.slug || '-',
-          role: Translators.role(user.role),
+          role: Translators.role(user.role || 'student'),
           grade: Formatters.number(pontuacao),
           progress: Formatters.number(avanco),
           enrollment_date: Formatters.date(enrollment.enrolled_at),

@@ -70,6 +70,17 @@ export async function assignMaxGradeToStudent(
       }
     }
 
+    if (!test.course_id) {
+      return {
+        success: false,
+        previousScore: null,
+        newScore: 0,
+        gradeId: '',
+        attemptId: null,
+        errors: ['Teste não está associado a um curso']
+      }
+    }
+
     // 3. Verificar se aluno está matriculado no curso
     const { data: enrollment } = await supabase
       .from('enrollments')
@@ -161,7 +172,9 @@ export async function assignMaxGradeToStudent(
       .insert({
         user_id: adminId,
         action: 'assign_max_grade',
-        description: `Atribuiu nota máxima (${maxScore}) para o teste "${test.title}" ao aluno ${userId}`,
+        entity_type: 'test',
+        entity_id: testId,
+        entity_name: test.title,
         metadata: {
           test_id: testId,
           student_id: userId,

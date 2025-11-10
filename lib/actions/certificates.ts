@@ -11,7 +11,6 @@ type Profile = Database['public']['Tables']['profiles']['Row']
 interface CertificateWithDetails extends Certificate {
   course: Course
   user: Profile
-  certificate_type?: 'technical' | 'lato-sensu'
 }
 
 interface CertificateRequest {
@@ -23,7 +22,7 @@ interface CertificateRequest {
   processed_at?: string
   notes?: string
   course?: Course
-  certificate_type: 'technical' | 'lato-sensu'
+  certificate_type: string | null
 }
 
 /**

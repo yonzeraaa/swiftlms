@@ -35,7 +35,6 @@ export async function fetchGradesData(): Promise<GradesReportData> {
         *,
         test:tests!inner(
           title,
-          max_score,
           course_id,
           subject_id
         ),
@@ -71,7 +70,8 @@ export async function fetchGradesData(): Promise<GradesReportData> {
 
     for (const attempt of testAttempts || []) {
       const score = attempt.score || 0
-      const maxScore = attempt.test.max_score || 100
+      // Max score is typically 100 for percentage-based scoring
+      const maxScore = 100
       const percentage = maxScore > 0 ? (score / maxScore) * 100 : 0
 
       gradesData.push({
