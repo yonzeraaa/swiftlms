@@ -174,9 +174,19 @@ export class ExcelTemplateEngine {
       )
     }
 
-    // Obter linha de template para clonar formatação
+    // Obter linha de template para clonar formatação (antes de limpar)
     const templateRow = worksheet.getRow(currentRow)
     const templateStyle = this.captureRowStyle(templateRow)
+
+    // Limpar linhas antigas do template (linhas "fantasma" pré-formatadas)
+    const templateRowCount = this.countTemplateRows(worksheet, currentRow, mapping.fields)
+    if (templateRowCount > 1) {
+      // Mantém a primeira linha (template) e remove o resto
+      worksheet.spliceRows(currentRow + 1, templateRowCount - 1)
+      console.log(
+        `[ExcelTemplateEngine] Removidas ${templateRowCount - 1} linhas antigas do template em "${mapping.source}"`
+      )
+    }
 
     for (const item of arrayData) {
       const row = worksheet.getRow(currentRow)
@@ -250,6 +260,51 @@ export class ExcelTemplateEngine {
       if (style.alignment) cell.alignment = style.alignment
       if (style.numFmt) cell.numFmt = style.numFmt
     })
+  }
+
+  /**
+   * Conta quantas linhas consecutivas do template têm formatação
+   * (para detectar e remover linhas "fantasma" pré-formatadas)
+   */
+  private countTemplateRows(
+    worksheet: ExcelJS.Worksheet,
+    startRow: number,
+    fields: Record<string, number>
+  ): number {
+    let count = 0
+    const maxRowsToCheck = 100 // Limite de segurança
+
+    // Obter colunas que fazem parte do mapeamento
+    const mappedColumns = Object.values(fields)
+
+    for (let i = 0; i < maxRowsToCheck; i++) {
+      const row = worksheet.getRow(startRow + i)
+      let hasFormattingInMappedColumns = false
+
+      // Verificar se alguma célula das colunas mapeadas tem formatação
+      for (const colNumber of mappedColumns) {
+        const cell = row.getCell(colNumber)
+
+        // Considera formatada se tem borda, preenchimento ou valor
+        if (
+          cell.border ||
+          cell.fill ||
+          (cell.value !== null && cell.value !== undefined && cell.value !== '')
+        ) {
+          hasFormattingInMappedColumns = true
+          break
+        }
+      }
+
+      if (hasFormattingInMappedColumns) {
+        count++
+      } else {
+        // Parar ao encontrar primeira linha sem formatação
+        break
+      }
+    }
+
+    return count
   }
 
   /**
