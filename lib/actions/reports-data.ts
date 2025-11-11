@@ -304,7 +304,10 @@ export async function getStudentHistoryReportData(
           *,
           course_modules(
             *,
-            lessons(*)
+            lessons(
+              *,
+              subject_lessons(subject_id)
+            )
           )
         ),
         user:profiles(full_name, email)
@@ -334,6 +337,7 @@ export async function getStudentHistoryReportData(
       .from('lesson_progress')
       .select('*')
       .eq('user_id', userId)
+      .eq('enrollment_id', enrollment.id)
 
     if (progressError) throw progressError
 
@@ -345,19 +349,43 @@ export async function getStudentHistoryReportData(
         test:tests(
           id,
           subject_id,
+          course_id,
           subjects(name)
         )
       `)
       .eq('user_id', userId)
+      .eq('enrollment_id', enrollment.id)
 
     if (attemptsError) throw attemptsError
 
-    // Buscar todas as disciplinas
-    const { data: subjects, error: subjectsError } = await supabase
-      .from('subjects')
-      .select('id, name')
+    // Buscar apenas as disciplinas associadas aos módulos do curso
+    const courseModules = enrollment.course?.course_modules || []
+    const moduleIds = courseModules.map((m: any) => m.id)
 
-    if (subjectsError) throw subjectsError
+    let subjects: any[] = []
+    if (moduleIds.length > 0) {
+      // Buscar disciplinas vinculadas aos módulos do curso
+      const { data: moduleSubjects, error: moduleSubjectsError } = await supabase
+        .from('module_subjects')
+        .select('subject_id')
+        .in('module_id', moduleIds)
+
+      if (moduleSubjectsError) throw moduleSubjectsError
+
+      const subjectIds = [
+        ...new Set(moduleSubjects?.map((ms: any) => ms.subject_id) || []),
+      ]
+
+      if (subjectIds.length > 0) {
+        const { data: subjectsData, error: subjectsError } = await supabase
+          .from('subjects')
+          .select('id, name')
+          .in('id', subjectIds)
+
+        if (subjectsError) throw subjectsError
+        subjects = subjectsData || []
+      }
+    }
 
     return {
       success: true,

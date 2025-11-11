@@ -1509,7 +1509,15 @@ export default function ReportsPage() {
         }
       })
 
-      // Criar mapa de subject_id por código (extrair código antes do hífen)
+      // Criar mapa de subjects por ID
+      const subjectById = new Map<string, any>()
+      subjects?.forEach((subject: any) => {
+        if (subject.id) {
+          subjectById.set(subject.id, subject)
+        }
+      })
+
+      // Mapa legado por código (fallback para lições sem subject_lessons)
       const subjectByCode = new Map<string, any>()
       subjects?.forEach((subject: any) => {
         const code = subject.name?.split('-')[0]?.trim()
@@ -1539,17 +1547,23 @@ export default function ReportsPage() {
         module.lessons?.forEach((lesson: any, lessonIndex: number) => {
           const progress = progressByLessonId.get(lesson.id)
 
-          // Extrair código antes do hífen
-          const lessonFullCode = lesson.title?.split('-')[0]?.trim() || ''
-
-          // Tentar diferentes tamanhos de código (de 10 até 4 caracteres)
+          // Priorizar subject_id direto da associação subject_lessons
           let subject = null
-          let lessonCode = ''
+          const subjectId = lesson.subject_lessons?.[0]?.subject_id
 
-          for (let codeLength = 10; codeLength >= 4 && !subject; codeLength--) {
-            lessonCode = lessonFullCode.substring(0, codeLength)
-            subject = subjectByCode.get(lessonCode)
-            if (subject) break
+          if (subjectId) {
+            // Usar subject_id direto (método preferido)
+            subject = subjectById.get(subjectId)
+          } else {
+            // Fallback: extrair código antes do hífen (método legado)
+            const lessonFullCode = lesson.title?.split('-')[0]?.trim() || ''
+
+            // Tentar diferentes tamanhos de código (de 10 até 4 caracteres)
+            for (let codeLength = 10; codeLength >= 4 && !subject; codeLength--) {
+              const lessonCode = lessonFullCode.substring(0, codeLength)
+              subject = subjectByCode.get(lessonCode)
+              if (subject) break
+            }
           }
 
           // Buscar nota do teste deste subject
