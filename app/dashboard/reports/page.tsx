@@ -64,6 +64,7 @@ export default function ReportsPage() {
   const [templates, setTemplates] = useState<ExcelTemplate[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false)
   const [showStudentHistoryModal, setShowStudentHistoryModal] = useState(false)
   const [students, setStudents] = useState<Profile[]>([])
   const [selectedStudent, setSelectedStudent] = useState<Profile | null>(null)
@@ -1460,6 +1461,11 @@ export default function ReportsPage() {
       }
 
       // Tentar gerar usando template
+      // COMPORTAMENTO AUTOMÁTICO:
+      // - Se selectedTemplate for null/undefined, a função generateReportWithTemplate
+      //   automaticamente busca o template ATIVO mais recente para 'student-history'
+      // - Se não houver template ativo, retorna null e cai no fallback (geração dinâmica)
+      // - O usuário só precisa marcar um template como ativo para ele ser usado automaticamente
       const blob = await generateReportWithTemplate('student-history', selectedTemplate || undefined, { userId, courseId })
 
       if (blob) {
@@ -1734,50 +1740,72 @@ export default function ReportsPage() {
           </h1>
           <p className="text-gold-300 mt-1">{t('reports.subtitle')}</p>
         </div>
-        <div className="flex gap-2 items-center">
-          <select
-            value={selectedTemplate || ''}
-            onChange={(e) => setSelectedTemplate(e.target.value || null)}
-            className="px-4 py-2 bg-navy-900 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-            title="Selecione um template Excel personalizado ou deixe vazio para usar o padrão"
-          >
-            <option value="">Sem Template (Padrão)</option>
-            <option disabled>─────────────</option>
-            {templates.length > 0 ? (
-              <>
-                {['users', 'grades', 'enrollments', 'access', 'student-history'].map(category => {
-                  const categoryTemplates = templates.filter(t => t.category === category)
-                  if (categoryTemplates.length === 0) return null
-                  const categoryNames: Record<string, string> = {
-                    users: 'Usuários',
-                    grades: 'Notas',
-                    enrollments: 'Matrículas',
-                    access: 'Acessos',
-                    'student-history': 'Histórico do Aluno'
-                  }
-                  return (
-                    <optgroup key={category} label={categoryNames[category] || category}>
-                      {categoryTemplates.map((template) => (
-                        <option key={template.id} value={template.id}>
-                          {template.name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )
-                })}
-              </>
-            ) : (
-              <option disabled>Nenhum template disponível</option>
-            )}
-          </select>
-          <Button
-            variant="primary"
-            icon={<Table className="w-5 h-5" />}
-            onClick={exportToExcel}
-            title="Exportar para Excel com tabelas dinâmicas"
-          >
-            {t('reports.export')} Excel {selectedTemplate ? '(Template)' : '(Dinâmico)'}
-          </Button>
+        <div className="flex flex-col gap-2 items-end">
+          <div className="flex gap-2 items-center">
+            <Button
+              variant="secondary"
+              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              title="Mostrar/ocultar opções avançadas"
+            >
+              <Filter className="w-5 h-5" />
+              Opções Avançadas
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Table className="w-5 h-5" />}
+              onClick={exportToExcel}
+              title="Exportar para Excel com tabelas dinâmicas"
+            >
+              {t('reports.export')} Excel
+            </Button>
+          </div>
+
+          {showAdvancedOptions && (
+            <div className="bg-navy-800 border border-navy-600 rounded-lg p-4 space-y-2">
+              <p className="text-gold-300 text-sm mb-2">
+                ℹ️ Por padrão, o sistema usa automaticamente o template ativo mais recente para cada tipo de relatório.
+                Use esta opção apenas se quiser forçar um template específico.
+              </p>
+              <div className="flex gap-2 items-center">
+                <label className="text-gold-100 text-sm font-medium">Template Excel:</label>
+                <select
+                  value={selectedTemplate || ''}
+                  onChange={(e) => setSelectedTemplate(e.target.value || null)}
+                  className="px-4 py-2 bg-navy-900 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 flex-1"
+                  title="Deixe em 'Automático' para usar o template ativo da categoria, ou selecione um template específico"
+                >
+                  <option value="">🔄 Automático (usa template ativo)</option>
+                  <option disabled>─────────────</option>
+                  {templates.length > 0 ? (
+                    <>
+                      {['users', 'grades', 'enrollments', 'access', 'student-history'].map(category => {
+                        const categoryTemplates = templates.filter(t => t.category === category)
+                        if (categoryTemplates.length === 0) return null
+                        const categoryNames: Record<string, string> = {
+                          users: 'Usuários',
+                          grades: 'Notas',
+                          enrollments: 'Matrículas',
+                          access: 'Acessos',
+                          'student-history': 'Histórico do Aluno'
+                        }
+                        return (
+                          <optgroup key={category} label={categoryNames[category] || category}>
+                            {categoryTemplates.map((template) => (
+                              <option key={template.id} value={template.id}>
+                                {template.name} {template.is_active ? '✓' : ''}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )
+                      })}
+                    </>
+                  ) : (
+                    <option disabled>Nenhum template disponível</option>
+                  )}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -9,7 +9,20 @@ import { fetchEnrollmentsData, mapEnrollmentsDataForTemplate } from './excel-tem
 import { fetchAccessData, mapAccessDataForTemplate } from './excel-template-mappers/access-mapper'
 
 /**
- * Hook para usar templates em relatórios
+ * Gera relatório usando template Excel
+ *
+ * COMPORTAMENTO AUTOMÁTICO:
+ * - Se templateId NÃO for fornecido, busca automaticamente o template ATIVO
+ *   mais recente (por created_at) para a categoria especificada
+ * - Se não houver template ativo para a categoria, retorna null e o código
+ *   deve usar o fallback (geração dinâmica)
+ * - O admin só precisa marcar um template como is_active = true para que
+ *   ele seja usado automaticamente em todos os relatórios da categoria
+ *
+ * @param category - Categoria do relatório (users, grades, student-history, etc)
+ * @param templateId - ID do template específico (opcional). Se não fornecido, usa o ativo
+ * @param params - Parâmetros adicionais (userId, courseId, dateRange)
+ * @returns Blob do Excel gerado ou null se não houver template
  */
 export async function generateReportWithTemplate(
   category: string,
@@ -19,7 +32,8 @@ export async function generateReportWithTemplate(
   const supabase = await createClient()
 
   try {
-    // Se não foi especificado template, buscar o ativo para a categoria
+    // Se foi especificado templateId, buscar por ID
+    // Se NÃO foi especificado, buscar automaticamente o template ATIVO mais recente
     let template
     if (templateId) {
       const { data } = await supabase
@@ -29,6 +43,7 @@ export async function generateReportWithTemplate(
         .single()
       template = data
     } else {
+      // BUSCA AUTOMÁTICA: pega o template ativo mais recente da categoria
       const { data } = await supabase
         .from('excel_templates')
         .select('*')
