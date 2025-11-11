@@ -196,14 +196,20 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
     // Verificar se módulo existe
     if (!courseModule) return
 
+    // Calcular workload do módulo (usar total_hours do BD ou 0)
+    const moduleWorkload = courseModule.total_hours || 0
+
     // Linha do módulo
     modulesData.push({
       code: courseModule.code || Formatters.moduleCode(moduleIndex),
       name: `Módulo ${courseModule.title || 'Sem título'}`,
-      workload: 0, // Será a soma das horas das disciplinas
+      workload: moduleWorkload,
       completion_date: '',
       score: ''
     })
+
+    // Acumular horas do módulo no total
+    totalWorkload += moduleWorkload
 
     // Disciplinas do módulo
     const moduleSubjects = courseModule.module_subjects || []
@@ -260,9 +266,8 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
         scoreCount++
       }
 
-      // Adicionar horas da disciplina ao total
+      // Horas da disciplina (apenas para exibição, não soma no total)
       const subjectHours = subject.hours || 0
-      totalWorkload += subjectHours
 
       modulesData.push({
         code: subject.code || Formatters.lessonCode(moduleIndex, subjectIndex),
