@@ -198,7 +198,7 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
 
     // Linha do módulo
     modulesData.push({
-      code: Formatters.moduleCode(moduleIndex),
+      code: courseModule.code || Formatters.moduleCode(moduleIndex),
       name: `Módulo ${courseModule.title || 'Sem título'}`,
       workload: 0, // Será a soma das horas das disciplinas
       completion_date: '',

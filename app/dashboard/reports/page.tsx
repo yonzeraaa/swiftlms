@@ -1536,7 +1536,7 @@ export default function ReportsPage() {
         const moduleTotalHours = module.total_hours || 0
 
         modulesData.push({
-          codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}`,
+          codigo: module.code || `MOD${(moduleIndex + 1).toString().padStart(2, '0')}`,
           nome: `Módulo ${module.title}`,
           carga_horaria: moduleTotalHours,
           data_finalizacao: '',
