@@ -150,14 +150,20 @@ export const Formatters = {
   },
 
   /**
-   * Formata código de módulo (CMN01, CMN02, etc)
+   * Gera código sintético de módulo (CMN01, CMN02, etc)
+   *
+   * ⚠️ FALLBACK: Use apenas quando course_modules.code não estiver disponível.
+   * Prefira usar o código real do banco de dados quando possível.
    */
   moduleCode: (index: number): string => {
     return `CMN${(index + 1).toString().padStart(2, '0')}`
   },
 
   /**
-   * Formata código de disciplina (CMN0101, CMN0102, etc)
+   * Gera código sintético de disciplina (CMN0101, CMN0102, etc)
+   *
+   * ⚠️ FALLBACK: Use apenas quando subjects.code não estiver disponível.
+   * Prefira usar o código real do banco de dados: subject.code || Formatters.lessonCode(...)
    */
   lessonCode: (moduleIndex: number, lessonIndex: number): string => {
     return `CMN${(moduleIndex + 1).toString().padStart(2, '0')}${(

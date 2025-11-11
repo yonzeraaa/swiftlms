@@ -1570,7 +1570,7 @@ export default function ReportsPage() {
           const lessonScore = subject ? (bestScoreBySubject.get(subject.id) || 0) : 0
 
           modulesData.push({
-            codigo: `MOD${(moduleIndex + 1).toString().padStart(2, '0')}${(lessonIndex + 1).toString().padStart(2, '0')}`,
+            codigo: subject?.code || `MOD${(moduleIndex + 1).toString().padStart(2, '0')}${(lessonIndex + 1).toString().padStart(2, '0')}`,
             nome: ` Disciplina ${lesson.title}`,
             carga_horaria: 0, // Sem horas para disciplinas individuais
             data_finalizacao: progress?.completed_at ? formatDate(progress.completed_at) : '',

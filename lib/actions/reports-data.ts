@@ -379,7 +379,7 @@ export async function getStudentHistoryReportData(
       if (subjectIds.length > 0) {
         const { data: subjectsData, error: subjectsError } = await supabase
           .from('subjects')
-          .select('id, name')
+          .select('id, name, code')
           .in('id', subjectIds)
 
         if (subjectsError) throw subjectsError

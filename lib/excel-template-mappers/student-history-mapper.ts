@@ -265,7 +265,7 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
       totalWorkload += subjectHours
 
       modulesData.push({
-        code: Formatters.lessonCode(moduleIndex, subjectIndex),
+        code: subject.code || Formatters.lessonCode(moduleIndex, subjectIndex),
         name: ` ${subject.name || 'Disciplina sem nome'}`,
         workload: subjectHours,
         completion_date: subjectCompletionDate,
