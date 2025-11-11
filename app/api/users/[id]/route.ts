@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
 
 export async function DELETE(
   request: Request,
@@ -8,7 +8,7 @@ export async function DELETE(
 ) {
   try {
     const supabase = await createClient()
-    
+
     // Check if user is authenticated and is admin
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -33,7 +33,7 @@ export async function DELETE(
     }
 
     const { id: userId } = await params
-    
+
     // Prevent admin from deleting themselves
     if (userId === user.id) {
       return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
@@ -41,77 +41,67 @@ export async function DELETE(
 
     console.log('Attempting to delete user:', userId)
 
-    // First, try to use the RPC function if it exists
-    try {
-      const { data, error: rpcError } = await (supabase as any)
-        .rpc('delete_user_completely', { user_id_to_delete: userId })
+    // Use RPC function to delete user and all related data from database
+    const { data: rpcResult, error: rpcError } = await supabase
+      .rpc('delete_user_completely', { user_id_to_delete: userId })
 
-      if (!rpcError) {
-        console.log('User deleted successfully using RPC:', userId)
-        return NextResponse.json({ success: true, message: 'User deleted successfully' })
-      }
-      
-      console.log('RPC function not available or failed, falling back to manual deletion:', rpcError)
-    } catch (rpcError) {
-      console.log('RPC function not available, proceeding with manual deletion')
-    }
-
-    // Fallback: Manual deletion with proper order
-    // 1. Delete lesson_progress
-    await supabase.from('lesson_progress').delete().eq('user_id', userId)
-    
-    // 2. Delete test_attempts
-    await supabase.from('test_attempts').delete().eq('user_id', userId)
-    
-    // 3. Delete test_grades
-    await supabase.from('test_grades').delete().eq('user_id', userId)
-    
-    // 4. Delete course_reviews
-    await supabase.from('course_reviews').delete().eq('user_id', userId)
-    
-    // 5. Delete enrollments
-    await supabase.from('enrollments').delete().eq('user_id', userId)
-    
-    // 6. Delete certificates
-    await supabase.from('certificates').delete().eq('user_id', userId)
-    
-    // 7. Delete certificate_requests
-    await supabase.from('certificate_requests').delete().eq('user_id', userId)
-    
-    // 8. Update certificates where user approved
-    await supabase.from('certificates').update({ approved_by: null }).eq('approved_by', userId)
-    
-    // 9. Update certificate_requests where user processed
-    await supabase.from('certificate_requests').update({ processed_by: null }).eq('processed_by', userId)
-    
-    // 10. Delete activity_logs
-    await supabase.from('activity_logs').delete().eq('user_id', userId)
-    
-    // 11. Delete import_progress
-    await supabase.from('import_progress' as any).delete().eq('user_id', userId)
-    
-    // 12. Delete certificate_requirements
-    await supabase.from('certificate_requirements').delete().eq('user_id', userId)
-    
-    // 13. Update courses where user is instructor
-    await supabase.from('courses').update({ instructor_id: null }).eq('instructor_id', userId)
-    
-    // 14. Finally, delete the profile
-    const { error: profileDeleteError } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId)
-
-    if (profileDeleteError) {
-      console.error('Error deleting profile:', profileDeleteError)
+    if (rpcError) {
+      console.error('Error calling delete_user_completely RPC:', rpcError)
       return NextResponse.json(
-        { error: 'Failed to delete user profile: ' + profileDeleteError.message },
+        {
+          error: 'Database deletion failed',
+          details: rpcError.message
+        },
         { status: 500 }
       )
     }
 
-    console.log('User deleted successfully (manual):', userId)
-    return NextResponse.json({ success: true, message: 'User deleted successfully' })
+    // Check RPC result (cast to any to handle dynamic JSON response)
+    const result = rpcResult as any
+    if (!result || result.success === false) {
+      console.error('RPC returned error:', result)
+      return NextResponse.json(
+        {
+          error: result?.error || 'Failed to delete user from database',
+          details: result?.detail
+        },
+        { status: 500 }
+      )
+    }
+
+    console.log('User deleted from database successfully:', userId)
+
+    // Delete user from Auth using admin client
+    try {
+      const adminClient = createAdminClient()
+      const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(userId)
+
+      if (authDeleteError) {
+        console.error('Error deleting user from Auth:', authDeleteError)
+        // Don't fail the whole operation - database is already cleaned up
+        // Just log and warn in response
+        return NextResponse.json({
+          success: true,
+          warning: 'User deleted from database but failed to delete from Auth',
+          authError: authDeleteError.message
+        })
+      }
+
+      console.log('User deleted from Auth successfully:', userId)
+    } catch (authError: any) {
+      console.error('Unexpected error deleting from Auth:', authError)
+      // Same as above - don't fail since DB is clean
+      return NextResponse.json({
+        success: true,
+        warning: 'User deleted from database but Auth deletion had issues',
+        authError: authError.message
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'User deleted completely from database and authentication system'
+    })
   } catch (error: any) {
     console.error('Unexpected error deleting user:', error)
     return NextResponse.json(
