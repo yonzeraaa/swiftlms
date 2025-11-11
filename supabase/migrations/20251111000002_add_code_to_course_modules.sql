@@ -16,8 +16,8 @@ ADD COLUMN code TEXT;
 -- Extract code from title using regex (before the hyphen)
 -- Example: "MLTA01-CENÁRIO DE OPORTUNIDADES" → "MLTA01"
 UPDATE course_modules
-SET code = (regexp_match(title, '^([A-Za-z0-9._-]+)'))[1]
-WHERE title ~ '^[A-Za-z0-9._-]+-';
+SET code = (regexp_match(title, '^([^-]+)-'))[1]
+WHERE title ~ '^.+-';
 
 -- ============================================================================
 -- 3. Generate synthetic codes for modules without code in title
