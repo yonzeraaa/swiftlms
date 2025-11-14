@@ -897,7 +897,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               variant={uploadStatus === 'success' ? 'success' : 'primary'}
               className="flex-1 gap-2"
               disabled={isEditMode ? (!name || uploading || uploadStatus === 'success') : (!file || !name || uploading || uploadStatus === 'success')}
-              glow={uploadStatus === 'success'}
+              
             >
               {uploadStatus === 'success' && <CheckCircle className="h-4 w-4" />}
               {uploading ? (isEditMode ? 'Salvando...' : 'Enviando...') : uploadStatus === 'success' ? 'Concluído' : (isEditMode ? 'Salvar Alterações' : 'Enviar Template')}

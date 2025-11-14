@@ -1028,7 +1028,7 @@ export default function CoursePage() {
                 label: 'Conteúdo',
                 content: (
                   selectedLesson ? (
-                    <Card variant="premium" className="h-full">
+                    <Card variant="elevated" className="h-full">
                       <div className="space-y-6">
                         <div className="flex items-start justify-between">
                           <div>

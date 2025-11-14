@@ -229,8 +229,7 @@ export default function TemplatesPage() {
           </p>
           <Button
             onClick={() => setShowUploadModal(true)}
-            variant="gradient"
-            glow
+            variant="primary"
             className="gap-2"
           >
             <Plus className="h-5 w-5" />
@@ -245,7 +244,7 @@ export default function TemplatesPage() {
             return (
               <Card
                 key={template.id}
-                variant="interactive"
+                variant="default"
                 hoverable
                 depth={3}
                 className={`p-6 group relative border-l-4 ${colors.border}`}

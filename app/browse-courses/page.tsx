@@ -255,7 +255,7 @@ export default function BrowseCoursesPage() {
                   transition={{ duration: 0.5 }}
                 >
                   {/* Course Header */}
-                  <Card variant="premium" className="mb-6">
+                  <Card variant="elevated" className="mb-6">
                     <div className="mb-6">
                       <div className="flex flex-wrap items-center gap-3 mb-4">
                         <Badge variant={getDifficultyBadge(course.difficulty).variant}>

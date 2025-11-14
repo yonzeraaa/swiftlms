@@ -12,7 +12,7 @@ interface BentoGridItem {
     cols?: number
     rows?: number
   }
-  variant?: 'default' | 'gradient' | 'glass' | 'premium' | 'holographic'
+  variant?: 'default' | 'gradient' | 'outlined' | 'elevated' | 'glass'
   hoverable?: boolean
   animate?: boolean
 }
@@ -128,7 +128,7 @@ export function BentoGridHero({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <Card variant="premium" hoverable className="h-full min-h-[400px]">
+        <Card variant="elevated" hoverable className="h-full min-h-[400px]">
           {mainContent}
         </Card>
       </motion.div>
@@ -203,7 +203,7 @@ export function DashboardBento({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2, duration: 0.5 }}
       >
-        <Card variant="premium" className="h-full">
+        <Card variant="elevated" className="h-full">
           {chart}
         </Card>
       </motion.div>
@@ -227,7 +227,7 @@ export function DashboardBento({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.5 }}
       >
-        <Card variant="holographic" hoverable>
+        <Card variant="glass" hoverable>
           {quickActions}
         </Card>
       </motion.div>

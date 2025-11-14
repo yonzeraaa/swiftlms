@@ -338,8 +338,8 @@ h1, h2, h3 {
 }
 
 h4, h5, h6 {
-  font-family: var(--font-subheading), 'Lato', sans-serif;
-  font-weight: 700;
+  font-family: var(--font-body), 'Open Sans', sans-serif;
+  font-weight: 600;
   letter-spacing: -0.005em;
   line-height: 1.4;
   text-transform: none;
@@ -647,11 +647,6 @@ nav a, nav button {
   .font-heading,
   .font-montserrat {
     font-family: var(--font-heading), 'Montserrat', sans-serif !important;
-  }
-
-  .font-subheading,
-  .font-lato {
-    font-family: var(--font-subheading), 'Lato', sans-serif !important;
   }
 
   /* ============================== */

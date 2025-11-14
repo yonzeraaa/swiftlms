@@ -105,6 +105,46 @@ module.exports = {
         '120': '30rem',
         '128': '32rem',
         '144': '36rem',
+        // Golden Ratio spacing from design-system.css
+        'xxs': 'var(--space-xxs)',
+        'xs': 'var(--space-xs)',
+        'sm': 'var(--space-sm)',
+        'md': 'var(--space-md)',
+        'lg': 'var(--space-lg)',
+        'xl': 'var(--space-xl)',
+        '2xl': 'var(--space-2xl)',
+        '3xl': 'var(--space-3xl)',
+        '4xl': 'var(--space-4xl)',
+      },
+      borderRadius: {
+        // Golden Ratio radius from design-system.css
+        'xs': 'var(--radius-xs)',
+        'sm': 'var(--radius-sm)',
+        'md': 'var(--radius-md)',
+        'lg': 'var(--radius-lg)',
+        'xl': 'var(--radius-xl)',
+        '2xl': 'var(--radius-2xl)',
+        'full': 'var(--radius-full)',
+      },
+      fontSize: {
+        // Golden Ratio typography from design-system.css
+        'xs': 'var(--text-xs)',
+        'sm': 'var(--text-sm)',
+        'base': 'var(--text-base)',
+        'lg': 'var(--text-lg)',
+        'xl': 'var(--text-xl)',
+        '2xl': 'var(--text-2xl)',
+        '3xl': 'var(--text-3xl)',
+        '4xl': 'var(--text-4xl)',
+        '5xl': 'var(--text-5xl)',
+      },
+      boxShadow: {
+        // Elevation system from design-system.css
+        'elevation-1': 'var(--elevation-1)',
+        'elevation-2': 'var(--elevation-2)',
+        'elevation-3': 'var(--elevation-3)',
+        'elevation-4': 'var(--elevation-4)',
+        'elevation-5': 'var(--elevation-5)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',
@@ -115,14 +155,6 @@ module.exports = {
         'slide-in-down': 'slideInDown 0.3s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
         'scale-out': 'scaleOut 0.2s ease-in',
-        'spin-slow': 'spin 3s linear infinite',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'bounce-slow': 'bounce 2s infinite',
-        'shimmer': 'shimmer 2s linear infinite',
-        'glow': 'glow 2s ease-in-out infinite',
-        'float': 'float 3s ease-in-out infinite',
-        'wave': 'wave 1s ease-in-out infinite',
-        'ripple': 'ripple 0.6s linear',
         'shake': 'shake 0.5s cubic-bezier(.36,.07,.19,.97) both',
       },
       keyframes: {
@@ -158,38 +190,6 @@ module.exports = {
           '0%': { transform: 'scale(1)', opacity: '1' },
           '100%': { transform: 'scale(0.9)', opacity: '0' },
         },
-        shimmer: {
-          '0%': { backgroundPosition: '-1000px 0' },
-          '100%': { backgroundPosition: '1000px 0' },
-        },
-        glow: {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(255, 215, 0, 0.5)' },
-          '50%': { boxShadow: '0 0 40px rgba(255, 215, 0, 0.8)' },
-        },
-        float: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' },
-        },
-        wave: {
-          '0%': { transform: 'rotate(0deg)' },
-          '10%': { transform: 'rotate(14deg)' },
-          '20%': { transform: 'rotate(-8deg)' },
-          '30%': { transform: 'rotate(14deg)' },
-          '40%': { transform: 'rotate(-4deg)' },
-          '50%': { transform: 'rotate(10deg)' },
-          '60%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(0deg)' },
-        },
-        ripple: {
-          '0%': {
-            transform: 'scale(0)',
-            opacity: '1',
-          },
-          '100%': {
-            transform: 'scale(4)',
-            opacity: '0',
-          },
-        },
         shake: {
           '10%, 90%': { transform: 'translate3d(-1px, 0, 0)' },
           '20%, 80%': { transform: 'translate3d(2px, 0, 0)' },
@@ -200,18 +200,6 @@ module.exports = {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
-        'shimmer-gradient': 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent)',
-      },
-      boxShadow: {
-        'glow': '0 0 20px rgba(255, 215, 0, 0.5)',
-        'glow-lg': '0 0 40px rgba(255, 215, 0, 0.6)',
-        'glow-xl': '0 0 60px rgba(255, 215, 0, 0.7)',
-        'inner-glow': 'inset 0 0 20px rgba(255, 215, 0, 0.3)',
-        'elevation-1': '0 2px 4px rgba(0,0,0,0.1)',
-        'elevation-2': '0 4px 8px rgba(0,0,0,0.12)',
-        'elevation-3': '0 8px 16px rgba(0,0,0,0.15)',
-        'elevation-4': '0 12px 24px rgba(0,0,0,0.18)',
-        'elevation-5': '0 16px 32px rgba(0,0,0,0.2)',
       },
       transitionTimingFunction: {
         'bounce-in': 'cubic-bezier(0.68, -0.55, 0.265, 1.55)',

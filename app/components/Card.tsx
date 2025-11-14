@@ -13,16 +13,10 @@ interface CardProps {
   action?: ReactNode
   hoverable?: boolean
   onClick?: () => void
-  variant?: 'default' | 'gradient' | 'outlined' | 'elevated' | 'glass' | 'interactive' | 'premium' | 'holographic'
-  glowColor?: 'gold' | 'blue' | 'green' | 'purple' | 'red'
+  variant?: 'default' | 'gradient' | 'outlined' | 'elevated' | 'glass'
   animate?: boolean
   delay?: number
-  pulse?: boolean
   depth?: 1 | 2 | 3 | 4 | 5
-  backgroundPattern?: boolean
-  iridescent?: boolean
-  flipCard?: boolean
-  backContent?: ReactNode
 }
 
 export default function Card({
@@ -35,18 +29,10 @@ export default function Card({
   hoverable = false,
   onClick,
   variant = 'default',
-  glowColor = 'gold',
   animate = false,
   delay = 0,
-  pulse = false,
-  depth = 2,
-  backgroundPattern = false,
-  iridescent = false,
-  flipCard = false,
-  backContent
+  depth = 2
 }: CardProps) {
-  const [isFlipped, setIsFlipped] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
 
   const paddingSizes = {
     none: '',
@@ -96,63 +82,17 @@ export default function Card({
     glass: `
       bg-navy-800/80 backdrop-blur-sm border border-gold-500/20
       ${hoverable ? 'hover:bg-navy-800/90 hover:border-gold-500/30 transition-all duration-200' : ''}
-    `,
-    interactive: `
-      bg-navy-800/90
-      border border-gold-500/25
-      transition-all duration-200
-      ${hoverable ? 'hover:border-gold-500/40 hover:shadow-md' : ''}
-    `,
-    premium: `
-      bg-navy-800/95
-      border border-gold-500/25
-      relative
-      ${hoverable ? 'hover:border-gold-500/40 hover:shadow-md transition-all duration-200' : ''}
-    `,
-    holographic: `
-      bg-navy-800/95
-      border border-gold-500/20
-      relative
-      ${hoverable ? 'hover:border-gold-500/30 hover:shadow-md transition-all duration-200' : ''}
     `
   }
 
   const cardContent = (
     <>
-      {/* Background Pattern */}
-      {backgroundPattern && (
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0 bg-repeat" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFD700' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            backgroundSize: '30px 30px'
-          }} />
-        </div>
-      )}
-
-      {/* Holographic/Iridescent Effect */}
-      {(variant === 'holographic' || iridescent) && (
-        <div className="absolute inset-0 opacity-30 pointer-events-none">
-          <div 
-            className="absolute inset-0 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500"
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 20%, #f093fb 40%, #f5576c 60%, #ffd700 80%, #667eea 100%)',
-              filter: 'blur(40px)',
-              transform: isHovered ? 'scale(1.1)' : 'scale(1)',
-              transition: 'transform 0.5s ease'
-            }}
-          />
-        </div>
-      )}
-
-      {/* Noise Texture */}
-      {variant === 'premium' && <div className="noise-texture" />}
-
       {/* Card Header */}
       {(title || action) && (
         <div className="flex items-start justify-between mb-4">
           <div>
             {title && (
-              <h3 className="text-xl font-bold text-gold gradient-text">
+              <h3 className="text-xl font-bold text-gold">
                 {title}
               </h3>
             )}
@@ -170,137 +110,34 @@ export default function Card({
       <div className="relative z-10">
         {children}
       </div>
-
-      {/* Glow Effect */}
-      {pulse && (
-        <div 
-          className="absolute inset-0 rounded-xl pointer-events-none glow-pulse"
-          style={{ boxShadow: `0 0 40px ${glowColors[glowColor]}` }}
-        />
-      )}
     </>
   )
-
-  // Flip Card Implementation
-  if (flipCard && backContent) {
-    return (
-      <motion.div
-        className={`relative ${paddingSizes[padding]} ${className}`}
-        style={{ perspective: 1000 }}
-        initial={false}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ duration: 0.6, ease: 'easeInOut' }}
-        onClick={() => setIsFlipped(!isFlipped)}
-      >
-        <motion.div
-          className={`
-            ${variants[variant]} 
-            ${depthStyles[depth]}
-            rounded-xl relative
-            ${onClick ? 'cursor-pointer' : ''}
-            transition-all-premium
-            w-full h-full
-          `}
-          style={{ 
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(0deg)'
-          }}
-        >
-          {cardContent}
-        </motion.div>
-        
-        <motion.div
-          className={`
-            ${variants[variant]} 
-            ${depthStyles[depth]}
-            rounded-xl absolute inset-0
-            ${paddingSizes[padding]}
-          `}
-          style={{ 
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)'
-          }}
-        >
-          {backContent}
-        </motion.div>
-      </motion.div>
-    )
-  }
 
   return (
     <motion.div
       className={`
-        ${variants[variant]} 
-        ${paddingSizes[padding]} 
+        ${variants[variant]}
+        ${paddingSizes[padding]}
         ${depthStyles[depth]}
         rounded-xl relative
         ${onClick ? 'cursor-pointer' : ''}
-        transition-all-premium
+        transition-all duration-200 ease-out
         ${className}
       `}
       onClick={onClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       initial={animate ? { opacity: 0, y: 20 } : false}
       animate={animate ? { opacity: 1, y: 0 } : false}
       transition={{ delay, duration: 0.5, ease: 'easeOut' }}
-      whileHover={hoverable ? hoverLift : undefined}
-      whileTap={onClick ? tapScale : undefined}
-      style={{
-        boxShadow: pulse ? `0 0 40px ${glowColors[glowColor]}` : undefined
-      }}
     >
       {cardContent}
     </motion.div>
   )
 }
 
-// Premium Card Variants for specific use cases
+// Glass Card variant for specific use case
 export function GlassCard({ children, className = '', ...props }: CardProps) {
   return (
-    <Card variant="glass" className={`glass-heavy ${className}`} {...props}>
-      {children}
-    </Card>
-  )
-}
-
-export function PremiumCard({ children, className = '', ...props }: CardProps) {
-  return (
-    <Card 
-      variant="premium" 
-      backgroundPattern 
-      depth={4}
-      className={className} 
-      {...props}
-    >
-      {children}
-    </Card>
-  )
-}
-
-export function HolographicCard({ children, className = '', ...props }: CardProps) {
-  return (
-    <Card 
-      variant="holographic" 
-      iridescent
-      depth={5}
-      className={`border-iridescent ${className}`} 
-      {...props}
-    >
-      {children}
-    </Card>
-  )
-}
-
-export function InteractiveCard({ children, className = '', ...props }: CardProps) {
-  return (
-    <Card 
-      variant="interactive" 
-      hoverable
-      depth={3}
-      className={className} 
-      {...props}
-    >
+    <Card variant="glass" className={className} {...props}>
       {children}
     </Card>
   )

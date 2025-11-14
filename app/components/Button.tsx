@@ -9,18 +9,15 @@ type MotionButtonProps = HTMLMotionProps<'button'> & ButtonHTMLAttributes<HTMLBu
 
 interface ButtonProps extends Omit<MotionButtonProps, 'onDrag' | 'onDragEnd' | 'onDragStart' | 'ref'> {
   children: ReactNode
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'gradient' | 'outline' | 'subtle' | 'success' | 'warning'
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'subtle' | 'success' | 'warning'
   size?: 'sm' | 'md' | 'lg' | 'xs' | 'xl'
   isLoading?: boolean
-  loading?: boolean // Alias para compatibilidade com PremiumButton
+  loading?: boolean
   icon?: ReactNode
   iconPosition?: 'left' | 'right'
   fullWidth?: boolean
   rounded?: 'sm' | 'md' | 'lg' | 'full'
-  pulse?: boolean
-  glow?: boolean
   enableMotion?: boolean
-  ripple?: boolean
   align?: 'left' | 'center' | 'right'
 }
 
@@ -30,15 +27,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
     variant = 'primary',
     size = 'md',
     isLoading = false,
-    loading = false, // Alias para compatibilidade
+    loading = false,
     icon,
     iconPosition = 'left',
     fullWidth = false,
     rounded = 'lg',
-    pulse = false,
-    glow = false,
     enableMotion = false,
-    ripple = true,
     align = 'center',
     className = '',
     disabled,
@@ -50,37 +44,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
   const { t } = useTranslation()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const actualLoading = isLoading || loading
-  
-  const handleRipple = (e: MouseEvent<HTMLButtonElement>) => {
-    if (!ripple) return
-    
-    const button = buttonRef.current || (ref as any)?.current
-    if (!button) return
-
-    const rect = button.getBoundingClientRect()
-    const rippleElement = document.createElement('span')
-    const size = Math.max(rect.width, rect.height)
-    const x = e.clientX - rect.left - size / 2
-    const y = e.clientY - rect.top - size / 2
-
-    rippleElement.style.width = rippleElement.style.height = size + 'px'
-    rippleElement.style.left = x + 'px'
-    rippleElement.style.top = y + 'px'
-    rippleElement.classList.add('ripple')
-
-    button.appendChild(rippleElement)
-
-    setTimeout(() => {
-      rippleElement.remove()
-    }, 600)
-  }
-
-  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
-    if (!disabled && !actualLoading) {
-      handleRipple(e)
-    }
-    onClick?.(e)
-  }
 
   const roundedStyles = {
     sm: 'rounded',
@@ -96,17 +59,13 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
   }
 
   const baseStyles = `
-    relative overflow-hidden font-semibold ${roundedStyles[rounded]}
-    transition-all duration-300 ease-out
+    relative font-semibold ${roundedStyles[rounded]}
+    transition-all duration-200 ease-out
     focus:outline-none focus:ring-2 focus:ring-offset-2
-    disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+    disabled:opacity-50 disabled:cursor-not-allowed
     inline-flex items-center ${alignStyles[align]} gap-2 whitespace-nowrap
-    transform active:scale-[0.98]
+    active:scale-[0.98]
     ${fullWidth ? 'w-full' : ''}
-    ${pulse ? 'animate-pulse' : ''}
-    ${glow ? 'shadow-glow hover:shadow-glow-lg' : ''}
-    before:absolute before:inset-0 before:opacity-0 before:transition-opacity before:duration-300
-    hover:before:opacity-100
   `
   
   const variants = {
@@ -135,16 +94,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
       text-gold-300 hover:text-gold-200
       border border-transparent hover:border-gold-500/20
       focus:ring-gold-500 focus:ring-offset-navy-800
-    `,
-    gradient: `
-      bg-gradient-to-r from-purple-500 via-gold-500 to-gold-600
-      text-white font-bold
-      hover:shadow-2xl
-      focus:ring-gold-400 focus:ring-offset-navy-800
-      bg-[length:200%_100%] bg-[position:0%_0%]
-      hover:bg-[position:100%_0%]
-      transition-all duration-500
-      before:bg-white/10
     `,
     outline: `
       bg-transparent
@@ -222,9 +171,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
           )}
           <span className="relative z-10">
             {children}
-            {variant === 'gradient' && (
-              <span className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></span>
-            )}
           </span>
           {icon && iconPosition === 'right' && (
             <span className="flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:translate-x-0.5" aria-hidden="true">
@@ -233,11 +179,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
           )}
         </>
       )}
-      
-      {/* Enhanced ripple effect overlay */}
-      <span className="absolute inset-0 rounded-inherit overflow-hidden pointer-events-none">
-        <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></span>
-      </span>
     </>
   )
 
@@ -252,7 +193,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
         whileTap={{ scale: 0.98 }}
         className={`group ${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
         disabled={disabled || actualLoading}
-        onClick={handleClick}
+        onClick={onClick}
         data-theme-variant={variant}
         {...restProps}
       >
@@ -266,7 +207,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
       ref={ref || buttonRef}
       className={`group ${baseStyles} ${variants[variant]} ${sizes[size]} hover:-translate-y-0.5 ${className}`}
       disabled={disabled || actualLoading}
-      onClick={handleClick}
+      onClick={onClick}
       data-theme-variant={variant}
       {...restProps}
     >
