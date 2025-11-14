@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, BookOpen, GraduationCap, TrendingUp, Clock, Award, Activity, FileText, UserPlus, BookPlus, ArrowUpRight, Sparkles } from 'lucide-react'
+import { Users, BookOpen, GraduationCap, TrendingUp, Clock, Award, Activity, FileText, UserPlus, BookPlus, ArrowUpRight } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -225,11 +225,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <Card variant="gradient" className="mb-6">
+      <Card variant="default" className="mb-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-              <Sparkles className="w-8 h-8 text-gold-400 animate-pulse" />
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
               {t('dashboard.title')}
             </h1>
             <p className="text-gold-300 mt-1">{t('dashboard.subtitle')}</p>
@@ -240,34 +239,34 @@ export default function DashboardPage() {
         </div>
       </Card>
 
-      {/* Stats Grid with Enhanced Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          {...statsCards[0]} 
-          variant="gradient" 
-          color="blue" 
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        <StatCard
+          {...statsCards[0]}
+          variant="default"
+          color="blue"
         />
-        <StatCard 
-          {...statsCards[1]} 
-          variant="gradient" 
-          color="green" 
+        <StatCard
+          {...statsCards[1]}
+          variant="default"
+          color="green"
         />
-        <StatCard 
-          {...statsCards[2]} 
-          variant="gradient" 
-          color="purple" 
+        <StatCard
+          {...statsCards[2]}
+          variant="default"
+          color="purple"
         />
-        <StatCard 
-          {...statsCards[3]} 
-          variant="gradient" 
-          color="gold" 
+        <StatCard
+          {...statsCards[3]}
+          variant="default"
+          color="gold"
         />
       </div>
 
-      {/* Atividades Recentes com Visual Melhorado */}
-      <Card 
+      {/* Atividades Recentes */}
+      <Card
         title={t('dashboard.recentActivities')}
-        variant="elevated"
+        variant="default"
         action={
           recentActivities.length > 0 && (
             <Button
@@ -284,7 +283,7 @@ export default function DashboardPage() {
           {recentActivities.length > 0 ? (
             recentActivities.map((activity, index) => (
               <div key={index} className="flex items-start gap-3 pb-4 border-b border-gold-500/20 last:border-0">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gold-500/30 to-gold-600/20 flex items-center justify-center text-gold shadow-lg transition-transform hover:scale-110">
+                <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center text-gold">
                   {activity.icon === 'user' && <UserPlus className="w-5 h-5" />}
                   {activity.icon === 'course' && <BookPlus className="w-5 h-5" />}
                   {activity.icon === 'enrollment' && <Activity className="w-5 h-5" />}

@@ -111,37 +111,30 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
   
   const variants = {
     primary: `
-      bg-gradient-to-r from-gold-500 to-gold-600 
-      hover:from-gold-600 hover:to-gold-700 
-      text-navy-900 
-      focus:ring-gold-400 focus:ring-offset-navy-800 
-      hover:shadow-xl
-      shadow-lg shadow-gold-500/20
-      before:bg-gradient-to-r before:from-gold-400/20 before:to-transparent
+      bg-gold-500 hover:bg-gold-600
+      text-navy-900
+      focus:ring-gold-400 focus:ring-offset-navy-800
+      shadow-sm
       group
     `,
     secondary: `
-      bg-navy-700/50 hover:bg-navy-600/50 
+      bg-navy-700 hover:bg-navy-600
       text-gold-200 hover:text-gold-100
-      border border-gold-500/30 hover:border-gold-500/50
+      border border-gold-500/20 hover:border-gold-500/30
       focus:ring-gold-500 focus:ring-offset-navy-800
-      backdrop-blur-sm
-      hover:shadow-md hover:shadow-gold-500/10
-      before:bg-gradient-to-r before:from-gold-500/10 before:to-transparent
+      shadow-sm
     `,
     danger: `
-      bg-red-600 hover:bg-red-700 
-      text-white 
+      bg-red-600 hover:bg-red-700
+      text-white
       focus:ring-red-400 focus:ring-offset-navy-800
-      hover:shadow-lg shadow-red-500/20
-      before:bg-gradient-to-r before:from-red-400/20 before:to-transparent
+      shadow-sm
     `,
     ghost: `
       bg-transparent hover:bg-gold-500/10
-      text-gold-300 hover:text-gold-100
+      text-gold-300 hover:text-gold-200
       border border-transparent hover:border-gold-500/20
       focus:ring-gold-500 focus:ring-offset-navy-800
-      before:bg-gold-500/5
     `,
     gradient: `
       bg-gradient-to-r from-purple-500 via-gold-500 to-gold-600
@@ -154,39 +147,29 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>((
       before:bg-white/10
     `,
     outline: `
-      bg-transparent 
+      bg-transparent
       text-gold-400 hover:text-gold-300
-      border-2 border-gold-500/50 hover:border-gold-400
+      border border-gold-500/30 hover:border-gold-500/50
       hover:bg-gold-500/10
       focus:ring-gold-500 focus:ring-offset-navy-800
-      hover:shadow-md hover:shadow-gold-500/20
-      before:bg-gold-500/5
     `,
     subtle: `
-      bg-gold-500/10 hover:bg-gold-500/20
+      bg-gold-500/10 hover:bg-gold-500/15
       text-gold-300 hover:text-gold-200
       border border-gold-500/20 hover:border-gold-500/30
       focus:ring-gold-500 focus:ring-offset-navy-800
-      hover:shadow-sm
-      before:bg-gold-500/5
     `,
     success: `
-      bg-gradient-to-r from-green-500 to-green-600
-      hover:from-green-600 hover:to-green-700
+      bg-green-600 hover:bg-green-700
       text-white
       focus:ring-green-400 focus:ring-offset-navy-800
-      hover:shadow-lg
-      shadow-md shadow-green-500/20
-      before:bg-gradient-to-r before:from-green-400/20 before:to-transparent
+      shadow-sm
     `,
     warning: `
-      bg-gradient-to-r from-yellow-500 to-yellow-600
-      hover:from-yellow-600 hover:to-yellow-700
+      bg-yellow-500 hover:bg-yellow-600
       text-navy-900
       focus:ring-yellow-400 focus:ring-offset-navy-800
-      hover:shadow-lg
-      shadow-md shadow-yellow-500/20
-      before:bg-gradient-to-r before:from-yellow-400/20 before:to-transparent
+      shadow-sm
     `
   }
   

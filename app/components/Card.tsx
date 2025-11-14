@@ -74,45 +74,46 @@ export default function Card({
 
   const variants = {
     default: `
-      bg-gradient-to-br from-navy-800/90 to-navy-900/90 
-      border border-gold-500/20 backdrop-blur-md
-      ${hoverable ? 'hover:border-gold-500/40 hover-lift' : ''}
+      bg-navy-800/95
+      border border-gold-500/20
+      ${hoverable ? 'hover:border-gold-500/30 hover:shadow-md transition-all duration-200' : ''}
     `,
     gradient: `
-      bg-gradient-to-br from-gold-500/10 via-navy-800/90 to-navy-900/90 
-      border border-gold-500/30 backdrop-blur-md
-      ${hoverable ? 'hover:border-gold-500/50 hover:from-gold-500/20 hover-lift' : ''}
+      bg-navy-800/95
+      border border-gold-500/25
+      ${hoverable ? 'hover:border-gold-500/40 hover:shadow-md transition-all duration-200' : ''}
     `,
     outlined: `
-      bg-navy-900/50 border-2 border-gold-500/30 backdrop-blur-sm
-      ${hoverable ? 'hover:bg-navy-800/50 hover:border-gold-500/50 hover-lift' : ''}
+      bg-navy-900/80 border border-gold-500/25
+      ${hoverable ? 'hover:bg-navy-800/80 hover:border-gold-500/40 transition-all duration-200' : ''}
     `,
     elevated: `
-      bg-gradient-to-br from-navy-700 to-navy-800 
+      bg-navy-800
       border border-gold-500/10
-      ${hoverable ? 'hover:shadow-2xl hover-lift' : ''}
+      shadow-md
+      ${hoverable ? 'hover:shadow-lg transition-shadow duration-200' : ''}
     `,
     glass: `
-      glass border border-gold-500/20
-      ${hoverable ? 'hover:bg-white/10 hover:border-gold-500/40 hover-lift' : ''}
+      bg-navy-800/80 backdrop-blur-sm border border-gold-500/20
+      ${hoverable ? 'hover:bg-navy-800/90 hover:border-gold-500/30 transition-all duration-200' : ''}
     `,
     interactive: `
-      bg-gradient-to-br from-navy-800/80 to-navy-900/80 
-      border border-gold-500/30 backdrop-blur-lg
-      transform transition-all duration-300
-      ${hoverable ? 'hover:scale-105 hover:border-gold-500/60 hover:shadow-2xl' : ''}
+      bg-navy-800/90
+      border border-gold-500/25
+      transition-all duration-200
+      ${hoverable ? 'hover:border-gold-500/40 hover:shadow-md' : ''}
     `,
     premium: `
-      bg-gradient-to-br from-navy-800/95 via-navy-850/95 to-navy-900/95
-      border border-gold-500/30 backdrop-blur-xl
-      relative overflow-hidden
-      ${hoverable ? 'hover:border-gold-500/60 hover-scale' : ''}
+      bg-navy-800/95
+      border border-gold-500/25
+      relative
+      ${hoverable ? 'hover:border-gold-500/40 hover:shadow-md transition-all duration-200' : ''}
     `,
     holographic: `
-      bg-gradient-to-br from-navy-800/90 to-navy-900/90
-      border border-transparent backdrop-blur-xl
-      relative overflow-hidden
-      ${hoverable ? 'hover-scale' : ''}
+      bg-navy-800/95
+      border border-gold-500/20
+      relative
+      ${hoverable ? 'hover:border-gold-500/30 hover:shadow-md transition-all duration-200' : ''}
     `
   }
 

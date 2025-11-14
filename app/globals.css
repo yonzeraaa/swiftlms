@@ -42,9 +42,18 @@
   --background-end-rgb: 0, 26, 51;
   --font-body: var(--font-open-sans);
   --font-heading: var(--font-montserrat);
-  --font-subheading: var(--font-lato);
   --font-ui: var(--font-open-sans);
   --text-caption: #6B7280;
+
+  /* Color tokens - Dark theme */
+  --color-primary: #FFD700;
+  --color-primary-hover: #E6C200;
+  --color-surface: rgba(0, 51, 102, 0.95);
+  --color-surface-elevated: rgba(0, 51, 102, 0.98);
+  --color-border: rgba(255, 215, 0, 0.2);
+  --color-text-primary: rgb(255, 215, 0);
+  --color-text-secondary: rgba(255, 215, 0, 0.8);
+  --color-text-muted: rgba(255, 215, 0, 0.6);
 
   /* Enhanced Golden Ratio Spacing */
   --space-xs: 0.25rem;
@@ -75,6 +84,16 @@
   --foreground-rgb: 0, 51, 102;
   --background-start-rgb: 255, 255, 255;
   --background-end-rgb: 245, 245, 245;
+
+  /* Color tokens - Light theme */
+  --color-primary: #003366;
+  --color-primary-hover: #004080;
+  --color-surface: rgba(255, 255, 255, 0.95);
+  --color-surface-elevated: rgba(255, 255, 255, 1);
+  --color-border: rgba(0, 51, 102, 0.15);
+  --color-text-primary: rgb(0, 51, 102);
+  --color-text-secondary: rgba(0, 51, 102, 0.8);
+  --color-text-muted: rgba(0, 51, 102, 0.6);
 }
 
 * {
@@ -140,8 +159,8 @@ body {
   .subtitle,
   .text-subtitle,
   h4 {
-    font-family: var(--font-subheading), 'Lato', sans-serif;
-    font-weight: 700;
+    font-family: var(--font-body), 'Open Sans', sans-serif;
+    font-weight: 600;
     font-size: 1.125rem;
     line-height: 1.4;
   }

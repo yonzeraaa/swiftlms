@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle, Globe, BookOpen, MessageCircle, CheckCircle2, Sparkles } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle, Globe, BookOpen, MessageCircle, CheckCircle2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Logo from './components/Logo'
@@ -116,41 +116,10 @@ export default function LoginPage() {
     }
   }
 
-  // Floating particles component
-  const FloatingParticle = ({ delay, duration, x, y }: { delay: number; duration: number; x: string; y: string }) => (
-    <motion.div
-      className="absolute w-2 h-2 bg-gold-400/20 rounded-full blur-sm"
-      initial={{ opacity: 0, x: 0, y: 0 }}
-      animate={{
-        opacity: [0, 1, 0],
-        x: [0, parseFloat(x), parseFloat(x) * 1.5],
-        y: [0, parseFloat(y), parseFloat(y) * 2],
-      }}
-      transition={{
-        duration,
-        delay,
-        repeat: Infinity,
-        repeatDelay: 1
-      }}
-    />
-  )
-
   return (
-    <div className="min-h-screen bg-pattern relative overflow-hidden">
-      {/* Gradiente de fundo */}
-      <div className="absolute inset-0 bg-gradient-to-br from-navy-600/50 via-navy-700/50 to-navy-900/50" />
-
-      {/* Floating particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <FloatingParticle delay={0} duration={8} x="100" y="-200" />
-        <FloatingParticle delay={1} duration={10} x="-150" y="-180" />
-        <FloatingParticle delay={2} duration={9} x="200" y="-220" />
-        <FloatingParticle delay={3} duration={11} x="-100" y="-190" />
-        <FloatingParticle delay={1.5} duration={8.5} x="150" y="-210" />
-        <Sparkles className="absolute top-1/4 left-1/4 w-6 h-6 text-gold-400/10 animate-pulse" />
-        <Sparkles className="absolute top-2/3 right-1/3 w-4 h-4 text-gold-400/10 animate-pulse" style={{ animationDelay: '1s' }} />
-        <Sparkles className="absolute bottom-1/4 left-2/3 w-5 h-5 text-gold-400/10 animate-pulse" style={{ animationDelay: '2s' }} />
-      </div>
+    <div className="min-h-screen bg-navy-900 relative overflow-hidden">
+      {/* Fundo discreto com gradiente suave */}
+      <div className="absolute inset-0 bg-gradient-to-b from-navy-800/30 to-navy-900" />
 
       <motion.div
         className="relative min-h-screen flex items-center justify-center px-4 py-8"
@@ -175,11 +144,15 @@ export default function LoginPage() {
               </select>
             </div>
           </motion.div>
-          {/* Card principal com glassmorphism e borda gradiente */}
-          <motion.div className="glass-morphism border-gradient rounded-3xl shadow-2xl p-1" variants={fadeInUp}>
-            <div className="bg-navy-800/90 rounded-3xl p-8">
-              {/* Header com logo */}
-              <div className="text-center mb-4">
+          {/* Card principal com design sóbrio */}
+          <motion.div
+            className="bg-navy-800/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gold-500/10 p-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            {/* Header com logo */}
+            <div className="text-center mb-4">
                 <div className="flex justify-center mb-2">
                   <Logo width={180} height={80} className="transform hover:scale-110 transition-transform duration-300" />
                 </div>
@@ -360,7 +333,6 @@ export default function LoginPage() {
                   </p>
                 </div>
               </div>
-            </div>
           </motion.div>
         </motion.div>
       </motion.div>

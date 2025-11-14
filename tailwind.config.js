@@ -21,7 +21,6 @@ module.exports = {
         'sans': ['var(--font-open-sans)', 'Open Sans', 'sans-serif'],
         'body': ['var(--font-open-sans)', 'Open Sans', 'sans-serif'],
         'heading': ['var(--font-montserrat)', 'Montserrat', 'sans-serif'],
-        'subheading': ['var(--font-lato)', 'Lato', 'sans-serif'],
         'ui': ['var(--font-open-sans)', 'Open Sans', 'sans-serif'],
       },
       colors: {
