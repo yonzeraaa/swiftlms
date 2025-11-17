@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { generateCertificatePDF } from '@/app/lib/certificate-pdf'
 import { getUserCertificatesData } from '@/lib/actions/certificates'
+import { CertificateTemplate } from '@/app/components/certificates/CertificateTemplate'
 
 type Certificate = Database['public']['Tables']['certificates']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
@@ -500,140 +501,17 @@ export default function CertificatesPage() {
       {/* Hidden Certificate for PDF Generation */}
       {selectedCertificate && (
         <div className="fixed" style={{ left: '-9999px', top: 0 }}>
-          <div 
-            id="certificate-pdf" 
-            ref={certificateRef}
-            style={{
-              width: '1100px',
-              height: '850px',
-              background: 'linear-gradient(135deg, #001a33 0%, #002244 100%)',
-              padding: '60px',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              fontFamily: 'Open Sans, sans-serif'
-            }}
-          >
-            {/* Certificate Content for PDF */}
-            <div style={{ textAlign: 'center', paddingTop: '40px' }}>
-              {/* Logo/Header */}
-              <div style={{ marginBottom: '30px' }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-                  <div style={{ 
-                    width: '80px',
-                    height: '80px',
-                    backgroundColor: '#FFD700',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 10px 30px rgba(255, 215, 0, 0.3)'
-                  }}>
-                    <Award style={{ width: '40px', height: '40px', color: '#001a33' }} />
-                  </div>
-                </div>
-                <h1 style={{ 
-                  fontSize: '48px',
-                  fontWeight: 'bold',
-                  marginBottom: '10px',
-                  color: '#FFD700',
-                  letterSpacing: '3px'
-                }}>
-                  CERTIFICADO
-                </h1>
-                <p style={{ fontSize: '18px', color: '#FFD700', letterSpacing: '2px' }}>DE CONCLUSÃO</p>
-              </div>
-
-              {/* Certificate Text */}
-              <div style={{ marginTop: '30px', marginBottom: '30px' }}>
-                <p style={{ color: '#FFD700', opacity: 0.8, fontSize: '16px', marginBottom: '15px' }}>Certificamos que</p>
-                <p style={{ color: '#FFD700', fontSize: '28px', fontWeight: 'bold', marginBottom: '20px' }}>
-                  {selectedCertificate.user.full_name}
-                </p>
-                <p style={{ color: '#FFD700', opacity: 0.8, fontSize: '16px', marginBottom: '15px' }}>concluiu com êxito o curso de</p>
-                <p style={{ 
-                  fontSize: '32px',
-                  fontWeight: 'bold',
-                  marginBottom: '30px',
-                  color: '#FFD700',
-                  lineHeight: '1.2'
-                }}>
-                  {selectedCertificate.course.title}
-                </p>
-                <p style={{
-                  color: '#FCD34D',
-                  textTransform: 'uppercase',
-                  letterSpacing: '3px',
-                  fontSize: '14px',
-                  marginBottom: '20px'
-                }}>
-                  {selectedCertificate.certificate_type === 'lato-sensu'
-                    ? 'Certificado de Pós-Graduação Lato Sensu'
-                    : 'Certificado Técnico de Conclusão'}
-                </p>
-
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '60px', marginTop: '30px', marginBottom: '30px' }}>
-                  <div>
-                    <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '14px', marginBottom: '5px' }}>Carga Horária</p>
-                    <p style={{ color: '#FFD700', fontSize: '20px', fontWeight: 'bold' }}>{selectedCertificate.course_hours || selectedCertificate.course?.duration_hours || 0} horas</p>
-                  </div>
-                </div>
-                
-                <p style={{ color: '#FFD700', opacity: 0.8, fontSize: '16px', marginTop: '20px' }}>
-                  Emitido em {formatDate(selectedCertificate.issued_at || '')}
-                </p>
-              </div>
-
-              {/* Verification */}
-              <div style={{ 
-                marginTop: '40px',
-                paddingTop: '30px',
-                borderTop: '1px solid rgba(255, 215, 0, 0.3)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '10px' }}>
-                  <Shield style={{ width: '18px', height: '18px', color: '#00ff00', display: 'inline-block', marginTop: '6px' }} />
-                  <span style={{ color: '#00ff00', fontSize: '14px', display: 'inline-block' }}>Certificado Autêntico</span>
-                </div>
-                <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '12px', marginBottom: '5px' }}>
-                  Nº {selectedCertificate.certificate_number}
-                </p>
-                <p style={{ color: '#FFD700', opacity: 0.7, fontSize: '12px' }}>
-                  Código de Verificação: {selectedCertificate.verification_code}
-                </p>
-              </div>
-
-              {/* Instructor Signature */}
-              {selectedCertificate.instructor_name && (
-                <div style={{
-                  marginTop: '40px',
-                  display: 'flex',
-                  justifyContent: 'center'
-                }}>
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{
-                      borderTop: '2px solid rgba(255, 215, 0, 0.6)',
-                      width: '250px',
-                      marginBottom: '10px'
-                    }}></div>
-                    <p style={{
-                      color: '#FFD700',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      marginBottom: '3px'
-                    }}>
-                      {selectedCertificate.instructor_name}
-                    </p>
-                    <p style={{
-                      color: '#FFD700',
-                      fontSize: '12px',
-                      opacity: 0.7
-                    }}>
-                      Instrutor Responsável
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div ref={certificateRef}>
+            <CertificateTemplate
+              certificate={{
+                ...selectedCertificate,
+                certificate_type: (selectedCertificate.certificate_type === 'lato-sensu' ? 'lato-sensu' : 'technical') as 'technical' | 'lato-sensu',
+                user: { full_name: selectedCertificate.user.full_name },
+                course: { title: selectedCertificate.course.title, duration_hours: selectedCertificate.course.duration_hours }
+              }}
+              elementId="certificate-pdf"
+              showGrade={false}
+            />
           </div>
         </div>
       )}
