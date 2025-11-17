@@ -6,6 +6,7 @@ import {
   Award,
   BookOpen,
   FileSpreadsheet,
+  FileText,
   ScrollText,
   Users,
 } from 'lucide-react'
@@ -41,6 +42,11 @@ export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
     value: 'student-history',
     label: 'Histórico do Aluno',
     icon: ScrollText,
+  },
+  {
+    value: 'certificate-docx',
+    label: 'Certificados DOCX',
+    icon: FileText,
   },
 ]
 
