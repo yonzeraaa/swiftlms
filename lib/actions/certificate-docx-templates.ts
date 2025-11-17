@@ -8,7 +8,8 @@ import {
   FieldMapping,
   DocxPlaceholder,
 } from '@/types/certificate-docx'
-import { generateCertificateDocx, certificateToDocxData } from '@/lib/services/certificate-docx'
+import { generateCertificateDocx, generateCertificatePdf, certificateToDocxData } from '@/lib/services/certificate-docx'
+import { isDocxToPdfAvailable } from '@/lib/services/docx-to-pdf'
 
 /**
  * Upload e analisa um template DOCX
@@ -243,6 +244,50 @@ export async function getCertificateDocxTemplate(
   }
 
   return data as unknown as CertificateDocxTemplate
+}
+
+/**
+ * Gera certificado em PDF a partir de um template
+ */
+export async function generateCertificatePdfFromTemplate(
+  templateId: string,
+  certificateId: string
+): Promise<Buffer> {
+  if (!isDocxToPdfAvailable()) {
+    throw new Error('Conversão para PDF não disponível neste servidor')
+  }
+
+  const supabase = await createClient()
+
+  // Buscar dados do certificado
+  const { data: certificate, error: certError } = await supabase
+    .from('certificates')
+    .select(`
+      *,
+      user:profiles!certificates_user_id_fkey(full_name, cpf, rg, email),
+      course:courses!certificates_course_id_fkey(title, duration_hours, start_date, end_date)
+    `)
+    .eq('id', certificateId)
+    .single()
+
+  if (certError || !certificate) {
+    throw new Error('Certificado não encontrado')
+  }
+
+  // Converter para formato DOCX
+  const certificateData = certificateToDocxData(certificate)
+
+  // Gerar PDF
+  const buffer = await generateCertificatePdf(templateId, certificateData)
+
+  return buffer
+}
+
+/**
+ * Verifica se a conversão para PDF está disponível
+ */
+export async function checkPdfConversionAvailable(): Promise<boolean> {
+  return isDocxToPdfAvailable()
 }
 
 /**

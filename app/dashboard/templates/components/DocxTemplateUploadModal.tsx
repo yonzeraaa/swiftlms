@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Upload, FileText, CheckCircle, AlertCircle, Settings } from 'lucide-react'
+import { X, Upload, FileText, CheckCircle, AlertCircle, Settings, Eye } from 'lucide-react'
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
 import Card from '../../../components/Card'
@@ -39,7 +39,12 @@ export default function DocxTemplateUploadModal({
   const [placeholders, setPlaceholders] = useState<DocxPlaceholder[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
   const [mappings, setMappings] = useState<FieldMapping[]>([])
-  const [activeTab, setActiveTab] = useState<'info' | 'mapping'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'preview' | 'mapping'>('info')
+  const [previewing, setPreviewing] = useState(false)
+  const [previewData, setPreviewData] = useState<{
+    placeholders: DocxPlaceholder[]
+    warnings: string[]
+  } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDrag = (e: React.DragEvent) => {
@@ -77,9 +82,44 @@ export default function DocxTemplateUploadModal({
           setName(selectedFile.name.replace('.docx', ''))
         }
         setErrorMessage('')
+        setPreviewData(null) // Reset preview quando mudar arquivo
       } else {
         setErrorMessage('Por favor, selecione um arquivo .docx')
       }
+    }
+  }
+
+  const handlePreview = async () => {
+    if (!file) return
+
+    setPreviewing(true)
+    setErrorMessage('')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/analyze-docx-template', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        setPreviewData({
+          placeholders: result.placeholders,
+          warnings: result.warnings,
+        })
+        setActiveTab('preview')
+      } else {
+        setErrorMessage(result.error || 'Erro ao analisar template')
+      }
+    } catch (error: any) {
+      console.error('Erro ao fazer preview:', error)
+      setErrorMessage('Erro ao fazer preview do template')
+    } finally {
+      setPreviewing(false)
     }
   }
 
@@ -170,6 +210,17 @@ export default function DocxTemplateUploadModal({
               }`}
             >
               Informações
+            </button>
+            <button
+              onClick={() => setActiveTab('preview')}
+              disabled={!previewData && !previewing}
+              className={`py-3 px-1 border-b-2 transition-colors ${
+                activeTab === 'preview'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-neutral-500 hover:text-neutral-700'
+              } ${!previewData && !previewing ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              Preview
             </button>
             <button
               onClick={() => setActiveTab('mapping')}
@@ -314,6 +365,119 @@ export default function DocxTemplateUploadModal({
                   </ul>
                 </div>
               )}
+
+              {/* Preview Button */}
+              {file && !previewData && (
+                <div>
+                  <Button
+                    onClick={handlePreview}
+                    variant="outline"
+                    disabled={previewing || uploading}
+                    loading={previewing}
+                    className="w-full"
+                  >
+                    {previewing ? 'Analisando...' : 'Analisar Placeholders'}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'preview' && previewData && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm font-medium text-blue-800">
+                  {previewData.placeholders.length} placeholder(s) encontrado(s)
+                </p>
+                <p className="text-xs text-blue-600 mt-1">
+                  Revise os campos detectados antes de enviar o template
+                </p>
+              </div>
+
+              {/* Placeholders List */}
+              <div className="space-y-2">
+                <h3 className="font-medium text-neutral-900">Placeholders Detectados:</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {previewData.placeholders.map((placeholder, index) => {
+                    const knownField = CERTIFICATE_DOCX_FIELDS[placeholder.name as keyof typeof CERTIFICATE_DOCX_FIELDS]
+
+                    return (
+                      <Card key={index} className="p-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <code className="text-sm font-mono bg-neutral-100 px-2 py-1 rounded">
+                                {'{{'}{placeholder.name}{'}}'}
+                              </code>
+                              {placeholder.format && (
+                                <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+                                  {placeholder.format}
+                                </span>
+                              )}
+                            </div>
+                            {knownField && (
+                              <p className="text-sm text-neutral-600 mt-1">
+                                {knownField.description}
+                              </p>
+                            )}
+                            {!knownField && (
+                              <p className="text-sm text-yellow-600 mt-1">
+                                ⚠️ Campo desconhecido - será necessário mapear manualmente
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-1 rounded ${
+                              placeholder.required
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-neutral-100 text-neutral-600'
+                            }`}>
+                              {placeholder.required ? 'Obrigatório' : 'Opcional'}
+                            </span>
+                            <span className="text-xs text-neutral-500 capitalize">
+                              {placeholder.type}
+                            </span>
+                          </div>
+                        </div>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Warnings */}
+              {previewData.warnings.length > 0 && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm font-medium text-yellow-800 mb-2">
+                    Avisos:
+                  </p>
+                  <ul className="text-sm text-yellow-700 space-y-1">
+                    {previewData.warnings.map((warning, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span>•</span>
+                        <span>{warning}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="flex justify-between pt-4 border-t">
+                <Button
+                  onClick={() => setActiveTab('info')}
+                  variant="outline"
+                >
+                  Voltar
+                </Button>
+                <Button
+                  onClick={() => {
+                    // Continuar com upload
+                    setActiveTab('info')
+                  }}
+                >
+                  Prosseguir com Upload
+                </Button>
+              </div>
             </div>
           )}
 

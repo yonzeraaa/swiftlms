@@ -6,6 +6,7 @@ import Docxtemplater from 'docxtemplater'
 import PizZip from 'pizzip'
 import { CertificateDocxData, FieldMapping, validateCertificateData } from '@/types/certificate-docx'
 import { createClient } from '@/lib/supabase/server'
+import { convertDocxToPdf } from './docx-to-pdf'
 
 /**
  * Aplica transformações nos valores
@@ -185,6 +186,26 @@ export async function generateCertificateDocx(
   } catch (error: any) {
     console.error('Erro ao processar template DOCX:', error)
     throw new Error(`Erro ao gerar certificado: ${error.message}`)
+  }
+}
+
+/**
+ * Gera certificado PDF a partir de template (DOCX → PDF)
+ */
+export async function generateCertificatePdf(
+  templateId: string,
+  certificateData: CertificateDocxData
+): Promise<Buffer> {
+  // Primeiro gerar o DOCX
+  const docxBuffer = await generateCertificateDocx(templateId, certificateData)
+
+  // Converter para PDF
+  try {
+    const pdfBuffer = await convertDocxToPdf(docxBuffer)
+    return pdfBuffer
+  } catch (error: any) {
+    console.error('Erro ao converter certificado para PDF:', error)
+    throw new Error(`Erro ao gerar certificado em PDF: ${error.message}`)
   }
 }
 
