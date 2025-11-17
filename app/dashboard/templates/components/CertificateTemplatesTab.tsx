@@ -3,11 +3,10 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { FileText, Plus, Edit, Trash2, Eye, Star, StarOff, AlertCircle, Check, X } from 'lucide-react'
-import Card from '../../components/Card'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
-import Spinner from '../../components/ui/Spinner'
-import Button from '../../components/Button'
+import { Plus, Edit, Trash2, Star, StarOff, AlertCircle, Check, X } from 'lucide-react'
+import Card from '../../../components/Card'
+import Spinner from '../../../components/ui/Spinner'
+import Button from '../../../components/Button'
 import { CertificateTemplate, TEMPLATE_VARIABLES, DEFAULT_CERTIFICATE_HTML } from '@/types/certificates'
 import {
   getCertificateTemplates,
@@ -18,7 +17,7 @@ import {
 } from '@/lib/actions/certificate-templates'
 import { validateTemplate } from '@/lib/utils/template-renderer'
 
-export default function CertificateTemplatesPage() {
+export default function CertificateTemplatesTab() {
   const [templates, setTemplates] = useState<CertificateTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -145,22 +144,13 @@ export default function CertificateTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
-
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-            <FileText className="w-8 h-8 text-gold-400" />
-            Templates de Certificados
-          </h1>
-          <p className="text-gold-300 mt-1">Gerencie templates customizados para certificados</p>
-        </div>
+      {/* Action Button */}
+      <div className="flex justify-end">
         <Button
           onClick={openCreateModal}
           icon={<Plus className="w-4 h-4" />}
         >
-          Novo Template
+          Novo Template de Certificado
         </Button>
       </div>
 
