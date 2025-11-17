@@ -2,6 +2,8 @@
  * Tipos para templates DOCX de certificados
  */
 
+import { z } from 'zod'
+
 export type CertificateKind = 'technical' | 'lato-sensu' | 'all'
 
 /**
@@ -138,4 +140,68 @@ export interface DocxAnalysisResult {
   warnings: string[]
   suggestions: FieldMapping[]
   error?: string
+}
+
+/**
+ * Schemas de validação Zod
+ */
+
+export const fieldMappingSchema = z.object({
+  placeholder: z.string().min(1, 'Placeholder é obrigatório'),
+  source: z.string(),
+  transform: z.enum(['uppercase', 'lowercase', 'capitalize', 'date-short', 'date-long']).optional(),
+  fixedValue: z.string().optional(),
+})
+
+export const certificateDocxDataSchema = z.object({
+  student: z.object({
+    full_name: z.string().min(1, 'Nome do aluno é obrigatório'),
+    cpf: z.string().optional(),
+    rg: z.string().optional(),
+    email: z.string().email('Email inválido').optional().or(z.literal('')),
+  }),
+  course: z.object({
+    title: z.string().min(1, 'Título do curso é obrigatório'),
+    duration_hours: z.number().min(0, 'Carga horária deve ser positiva'),
+    start_date: z.string().optional(),
+    end_date: z.string().optional(),
+  }),
+  certificate: z.object({
+    number: z.string().min(1, 'Número do certificado é obrigatório'),
+    issue_date: z.string().min(1, 'Data de emissão é obrigatória'),
+    verification_code: z.string().min(1, 'Código de verificação é obrigatório'),
+    grade: z.number().min(0).max(100).optional(),
+    certificate_type: z.enum(['technical', 'lato-sensu']),
+  }),
+  institution: z.object({
+    name: z.string().min(1, 'Nome da instituição é obrigatório'),
+    cnpj: z.string().optional(),
+    address: z.string().optional(),
+  }),
+  signatures: z.object({
+    director_name: z.string().optional(),
+    director_title: z.string().optional(),
+    coordinator_name: z.string().optional(),
+    coordinator_title: z.string().optional(),
+  }),
+})
+
+export const uploadTemplateSchema = z.object({
+  name: z.string().min(1, 'Nome é obrigatório').max(255, 'Nome muito longo'),
+  description: z.string().max(1000, 'Descrição muito longa').nullable(),
+  certificateKind: z.enum(['technical', 'lato-sensu', 'all']),
+})
+
+/**
+ * Valida dados de certificado antes de gerar DOCX
+ */
+export function validateCertificateData(data: unknown) {
+  return certificateDocxDataSchema.safeParse(data)
+}
+
+/**
+ * Valida mapeamentos de campos
+ */
+export function validateFieldMappings(mappings: unknown) {
+  return z.array(fieldMappingSchema).safeParse(mappings)
 }

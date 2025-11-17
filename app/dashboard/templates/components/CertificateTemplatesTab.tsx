@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Star, StarOff, AlertCircle, Check, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Star, StarOff, AlertCircle, Check, X, FileText, Code } from 'lucide-react'
 import Card from '../../../components/Card'
 import Spinner from '../../../components/ui/Spinner'
 import Button from '../../../components/Button'
@@ -16,11 +16,18 @@ import {
   setDefaultTemplate
 } from '@/lib/actions/certificate-templates'
 import { validateTemplate } from '@/lib/utils/template-renderer'
+import DocxTemplatesSection from './DocxTemplatesSection'
+import DocxTemplateUploadModal from './DocxTemplateUploadModal'
+
+type TemplateFormat = 'html' | 'docx'
 
 export default function CertificateTemplatesTab() {
+  const [templateFormat, setTemplateFormat] = useState<TemplateFormat>('html')
   const [templates, setTemplates] = useState<CertificateTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [showDocxModal, setShowDocxModal] = useState(false)
+  const [docxRefresh, setDocxRefresh] = useState(0)
   const [editingTemplate, setEditingTemplate] = useState<CertificateTemplate | null>(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -144,13 +151,39 @@ export default function CertificateTemplatesTab() {
 
   return (
     <div className="space-y-6">
-      {/* Action Button */}
-      <div className="flex justify-end">
+      {/* Format Switcher */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-2 p-1 bg-navy-900 rounded-lg border border-gold-500/20">
+          <button
+            onClick={() => setTemplateFormat('html')}
+            className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+              templateFormat === 'html'
+                ? 'bg-gold-500/20 text-gold-200'
+                : 'text-gold-400 hover:text-gold-200'
+            }`}
+          >
+            <Code className="w-4 h-4" />
+            Templates HTML
+          </button>
+          <button
+            onClick={() => setTemplateFormat('docx')}
+            className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+              templateFormat === 'docx'
+                ? 'bg-gold-500/20 text-gold-200'
+                : 'text-gold-400 hover:text-gold-200'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            Templates DOCX
+          </button>
+        </div>
+
+        {/* Action Button */}
         <Button
-          onClick={openCreateModal}
+          onClick={templateFormat === 'html' ? openCreateModal : () => setShowDocxModal(true)}
           icon={<Plus className="w-4 h-4" />}
         >
-          Novo Template de Certificado
+          {templateFormat === 'html' ? 'Novo Template HTML' : 'Novo Template DOCX'}
         </Button>
       </div>
 
@@ -167,9 +200,10 @@ export default function CertificateTemplatesTab() {
       )}
 
       {/* Templates List */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      {templateFormat === 'html' ? (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full">
             <thead className="bg-navy-800/80">
               <tr className="border-b border-gold-500/20">
                 <th className="text-left py-4 px-4 text-gold-200 font-medium">Nome</th>
@@ -254,6 +288,20 @@ export default function CertificateTemplatesTab() {
           </table>
         </div>
       </Card>
+      ) : (
+        <DocxTemplatesSection onRefresh={docxRefresh} />
+      )}
+
+      {/* DOCX Upload Modal */}
+      {showDocxModal && (
+        <DocxTemplateUploadModal
+          onClose={() => setShowDocxModal(false)}
+          onSuccess={() => {
+            setShowDocxModal(false)
+            setDocxRefresh(prev => prev + 1)
+          }}
+        />
+      )}
 
       {/* Modal Create/Edit */}
       {showModal && (
