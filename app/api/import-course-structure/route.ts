@@ -121,9 +121,11 @@ export async function POST(request: NextRequest) {
       const courseModule = modules[i]
       
       // Criar o módulo
+      const moduleCode = `MOD${(startIndex + i + 1).toString().padStart(3, '0')}`
       const { data: moduleData, error: moduleError } = await supabase
         .from('course_modules')
         .insert({
+          code: moduleCode,
           course_id: courseId,
           title: courseModule.title,
           order_index: startIndex + i,

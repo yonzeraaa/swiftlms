@@ -212,6 +212,54 @@ export type Database = {
           },
         ]
       }
+      certificate_templates: {
+        Row: {
+          certificate_type: string
+          created_at: string | null
+          created_by: string | null
+          css_content: string | null
+          description: string | null
+          html_content: string
+          id: string
+          is_active: boolean | null
+          is_default: boolean | null
+          name: string
+          storage_bucket: string | null
+          storage_path: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          certificate_type: string
+          created_at?: string | null
+          created_by?: string | null
+          css_content?: string | null
+          description?: string | null
+          html_content: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          certificate_type?: string
+          created_at?: string | null
+          created_by?: string | null
+          css_content?: string | null
+          description?: string | null
+          html_content?: string
+          id?: string
+          is_active?: boolean | null
+          is_default?: boolean | null
+          name?: string
+          storage_bucket?: string | null
+          storage_path?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       certificates: {
         Row: {
           approval_status: string | null
@@ -347,6 +395,7 @@ export type Database = {
       }
       course_modules: {
         Row: {
+          code: string
           course_id: string
           created_at: string | null
           description: string | null
@@ -358,6 +407,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          code: string
           course_id: string
           created_at?: string | null
           description?: string | null
@@ -369,6 +419,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          code?: string
           course_id?: string
           created_at?: string | null
           description?: string | null
@@ -1680,7 +1731,7 @@ export type Database = {
       }
       delete_user_completely: {
         Args: { user_id_to_delete: string }
-        Returns: boolean
+        Returns: Json
       }
       fix_all_enrollment_progress: {
         Args: never
@@ -1740,11 +1791,7 @@ export type Database = {
       }
       preview_user_deletion: {
         Args: { user_id_to_check: string }
-        Returns: {
-          count: number
-          data_type: string
-          details: string
-        }[]
+        Returns: Json
       }
       recalculate_course_hours: {
         Args: { p_course_id: string }

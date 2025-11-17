@@ -1,5 +1,6 @@
 import { Award, Shield } from 'lucide-react'
 import { CertificateTemplateProps, CERTIFICATE_TYPE_CONFIG } from '@/types/certificates'
+import { renderCertificateTemplate } from '@/lib/utils/template-renderer'
 
 /**
  * Formata data para exibição no certificado
@@ -21,18 +22,37 @@ function formatDate(dateString: string): string {
  * Renderiza um certificado em HTML/CSS que será capturado pelo html2canvas
  * e convertido em PDF via jsPDF.
  *
+ * Suporta:
+ * - Templates React padrão (quando customTemplate não é fornecido)
+ * - Templates HTML customizados (quando customTemplate é fornecido)
+ *
  * @param certificate - Dados do certificado
  * @param elementId - ID do elemento HTML (certificate-pdf ou certificate-pdf-admin)
  * @param showGrade - Se deve exibir o campo de aproveitamento (apenas admin)
+ * @param customTemplate - HTML customizado do template (opcional)
  */
 export function CertificateTemplate({
   certificate,
   elementId,
-  showGrade = false
+  showGrade = false,
+  customTemplate
 }: CertificateTemplateProps) {
   const config = CERTIFICATE_TYPE_CONFIG[certificate.certificate_type || 'technical']
   const courseHours = certificate.course_hours || certificate.course?.duration_hours || 0
 
+  // Se houver template customizado, renderizar HTML com variáveis substituídas
+  if (customTemplate) {
+    const renderedHTML = renderCertificateTemplate(customTemplate, certificate, showGrade)
+
+    return (
+      <div
+        id={elementId}
+        dangerouslySetInnerHTML={{ __html: renderedHTML }}
+      />
+    )
+  }
+
+  // Template React padrão
   return (
     <div
       id={elementId}

@@ -69,6 +69,7 @@ export async function createModule(moduleData: {
   course_id: string
   order_index: number
   is_required: boolean
+  code?: string
 }) {
   try {
     const supabase = await createClient()
@@ -78,9 +79,13 @@ export async function createModule(moduleData: {
       return { success: false, error: 'Não autenticado' }
     }
 
+    // Gerar código se não fornecido
+    const moduleCode = moduleData.code || `MOD${(moduleData.order_index + 1).toString().padStart(3, '0')}`
+
     const { error } = await supabase
       .from('course_modules')
       .insert({
+        code: moduleCode,
         title: moduleData.title,
         description: moduleData.description || null,
         course_id: moduleData.course_id,
