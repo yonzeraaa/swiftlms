@@ -22,7 +22,18 @@ export async function getSubjectsData() {
 
     const { data: subjectsData, error } = await supabase
       .from('subjects')
-      .select('*')
+      .select(`
+        *,
+        module_subjects(
+          id,
+          module_id,
+          order_index,
+          course_modules(
+            id,
+            title
+          )
+        )
+      `)
       .order('code')
 
     if (error) throw error

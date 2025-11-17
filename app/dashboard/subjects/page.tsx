@@ -26,6 +26,18 @@ type Lesson = Database['public']['Tables']['lessons']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
 type Course = Database['public']['Tables']['courses']['Row']
 
+type SubjectWithModules = Subject & {
+  module_subjects?: Array<{
+    id: string
+    module_id: string
+    order_index: number | null
+    course_modules?: {
+      id: string
+      title: string
+    } | null
+  }> | null
+}
+
 interface LessonAssociationOption {
   id: string
   displayName: string
@@ -38,9 +50,10 @@ interface LessonAssociationOption {
 }
 
 export default function SubjectsPage() {
-  const [subjects, setSubjects] = useState<Subject[]>([])
+  const [subjects, setSubjects] = useState<SubjectWithModules[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedModuleId, setSelectedModuleId] = useState<string>('todos')
   const [showModal, setShowModal] = useState(false)
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
   const [formData, setFormData] = useState({
@@ -417,13 +430,45 @@ export default function SubjectsPage() {
     }
   }
 
-  const filteredSubjects = useMemo(() => (
-    subjects.filter((subject: any) =>
-      subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (subject.code && subject.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (subject.description && subject.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  const availableModules = useMemo(() => {
+    const modulesMap = new Map<string, { id: string; title: string }>()
+
+    subjects.forEach(subject => {
+      if (subject.module_subjects && subject.module_subjects.length > 0) {
+        subject.module_subjects.forEach(ms => {
+          if (ms.course_modules && !modulesMap.has(ms.course_modules.id)) {
+            modulesMap.set(ms.course_modules.id, {
+              id: ms.course_modules.id,
+              title: ms.course_modules.title
+            })
+          }
+        })
+      }
+    })
+
+    return Array.from(modulesMap.values()).sort((a, b) =>
+      a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
     )
-  ), [subjects, searchTerm])
+  }, [subjects])
+
+  const filteredSubjects = useMemo(() => {
+    return subjects.filter((subject) => {
+      const matchesSearch =
+        subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (subject.code && subject.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (subject.description && subject.description.toLowerCase().includes(searchTerm.toLowerCase()))
+
+      if (!matchesSearch) return false
+
+      if (selectedModuleId === 'todos') return true
+
+      if (selectedModuleId === 'sem-modulo') {
+        return !subject.module_subjects || subject.module_subjects.length === 0
+      }
+
+      return subject.module_subjects?.some(ms => ms.module_id === selectedModuleId) ?? false
+    })
+  }, [subjects, searchTerm, selectedModuleId])
 
   const sortedSubjects = useMemo(() => {
     const list = [...filteredSubjects]
@@ -555,7 +600,7 @@ export default function SubjectsPage() {
             />
           </div>
           {selectedSubjects.length > 0 && (
-          <Button 
+          <Button
             variant="secondary"
             icon={deletingMultiple ? <Spinner size="sm" /> : <Trash className="w-4 h-4" />}
             onClick={handleDeleteMultiple}
@@ -564,12 +609,22 @@ export default function SubjectsPage() {
             {deletingMultiple ? 'Excluindo...' : `Excluir ${selectedSubjects.length} selecionado(s)`}
           </Button>
           )}
-          <Button 
-            variant="secondary"
-            icon={<Filter className="w-4 h-4 flex-shrink-0" />}
-          >
-            Filtros
-          </Button>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gold-400 flex-shrink-0" />
+            <select
+              value={selectedModuleId}
+              onChange={(e) => setSelectedModuleId(e.target.value)}
+              className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
+            >
+              <option value="todos">Todos os módulos</option>
+              <option value="sem-modulo">Sem módulo</option>
+              {availableModules.map(module => (
+                <option key={module.id} value={module.id}>
+                  {module.title}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm mt-4">
           <span className="text-gold-400/80 font-medium">Ordenar por:</span>

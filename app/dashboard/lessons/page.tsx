@@ -48,6 +48,7 @@ interface LessonWithRelations extends Lesson {
 export default function LessonsPage() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('todas')
   const [loading, setLoading] = useState(true)
   const [lessons, setLessons] = useState<LessonWithRelations[]>([])
   const [modules, setModules] = useState<(CourseModule & { courses: Course })[]>([])
@@ -203,12 +204,47 @@ export default function LessonsPage() {
     })
   }
 
+  const availableSubjects = useMemo(() => {
+    const subjectsMap = new Map<string, { id: string; name: string; code: string | null }>()
+
+    lessons.forEach(lesson => {
+      if (lesson.subject_lessons && lesson.subject_lessons.length > 0) {
+        lesson.subject_lessons.forEach(sl => {
+          if (sl.subjects && !subjectsMap.has(sl.subjects.id)) {
+            subjectsMap.set(sl.subjects.id, {
+              id: sl.subjects.id,
+              name: sl.subjects.name,
+              code: sl.subjects.code
+            })
+          }
+        })
+      }
+    })
+
+    return Array.from(subjectsMap.values()).sort((a, b) => {
+      const codeA = a.code || a.name
+      const codeB = b.code || b.name
+      return codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
+    })
+  }, [lessons])
+
   const filteredLessons = useMemo(() => {
-    return lessons.filter(lesson =>
-      lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [lessons, searchTerm])
+    return lessons.filter(lesson => {
+      const matchesSearch =
+        lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
+
+      if (!matchesSearch) return false
+
+      if (selectedSubjectId === 'todas') return true
+
+      if (selectedSubjectId === 'sem-disciplina') {
+        return !lesson.subject_lessons || lesson.subject_lessons.length === 0
+      }
+
+      return lesson.subject_lessons?.some(sl => sl.subject_id === selectedSubjectId) ?? false
+    })
+  }, [lessons, searchTerm, selectedSubjectId])
 
   const getLessonSubjectCode = (lesson: LessonWithRelations) => {
     const code = (lesson as any).subject_lessons?.[0]?.subjects?.code
@@ -469,12 +505,22 @@ export default function LessonsPage() {
               className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
             />
           </div>
-          <Button 
-            variant="secondary"
-            icon={<Filter className="w-4 h-4 flex-shrink-0" />}
-          >
-            Filtros
-          </Button>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gold-400 flex-shrink-0" />
+            <select
+              value={selectedSubjectId}
+              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[200px]"
+            >
+              <option value="todas">Todas as disciplinas</option>
+              <option value="sem-disciplina">Sem disciplina</option>
+              {availableSubjects.map(subject => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.code ? `${subject.code} - ${subject.name}` : subject.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-sm">
