@@ -8,6 +8,7 @@ import { promisify } from 'util'
 let convertAsync: ((input: Buffer, format: string, filter?: string) => Promise<Buffer>) | null = null
 
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const libre = require('libreoffice-convert')
   convertAsync = promisify(libre.convert) as (input: Buffer, format: string, filter?: string) => Promise<Buffer>
 } catch (error) {

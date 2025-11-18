@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Award, Download, Eye, Trash2, Plus, CheckCircle, XCircle, User, Calendar, Clock, FileText, AlertCircle, CheckCheck, X, Shield } from 'lucide-react'
+import { Award, Download, Eye, Trash2, Plus, CheckCircle, XCircle, User, Calendar, Clock, FileText, AlertCircle, CheckCheck, X, Shield, Upload as UploadIcon, File as FileIcon } from 'lucide-react'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
@@ -17,6 +17,9 @@ import {
   updateCertificateStatus
 } from '@/lib/actions/admin-certificates'
 import { CertificateTemplate } from '@/app/components/certificates/CertificateTemplate'
+import CertificateUploadModal from './components/CertificateUploadModal'
+import { downloadCertificateFile } from '@/lib/actions/certificate-upload'
+import toast from 'react-hot-toast'
 
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
 type Certificate = Database['public']['Tables']['certificates']['Row'] & {
@@ -66,6 +69,11 @@ export default function CertificatesPage() {
   const [rejectionReason, setRejectionReason] = useState('')
   const [showRejectionModal, setShowRejectionModal] = useState<string | null>(null)
   const [generatingPDF, setGeneratingPDF] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState<{
+    certificateId: string
+    certificateNumber: string
+    studentName: string
+  } | null>(null)
   const certificateRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -194,23 +202,58 @@ export default function CertificatesPage() {
   }
 
   const handleDownloadCertificate = async (certificate: any) => {
+    // Se o certificado tem arquivo anexado, baixar o arquivo
+    if (certificate.file_path) {
+      try {
+        toast.loading('Baixando certificado...')
+        const { blob, name } = await downloadCertificateFile(certificate.id)
+
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = name
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+
+        toast.dismiss()
+        toast.success('Download iniciado!')
+      } catch (error) {
+        console.error('Erro ao baixar arquivo:', error)
+        toast.dismiss()
+        toast.error('Erro ao baixar certificado')
+      }
+      return
+    }
+
+    // Caso contrário, gerar PDF do template HTML
     try {
       setGeneratingPDF(true)
       setSelectedCertificate(certificate)
-      
+
       // Wait for the certificate to be rendered
       await new Promise(resolve => setTimeout(resolve, 100))
-      
+
       // Generate PDF from the hidden certificate element
       await generateCertificatePDF('certificate-pdf-admin', `certificado-${certificate.certificate_number}.pdf`)
-      
+
       setSelectedCertificate(null)
+      toast.success('Certificado gerado!')
     } catch (error) {
       console.error('Error generating certificate PDF:', error)
-      alert('Erro ao gerar o certificado. Por favor, tente novamente.')
+      toast.error('Erro ao gerar o certificado. Por favor, tente novamente.')
     } finally {
       setGeneratingPDF(false)
     }
+  }
+
+  const handleUploadCertificate = (certificate: any) => {
+    setShowUploadModal({
+      certificateId: certificate.id,
+      certificateNumber: certificate.certificate_number,
+      studentName: certificate.user?.full_name || 'Aluno',
+    })
   }
 
   const formatDate = (date: string) => {
@@ -693,8 +736,8 @@ export default function CertificatesPage() {
                     </td>
                     <td className="py-5 px-6 align-middle">
                       <div className="flex items-center justify-center gap-1">
-                        <Button 
-                          variant="secondary" 
+                        <Button
+                          variant="secondary"
                           size="sm"
                           onClick={() => handleViewCertificate(certificate)}
                           title="Visualizar"
@@ -702,11 +745,24 @@ export default function CertificatesPage() {
                         >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          variant="secondary" 
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleUploadCertificate(certificate)}
+                          title={certificate.file_path ? "Arquivo anexado" : "Upload DOCX/PDF"}
+                          className="!p-2"
+                        >
+                          {certificate.file_path ? (
+                            <FileIcon className="w-4 h-4 text-green-400" />
+                          ) : (
+                            <UploadIcon className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="secondary"
                           size="sm"
                           onClick={() => handleDownloadCertificate(certificate)}
-                          title="Baixar"
+                          title={certificate.file_path ? "Baixar arquivo" : "Gerar PDF"}
                           disabled={generatingPDF}
                           className="!p-2"
                         >
@@ -944,6 +1000,20 @@ export default function CertificatesPage() {
             />
           </div>
         </div>
+      )}
+
+      {/* Modal de Upload de Certificado */}
+      {showUploadModal && (
+        <CertificateUploadModal
+          certificateId={showUploadModal.certificateId}
+          certificateNumber={showUploadModal.certificateNumber}
+          studentName={showUploadModal.studentName}
+          onClose={() => setShowUploadModal(null)}
+          onSuccess={async () => {
+            await fetchData()
+            setShowUploadModal(null)
+          }}
+        />
       )}
     </div>
   )
