@@ -416,7 +416,7 @@ export default function StudentDashboard() {
 
                     {/* Progress Bar */}
                     <div className="mt-3">
-                      <div className="w-full bg-navy-800 rounded-full h-1.5">
+                      <div className="w-full bg-navy-900 rounded-full h-1.5">
                         <div 
                           className={`h-1.5 rounded-full transition-all duration-500 ${
                             course.enrollment.status === 'completed'

@@ -1162,7 +1162,7 @@ export default function CoursePage() {
                     <div className="space-y-6">
                       <div>
                         <p className="text-gold-300 text-sm mb-2">Progresso do curso</p>
-                        <div className="w-full bg-navy-800 rounded-full h-2">
+                        <div className="w-full bg-navy-900 rounded-full h-2">
                           <div 
                             className="h-2 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 transition-all"
                             style={{ width: `${Math.round(progressPercentage)}%` }}
@@ -1186,7 +1186,7 @@ export default function CoursePage() {
                                   <p className="text-sm text-gold-200 font-medium truncate">{m.title}</p>
                                   <span className="text-xs text-gold-400">{mp.completed}/{mp.total} • {pct}%</span>
                                 </div>
-                                <div className="w-full bg-navy-800 rounded-full h-1.5">
+                                <div className="w-full bg-navy-900 rounded-full h-1.5">
                                   <div className="h-1.5 rounded-full bg-gold-600" style={{ width: `${pct}%` }} />
                                 </div>
                               </div>
