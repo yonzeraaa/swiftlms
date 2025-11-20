@@ -60,9 +60,10 @@ export default function Card({
 
   const variants = {
     default: `
-      bg-navy-800/95
-      border border-gold-500/20
-      ${hoverable ? 'hover:border-gold-500/30 hover:shadow-md transition-all duration-200' : ''}
+      bg-navy-800/95 backdrop-blur-sm
+      border border-gold-500/10
+      shadow-lg
+      ${hoverable ? 'hover:border-gold-500/20 hover:shadow-xl transition-all duration-200' : ''}
     `,
     gradient: `
       bg-navy-800/95
@@ -119,7 +120,7 @@ export default function Card({
         ${variants[variant]}
         ${paddingSizes[padding]}
         ${depthStyles[depth]}
-        rounded-xl relative
+        rounded-2xl relative
         ${onClick ? 'cursor-pointer' : ''}
         transition-all duration-200 ease-out
         ${className}
