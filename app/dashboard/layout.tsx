@@ -148,8 +148,8 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-pattern">
-      <div className="absolute inset-0 bg-gradient-to-br from-navy-600/50 via-navy-700/50 to-navy-900/50" />
+    <div className="min-h-screen bg-navy-900">
+      <div className="absolute inset-0 bg-gradient-to-b from-navy-800/30 to-navy-900" />
 
       {/* Mobile Header */}
       <div className="relative md:hidden bg-navy-900/95 backdrop-blur-md border-b border-gold-500/20 p-4 flex items-center justify-between">
