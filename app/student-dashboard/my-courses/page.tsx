@@ -296,7 +296,7 @@ export default function MyCoursesPage() {
                       {course.completedLessons}/{course.totalLessons} aulas
                     </span>
                   </div>
-                  <div className="w-full bg-navy-800 rounded-full h-2">
+                  <div className="w-full bg-navy-900 rounded-full h-2">
                     <div 
                       className="bg-gradient-to-r from-gold-500 to-gold-600 h-2 rounded-full transition-all duration-500"
                       style={{ 

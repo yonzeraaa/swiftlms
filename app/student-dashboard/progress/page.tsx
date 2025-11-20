@@ -454,7 +454,7 @@ export default function ProgressPage() {
                   <span className="text-gold-300">{cp.course.title}</span>
                   <span className="text-gold-100 font-semibold">{cp.progress}%</span>
                 </div>
-                <div className="w-full bg-navy-800 rounded-full h-3">
+                <div className="w-full bg-navy-900 rounded-full h-3">
                   <div
                     className="bg-gradient-to-r from-gold-500 to-gold-400 h-3 rounded-full transition-all duration-500"
                     style={{ width: `${cp.progress}%` }}

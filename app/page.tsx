@@ -8,11 +8,13 @@ import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Logo from './components/Logo'
 import Button from './components/Button'
+import Card from './components/Card'
+import { StaggerTransition, StaggerItem } from './components/ui/PageTransition'
 import ContactModal from './components/ContactModal'
 import ForgotPasswordModal from './components/ForgotPasswordModal'
 import { useTranslation } from './contexts/LanguageContext'
 import type { Language } from './contexts/LanguageContext'
-import { fadeInUp, staggerContainer, staggerItem, shake } from '@/lib/animation-presets'
+import { shake } from '@/lib/animation-presets'
 import { checkAuthStatus } from '@/lib/actions/browse-enroll'
 
 export default function LoginPage() {
@@ -121,15 +123,12 @@ export default function LoginPage() {
       {/* Fundo discreto com gradiente suave */}
       <div className="absolute inset-0 bg-gradient-to-b from-navy-800/30 to-navy-900" />
 
-      <motion.div
-        className="relative min-h-screen flex items-center justify-center px-4 py-8"
-        variants={staggerContainer}
-        initial="hidden"
-        animate="visible"
-      >
-        <motion.div className="max-w-md w-full" variants={staggerItem}>
-          {/* Language Selector - Above Login Card */}
-          <motion.div className="flex justify-center mb-4" variants={staggerItem}>
+      <div className="relative min-h-screen flex items-center justify-center px-4 py-8">
+        <div className="max-w-md w-full">
+          <StaggerTransition staggerDelay={0.1}>
+            {/* Language Selector - Above Login Card */}
+            <StaggerItem>
+              <div className="flex justify-center mb-4">
             <div className="flex items-center gap-2 bg-navy-800/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-gold-500/20">
               <Globe className="w-4 h-4 text-gold-400" />
               <select
@@ -143,14 +142,11 @@ export default function LoginPage() {
                 <option value="es-ES" className="bg-navy-800">Español (ES)</option>
               </select>
             </div>
-          </motion.div>
-          {/* Card principal com design sóbrio */}
-          <motion.div
-            className="bg-navy-800/95 backdrop-blur-sm rounded-2xl shadow-lg border border-gold-500/10 p-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-          >
+              </div>
+            </StaggerItem>
+            {/* Card principal com design sóbrio */}
+            <StaggerItem>
+              <Card padding="lg">
             {/* Header com logo */}
             <div className="text-center mb-4">
                 <div className="flex justify-center mb-2">
@@ -333,9 +329,11 @@ export default function LoginPage() {
                   </p>
                 </div>
               </div>
-          </motion.div>
-        </motion.div>
-      </motion.div>
+              </Card>
+            </StaggerItem>
+          </StaggerTransition>
+        </div>
+      </div>
       
       {/* Contact Modal */}
       <ContactModal 
