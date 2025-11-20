@@ -11,6 +11,7 @@ import Button from '../components/Button'
 import { useTranslation } from '../contexts/LanguageContext'
 import { SkeletonStatCard } from '../components/Skeleton'
 import { getAdminDashboardData } from '@/lib/actions/admin-dashboard'
+import { StaggerTransition, StaggerItem, FadeTransition } from '../components/ui/PageTransition'
 
 interface Stats {
   totalStudents: number
@@ -225,22 +226,26 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <Card variant="default" className="mb-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
-              {t('dashboard.title')}
-            </h1>
-            <p className="text-gold-300 mt-1">{t('dashboard.subtitle')}</p>
+      <FadeTransition>
+        <Card variant="default" className="mb-6">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
+                {t('dashboard.title')}
+              </h1>
+              <p className="text-gold-300 mt-1">{t('dashboard.subtitle')}</p>
+            </div>
+            <div className="text-gold-400/60 text-sm">
+              {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
           </div>
-          <div className="text-gold-400/60 text-sm">
-            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </FadeTransition>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <StaggerTransition staggerDelay={0.1}>
+        {/* Stats Grid */}
+        <StaggerItem>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatCard
           {...statsCards[0]}
           variant="default"
@@ -261,12 +266,14 @@ export default function DashboardPage() {
           variant="default"
           color="gold"
         />
-      </div>
+          </div>
+        </StaggerItem>
 
-      {/* Atividades Recentes */}
-      <Card
-        title={t('dashboard.recentActivities')}
-        variant="default"
+        {/* Atividades Recentes */}
+        <StaggerItem>
+          <Card
+            title={t('dashboard.recentActivities')}
+            variant="default"
         action={
           recentActivities.length > 0 && (
             <Button
@@ -309,10 +316,12 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      </Card>
+          </Card>
+        </StaggerItem>
 
-      {/* Cursos Populares */}
-      <Card title={t('dashboard.popularCourses')} subtitle={t('dashboard.basedOnEnrollments')}>
+        {/* Cursos Populares */}
+        <StaggerItem>
+          <Card title={t('dashboard.popularCourses')} subtitle={t('dashboard.basedOnEnrollments')}>
         <div className="space-y-4">
           {popularCourses.length > 0 ? (
             popularCourses.map((course, index) => (
@@ -335,10 +344,12 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      </Card>
+          </Card>
+        </StaggerItem>
 
-      {/* Additional Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+        {/* Additional Stats */}
+        <StaggerItem>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -368,7 +379,9 @@ export default function DashboardPage() {
             <Activity className="w-8 h-8 text-gold-500/30" />
           </div>
         </Card>
-      </div>
+          </div>
+        </StaggerItem>
+      </StaggerTransition>
     </div>
   )
 }

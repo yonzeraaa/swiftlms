@@ -16,6 +16,7 @@ import { Chip } from '../../components/Badge'
 import { SkeletonCard } from '../../components/Skeleton'
 import { useToast } from '../../components/Toast'
 import Spinner from '../../components/ui/Spinner'
+import { StaggerTransition, StaggerItem, FadeTransition } from '../../components/ui/PageTransition'
 import {
   getAllUsers,
   getAllCourses,
@@ -541,27 +542,31 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-            <Users className="w-8 h-8 text-gold-400" />
-            {t('users.title')}
-          </h1>
-          <p className="text-gold-300 mt-1">{t('users.subtitle')}</p>
-        </div>
-        <Button 
-          variant="primary" 
-          icon={<Plus className="w-5 h-5" />}
-          onClick={() => setShowNewUserModal(true)}
-        >
-          {t('users.newUser')}
-        </Button>
-      </div>
+      <StaggerTransition staggerDelay={0.1}>
+        <StaggerItem>
+          <Breadcrumbs className="mb-2" />
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
+                <Users className="w-8 h-8 text-gold-400" />
+                {t('users.title')}
+              </h1>
+              <p className="text-gold-300 mt-1">{t('users.subtitle')}</p>
+            </div>
+            <Button
+              variant="primary"
+              icon={<Plus className="w-5 h-5" />}
+              onClick={() => setShowNewUserModal(true)}
+            >
+              {t('users.newUser')}
+            </Button>
+          </div>
+        </StaggerItem>
 
-      {/* Search, Filters and View Toggle */}
-      <div className="flex gap-4">
+        <StaggerItem>
+          {/* Search, Filters and View Toggle */}
+          <div className="flex gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
           <input
@@ -573,18 +578,20 @@ export default function UsersPage() {
           />
         </div>
         <ViewToggle view={viewMode} onViewChange={setViewMode} />
-        <Button 
-          variant="secondary" 
-          icon={<Filter className="w-5 h-5" />}
-          onClick={() => setShowFilters(!showFilters)}
-        >
-          {t('users.filters')}
-        </Button>
-      </div>
+            <Button
+              variant="secondary"
+              icon={<Filter className="w-5 h-5" />}
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              {t('users.filters')}
+            </Button>
+          </div>
+        </StaggerItem>
 
-      {/* Filters Panel with Chips */}
-      {showFilters && (
-        <Card variant="outlined">
+        {/* Filters Panel with Chips */}
+        {showFilters && (
+          <StaggerItem>
+            <Card variant="outlined">
           <div className="space-y-4">
             {/* Role Filters */}
             <div>
@@ -666,12 +673,14 @@ export default function UsersPage() {
                 </Button>
               </div>
             )}
-          </div>
-        </Card>
-      )}
+              </div>
+            </Card>
+          </StaggerItem>
+        )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Stats Cards */}
+        <StaggerItem>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -717,10 +726,12 @@ export default function UsersPage() {
             <BookOpen className="w-8 h-8 text-green-500/30" />
           </div>
         </Card>
-      </div>
+          </div>
+        </StaggerItem>
 
-      {/* Users List or Grid */}
-      {loading ? (
+        {/* Users List or Grid */}
+        <StaggerItem>
+          {loading ? (
         <div className="space-y-6">
           {/* Cards Grid Skeleton */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1323,6 +1334,9 @@ export default function UsersPage() {
           </Card>
         </div>
       )}
+
+        </StaggerItem>
+      </StaggerTransition>
 
       {/* New User Modal */}
       {showNewUserModal && (

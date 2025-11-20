@@ -10,6 +10,7 @@ import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
 import { useAuth } from '../../providers/AuthProvider'
 import DriveImportModal from '../../components/DriveImportModal'
+import { StaggerTransition, StaggerItem, FadeTransition } from '../../components/ui/PageTransition'
 import {
   getCoursesData,
   getEnrolledStudents,
@@ -437,27 +438,31 @@ export default function CoursesPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-            <BookOpen className="w-8 h-8 text-gold-400" />
-            {t('courses.title')}
-          </h1>
-          <p className="text-gold-300 mt-1">{t('courses.subtitle')}</p>
-        </div>
-        <Button 
-          variant="primary" 
-          icon={<Plus className="w-5 h-5" />}
-          onClick={() => setShowNewCourseModal(true)}
-        >
-          {t('courses.newCourse')}
-        </Button>
-      </div>
+      <StaggerTransition staggerDelay={0.1}>
+        <StaggerItem>
+          <Breadcrumbs className="mb-2" />
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
+                <BookOpen className="w-8 h-8 text-gold-400" />
+                {t('courses.title')}
+              </h1>
+              <p className="text-gold-300 mt-1">{t('courses.subtitle')}</p>
+            </div>
+            <Button
+              variant="primary"
+              icon={<Plus className="w-5 h-5" />}
+              onClick={() => setShowNewCourseModal(true)}
+            >
+              {t('courses.newCourse')}
+            </Button>
+          </div>
+        </StaggerItem>
 
-      {/* Filters and Search */}
-      <Card>
+        <StaggerItem>
+          {/* Filters and Search */}
+          <Card>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
@@ -477,11 +482,13 @@ export default function CoursesPage() {
             {t('courses.filters')}
           </Button>
         </div>
-      </Card>
+          </Card>
+        </StaggerItem>
       
-      {/* Filter Panel */}
-      {showFilters && (
-        <Card>
+        {/* Filter Panel */}
+        {showFilters && (
+          <StaggerItem>
+            <Card>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gold-200 mb-2">
@@ -499,17 +506,19 @@ export default function CoursesPage() {
                 <option value="maintenance">{t('courses.maintenance')}</option>
               </select>
             </div>
-          </div>
-        </Card>
+            </div>
+          </Card>
+        </StaggerItem>
       )}
 
       {/* Courses Grid */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <Spinner size="xl" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <StaggerItem>
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <Spinner size="xl" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredCourses.map((course) => (
             <Card key={course.id} className="hover:shadow-2xl transition-shadow relative">
               <div className="flex justify-between items-start mb-4">
@@ -607,10 +616,12 @@ export default function CoursesPage() {
             </Card>
           ))}
         </div>
-      )}
+        )}
+      </StaggerItem>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+      <StaggerItem>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -642,7 +653,9 @@ export default function CoursesPage() {
             <Award className="w-8 h-8 text-gold-500/30" />
           </div>
         </Card>
-      </div>
+        </div>
+      </StaggerItem>
+      </StaggerTransition>
       
       {/* Create Course Modal */}
       {showNewCourseModal && (
