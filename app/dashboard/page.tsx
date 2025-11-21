@@ -281,7 +281,7 @@ export default function DashboardPage() {
       >
         <div className="space-y-4">
           {recentActivities.length > 0 ? (
-            recentActivities.map((activity, index) => (
+            recentActivities.slice(0, 5).map((activity, index) => (
               <div key={index} className="flex items-start gap-3 pb-4 border-b border-gold-500/20 last:border-0">
                 <div className="w-10 h-10 rounded-full bg-gold-500/20 flex items-center justify-center text-gold">
                   {activity.icon === 'user' && <UserPlus className="w-5 h-5" />}
