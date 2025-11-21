@@ -1746,8 +1746,8 @@ export default function ReportsPage() {
               variant="secondary"
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
               title="Mostrar/ocultar opções avançadas"
+              icon={<Filter className="w-5 h-5" />}
             >
-              <Filter className="w-5 h-5" />
               Opções Avançadas
             </Button>
             <Button

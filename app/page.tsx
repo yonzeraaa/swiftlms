@@ -95,8 +95,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-pattern relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-navy-600/50 via-navy-700/50 to-navy-900/50" />
+    <div className="min-h-screen bg-navy-900">
+      <div className="absolute inset-0 bg-gradient-to-b from-navy-800/30 to-navy-900" />
       <div className="relative min-h-screen flex items-center justify-center px-4 py-8">
         <div className="max-w-md w-full">
           <StaggerTransition staggerDelay={0.1}>
