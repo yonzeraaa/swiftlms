@@ -1,0 +1,1295 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import Golden Ratio Spacing System */
+@import './styles/spacing.css';
+@import './styles/animations.css';
+
+/* Custom scrollbar styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #001a33;
+  border-radius: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #FFD700;
+  border-radius: 6px;
+  border: 2px solid #001a33;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #FFC700;
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #FFD700 #001a33;
+}
+
+/* Import Premium Design System */
+@import './styles/design-system.css';
+
+:root {
+  --foreground-rgb: 255, 215, 0;
+  --background-start-rgb: 0, 51, 102;
+  --background-end-rgb: 0, 26, 51;
+  --font-body: var(--font-open-sans);
+  --font-heading: var(--font-montserrat);
+  --font-ui: var(--font-open-sans);
+  --text-caption: #6B7280;
+
+  /* Color tokens - Dark theme */
+  --color-primary: #FFD700;
+  --color-primary-hover: #E6C200;
+  --color-surface: rgba(0, 51, 102, 0.95);
+  --color-surface-elevated: rgba(0, 51, 102, 0.98);
+  --color-border: rgba(255, 215, 0, 0.2);
+  --color-text-primary: rgb(255, 215, 0);
+  --color-text-secondary: rgba(255, 215, 0, 0.8);
+  --color-text-muted: rgba(255, 215, 0, 0.6);
+
+  /* Enhanced Golden Ratio Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.809rem;
+  --space-lg: 1.309rem;
+  --space-xl: 2.118rem;
+  --space-2xl: 3.427rem;
+  --space-3xl: 5.545rem;
+
+  /* Fluid Typography - valores máximos reduzidos para evitar amplificação */
+  --font-size-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.8rem);
+  --font-size-sm: clamp(0.875rem, 0.85rem + 0.25vw, 0.9375rem);
+  --font-size-base: clamp(1rem, 0.975rem + 0.125vw, 1.0625rem);
+  --font-size-lg: clamp(1.125rem, 1.1rem + 0.125vw, 1.1875rem);
+  --font-size-xl: clamp(1.25rem, 1.225rem + 0.125vw, 1.3125rem);
+  --font-size-2xl: clamp(1.5rem, 1.45rem + 0.25vw, 1.625rem);
+  --font-size-3xl: clamp(1.875rem, 1.8rem + 0.375vw, 2rem);
+  --font-size-4xl: clamp(2.25rem, 2.15rem + 0.5vw, 2.5rem);
+
+  /* Enhanced Shadows */
+  --shadow-glow: 0 10px 30px -5px rgba(255, 215, 0, 0.3);
+  --shadow-glow-lg: 0 20px 40px -10px rgba(255, 215, 0, 0.4);
+}
+
+.light {
+  /* Light theme overrides */
+  --foreground-rgb: 0, 51, 102;
+  --background-start-rgb: 255, 255, 255;
+  --background-end-rgb: 245, 245, 245;
+
+  /* Color tokens - Light theme */
+  --color-primary: #003366;
+  --color-primary-hover: #004080;
+  --color-surface: rgba(255, 255, 255, 0.95);
+  --color-surface-elevated: rgba(255, 255, 255, 1);
+  --color-border: rgba(0, 51, 102, 0.15);
+  --color-text-primary: rgb(0, 51, 102);
+  --color-text-secondary: rgba(0, 51, 102, 0.8);
+  --color-text-muted: rgba(0, 51, 102, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  min-height: 100vh;
+  font-family: var(--font-body), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 1rem;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer base {
+  p {
+    font-size: 1rem;
+    line-height: 1.5;
+    font-family: var(--font-body), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  h1,
+  .heading-1 {
+    font-family: var(--font-heading), 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: var(--font-size-4xl);
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+  }
+
+  h2,
+  .heading-2 {
+    font-family: var(--font-heading), 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    line-height: 1.35;
+  }
+
+  h3,
+  .heading-3 {
+    font-family: var(--font-heading), 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    line-height: 1.4;
+  }
+
+  .subtitle,
+  .text-subtitle,
+  h4 {
+    font-family: var(--font-body), 'Open Sans', sans-serif;
+    font-weight: 600;
+    font-size: 1.125rem;
+    line-height: 1.4;
+  }
+
+  button,
+  [type='button'],
+  [type='submit'],
+  [role='button'],
+  .btn,
+  nav a,
+  nav button,
+  .breadcrumb {
+    font-family: var(--font-ui), 'Open Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+  }
+
+  small,
+  footer,
+  .text-caption,
+  .text-meta,
+  .helper-text {
+    font-family: var(--font-body), 'Open Sans', sans-serif;
+    font-weight: 400;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--text-caption);
+  }
+}
+
+/* Tamanhos de fonte aumentados para o dashboard do aluno */
+.student-dashboard-content {
+  font-size: 1rem; /* 16px base */
+}
+
+.student-dashboard-content h1 {
+  font-size: 2rem; /* 32px */
+}
+
+.student-dashboard-content h2 {
+  font-size: 1.5rem; /* 24px */
+}
+
+.student-dashboard-content h3 {
+  font-size: 1.25rem; /* 20px */
+}
+
+.student-dashboard-content p,
+.student-dashboard-content span,
+.student-dashboard-content div {
+  font-size: 1rem; /* 16px - mesmo tamanho do menu lateral */
+}
+
+.student-dashboard-content .text-sm {
+  font-size: 0.875rem; /* 14px */
+}
+
+.student-dashboard-content .text-xs {
+  font-size: 0.75rem; /* 12px */
+}
+
+/* Progress bar animation */
+@keyframes slide {
+  0% {
+    transform: translateX(-20px);
+  }
+  100% {
+    transform: translateX(20px);
+  }
+}
+
+/* Light theme specific styles */
+.light body {
+  background: #f5f7fa;
+}
+
+.light .bg-pattern {
+  background-color: #f5f7fa;
+  background-image: 
+    linear-gradient(30deg, #e8ecf1 12%, transparent 12.5%, transparent 87%, #e8ecf1 87.5%, #e8ecf1),
+    linear-gradient(150deg, #e8ecf1 12%, transparent 12.5%, transparent 87%, #e8ecf1 87.5%, #e8ecf1),
+    linear-gradient(30deg, #e8ecf1 12%, transparent 12.5%, transparent 87%, #e8ecf1 87.5%, #e8ecf1),
+    linear-gradient(150deg, #e8ecf1 12%, transparent 12.5%, transparent 87%, #e8ecf1 87.5%, #e8ecf1),
+    linear-gradient(60deg, #dde3eb77 25%, transparent 25.5%, transparent 75%, #dde3eb77 75%, #dde3eb77),
+    linear-gradient(60deg, #dde3eb77 25%, transparent 25.5%, transparent 75%, #dde3eb77 75%, #dde3eb77);
+}
+
+/* Light theme glass morphism */
+.light .glass-morphism {
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  background-color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 51, 102, 0.125);
+}
+
+/* Adjust text colors for light theme - all gold text becomes dark blue */
+.light .text-gold {
+  color: #001a33;
+}
+
+.light .text-gold-100 {
+  color: #001f3f;
+}
+
+.light .text-gold-200 {
+  color: #002952;
+}
+
+.light .text-gold-300 {
+  color: #003366;
+}
+
+.light .text-gold-400 {
+  color: #003d7a;
+}
+
+.light .text-gold-500 {
+  color: #004080;
+}
+
+
+/* Adjust backgrounds for light theme - all white/cream */
+.light .bg-navy-900 {
+  background-color: #ffffff;
+}
+
+.light .bg-navy-800 {
+  background-color: #fefefe;
+}
+
+.light .bg-navy-700 {
+  background-color: #fcfcfc;
+}
+
+.light .bg-navy-600 {
+  background-color: #fafafa;
+}
+
+/* Light theme card backgrounds - ensure proper contrast */
+.light .bg-navy-900\/95 {
+  background-color: rgba(255, 255, 255, 0.98);
+  box-shadow: none;
+}
+
+/* Adjust borders for light theme - golden borders */
+.light .border-navy-600 {
+  border-color: #FFD700;
+}
+
+.light .border-gold-500 {
+  border-color: #FFD700;
+}
+
+.light .border-gold-500\/20 {
+  border-color: rgba(255, 215, 0, 0.3);
+}
+
+.light .border-gold-500\/10 {
+  border-color: rgba(255, 215, 0, 0.2);
+}
+
+.light .border-gold-500\/30 {
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+/* Tipografia para headings */
+h1, h2, h3 {
+  font-family: var(--font-heading), 'Montserrat', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  text-transform: none;
+}
+
+h4, h5, h6 {
+  font-family: var(--font-body), 'Open Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+/* Ajustes específicos para elementos UI */
+button, .btn {
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+/* Labels e elementos de formulário */
+label {
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+}
+
+/* Inputs mantêm a fonte do corpo para melhor legibilidade */
+input, textarea, select {
+  font-family: var(--font-body), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 400;
+}
+
+/* Normalize base font size using root scaling */
+body {
+  font-size: 1rem;
+}
+
+/* ===== Responsive Typography System ===== */
+@media (max-width: 640px) {
+  html {
+    font-size: 15px;
+  }
+  
+  h1 {
+    font-size: 2rem;
+  }
+  
+  h2 {
+    font-size: 1.5rem;
+  }
+  
+  h3 {
+    font-size: 1.25rem;
+  }
+  
+  /* Ensure minimum touch targets on mobile */
+  button,
+  a,
+  [role="button"] {
+    min-height: 48px;
+    padding: 12px 16px;
+  }
+  
+  /* Adjust sidebar for mobile */
+  aside {
+    width: 100% !important;
+    max-width: 280px;
+  }
+  
+  /* Mobile-specific layout fixes */
+  .grid {
+    display: block !important;
+  }
+  
+  .grid > * {
+    margin-bottom: 1rem;
+  }
+  
+  /* Sidebar items full width on mobile */
+  .sidebar-item {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 1rem;
+  }
+  
+  /* Content area adjustments */
+  main {
+    padding: 1rem !important;
+  }
+  
+  /* Card adjustments for mobile */
+  .card {
+    margin: 0.5rem 0;
+    padding: 1rem !important;
+  }
+  
+  /* Fix course layout on mobile */
+  .course-content {
+    flex-direction: column;
+  }
+  
+  .course-sidebar {
+    width: 100% !important;
+    margin-bottom: 1rem;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+/* Font-size base fixo em 16px para todas as resoluções */
+html {
+  font-size: 16px;
+}
+
+/* ===== Responsive Spacing System ===== */
+@media (max-width: 640px) {
+  .p-4 { padding: 0.75rem; }
+  .p-6 { padding: 1rem; }
+  .p-8 { padding: 1.5rem; }
+  .px-4 { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .px-6 { padding-left: 1rem; padding-right: 1rem; }
+  .py-4 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+  .py-6 { padding-top: 1rem; padding-bottom: 1rem; }
+  .gap-4 { gap: 0.75rem; }
+  .gap-6 { gap: 1rem; }
+  .space-y-4 > * + * { margin-top: 0.75rem; }
+  .space-y-6 > * + * { margin-top: 1rem; }
+}
+
+/* ===== Container Responsive Widths ===== */
+.container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1536px;
+  }
+}
+
+/* Premium typography adjustments */
+p {
+  font-family: var(--font-body), 'Open Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.5;
+  color: inherit;
+}
+
+/* Stats and headline numbers use the heading family for emphasis */
+.stat-number, [class*="text-2xl"], [class*="text-3xl"], [class*="text-4xl"], [class*="text-5xl"] {
+  font-family: var(--font-heading), 'Montserrat', sans-serif !important;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Small caps for certain UI elements */
+.text-uppercase {
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+/* Better spacing for paragraphs */
+p + p {
+  margin-top: 1rem;
+}
+
+/* Premium look for badges and pills */
+.badge, .pill, [class*="rounded-full"][class*="px-"] {
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* Increase font sizes for dark mode to match light mode */
+:root body {
+  font-size: 1rem;
+}
+
+
+/* Texto em tabelas */
+th {
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+}
+
+/* Cards titles e subtitles */
+.card-title {
+  font-family: var(--font-heading), 'Montserrat', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* Menu items no sidebar */
+nav a, nav button {
+  font-family: var(--font-ui), 'Open Sans', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+@layer utilities {
+  .bg-pattern {
+    background-color: #001f3f;
+    background-image: 
+      linear-gradient(30deg, #002952 12%, transparent 12.5%, transparent 87%, #002952 87.5%, #002952),
+      linear-gradient(150deg, #002952 12%, transparent 12.5%, transparent 87%, #002952 87.5%, #002952),
+      linear-gradient(30deg, #002952 12%, transparent 12.5%, transparent 87%, #002952 87.5%, #002952),
+      linear-gradient(150deg, #002952 12%, transparent 12.5%, transparent 87%, #002952 87.5%, #002952),
+      linear-gradient(60deg, #00335277 25%, transparent 25.5%, transparent 75%, #00335277 75%, #00335277),
+      linear-gradient(60deg, #00335277 25%, transparent 25.5%, transparent 75%, #00335277 75%, #00335277);
+    background-size: 80px 140px;
+    background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
+  }
+
+  @keyframes gradient {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  @keyframes sway {
+    0%, 100% {
+      transform: rotate(-5deg);
+    }
+    50% {
+      transform: rotate(5deg);
+    }
+  }
+
+  .animate-gradient {
+    background-size: 400% 400%;
+    animation: gradient 15s ease infinite;
+  }
+
+  .glass-morphism {
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background-color: rgba(0, 51, 102, 0.25);
+    border: 1px solid rgba(255, 215, 0, 0.125);
+  }
+
+  .border-gradient {
+    position: relative;
+    background: linear-gradient(#001f3f, #001f3f) padding-box,
+                linear-gradient(135deg, #FFD700, #FFA500) border-box;
+    border: 2px solid transparent;
+  }
+  
+  /* Light theme border-gradient override */
+  .light .border-gradient {
+    background: linear-gradient(#ffffff, #ffffff) padding-box,
+                linear-gradient(135deg, #FFD700, #FFA500) border-box;
+    border: 2px solid transparent;
+  }
+
+  /* Classes utilitárias para tipografia */
+  .font-display,
+  .font-body,
+  .font-ui,
+  .font-open-sans {
+    font-family: var(--font-body), 'Open Sans', sans-serif !important;
+  }
+
+  .font-heading,
+  .font-montserrat {
+    font-family: var(--font-heading), 'Montserrat', sans-serif !important;
+  }
+
+  /* ============================== */
+  /* LIGHT THEME - SIMPLIFIED       */
+  /* ============================== */
+  
+  /* Light theme CSS variables */
+  .light {
+    --color-bg-primary: #ffffff;
+    --color-bg-secondary: #f8f9fa;
+    --color-bg-tertiary: #fff8e8;
+    --color-text-primary: #001a33; /* Darker for better contrast */
+    --color-text-secondary: #001426; /* Even darker for small text */
+    --color-border-primary: #FFD700;
+    --color-border-secondary: rgba(255, 215, 0, 0.5);
+    --color-accent: #FFD700;
+    --color-accent-hover: #E6C200;
+    --color-text-contrast: #000814; /* Maximum contrast for small text */
+  }
+
+  /* Basic backgrounds */
+  .light [class*="bg-navy"],
+  .light [class*="bg-pattern"] {
+    background-color: var(--color-bg-primary);
+  }
+
+  /* Input styles */
+  .light input,
+  .light textarea,
+  .light select {
+    background-color: var(--color-bg-primary);
+    border-color: var(--color-border-secondary);
+    color: var(--color-text-primary);
+  }
+
+  .light input:focus,
+  .light textarea:focus,
+  .light select:focus {
+    border-color: var(--color-border-primary);
+    outline-color: var(--color-border-primary);
+  }
+
+  /* Button styles - using data attributes for cleaner targeting */
+  .light button[data-theme-variant="primary"],
+  .light button[data-theme-variant="secondary"],
+  .light button[data-theme-variant="outline"] {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    border: 2px solid var(--color-border-primary);
+  }
+
+  .light button[data-theme-variant="primary"]:hover,
+  .light button[data-theme-variant="secondary"]:hover,
+  .light button[data-theme-variant="outline"]:hover {
+    background-color: var(--color-bg-tertiary);
+    border-color: var(--color-accent-hover);
+  }
+
+  /* Disabled states */
+  .light button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Card styles with consistent spacing */
+  .light [class*="rounded"][class*="border"] {
+    background-color: var(--color-bg-primary);
+    border-color: var(--color-border-secondary);
+  }
+  
+  /* Consistent card spacing and alignment */
+  .light .card,
+  .light [class*="stat-card"] {
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* Ensure all list items are properly aligned */
+  [class*="flex"][class*="items-center"] {
+    align-items: center;
+  }
+  
+  /* Fix text alignment in buttons and links */
+  button,
+  a,
+  [role="button"],
+  [role="link"] {
+    text-align: left;
+  }
+  
+  button.text-center,
+  a.text-center,
+  [role="button"].text-center,
+  [role="link"].text-center {
+    text-align: center;
+  }
+  
+  /* Consistent spacing for module/lesson lists */
+  .module-list,
+  .lesson-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .module-item,
+  .lesson-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+  
+  /* Content alignment fixes */
+  .content-left {
+    justify-content: flex-start;
+    text-align: left;
+  }
+  
+  /* Prevent text overflow in sidebar items */
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  
+  .sidebar-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  /* Text clamp utilities for course content */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+  
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  
+  /* Better word breaking for long content */
+  .break-words {
+    word-wrap: break-word;
+    word-break: break-word;
+  }
+
+  /* Remove excessive shadows in light theme */
+  .light [class*="shadow"] {
+    box-shadow: 0 1px 3px rgba(0, 51, 102, 0.1);
+  }
+  
+  /* Tooltip positioning fix */
+  [data-tooltip],
+  [role="tooltip"] {
+    position: relative;
+    z-index: 9999;
+  }
+  
+  [data-tooltip]::after,
+  [role="tooltip"]::after {
+    position: absolute;
+    z-index: 10000;
+    pointer-events: none;
+    white-space: nowrap;
+    background: var(--navy-900);
+    color: var(--gold-500);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--gold-500);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Ensure tooltips don't overlap content */
+  .tooltip-container {
+    position: relative;
+  }
+  
+  .tooltip-content {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+  }
+
+  /* Focus rings */
+  .light .focus\:ring-2:focus {
+    --tw-ring-color: var(--color-accent);
+  }
+
+  /* Text colors */
+  .light .text-gold-200,
+  .light .text-gold-300,
+  .light .text-gold-400,
+  .light .text-gold-500 {
+    color: var(--color-text-primary);
+  }
+
+  /* Gradients in light theme */
+  .light [class*="bg-gradient"] {
+    background: linear-gradient(135deg, var(--color-bg-primary) 0%, var(--color-bg-secondary) 100%);
+  }
+  
+  /* Consistent golden borders for all elements */
+  .light .border,
+  .light [class*="border-"] {
+    border-color: #FFD700 !important;
+    border-width: 2px !important;
+  }
+  
+  .light .border-t,
+  .light .border-b,
+  .light .border-l,
+  .light .border-r {
+    border-color: #FFD700 !important;
+    border-width: 2px !important;
+  }
+
+  /* Hover states with subtle glow */
+  .light [class*="border-"]:hover {
+    border-color: #E6C200 !important;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+  
+  /* Remove any black borders - force golden */
+  .light .border-black,
+  .light .border-gray-900,
+  .light .border-gray-800,
+  .light .border-gray-700,
+  .light .border-gray-600,
+  .light .border-gray-500,
+  .light .border-gray-400,
+  .light .border-gray-300,
+  .light .border-gray-200,
+  .light .border-gray-100,
+  .light [class*="border-black"],
+  .light [class*="border-gray"] {
+    border-color: #FFD700 !important;
+  }
+
+  /* Light theme stats cards */
+  .light .text-4xl {
+    color: #001a33;
+    font-size: 2.75rem;
+    font-weight: 700;
+  }
+
+  /* Light theme for specific gradient overlays */
+  .light .absolute.inset-0[class*="bg-gradient"] {
+    display: none;
+  }
+
+  /* Light theme link colors in sidebar */
+  .light a[class*="text-gold-300"] {
+    color: #002952;
+    font-weight: 500;
+  }
+
+  .light a[class*="text-gold-300"]:hover {
+    color: #001a33;
+    font-weight: 600;
+  }
+
+  /* Active link in light theme */
+  .light a[class*="bg-gold-500\/20"] {
+    background-color: rgba(0, 51, 102, 0.1);
+    color: #001a33;
+    border-left-color: #001a33;
+    font-weight: 600;
+  }
+
+  /* Light theme sidebar */
+  .light aside[class*="bg-navy-900\/95"] {
+    background-color: #ffffff;
+    border-right-color: #FFD700 !important;
+    box-shadow: none;
+  }
+  
+  /* Light theme - ensure golden borders for sidebar items */
+  .light aside .border-gold-500\/20 {
+    border-color: rgba(255, 215, 0, 0.3) !important;
+  }
+
+  /* Light theme - ensure WCAG AA compliant contrast */
+  .light .text-gold-300 {
+    color: #001426 !important;
+    font-weight: 600;
+  }
+
+  .light .text-gold-400 {
+    color: #001a33 !important;
+    font-weight: 600;
+  }
+
+  .light .text-gold-500 {
+    color: #000814 !important;
+    font-weight: 600;
+  }
+
+  /* Light theme - WCAG AA contrast for smaller text */
+  .light [class*="text-gold"][class*="text-xs"],
+  .light [class*="text-gold"][class*="text-sm"] {
+    font-weight: 700;
+    color: var(--color-text-contrast) !important;
+    letter-spacing: 0.01em;
+  }
+
+  /* Accessibility - Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Skip to main content link */
+  .skip-to-main {
+    position: absolute;
+    left: -9999px;
+    z-index: 999;
+    padding: 1rem;
+    background: var(--navy-900);
+    color: var(--gold-500);
+    text-decoration: none;
+    border: 2px solid var(--gold-500);
+  }
+
+  .skip-to-main:focus {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+  }
+
+  /* Focus visible styles for better keyboard navigation */
+  *:focus-visible {
+    outline: 3px solid var(--gold-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Minimum touch target size */
+  button,
+  a,
+  [role="button"],
+  [role="link"] {
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Ensure sufficient contrast for placeholders */
+  ::placeholder {
+    opacity: 0.7;
+  }
+
+  .light ::placeholder {
+    color: #003366;
+    opacity: 0.8;
+  }
+
+  /* Light theme - fix card titles */
+  .light h1 {
+    color: #001a33;
+    font-size: 2.25rem;
+  }
+
+  .light h2 {
+    color: #001a33;
+    font-size: 1.875rem;
+  }
+
+  .light h3 {
+    color: #001f3f;
+    font-size: 1.5rem;
+  }
+
+  .light h4 {
+    color: #002952;
+    font-size: 1.25rem;
+  }
+
+  /* Light theme - ensure all gold text has good contrast */
+  .light [class*="text-gold"] {
+    font-weight: 500;
+  }
+
+  /* Modal animations */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes zoom-in-95 {
+    from {
+      transform: scale(0.95);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  .animate-in {
+    animation-duration: 200ms;
+    animation-fill-mode: both;
+  }
+
+  .fade-in {
+    animation-name: fade-in;
+  }
+
+  .zoom-in-95 {
+    animation-name: zoom-in-95;
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-in-out;
+  }
+  
+  .animate-scale-in {
+    animation: scale-in 0.3s ease-in-out;
+  }
+  
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-in-out;
+  }
+
+  /* Dropdown animations */
+  @keyframes slide-in-from-top-2 {
+    from {
+      transform: translateY(-0.5rem);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .slide-in-from-top-2 {
+    animation-name: slide-in-from-top-2;
+  }
+
+  /* Skeleton shimmer animation */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 215, 0, 0.1) 0%,
+      rgba(255, 215, 0, 0.2) 50%,
+      rgba(255, 215, 0, 0.1) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  /* Button ripple effect */
+  @keyframes ripple {
+    0% {
+      transform: scale(0);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    transform: scale(0);
+    animation: ripple 0.6s ease-out;
+    pointer-events: none;
+  }
+
+  /* Toast animations */
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  /* Wave animation for skeleton */
+  @keyframes wave {
+    0% {
+      transform: translateX(-100%);
+    }
+    50% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  /* Enhanced shimmer animation */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .animate-wave {
+    animation: wave 1.5s ease-in-out infinite;
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 215, 0, 0.1),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  .background-size-200 {
+    background-size: 200% 100%;
+  }
+
+  /* Card hover animations */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Glow pulse animation */
+  @keyframes glow-pulse {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.5);
+    }
+  }
+
+  .animate-glow {
+    animation: glow-pulse 2s ease-in-out infinite;
+  }
+
+  /* Fade in animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  /* Shimmer animation */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s linear infinite;
+  }
+}

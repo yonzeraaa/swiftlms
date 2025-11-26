@@ -1,0 +1,1973 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual do Usuário - SwiftLMS</title>
+    <link rel="stylesheet" href="manual-styles.css">
+</head>
+<body>
+    <!-- Capa -->
+    <div class="cover-page">
+        <div class="cover-content">
+            <h1 class="cover-title">SwiftLMS</h1>
+            <h2 class="cover-subtitle">Sistema de Gestão de Aprendizagem</h2>
+            <div class="cover-divider"></div>
+            <h3 class="cover-doc-title">Manual do Usuário</h3>
+            <p class="cover-version">Versão 1.0 - Janeiro 2025</p>
+        </div>
+    </div>
+
+    <!-- Sumário -->
+    <div class="page" id="table-of-contents">
+        <h1>Sumário</h1>
+        <div class="toc">
+            <div class="toc-item">
+                <span class="toc-number">1.</span>
+                <span class="toc-title">Introdução</span>
+                <span class="toc-page">3</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">1.1</span>
+                <span class="toc-title">O que é o SwiftLMS</span>
+                <span class="toc-page">3</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">1.2</span>
+                <span class="toc-title">Principais Recursos</span>
+                <span class="toc-page">4</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">1.3</span>
+                <span class="toc-title">Requisitos do Sistema</span>
+                <span class="toc-page">5</span>
+            </div>
+            
+            <div class="toc-item">
+                <span class="toc-number">2.</span>
+                <span class="toc-title">Guia de Início Rápido</span>
+                <span class="toc-page">6</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">2.1</span>
+                <span class="toc-title">Primeiro Acesso</span>
+                <span class="toc-page">6</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">2.2</span>
+                <span class="toc-title">Login e Autenticação</span>
+                <span class="toc-page">7</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">2.3</span>
+                <span class="toc-title">Navegação Básica</span>
+                <span class="toc-page">8</span>
+            </div>
+            
+            <div class="toc-item">
+                <span class="toc-number">3.</span>
+                <span class="toc-title">Manual do Administrador</span>
+                <span class="toc-page">10</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">3.1</span>
+                <span class="toc-title">Dashboard Administrativo</span>
+                <span class="toc-page">10</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">3.2</span>
+                <span class="toc-title">Gestão de Usuários</span>
+                <span class="toc-page">12</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">3.3</span>
+                <span class="toc-title">Gestão de Cursos</span>
+                <span class="toc-page">15</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">3.4</span>
+                <span class="toc-title">Sistema de Testes</span>
+                <span class="toc-page">18</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">3.5</span>
+                <span class="toc-title">Certificados</span>
+                <span class="toc-page">22</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">3.6</span>
+                <span class="toc-title">Relatórios</span>
+                <span class="toc-page">25</span>
+            </div>
+            
+            <div class="toc-item">
+                <span class="toc-number">4.</span>
+                <span class="toc-title">Manual do Aluno</span>
+                <span class="toc-page">30</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">4.1</span>
+                <span class="toc-title">Dashboard do Aluno</span>
+                <span class="toc-page">30</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">4.2</span>
+                <span class="toc-title">Meus Cursos</span>
+                <span class="toc-page">32</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">4.3</span>
+                <span class="toc-title">Realização de Testes</span>
+                <span class="toc-page">35</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">4.4</span>
+                <span class="toc-title">Minhas Notas</span>
+                <span class="toc-page">38</span>
+            </div>
+            <div class="toc-subitem">
+                <span class="toc-number">4.5</span>
+                <span class="toc-title">Certificados</span>
+                <span class="toc-page">40</span>
+            </div>
+            
+            <div class="toc-item">
+                <span class="toc-number">5.</span>
+                <span class="toc-title">Recursos Avançados</span>
+                <span class="toc-page">42</span>
+            </div>
+            
+            <div class="toc-item">
+                <span class="toc-number">6.</span>
+                <span class="toc-title">Suporte e FAQ</span>
+                <span class="toc-page">48</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Capítulo 1: Introdução -->
+    <div class="page chapter" id="introduction">
+        <h1>1. Introdução</h1>
+        
+        <h2>1.1 O que é o SwiftLMS</h2>
+        <p>O SwiftLMS é um Sistema de Gestão de Aprendizagem (Learning Management System) moderno e completo, desenvolvido para facilitar a criação, distribuição e gerenciamento de conteúdo educacional online. Projetado com foco na experiência do usuário, o SwiftLMS oferece uma interface intuitiva e recursos avançados para administradores, instrutores e alunos.</p>
+        
+        <p>O sistema foi desenvolvido com as mais modernas tecnologias web, incluindo Next.js, React, TypeScript e Supabase, garantindo performance, segurança e escalabilidade.</p>
+        
+        <div class="highlight-box">
+            <h3>Características Principais:</h3>
+            <ul>
+                <li>Interface moderna e responsiva</li>
+                <li>Sistema completo de gestão de cursos</li>
+                <li>Avaliações e testes online</li>
+                <li>Geração automática de certificados</li>
+                <li>Relatórios detalhados de desempenho</li>
+                <li>Integração com Google Drive</li>
+                <li>Suporte a múltiplos tipos de conteúdo</li>
+            </ul>
+        </div>
+        
+        <h2>1.2 Principais Recursos</h2>
+        
+        <h3>Para Administradores:</h3>
+        <ul>
+            <li><strong>Dashboard Completo:</strong> Visão geral de todas as métricas importantes do sistema</li>
+            <li><strong>Gestão de Usuários:</strong> Cadastro, edição e controle de permissões</li>
+            <li><strong>Gestão de Cursos:</strong> Criação e organização de cursos, módulos e lições</li>
+            <li><strong>Sistema de Testes:</strong> Criação de avaliações com correção automática</li>
+            <li><strong>Certificados:</strong> Configuração e aprovação de certificados</li>
+            <li><strong>Relatórios:</strong> Análises detalhadas de desempenho e progresso</li>
+            <li><strong>Importação de Conteúdo:</strong> Integração com Google Drive para importar materiais</li>
+        </ul>
+        
+        <h3>Para Alunos:</h3>
+        <ul>
+            <li><strong>Dashboard Personalizado:</strong> Acompanhamento do progresso individual</li>
+            <li><strong>Acesso a Cursos:</strong> Navegação intuitiva por cursos e lições</li>
+            <li><strong>Realização de Testes:</strong> Interface amigável para avaliações</li>
+            <li><strong>Histórico de Notas:</strong> Visualização detalhada de desempenho</li>
+            <li><strong>Certificados:</strong> Solicitação e download de certificados</li>
+            <li><strong>Calendário:</strong> Organização de atividades e prazos</li>
+        </ul>
+    </div>
+
+    <!-- Página de Requisitos -->
+    <div class="page">
+        <h2>1.3 Requisitos do Sistema</h2>
+        
+        <h3>Requisitos Mínimos:</h3>
+        <table class="requirements-table">
+            <tr>
+                <th>Componente</th>
+                <th>Requisito</th>
+            </tr>
+            <tr>
+                <td>Navegador</td>
+                <td>Chrome 90+, Firefox 88+, Safari 14+, Edge 90+</td>
+            </tr>
+            <tr>
+                <td>Conexão Internet</td>
+                <td>Banda larga (mínimo 10 Mbps para vídeos)</td>
+            </tr>
+            <tr>
+                <td>Resolução de Tela</td>
+                <td>1366x768 pixels ou superior</td>
+            </tr>
+            <tr>
+                <td>JavaScript</td>
+                <td>Habilitado no navegador</td>
+            </tr>
+            <tr>
+                <td>Cookies</td>
+                <td>Habilitados para o domínio</td>
+            </tr>
+        </table>
+        
+        <h3>Requisitos Recomendados:</h3>
+        <table class="requirements-table">
+            <tr>
+                <th>Componente</th>
+                <th>Recomendação</th>
+            </tr>
+            <tr>
+                <td>Navegador</td>
+                <td>Última versão do Chrome ou Firefox</td>
+            </tr>
+            <tr>
+                <td>Conexão Internet</td>
+                <td>50 Mbps ou superior</td>
+            </tr>
+            <tr>
+                <td>Resolução de Tela</td>
+                <td>1920x1080 pixels (Full HD)</td>
+            </tr>
+            <tr>
+                <td>Sistema Operacional</td>
+                <td>Windows 10/11, macOS 10.15+, Ubuntu 20.04+</td>
+            </tr>
+        </table>
+        
+        <div class="info-box">
+            <h4>📱 Acesso Mobile</h4>
+            <p>O SwiftLMS é totalmente responsivo e pode ser acessado através de dispositivos móveis. Para melhor experiência em smartphones e tablets, recomendamos:</p>
+            <ul>
+                <li>iOS 14+ (iPhone/iPad)</li>
+                <li>Android 10+</li>
+                <li>Tela mínima de 5 polegadas</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Capítulo 2: Guia de Início Rápido -->
+    <div class="page chapter">
+        <h1>2. Guia de Início Rápido</h1>
+        
+        <h2>2.1 Primeiro Acesso</h2>
+        
+        <p>Ao acessar o SwiftLMS pela primeira vez, você será direcionado para a página de login. Se você ainda não possui uma conta, siga os passos abaixo:</p>
+        
+        <div class="step-by-step">
+            <h3>Passo 1: Acesse o Sistema</h3>
+            <p>Abra seu navegador e acesse o endereço fornecido pela sua instituição.</p>
+            
+            <h3>Passo 2: Página de Login</h3>
+            <p>Na página inicial, você verá o formulário de login com os campos:</p>
+            <ul>
+                <li>E-mail</li>
+                <li>Senha</li>
+            </ul>
+            
+            <h3>Passo 3: Primeiro Login</h3>
+            <p>Se você recebeu credenciais da administração, insira-as nos campos correspondentes. Caso contrário, clique em "Criar Conta" se essa opção estiver disponível.</p>
+        </div>
+        
+        <div class="warning-box">
+            <h4>⚠️ Importante</h4>
+            <p>Guarde suas credenciais em local seguro. A senha deve conter no mínimo 8 caracteres, incluindo letras e números.</p>
+        </div>
+        
+        <h2>2.2 Login e Autenticação</h2>
+        
+        <h3>Processo de Login:</h3>
+        <ol>
+            <li><strong>Digite seu e-mail:</strong> Use o e-mail cadastrado no sistema</li>
+            <li><strong>Digite sua senha:</strong> Insira a senha fornecida ou criada</li>
+            <li><strong>Clique em "Entrar":</strong> O sistema validará suas credenciais</li>
+            <li><strong>Aguarde o redirecionamento:</strong> Você será direcionado ao dashboard apropriado</li>
+        </ol>
+        
+        <h3>Recuperação de Senha:</h3>
+        <p>Caso tenha esquecido sua senha:</p>
+        <ol>
+            <li>Clique em "Esqueci minha senha" na página de login</li>
+            <li>Digite seu e-mail cadastrado</li>
+            <li>Verifique sua caixa de entrada</li>
+            <li>Siga as instruções no e-mail recebido</li>
+            <li>Crie uma nova senha</li>
+        </ol>
+        
+        <div class="tip-box">
+            <h4>💡 Dica</h4>
+            <p>Marque a opção "Lembrar-me" para manter-se conectado. Não use esta opção em computadores públicos.</p>
+        </div>
+    </div>
+
+    <!-- Navegação Básica -->
+    <div class="page">
+        <h2>2.3 Navegação Básica</h2>
+        
+        <h3>Estrutura da Interface:</h3>
+        
+        <p>Após o login, você verá a interface principal do SwiftLMS, que consiste em:</p>
+        
+        <div class="interface-section">
+            <h4>1. Barra Superior (Header)</h4>
+            <ul>
+                <li><strong>Logo:</strong> Clique para voltar ao dashboard</li>
+                <li><strong>Busca:</strong> Pesquise cursos, usuários ou conteúdo</li>
+                <li><strong>Notificações:</strong> Veja alertas e avisos importantes</li>
+                <li><strong>Perfil:</strong> Acesse configurações e logout</li>
+            </ul>
+            
+            <h4>2. Menu Lateral (Sidebar)</h4>
+            <ul>
+                <li><strong>Dashboard:</strong> Visão geral e estatísticas</li>
+                <li><strong>Cursos:</strong> Lista e gestão de cursos</li>
+                <li><strong>Usuários:</strong> Gerenciamento de usuários (admin)</li>
+                <li><strong>Testes:</strong> Criação e gestão de avaliações</li>
+                <li><strong>Certificados:</strong> Emissão e controle</li>
+                <li><strong>Relatórios:</strong> Análises e exportações</li>
+                <li><strong>Configurações:</strong> Preferências do sistema</li>
+            </ul>
+            
+            <h4>3. Área Principal (Content)</h4>
+            <p>Onde o conteúdo principal é exibido, variando conforme a seção selecionada.</p>
+            
+            <h4>4. Rodapé (Footer)</h4>
+            <p>Informações sobre versão, links úteis e suporte.</p>
+        </div>
+        
+        <h3>Atalhos de Teclado:</h3>
+        <table class="shortcuts-table">
+            <tr>
+                <th>Atalho</th>
+                <th>Ação</th>
+            </tr>
+            <tr>
+                <td>Alt + D</td>
+                <td>Ir para Dashboard</td>
+            </tr>
+            <tr>
+                <td>Alt + C</td>
+                <td>Ir para Cursos</td>
+            </tr>
+            <tr>
+                <td>Alt + S</td>
+                <td>Abrir Busca</td>
+            </tr>
+            <tr>
+                <td>Alt + N</td>
+                <td>Ver Notificações</td>
+            </tr>
+            <tr>
+                <td>Esc</td>
+                <td>Fechar modal/popup</td>
+            </tr>
+        </table>
+        
+        <h3>Temas e Personalização:</h3>
+        <p>O SwiftLMS oferece opções de personalização:</p>
+        <ul>
+            <li><strong>Tema Claro/Escuro:</strong> Alterne entre os modos no menu de perfil</li>
+            <li><strong>Idioma:</strong> Português (padrão), com suporte a outros idiomas</li>
+            <li><strong>Densidade:</strong> Ajuste o espaçamento dos elementos</li>
+            <li><strong>Notificações:</strong> Configure quais alertas deseja receber</li>
+        </ul>
+    </div>
+
+    <!-- Capítulo 3: Manual do Administrador -->
+    <div class="page chapter">
+        <h1>3. Manual do Administrador</h1>
+        
+        <h2>3.1 Dashboard Administrativo</h2>
+        
+        <p>O Dashboard Administrativo oferece uma visão completa e em tempo real de todas as métricas importantes do sistema. É a primeira tela que você vê após fazer login como administrador.</p>
+        
+        <h3>Métricas Principais:</h3>
+        
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <h4>Total de Alunos</h4>
+                <p>Número total de alunos cadastrados no sistema, com indicador de crescimento mensal.</p>
+            </div>
+            <div class="metric-card">
+                <h4>Total de Instrutores</h4>
+                <p>Quantidade de instrutores ativos responsáveis pelos cursos.</p>
+            </div>
+            <div class="metric-card">
+                <h4>Cursos Publicados</h4>
+                <p>Número de cursos disponíveis para os alunos.</p>
+            </div>
+            <div class="metric-card">
+                <h4>Taxa de Conclusão</h4>
+                <p>Percentual médio de conclusão dos cursos pelos alunos.</p>
+            </div>
+        </div>
+        
+        <h3>Gráficos e Visualizações:</h3>
+        
+        <h4>1. Gráfico de Progresso Mensal</h4>
+        <p>Mostra a evolução de matrículas, conclusões e atividades ao longo dos meses. Permite identificar tendências e sazonalidades.</p>
+        
+        <h4>2. Cursos Mais Populares</h4>
+        <p>Lista os cursos com maior número de matrículas, ajudando a identificar o conteúdo mais procurado.</p>
+        
+        <h4>3. Atividades Recentes</h4>
+        <p>Feed em tempo real das últimas ações no sistema:</p>
+        <ul>
+            <li>Novas matrículas</li>
+            <li>Conclusões de cursos</li>
+            <li>Testes realizados</li>
+            <li>Certificados emitidos</li>
+            <li>Novos usuários cadastrados</li>
+        </ul>
+        
+        <h3>Ações Rápidas:</h3>
+        <p>O dashboard oferece botões de acesso rápido para:</p>
+        <ul>
+            <li><strong>Adicionar Novo Curso:</strong> Inicia o processo de criação de curso</li>
+            <li><strong>Cadastrar Usuário:</strong> Adiciona novo aluno ou instrutor</li>
+            <li><strong>Gerar Relatório:</strong> Acessa a área de relatórios</li>
+            <li><strong>Ver Logs:</strong> Consulta o histórico de atividades</li>
+        </ul>
+        
+        <div class="best-practice">
+            <h4>📊 Melhores Práticas</h4>
+            <p>Verifique o dashboard diariamente para:</p>
+            <ul>
+                <li>Monitorar o engajamento dos alunos</li>
+                <li>Identificar problemas de desempenho</li>
+                <li>Acompanhar o crescimento da plataforma</li>
+                <li>Detectar anomalias ou problemas técnicos</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Gestão de Usuários -->
+    <div class="page">
+        <h2>3.2 Gestão de Usuários</h2>
+        
+        <p>A seção de Gestão de Usuários permite controle total sobre todos os usuários do sistema, incluindo alunos, instrutores e outros administradores.</p>
+        
+        <h3>Funcionalidades Principais:</h3>
+        
+        <h4>1. Listagem de Usuários</h4>
+        <p>A tela principal exibe uma tabela com todos os usuários cadastrados, mostrando:</p>
+        <ul>
+            <li>Nome completo</li>
+            <li>E-mail</li>
+            <li>Tipo de usuário (Aluno/Instrutor/Admin)</li>
+            <li>Status (Ativo/Inativo/Suspenso)</li>
+            <li>Data de cadastro</li>
+            <li>Último acesso</li>
+        </ul>
+        
+        <h4>2. Filtros e Busca</h4>
+        <p>Encontre usuários rapidamente usando:</p>
+        <ul>
+            <li><strong>Busca por nome ou e-mail:</strong> Digite para filtrar instantaneamente</li>
+            <li><strong>Filtro por tipo:</strong> Veja apenas alunos, instrutores ou admins</li>
+            <li><strong>Filtro por status:</strong> Mostre apenas usuários ativos ou inativos</li>
+            <li><strong>Ordenação:</strong> Organize por nome, data de cadastro ou último acesso</li>
+        </ul>
+        
+        <h4>3. Cadastro de Novo Usuário</h4>
+        <div class="process-flow">
+            <h5>Passo 1: Clique em "Novo Usuário"</h5>
+            <h5>Passo 2: Preencha o formulário:</h5>
+            <ul>
+                <li>Nome completo</li>
+                <li>E-mail (será usado para login)</li>
+                <li>Senha temporária</li>
+                <li>Tipo de usuário</li>
+                <li>Telefone (opcional)</li>
+                <li>Biografia (opcional)</li>
+            </ul>
+            <h5>Passo 3: Configure permissões</h5>
+            <h5>Passo 4: Salve o usuário</h5>
+        </div>
+        
+        <h4>4. Edição de Usuário</h4>
+        <p>Para editar um usuário existente:</p>
+        <ol>
+            <li>Localize o usuário na lista</li>
+            <li>Clique no botão "Editar" ou no nome do usuário</li>
+            <li>Modifique as informações necessárias</li>
+            <li>Salve as alterações</li>
+        </ol>
+        
+        <h4>5. Ações em Lote</h4>
+        <p>Selecione múltiplos usuários para:</p>
+        <ul>
+            <li>Ativar/Desativar em massa</li>
+            <li>Exportar lista para Excel</li>
+            <li>Enviar e-mail em massa</li>
+            <li>Resetar senhas</li>
+        </ul>
+        
+        <h4>6. Visualização de Notas do Aluno</h4>
+        <p>Para alunos, você pode:</p>
+        <ul>
+            <li>Clicar em "Ver Notas" no menu de ações</li>
+            <li>Visualizar histórico completo de avaliações</li>
+            <li>Ver médias por disciplina</li>
+            <li>Exportar relatório de desempenho</li>
+        </ul>
+        
+        <div class="security-note">
+            <h4>🔒 Segurança</h4>
+            <p>Ao criar ou editar usuários:</p>
+            <ul>
+                <li>Use senhas fortes (mínimo 8 caracteres)</li>
+                <li>Ative autenticação de dois fatores quando disponível</li>
+                <li>Revise permissões regularmente</li>
+                <li>Desative contas inativas</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Gestão de Cursos -->
+    <div class="page">
+        <h2>3.3 Gestão de Cursos</h2>
+        
+        <p>A Gestão de Cursos é o coração do SwiftLMS, permitindo criar, organizar e gerenciar todo o conteúdo educacional.</p>
+        
+        <h3>Estrutura Hierárquica:</h3>
+        <div class="hierarchy">
+            <p><strong>Curso</strong> → <strong>Módulos</strong> → <strong>Lições</strong></p>
+            <ul>
+                <li><strong>Curso:</strong> Container principal do conteúdo</li>
+                <li><strong>Módulos:</strong> Divisões temáticas do curso</li>
+                <li><strong>Lições:</strong> Unidades individuais de aprendizado</li>
+            </ul>
+        </div>
+        
+        <h3>Criação de Novo Curso:</h3>
+        
+        <h4>Informações Básicas:</h4>
+        <ul>
+            <li><strong>Título:</strong> Nome do curso</li>
+            <li><strong>Descrição:</strong> Resumo detalhado do conteúdo</li>
+            <li><strong>Categoria:</strong> Área de conhecimento</li>
+            <li><strong>Nível:</strong> Iniciante, Intermediário ou Avançado</li>
+            <li><strong>Duração:</strong> Tempo estimado em horas</li>
+            <li><strong>Instrutor:</strong> Responsável pelo curso</li>
+        </ul>
+        
+        <h4>Configurações Avançadas:</h4>
+        <ul>
+            <li><strong>Preço:</strong> Valor do curso (se aplicável)</li>
+            <li><strong>Pré-requisitos:</strong> Conhecimentos necessários</li>
+            <li><strong>Objetivos de Aprendizagem:</strong> O que o aluno aprenderá</li>
+            <li><strong>Público-alvo:</strong> Para quem o curso é destinado</li>
+            <li><strong>Idioma:</strong> Português ou outros</li>
+            <li><strong>Certificado:</strong> Se emite certificado ao concluir</li>
+        </ul>
+        
+        <h3>Gestão de Módulos:</h3>
+        
+        <p>Cada curso pode ter múltiplos módulos organizados sequencialmente:</p>
+        
+        <h4>Criar Módulo:</h4>
+        <ol>
+            <li>Acesse o curso desejado</li>
+            <li>Clique em "Adicionar Módulo"</li>
+            <li>Defina título e descrição</li>
+            <li>Configure a ordem de exibição</li>
+            <li>Marque se é obrigatório</li>
+        </ol>
+        
+        <h4>Organizar Módulos:</h4>
+        <ul>
+            <li>Arraste e solte para reordenar</li>
+            <li>Defina pré-requisitos entre módulos</li>
+            <li>Configure liberação gradual</li>
+        </ul>
+        
+        <h3>Gestão de Lições:</h3>
+        
+        <h4>Tipos de Conteúdo:</h4>
+        <ul>
+            <li><strong>Vídeo:</strong> Upload ou link do YouTube/Vimeo</li>
+            <li><strong>Texto:</strong> Editor rico com formatação</li>
+            <li><strong>PDF:</strong> Documentos para leitura</li>
+            <li><strong>Quiz:</strong> Questões de fixação</li>
+            <li><strong>Tarefa:</strong> Atividades práticas</li>
+        </ul>
+        
+        <h4>Configurações de Lição:</h4>
+        <ul>
+            <li>Duração estimada</li>
+            <li>Permitir preview gratuito</li>
+            <li>Material complementar</li>
+            <li>Links externos</li>
+        </ul>
+        
+        <h3>Importação do Google Drive:</h3>
+        
+        <p>O SwiftLMS permite importar estrutura completa de cursos do Google Drive:</p>
+        
+        <ol>
+            <li>Clique em "Importar do Drive"</li>
+            <li>Cole o link da pasta compartilhada</li>
+            <li>O sistema criará automaticamente:
+                <ul>
+                    <li>Estrutura de módulos baseada em pastas</li>
+                    <li>Lições a partir de documentos</li>
+                    <li>Conversão automática de Google Docs</li>
+                </ul>
+            </li>
+            <li>Revise e ajuste a estrutura importada</li>
+            <li>Publique o curso</li>
+        </ol>
+        
+        <div class="tip-box">
+            <h4>💡 Dica de Organização</h4>
+            <p>Estruture sua pasta no Google Drive assim:</p>
+            <pre>
+📁 Nome do Curso
+  📁 Módulo 1 - Introdução
+    📄 Aula 1.1 - Conceitos Básicos
+    📄 Aula 1.2 - Primeiros Passos
+  📁 Módulo 2 - Intermediário
+    📄 Aula 2.1 - Conceitos Avançados
+            </pre>
+        </div>
+    </div>
+
+    <!-- Sistema de Testes -->
+    <div class="page">
+        <h2>3.4 Sistema de Testes</h2>
+        
+        <p>O Sistema de Testes permite criar e gerenciar avaliações com correção automática, fundamental para verificar o aprendizado dos alunos.</p>
+        
+        <h3>Criação de Testes:</h3>
+        
+        <h4>Informações Básicas:</h4>
+        <ul>
+            <li><strong>Título:</strong> Nome identificador do teste</li>
+            <li><strong>Descrição:</strong> Instruções e objetivos</li>
+            <li><strong>Curso/Módulo:</strong> Vinculação ao conteúdo</li>
+            <li><strong>Disciplina:</strong> Matéria relacionada</li>
+            <li><strong>Duração:</strong> Tempo limite em minutos</li>
+            <li><strong>Tentativas:</strong> Número máximo permitido</li>
+            <li><strong>Nota de Aprovação:</strong> Pontuação mínima (padrão 70)</li>
+        </ul>
+        
+        <h3>Configuração de Questões:</h3>
+        
+        <h4>Método 1: Upload do Google Forms</h4>
+        <ol>
+            <li>Crie o teste no Google Forms</li>
+            <li>Copie o link do formulário</li>
+            <li>Cole no campo "URL do Google Drive"</li>
+            <li>O sistema importará as questões automaticamente</li>
+        </ol>
+        
+        <h4>Método 2: Gabarito Manual</h4>
+        <p>Configure o gabarito de respostas:</p>
+        <table class="answer-key-table">
+            <tr>
+                <th>Questão</th>
+                <th>Resposta Correta</th>
+                <th>Pontos</th>
+            </tr>
+            <tr>
+                <td>1</td>
+                <td>A, B, C, D ou E</td>
+                <td>10</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>A, B, C, D ou E</td>
+                <td>10</td>
+            </tr>
+        </table>
+        
+        <h4>Extração Automática de Gabarito:</h4>
+        <p>Para testes do Google Forms com gabarito configurado:</p>
+        <ol>
+            <li>Clique em "Extrair Gabarito"</li>
+            <li>O sistema identificará as respostas corretas</li>
+            <li>Revise e confirme o gabarito</li>
+            <li>Salve as configurações</li>
+        </ol>
+        
+        <h3>Gerenciamento de Testes:</h3>
+        
+        <h4>Status do Teste:</h4>
+        <ul>
+            <li><strong>Ativo:</strong> Disponível para os alunos</li>
+            <li><strong>Inativo:</strong> Oculto temporariamente</li>
+            <li><strong>Rascunho:</strong> Em desenvolvimento</li>
+        </ul>
+        
+        <h4>Monitoramento:</h4>
+        <ul>
+            <li>Número de tentativas realizadas</li>
+            <li>Taxa de aprovação</li>
+            <li>Média das notas</li>
+            <li>Tempo médio de conclusão</li>
+            <li>Questões com maior índice de erro</li>
+        </ul>
+        
+        <h3>Correção e Resultados:</h3>
+        
+        <h4>Correção Automática:</h4>
+        <p>Assim que o aluno submete o teste:</p>
+        <ol>
+            <li>Sistema compara respostas com gabarito</li>
+            <li>Calcula pontuação automaticamente</li>
+            <li>Registra no histórico do aluno</li>
+            <li>Atualiza estatísticas do teste</li>
+        </ol>
+        
+        <h4>Visualização de Resultados:</h4>
+        <ul>
+            <li>Nota obtida vs. nota de aprovação</li>
+            <li>Respostas corretas e incorretas</li>
+            <li>Tempo utilizado</li>
+            <li>Número da tentativa</li>
+        </ul>
+        
+        <div class="warning-box">
+            <h4>⚠️ Importante sobre Retentativas</h4>
+            <p>Quando múltiplas tentativas são permitidas:</p>
+            <ul>
+                <li>O sistema registra todas as tentativas</li>
+                <li>A melhor nota é considerada para aprovação</li>
+                <li>O aluno pode ver seu histórico completo</li>
+                <li>Configure intervalo mínimo entre tentativas se necessário</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Certificados -->
+    <div class="page">
+        <h2>3.5 Certificados</h2>
+        
+        <p>O sistema de certificados do SwiftLMS permite emissão automática ou aprovação manual de certificados de conclusão.</p>
+        
+        <h3>Fluxo de Certificação:</h3>
+        
+        <div class="process-flow">
+            <h4>1. Conclusão do Curso</h4>
+            <p>Aluno completa todas as lições obrigatórias</p>
+            ↓
+            <h4>2. Solicitação</h4>
+            <p>Sistema gera solicitação automática ou aluno solicita manualmente</p>
+            ↓
+            <h4>3. Revisão</h4>
+            <p>Administrador revisa progresso e notas</p>
+            ↓
+            <h4>4. Aprovação</h4>
+            <p>Certificado é aprovado ou rejeitado com justificativa</p>
+            ↓
+            <h4>5. Emissão</h4>
+            <p>Certificado PDF é gerado com código de verificação único</p>
+        </div>
+        
+        <h3>Gestão de Solicitações:</h3>
+        
+        <h4>Tela de Solicitações Pendentes:</h4>
+        <p>Visualize todas as solicitações aguardando aprovação com:</p>
+        <ul>
+            <li>Nome do aluno</li>
+            <li>Curso concluído</li>
+            <li>Data de conclusão</li>
+            <li>Progresso (% de lições completadas)</li>
+            <li>Média de notas</li>
+            <li>Status da solicitação</li>
+        </ul>
+        
+        <h4>Processo de Aprovação:</h4>
+        <ol>
+            <li>Clique em "Revisar" na solicitação</li>
+            <li>Verifique:
+                <ul>
+                    <li>Todas as lições foram completadas</li>
+                    <li>Testes foram aprovados</li>
+                    <li>Requisitos mínimos atendidos</li>
+                </ul>
+            </li>
+            <li>Escolha:
+                <ul>
+                    <li><strong>Aprovar:</strong> Gera o certificado</li>
+                    <li><strong>Rejeitar:</strong> Adicione motivo</li>
+                    <li><strong>Solicitar Revisão:</strong> Peça correções</li>
+                </ul>
+            </li>
+        </ol>
+        
+        <h3>Configuração de Certificados:</h3>
+        
+        <h4>Informações do Certificado:</h4>
+        <ul>
+            <li><strong>Número do Certificado:</strong> Gerado automaticamente</li>
+            <li><strong>Código de Verificação:</strong> Único para validação online</li>
+            <li><strong>Data de Emissão:</strong> Registrada automaticamente</li>
+            <li><strong>Carga Horária:</strong> Baseada na duração do curso</li>
+            <li><strong>Nome do Instrutor:</strong> Responsável pelo curso</li>
+            <li><strong>Nota Final:</strong> Média das avaliações</li>
+        </ul>
+        
+        <h4>Personalização:</h4>
+        <ul>
+            <li>Logo da instituição</li>
+            <li>Assinatura digital</li>
+            <li>Texto personalizado</li>
+            <li>Layout e cores</li>
+        </ul>
+        
+        <h3>Certificados Emitidos:</h3>
+        
+        <p>Gerencie todos os certificados já emitidos:</p>
+        <ul>
+            <li>Busca por aluno ou curso</li>
+            <li>Filtro por período</li>
+            <li>Download do PDF</li>
+            <li>Reemissão se necessário</li>
+            <li>Revogação com justificativa</li>
+        </ul>
+        
+        <h3>Validação de Certificados:</h3>
+        
+        <p>Cada certificado possui um código único que permite validação:</p>
+        <ol>
+            <li>Acesse a página pública de validação</li>
+            <li>Digite o código do certificado</li>
+            <li>Sistema exibe:
+                <ul>
+                    <li>Autenticidade</li>
+                    <li>Nome do aluno</li>
+                    <li>Curso</li>
+                    <li>Data de emissão</li>
+                    <li>Carga horária</li>
+                </ul>
+            </li>
+        </ol>
+        
+        <div class="info-box">
+            <h4>📋 Requisitos para Certificação</h4>
+            <p>Configure requisitos mínimos por curso:</p>
+            <ul>
+                <li>Percentual mínimo de conclusão (padrão 100%)</li>
+                <li>Nota mínima nas avaliações (padrão 70)</li>
+                <li>Prazo máximo para conclusão</li>
+                <li>Atividades obrigatórias específicas</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Relatórios -->
+    <div class="page">
+        <h2>3.6 Relatórios</h2>
+        
+        <p>O módulo de Relatórios oferece análises detalhadas e exportação de dados para tomada de decisões.</p>
+        
+        <h3>Tipos de Relatórios:</h3>
+        
+        <h4>1. Relatório Geral</h4>
+        <p>Visão macro do sistema incluindo:</p>
+        <ul>
+            <li>Total de usuários por tipo</li>
+            <li>Cursos mais acessados</li>
+            <li>Taxa geral de conclusão</li>
+            <li>Evolução de matrículas</li>
+            <li>Receita (se aplicável)</li>
+        </ul>
+        
+        <h4>2. Relatório de Alunos</h4>
+        <p>Análise detalhada do desempenho estudantil:</p>
+        <ul>
+            <li>Lista completa de alunos</li>
+            <li>Progresso individual</li>
+            <li>Notas e médias</li>
+            <li>Tempo de estudo</li>
+            <li>Certificados obtidos</li>
+        </ul>
+        
+        <h4>3. Relatório de Cursos</h4>
+        <p>Métricas específicas por curso:</p>
+        <ul>
+            <li>Número de matriculados</li>
+            <li>Taxa de conclusão</li>
+            <li>Avaliação média</li>
+            <li>Tempo médio de conclusão</li>
+            <li>Módulos mais acessados</li>
+        </ul>
+        
+        <h4>4. Histórico de Notas</h4>
+        <p>Sistema completo de gestão de notas:</p>
+        <ul>
+            <li><strong>Por Aluno:</strong> Todas as notas de um estudante</li>
+            <li><strong>Por Disciplina:</strong> Médias agrupadas por matéria</li>
+            <li><strong>Por Período:</strong> Evolução temporal</li>
+            <li><strong>Comparativo:</strong> Rankings e percentis</li>
+        </ul>
+        
+        <h3>Funcionalidades de Análise:</h3>
+        
+        <h4>Filtros Disponíveis:</h4>
+        <ul>
+            <li><strong>Período:</strong> Selecione intervalo de datas</li>
+            <li><strong>Curso:</strong> Específico ou todos</li>
+            <li><strong>Turma:</strong> Grupo específico</li>
+            <li><strong>Status:</strong> Ativos, inativos, concluídos</li>
+            <li><strong>Instrutor:</strong> Por responsável</li>
+        </ul>
+        
+        <h4>Visualizações:</h4>
+        <ul>
+            <li>Tabelas interativas com ordenação</li>
+            <li>Gráficos de barras e linhas</li>
+            <li>Gráficos de pizza para distribuições</li>
+            <li>Mapas de calor para engajamento</li>
+        </ul>
+        
+        <h3>Exportação de Dados:</h3>
+        
+        <h4>Formatos Suportados:</h4>
+        <ul>
+            <li><strong>Excel (.xlsx):</strong> Com múltiplas abas e formatação</li>
+            <li><strong>CSV:</strong> Para importação em outros sistemas</li>
+            <li><strong>PDF:</strong> Relatórios formatados para impressão</li>
+        </ul>
+        
+        <h4>Exportação para Excel Avançada:</h4>
+        <p>O sistema gera planilhas profissionais com:</p>
+        <ul>
+            <li>Cabeçalhos formatados</li>
+            <li>Cores e estilos automáticos</li>
+            <li>Fórmulas de totalização</li>
+            <li>Gráficos incorporados</li>
+            <li>Múltiplas abas organizadas</li>
+            <li>Formatação condicional (notas < 70 em vermelho)</li>
+        </ul>
+        
+        <h3>Relatório de Notas - Funcionalidades Especiais:</h3>
+        
+        <h4>Cálculo de Médias:</h4>
+        <ul>
+            <li>Sistema calcula automaticamente médias por disciplina</li>
+            <li>Testes não realizados contam como nota 0</li>
+            <li>Exibe maior e menor nota por disciplina</li>
+            <li>Mostra percentual de testes realizados</li>
+        </ul>
+        
+        <h4>Estrutura do Excel de Notas:</h4>
+        <ol>
+            <li><strong>Aba "Resumo por Disciplina":</strong>
+                <ul>
+                    <li>Média geral por matéria</li>
+                    <li>Total de testes</li>
+                    <li>Testes realizados/não realizados</li>
+                </ul>
+            </li>
+            <li><strong>Aba "Detalhamento":</strong>
+                <ul>
+                    <li>Todas as notas individuais</li>
+                    <li>Data de realização</li>
+                    <li>Status de cada teste</li>
+                </ul>
+            </li>
+            <li><strong>Aba "Estatísticas":</strong>
+                <ul>
+                    <li>Média geral</li>
+                    <li>Taxa de aprovação</li>
+                    <li>Distribuição de notas</li>
+                </ul>
+            </li>
+        </ol>
+        
+        <div class="tip-box">
+            <h4>💡 Dica de Uso</h4>
+            <p>Configure relatórios automáticos semanais ou mensais para acompanhar a evolução sem precisar gerar manualmente.</p>
+        </div>
+    </div>
+
+    <!-- Capítulo 4: Manual do Aluno -->
+    <div class="page chapter">
+        <h1>4. Manual do Aluno</h1>
+        
+        <h2>4.1 Dashboard do Aluno</h2>
+        
+        <p>O Dashboard do Aluno é sua página inicial personalizada, mostrando todas as informações relevantes sobre seu progresso e atividades.</p>
+        
+        <h3>Visão Geral:</h3>
+        
+        <h4>Cartões de Estatísticas:</h4>
+        <div class="stats-cards">
+            <div class="stat-item">
+                <strong>Cursos Matriculados:</strong>
+                <p>Total de cursos em que você está inscrito</p>
+            </div>
+            <div class="stat-item">
+                <strong>Cursos Concluídos:</strong>
+                <p>Quantidade de cursos finalizados com sucesso</p>
+            </div>
+            <div class="stat-item">
+                <strong>Horas de Estudo:</strong>
+                <p>Tempo total dedicado ao aprendizado</p>
+            </div>
+            <div class="stat-item">
+                <strong>Certificados:</strong>
+                <p>Número de certificados obtidos</p>
+            </div>
+            <div class="stat-item">
+                <strong>Progresso Geral:</strong>
+                <p>Percentual médio de conclusão</p>
+            </div>
+        </div>
+        
+        <h4>Cursos em Andamento:</h4>
+        <p>Lista dos cursos ativos com:</p>
+        <ul>
+            <li>Barra de progresso visual</li>
+            <li>Última aula acessada</li>
+            <li>Botão "Continuar" para retomar</li>
+            <li>Prazo de conclusão (se houver)</li>
+        </ul>
+        
+        <h4>Atividades Recentes:</h4>
+        <p>Histórico das suas últimas ações:</p>
+        <ul>
+            <li>Lições completadas</li>
+            <li>Testes realizados</li>
+            <li>Certificados obtidos</li>
+            <li>Marcos alcançados</li>
+        </ul>
+        
+        <h4>Próximas Atividades:</h4>
+        <p>Lembretes e prazos importantes:</p>
+        <ul>
+            <li>Testes agendados</li>
+            <li>Prazos de entrega</li>
+            <li>Aulas ao vivo</li>
+            <li>Eventos do curso</li>
+        </ul>
+        
+        <h3>Gráfico de Progresso:</h3>
+        <p>Visualização gráfica mostrando:</p>
+        <ul>
+            <li>Evolução semanal/mensal</li>
+            <li>Comparação com metas</li>
+            <li>Tendência de aprendizado</li>
+        </ul>
+        
+        <div class="tip-box">
+            <h4>💡 Dica de Produtividade</h4>
+            <p>Acesse o dashboard diariamente para:</p>
+            <ul>
+                <li>Manter-se motivado vendo seu progresso</li>
+                <li>Não perder prazos importantes</li>
+                <li>Estabelecer uma rotina de estudos</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Meus Cursos -->
+    <div class="page">
+        <h2>4.2 Meus Cursos</h2>
+        
+        <p>A seção "Meus Cursos" apresenta todos os cursos em que você está matriculado, organizados para fácil acesso.</p>
+        
+        <h3>Visualização de Cursos:</h3>
+        
+        <h4>Informações Exibidas:</h4>
+        <ul>
+            <li><strong>Thumbnail:</strong> Imagem de capa do curso</li>
+            <li><strong>Título e Descrição:</strong> Identificação do curso</li>
+            <li><strong>Instrutor:</strong> Professor responsável</li>
+            <li><strong>Progresso:</strong> Barra e percentual de conclusão</li>
+            <li><strong>Status:</strong> Em andamento, Concluído ou Pausado</li>
+            <li><strong>Duração:</strong> Carga horária total</li>
+        </ul>
+        
+        <h4>Filtros e Organização:</h4>
+        <ul>
+            <li><strong>Todos os Cursos:</strong> Lista completa</li>
+            <li><strong>Em Andamento:</strong> Cursos ativos</li>
+            <li><strong>Concluídos:</strong> Cursos finalizados</li>
+            <li><strong>Por Categoria:</strong> Agrupados por área</li>
+        </ul>
+        
+        <h3>Navegação no Curso:</h3>
+        
+        <h4>Ao clicar em um curso:</h4>
+        <ol>
+            <li>Você acessa a página do curso</li>
+            <li>Vê a estrutura completa de módulos</li>
+            <li>Identifica lições completadas (✓) e pendentes</li>
+            <li>Pode continuar de onde parou</li>
+        </ol>
+        
+        <h4>Estrutura do Curso:</h4>
+        <div class="course-structure">
+            <p><strong>📚 Curso</strong></p>
+            <ul>
+                <li><strong>📂 Módulo 1</strong>
+                    <ul>
+                        <li>✓ Lição 1.1 (Completa)</li>
+                        <li>✓ Lição 1.2 (Completa)</li>
+                        <li>○ Lição 1.3 (Pendente)</li>
+                    </ul>
+                </li>
+                <li><strong>📂 Módulo 2</strong>
+                    <ul>
+                        <li>🔒 Bloqueado (complete o Módulo 1)</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        
+        <h3>Tipos de Conteúdo nas Lições:</h3>
+        
+        <h4>1. Vídeo-aulas:</h4>
+        <ul>
+            <li>Player integrado com controles</li>
+            <li>Opção de velocidade (0.5x a 2x)</li>
+            <li>Legendas quando disponíveis</li>
+            <li>Marcação automática de progresso</li>
+        </ul>
+        
+        <h4>2. Material Escrito:</h4>
+        <ul>
+            <li>Texto formatado com imagens</li>
+            <li>Links para recursos externos</li>
+            <li>Downloads de materiais complementares</li>
+        </ul>
+        
+        <h4>3. PDFs e Documentos:</h4>
+        <ul>
+            <li>Visualização integrada</li>
+            <li>Opção de download</li>
+            <li>Zoom e navegação por páginas</li>
+        </ul>
+        
+        <h4>4. Atividades Interativas:</h4>
+        <ul>
+            <li>Quizzes de fixação</li>
+            <li>Exercícios práticos</li>
+            <li>Fóruns de discussão</li>
+        </ul>
+        
+        <h3>Controle de Progresso:</h3>
+        
+        <p>O sistema marca automaticamente o progresso quando:</p>
+        <ul>
+            <li>Vídeo assistido até o final (95%+)</li>
+            <li>Material lido completamente</li>
+            <li>Atividade concluída</li>
+            <li>Quiz aprovado</li>
+        </ul>
+        
+        <div class="info-box">
+            <h4>📌 Liberação de Conteúdo</h4>
+            <p>Alguns cursos possuem liberação sequencial:</p>
+            <ul>
+                <li>Complete um módulo para liberar o próximo</li>
+                <li>Alguns testes são pré-requisitos</li>
+                <li>Respeite a ordem pedagógica estabelecida</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Realização de Testes -->
+    <div class="page">
+        <h2>4.3 Realização de Testes</h2>
+        
+        <p>Os testes avaliam seu conhecimento e são essenciais para obtenção de certificados.</p>
+        
+        <h3>Acessando Testes:</h3>
+        
+        <h4>Onde encontrar:</h4>
+        <ul>
+            <li>Menu lateral: "Testes"</li>
+            <li>Dentro do curso: ao final de módulos</li>
+            <li>Dashboard: seção "Próximas Atividades"</li>
+        </ul>
+        
+        <h4>Informações do Teste:</h4>
+        <p>Antes de iniciar, você verá:</p>
+        <ul>
+            <li><strong>Título e Descrição:</strong> Do que se trata</li>
+            <li><strong>Disciplina:</strong> Matéria relacionada</li>
+            <li><strong>Duração:</strong> Tempo limite</li>
+            <li><strong>Questões:</strong> Quantidade de perguntas</li>
+            <li><strong>Tentativas:</strong> Quantas vezes pode fazer</li>
+            <li><strong>Nota Mínima:</strong> Para aprovação (geralmente 70)</li>
+        </ul>
+        
+        <h3>Realizando o Teste:</h3>
+        
+        <h4>Passo a Passo:</h4>
+        <ol>
+            <li><strong>Clique em "Iniciar Teste"</strong></li>
+            <li><strong>Leia as instruções</strong> cuidadosamente</li>
+            <li><strong>O timer começa</strong> automaticamente</li>
+            <li><strong>Responda as questões</strong> no Google Forms</li>
+            <li><strong>Revise suas respostas</strong> antes de enviar</li>
+            <li><strong>Clique em "Enviar"</strong> no formulário</li>
+            <li><strong>Confirme o envio</strong> no SwiftLMS</li>
+        </ol>
+        
+        <h4>Interface do Teste:</h4>
+        <ul>
+            <li><strong>Timer:</strong> Mostra tempo restante</li>
+            <li><strong>Navegação:</strong> Entre questões</li>
+            <li><strong>Marcação:</strong> Sinalize questões para revisar</li>
+            <li><strong>Salvamento:</strong> Automático a cada resposta</li>
+        </ul>
+        
+        <h3>Após o Teste:</h3>
+        
+        <h4>Resultado Imediato:</h4>
+        <p>Ao finalizar, você verá:</p>
+        <ul>
+            <li>Nota obtida</li>
+            <li>Status (Aprovado/Reprovado)</li>
+            <li>Questões corretas vs. incorretas</li>
+            <li>Tempo utilizado</li>
+        </ul>
+        
+        <h4>Tentativas Adicionais:</h4>
+        <p>Se não passou ou quer melhorar a nota:</p>
+        <ul>
+            <li>Verifique tentativas restantes</li>
+            <li>Revise o conteúdo do curso</li>
+            <li>Aguarde período mínimo (se configurado)</li>
+            <li>Refaça o teste</li>
+        </ul>
+        
+        <h3>Dicas para Sucesso:</h3>
+        
+        <div class="tips-section">
+            <h4>Antes do Teste:</h4>
+            <ul>
+                <li>Revise todo o conteúdo do módulo</li>
+                <li>Faça anotações dos pontos principais</li>
+                <li>Resolva exercícios de fixação</li>
+                <li>Escolha um ambiente tranquilo</li>
+                <li>Garanta conexão estável</li>
+            </ul>
+            
+            <h4>Durante o Teste:</h4>
+            <ul>
+                <li>Leia cada questão com atenção</li>
+                <li>Gerencie bem o tempo</li>
+                <li>Não deixe questões em branco</li>
+                <li>Marque as duvidosas para revisar</li>
+                <li>Confie no seu primeiro instinto</li>
+            </ul>
+            
+            <h4>Após o Teste:</h4>
+            <ul>
+                <li>Revise questões erradas</li>
+                <li>Identifique pontos a melhorar</li>
+                <li>Busque material complementar</li>
+                <li>Tire dúvidas com instrutores</li>
+            </ul>
+        </div>
+        
+        <div class="warning-box">
+            <h4>⚠️ Atenção</h4>
+            <ul>
+                <li>Não recarregue a página durante o teste</li>
+                <li>Não use o botão voltar do navegador</li>
+                <li>Complete em uma única sessão</li>
+                <li>O timer não para se você sair</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Minhas Notas -->
+    <div class="page">
+        <h2>4.4 Minhas Notas</h2>
+        
+        <p>A seção "Minhas Notas" oferece uma visão completa do seu desempenho acadêmico.</p>
+        
+        <h3>Visão Geral das Notas:</h3>
+        
+        <h4>Estatísticas Principais:</h4>
+        <ul>
+            <li><strong>Média Geral:</strong> Sua média em todas as disciplinas</li>
+            <li><strong>Total de Testes:</strong> Quantidade de avaliações disponíveis</li>
+            <li><strong>Testes Realizados:</strong> Quantos você já fez</li>
+            <li><strong>Taxa de Aprovação:</strong> Percentual de testes aprovados</li>
+        </ul>
+        
+        <h3>Notas por Disciplina:</h3>
+        
+        <p>Suas notas são organizadas por matéria, mostrando:</p>
+        
+        <h4>Para cada disciplina:</h4>
+        <ul>
+            <li><strong>Nome da Disciplina:</strong> Identificação da matéria</li>
+            <li><strong>Curso Relacionado:</strong> A qual curso pertence</li>
+            <li><strong>Média:</strong> Calculada automaticamente</li>
+            <li><strong>Total de Testes:</strong> Quantos existem</li>
+            <li><strong>Realizados:</strong> Quantos você fez</li>
+            <li><strong>Maior Nota:</strong> Seu melhor desempenho</li>
+            <li><strong>Menor Nota:</strong> Onde precisa melhorar</li>
+        </ul>
+        
+        <h4>Detalhamento (clique para expandir):</h4>
+        <ul>
+            <li>Lista de todos os testes da disciplina</li>
+            <li>Nota individual de cada teste</li>
+            <li>Data de realização</li>
+            <li>Status (Realizado/Não Realizado)</li>
+        </ul>
+        
+        <h3>Sistema de Médias:</h3>
+        
+        <div class="calculation-info">
+            <h4>Como são calculadas:</h4>
+            <ul>
+                <li>Soma de todas as notas da disciplina</li>
+                <li>Dividido pelo total de testes</li>
+                <li><strong>Importante:</strong> Testes não realizados contam como nota 0</li>
+            </ul>
+            
+            <h4>Exemplo:</h4>
+            <p>3 testes na disciplina:</p>
+            <ul>
+                <li>Teste 1: 80 (realizado)</li>
+                <li>Teste 2: 90 (realizado)</li>
+                <li>Teste 3: 0 (não realizado)</li>
+                <li><strong>Média: (80+90+0)/3 = 56.7</strong></li>
+            </ul>
+        </div>
+        
+        <h3>Filtros e Busca:</h3>
+        
+        <ul>
+            <li><strong>Por Período:</strong> Selecione intervalo de datas</li>
+            <li><strong>Por Curso:</strong> Veja notas de curso específico</li>
+            <li><strong>Por Status:</strong> Apenas realizados ou pendentes</li>
+            <li><strong>Busca:</strong> Encontre teste específico</li>
+        </ul>
+        
+        <h3>Exportação de Notas:</h3>
+        
+        <h4>Botão "Exportar para Excel":</h4>
+        <p>Gera planilha com:</p>
+        <ul>
+            <li><strong>Aba 1 - Resumo:</strong> Médias por disciplina</li>
+            <li><strong>Aba 2 - Detalhamento:</strong> Todas as notas</li>
+            <li><strong>Aba 3 - Estatísticas:</strong> Análises gerais</li>
+        </ul>
+        
+        <h4>Formatação Automática:</h4>
+        <ul>
+            <li>Notas abaixo de 70: em vermelho e negrito</li>
+            <li>Testes não realizados: em cinza</li>
+            <li>Médias calculadas automaticamente</li>
+            <li>Cabeçalhos formatados</li>
+        </ul>
+        
+        <h3>Interpretação das Cores:</h3>
+        
+        <div class="color-guide">
+            <p><span style="color: green;">● Verde:</span> Aprovado (≥70)</p>
+            <p><span style="color: red;">● Vermelho:</span> Reprovado (<70)</p>
+            <p><span style="color: gray;">● Cinza:</span> Não realizado</p>
+            <p><span style="color: orange;">● Laranja:</span> Aguardando correção</p>
+        </div>
+        
+        <div class="tip-box">
+            <h4>💡 Dica de Acompanhamento</h4>
+            <p>Verifique suas notas regularmente para:</p>
+            <ul>
+                <li>Identificar disciplinas que precisam de mais atenção</li>
+                <li>Acompanhar sua evolução</li>
+                <li>Não esquecer de testes pendentes</li>
+                <li>Preparar-se melhor para reavaliações</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Certificados do Aluno -->
+    <div class="page">
+        <h2>4.5 Certificados</h2>
+        
+        <p>Obtenha certificados oficiais ao concluir cursos com sucesso.</p>
+        
+        <h3>Requisitos para Certificação:</h3>
+        
+        <h4>Critérios Básicos:</h4>
+        <ul>
+            <li>✓ Completar 100% das lições obrigatórias</li>
+            <li>✓ Aprovação em todos os testes (nota ≥70)</li>
+            <li>✓ Cumprir prazo estabelecido (se houver)</li>
+            <li>✓ Realizar atividades obrigatórias</li>
+        </ul>
+        
+        <h3>Solicitação de Certificado:</h3>
+        
+        <h4>Processo Automático:</h4>
+        <p>Ao concluir um curso:</p>
+        <ol>
+            <li>Sistema verifica requisitos automaticamente</li>
+            <li>Gera solicitação de certificado</li>
+            <li>Você recebe notificação</li>
+            <li>Administrador revisa e aprova</li>
+            <li>Certificado fica disponível para download</li>
+        </ol>
+        
+        <h4>Solicitação Manual:</h4>
+        <p>Se necessário:</p>
+        <ol>
+            <li>Acesse "Meus Certificados"</li>
+            <li>Clique em "Solicitar Certificado"</li>
+            <li>Selecione o curso concluído</li>
+            <li>Adicione observações (opcional)</li>
+            <li>Envie solicitação</li>
+        </ol>
+        
+        <h3>Status da Solicitação:</h3>
+        
+        <ul>
+            <li><strong>🔄 Pendente:</strong> Aguardando análise</li>
+            <li><strong>✅ Aprovado:</strong> Certificado disponível</li>
+            <li><strong>❌ Rejeitado:</strong> Não atende requisitos</li>
+            <li><strong>📝 Em Revisão:</strong> Sendo analisado</li>
+        </ul>
+        
+        <h3>Certificado Aprovado:</h3>
+        
+        <h4>Informações do Certificado:</h4>
+        <ul>
+            <li>Nome completo do aluno</li>
+            <li>Título do curso</li>
+            <li>Carga horária</li>
+            <li>Data de conclusão</li>
+            <li>Nota final (média)</li>
+            <li>Nome do instrutor</li>
+            <li>Número único do certificado</li>
+            <li>Código de verificação</li>
+        </ul>
+        
+        <h4>Download e Impressão:</h4>
+        <ol>
+            <li>Clique no certificado aprovado</li>
+            <li>Visualize o PDF</li>
+            <li>Clique em "Baixar PDF"</li>
+            <li>Salve ou imprima</li>
+        </ol>
+        
+        <h3>Validação de Certificado:</h3>
+        
+        <p>Cada certificado possui código único para verificação:</p>
+        
+        <h4>Como validar:</h4>
+        <ol>
+            <li>Acesse a página de validação pública</li>
+            <li>Digite o código do certificado</li>
+            <li>Sistema confirma autenticidade</li>
+            <li>Exibe dados do certificado</li>
+        </ol>
+        
+        <h3>Histórico de Certificados:</h3>
+        
+        <p>Visualize todos os seus certificados:</p>
+        <ul>
+            <li>Lista completa de certificados obtidos</li>
+            <li>Status de cada um</li>
+            <li>Data de emissão</li>
+            <li>Download a qualquer momento</li>
+            <li>Compartilhamento em redes profissionais</li>
+        </ul>
+        
+        <div class="achievement-box">
+            <h4>🏆 Valor do Certificado</h4>
+            <p>Seus certificados SwiftLMS:</p>
+            <ul>
+                <li>São válidos como comprovação de capacitação</li>
+                <li>Incluem carga horária oficial</li>
+                <li>Possuem verificação online</li>
+                <li>Podem ser incluídos no currículo</li>
+                <li>São aceitos em processos seletivos</li>
+            </ul>
+        </div>
+        
+        <div class="info-box">
+            <h4>📄 Certificado Digital</h4>
+            <p>Vantagens do formato digital:</p>
+            <ul>
+                <li>Não pode ser perdido</li>
+                <li>Sempre disponível online</li>
+                <li>Verificação instantânea</li>
+                <li>Ecologicamente correto</li>
+                <li>Compartilhamento fácil</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Capítulo 5: Recursos Avançados -->
+    <div class="page chapter">
+        <h1>5. Recursos Avançados</h1>
+        
+        <h2>5.1 Sistema de Notas e Médias</h2>
+        
+        <p>O SwiftLMS possui um sistema sofisticado de cálculo e gestão de notas.</p>
+        
+        <h3>Algoritmo de Cálculo:</h3>
+        
+        <h4>Média por Disciplina:</h4>
+        <pre class="code-block">
+Média = Σ(todas as notas) / (total de testes)
+
+Onde:
+- Teste realizado = nota obtida
+- Teste não realizado = nota 0
+- Todas as tentativas são registradas
+- Vale a melhor nota em caso de múltiplas tentativas
+        </pre>
+        
+        <h4>Média Geral:</h4>
+        <pre class="code-block">
+Média Geral = Σ(médias das disciplinas) / (número de disciplinas)
+        </pre>
+        
+        <h3>Ponderação e Pesos:</h3>
+        
+        <p>Administradores podem configurar:</p>
+        <ul>
+            <li>Peso diferente para cada teste</li>
+            <li>Peso por tipo de avaliação</li>
+            <li>Peso por módulo</li>
+            <li>Critérios especiais de aprovação</li>
+        </ul>
+        
+        <h2>5.2 Exportação Avançada para Excel</h2>
+        
+        <h3>Capacidades de Exportação:</h3>
+        
+        <h4>Formatação Automática:</h4>
+        <ul>
+            <li>Cabeçalhos estilizados</li>
+            <li>Cores baseadas em valores</li>
+            <li>Bordas e alinhamento</li>
+            <li>Largura automática de colunas</li>
+            <li>Merge de células para títulos</li>
+        </ul>
+        
+        <h4>Formatação Condicional:</h4>
+        <ul>
+            <li>Notas < 70: vermelho e negrito</li>
+            <li>Notas ≥ 90: verde</li>
+            <li>Não realizado: cinza</li>
+            <li>Destaque de valores máximos/mínimos</li>
+        </ul>
+        
+        <h4>Múltiplas Abas:</h4>
+        <ul>
+            <li>Dados organizados logicamente</li>
+            <li>Resumos e detalhamentos</li>
+            <li>Gráficos incorporados</li>
+            <li>Tabelas dinâmicas</li>
+        </ul>
+        
+        <h2>5.3 Integração com Google Drive</h2>
+        
+        <h3>Importação de Conteúdo:</h3>
+        
+        <h4>Tipos Suportados:</h4>
+        <ul>
+            <li>Google Docs → Lições de texto</li>
+            <li>Google Forms → Testes e quizzes</li>
+            <li>Google Slides → Apresentações</li>
+            <li>PDFs → Material de leitura</li>
+            <li>Vídeos → Links do Drive</li>
+        </ul>
+        
+        <h4>Processo de Importação:</h4>
+        <ol>
+            <li>Organize conteúdo em pastas no Drive</li>
+            <li>Compartilhe pasta com link público</li>
+            <li>Cole link no SwiftLMS</li>
+            <li>Sistema mapeia estrutura automaticamente</li>
+            <li>Revise e ajuste conforme necessário</li>
+        </ol>
+        
+        <h3>Sincronização:</h3>
+        <ul>
+            <li>Atualizações refletidas no SwiftLMS</li>
+            <li>Versionamento de conteúdo</li>
+            <li>Backup automático</li>
+        </ul>
+    </div>
+
+    <!-- Recursos Avançados - Continuação -->
+    <div class="page">
+        <h2>5.4 Visualização de Documentos</h2>
+        
+        <h3>Visualizador de PDF Integrado:</h3>
+        
+        <h4>Funcionalidades:</h4>
+        <ul>
+            <li>Renderização de alta qualidade</li>
+            <li>Zoom in/out</li>
+            <li>Navegação por páginas</li>
+            <li>Busca de texto</li>
+            <li>Modo tela cheia</li>
+            <li>Download opcional</li>
+            <li>Impressão direta</li>
+        </ul>
+        
+        <h4>Controles de Navegação:</h4>
+        <ul>
+            <li>Setas: página anterior/próxima</li>
+            <li>Home/End: primeira/última página</li>
+            <li>Ctrl+F: buscar no documento</li>
+            <li>Ctrl+0: ajustar à tela</li>
+        </ul>
+        
+        <h2>5.5 Player de Vídeo</h2>
+        
+        <h3>Recursos do Player:</h3>
+        
+        <h4>Controles Básicos:</h4>
+        <ul>
+            <li>Play/Pause</li>
+            <li>Barra de progresso</li>
+            <li>Volume</li>
+            <li>Tela cheia</li>
+            <li>Picture-in-picture</li>
+        </ul>
+        
+        <h4>Recursos Avançados:</h4>
+        <ul>
+            <li>Velocidade variável (0.25x - 2x)</li>
+            <li>Legendas/closed captions</li>
+            <li>Qualidade adaptativa</li>
+            <li>Marcadores de capítulos</li>
+            <li>Retomada automática</li>
+            <li>Atalhos de teclado</li>
+        </ul>
+        
+        <h4>Tracking de Progresso:</h4>
+        <ul>
+            <li>Salvamento automático da posição</li>
+            <li>Marcação de vídeo assistido</li>
+            <li>Estatísticas de visualização</li>
+            <li>Relatório de engajamento</li>
+        </ul>
+        
+        <h2>5.6 Sistema de Notificações</h2>
+        
+        <h3>Tipos de Notificações:</h3>
+        
+        <h4>Para Alunos:</h4>
+        <ul>
+            <li>Novo conteúdo disponível</li>
+            <li>Prazo de teste se aproximando</li>
+            <li>Certificado aprovado</li>
+            <li>Feedback do instrutor</li>
+            <li>Mudanças no curso</li>
+        </ul>
+        
+        <h4>Para Administradores:</h4>
+        <ul>
+            <li>Novas matrículas</li>
+            <li>Solicitações de certificado</li>
+            <li>Testes concluídos</li>
+            <li>Problemas técnicos</li>
+            <li>Relatórios prontos</li>
+        </ul>
+        
+        <h3>Configuração de Preferências:</h3>
+        
+        <ul>
+            <li>Escolha quais notificações receber</li>
+            <li>Frequência de e-mails</li>
+            <li>Notificações push (mobile)</li>
+            <li>Som de alerta</li>
+            <li>Agrupamento de notificações</li>
+        </ul>
+        
+        <h2>5.7 Modo Escuro</h2>
+        
+        <h3>Benefícios:</h3>
+        <ul>
+            <li>Redução de fadiga ocular</li>
+            <li>Economia de bateria (OLED)</li>
+            <li>Melhor para ambientes escuros</li>
+            <li>Preferência pessoal</li>
+        </ul>
+        
+        <h3>Como Ativar:</h3>
+        <ol>
+            <li>Clique no menu de perfil</li>
+            <li>Selecione "Configurações"</li>
+            <li>Aba "Aparência"</li>
+            <li>Toggle "Modo Escuro"</li>
+            <li>Ou use o ícone 🌙 na barra superior</li>
+        </ol>
+        
+        <h2>5.8 Acessibilidade</h2>
+        
+        <h3>Recursos de Acessibilidade:</h3>
+        
+        <ul>
+            <li>Suporte a leitores de tela</li>
+            <li>Navegação por teclado</li>
+            <li>Alto contraste</li>
+            <li>Tamanho de fonte ajustável</li>
+            <li>Descrições alternativas</li>
+            <li>Transcrições de vídeo</li>
+            <li>Legendas automáticas</li>
+        </ul>
+        
+        <h3>Atalhos de Acessibilidade:</h3>
+        <ul>
+            <li>Tab: navegar entre elementos</li>
+            <li>Enter: ativar botões/links</li>
+            <li>Esc: fechar modais</li>
+            <li>Ctrl + +/-: zoom</li>
+        </ul>
+    </div>
+
+    <!-- Capítulo 6: Suporte e FAQ -->
+    <div class="page chapter">
+        <h1>6. Suporte e FAQ</h1>
+        
+        <h2>Perguntas Frequentes</h2>
+        
+        <h3>Login e Acesso</h3>
+        
+        <div class="faq-item">
+            <h4>P: Esqueci minha senha. O que fazer?</h4>
+            <p>R: Na página de login, clique em "Esqueci minha senha". Digite seu e-mail cadastrado e siga as instruções enviadas para redefinir sua senha.</p>
+        </div>
+        
+        <div class="faq-item">
+            <h4>P: Não consigo fazer login. O que pode ser?</h4>
+            <p>R: Verifique:</p>
+            <ul>
+                <li>Se o e-mail está correto</li>
+                <li>Se a senha está correta (atenção a maiúsculas)</li>
+                <li>Se sua conta está ativa</li>
+                <li>Se os cookies estão habilitados</li>
+                <li>Limpe o cache do navegador</li>
+            </ul>
+        </div>
+        
+        <div class="faq-item">
+            <h4>P: Posso acessar de múltiplos dispositivos?</h4>
+            <p>R: Sim! O SwiftLMS é totalmente responsivo e sincroniza seu progresso em todos os dispositivos.</p>
+        </div>
+        
+        <h3>Cursos e Conteúdo</h3>
+        
+        <div class="faq-item">
+            <h4>P: Como me matriculo em um curso?</h4>
+            <p>R: Navegue até "Cursos Disponíveis", escolha o curso desejado e clique em "Matricular-se". Se o curso for pago, siga as instruções de pagamento.</p>
+        </div>
+        
+        <div class="faq-item">
+            <h4>P: Posso baixar o conteúdo do curso?</h4>
+            <p>R: Materiais em PDF podem ser baixados quando o instrutor permitir. Vídeos são apenas para visualização online.</p>
+        </div>
+        
+        <div class="faq-item">
+            <h4>P: Por quanto tempo tenho acesso ao curso?</h4>
+            <p>R: Geralmente o acesso é vitalício após a matrícula, mas verifique as condições específicas de cada curso.</p>
+        </div>
+        
+        <h3>Testes e Avaliações</h3>
+        
+        <div class="faq-item">
+            <h4>P: Quantas vezes posso refazer um teste?</h4>
+            <p>R: Depende da configuração do teste. A informação está disponível antes de iniciar. Geralmente são permitidas 3 tentativas.</p>
+        </div>
+        
+        <div class="faq-item">
+            <h4>P: O que acontece se o tempo do teste acabar?</h4>
+            <p>R: O teste é submetido automaticamente com as respostas marcadas até aquele momento.</p>
+        </div>
+        
+        <div class="faq-item">
+            <h4>P: Como são calculadas as médias?</h4>
+            <p>R: A média é calculada somando todas as notas (incluindo 0 para testes não realizados) dividido pelo total de testes.</p>
+        </div>
+        
+        <h3>Certificados</h3>
+        
+        <div class="faq-item">
+            <h4>P: Quando recebo meu certificado?</h4>
+            <p>R: Após completar 100% do curso e ser aprovado em todas as avaliações. A aprovação pelo administrador pode levar até 48h.</p>
+        </div>
+        
+        <div class="faq-item">
+            <h4>P: O certificado tem validade?</h4>
+            <p>R: Os certificados não têm prazo de validade e podem ser verificados online a qualquer momento.</p>
+        </div>
+        
+        <div class="faq-item">
+            <h4>P: Posso solicitar segunda via do certificado?</h4>
+            <p>R: Sim, você pode baixar seu certificado quantas vezes quiser na seção "Meus Certificados".</p>
+        </div>
+    </div>
+
+    <!-- Solução de Problemas -->
+    <div class="page">
+        <h2>Solução de Problemas Comuns</h2>
+        
+        <h3>Problemas de Vídeo</h3>
+        
+        <div class="troubleshooting">
+            <h4>Vídeo não carrega:</h4>
+            <ul>
+                <li>Verifique sua conexão com a internet</li>
+                <li>Tente outro navegador</li>
+                <li>Desabilite extensões de bloqueio</li>
+                <li>Limpe o cache do navegador</li>
+                <li>Verifique se JavaScript está habilitado</li>
+            </ul>
+            
+            <h4>Vídeo travando:</h4>
+            <ul>
+                <li>Reduza a qualidade do vídeo</li>
+                <li>Feche outras abas/programas</li>
+                <li>Use conexão por cabo em vez de Wi-Fi</li>
+                <li>Pause e aguarde o buffer carregar</li>
+            </ul>
+        </div>
+        
+        <h3>Problemas com Testes</h3>
+        
+        <div class="troubleshooting">
+            <h4>Teste não abre:</h4>
+            <ul>
+                <li>Verifique se pop-ups estão permitidos</li>
+                <li>Desabilite bloqueadores de anúncios</li>
+                <li>Tente modo incógnito/privado</li>
+                <li>Verifique data/hora do sistema</li>
+            </ul>
+            
+            <h4>Respostas não são salvas:</h4>
+            <ul>
+                <li>Não use o botão voltar do navegador</li>
+                <li>Mantenha conexão estável</li>
+                <li>Aguarde confirmação antes de fechar</li>
+                <li>Faça screenshot das respostas por segurança</li>
+            </ul>
+        </div>
+        
+        <h3>Problemas de Desempenho</h3>
+        
+        <div class="troubleshooting">
+            <h4>Sistema lento:</h4>
+            <ul>
+                <li>Limpe cache e cookies</li>
+                <li>Atualize o navegador</li>
+                <li>Desative extensões desnecessárias</li>
+                <li>Reinicie o dispositivo</li>
+                <li>Verifique requisitos mínimos</li>
+            </ul>
+        </div>
+        
+        <h2>Contatos para Suporte</h2>
+        
+        <div class="contact-section">
+            <h3>Canais de Atendimento:</h3>
+            
+            <h4>📧 E-mail:</h4>
+            <p>suporte@swiftlms.com.br</p>
+            <p>Resposta em até 24 horas úteis</p>
+            
+            <h4>💬 Chat Online:</h4>
+            <p>Disponível no sistema das 8h às 18h</p>
+            <p>Dias úteis</p>
+            
+            <h4>📱 WhatsApp:</h4>
+            <p>(11) 9XXXX-XXXX</p>
+            <p>Atendimento em horário comercial</p>
+            
+            <h4>📞 Telefone:</h4>
+            <p>0800 XXX XXXX</p>
+            <p>Segunda a sexta, 8h às 18h</p>
+        </div>
+        
+        <h3>Antes de Contatar o Suporte:</h3>
+        
+        <ol>
+            <li>Consulte este manual</li>
+            <li>Verifique o FAQ</li>
+            <li>Tente as soluções sugeridas</li>
+            <li>Prepare informações:
+                <ul>
+                    <li>Seu e-mail de cadastro</li>
+                    <li>Descrição detalhada do problema</li>
+                    <li>Screenshots se possível</li>
+                    <li>Navegador e sistema operacional</li>
+                </ul>
+            </li>
+        </ol>
+        
+        <div class="support-tip">
+            <h4>💡 Dica para Suporte Rápido</h4>
+            <p>Quanto mais detalhes você fornecer, mais rápido conseguiremos ajudar. Include:</p>
+            <ul>
+                <li>O que você estava tentando fazer</li>
+                <li>O que aconteceu</li>
+                <li>Mensagens de erro exatas</li>
+                <li>Passos para reproduzir o problema</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Página Final -->
+    <div class="page final-page">
+        <div class="final-content">
+            <h1>Obrigado por usar o SwiftLMS!</h1>
+            
+            <p>Este manual é um documento vivo e será atualizado regularmente com novos recursos e melhorias.</p>
+            
+            <h3>Atualizações e Novidades:</h3>
+            <p>Acompanhe as novidades do sistema em:</p>
+            <ul>
+                <li>Painel de notificações do sistema</li>
+                <li>E-mails informativos</li>
+                <li>Blog oficial (se disponível)</li>
+            </ul>
+            
+            <h3>Feedback e Sugestões:</h3>
+            <p>Sua opinião é importante! Envie sugestões para:</p>
+            <p>feedback@swiftlms.com.br</p>
+            
+            <h3>Comunidade:</h3>
+            <p>Participe da comunidade SwiftLMS:</p>
+            <ul>
+                <li>Fórum de discussão</li>
+                <li>Grupos de estudo</li>
+                <li>Webinars e eventos</li>
+            </ul>
+            
+            <div class="success-message">
+                <h2>📚 Bons estudos e sucesso em sua jornada de aprendizado!</h2>
+            </div>
+            
+            <div class="footer-info">
+                <p><strong>SwiftLMS</strong></p>
+                <p>Sistema de Gestão de Aprendizagem</p>
+                <p>Versão 1.0 - Janeiro 2025</p>
+                <p>© 2025 SwiftLMS. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

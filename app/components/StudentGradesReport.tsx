@@ -1,0 +1,1035 @@
+'use client'
+
+import { useState, useEffect, useCallback, useMemo, ChangeEvent } from 'react'
+import { saveGradeOverrides, resetGradeOverrides } from '@/lib/actions/student-grades'
+import { ExcelExporter } from '@/lib/excel-export'
+import { formatDate } from '@/lib/reports/formatters'
+import Card from './Card'
+import Button from './Button'
+import { Download, TrendingUp, BookOpen, Target, ChevronDown, ChevronUp, FileText, Scale } from 'lucide-react'
+
+interface StudentGradesReportProps {
+  userId: string
+  userName?: string
+  showHeader?: boolean
+  allowExport?: boolean
+  dateRange?: {
+    start: string
+    end: string
+  }
+  allowEditing?: boolean
+}
+
+interface GradeBySubject {
+  subjectId: string
+  subjectName: string
+  courseName: string
+  totalTests: number
+  testsCompleted: number
+  testsMissed: number
+  average: number
+  highestScore: number
+  lowestScore: number
+  tests: Array<{
+    id: string
+    title: string
+    score: number
+    completed: boolean
+    date?: string
+  }>
+}
+
+interface LoadingStates {
+  initial: boolean
+  grades: boolean
+  tcc: boolean
+  overrides: boolean
+  export: boolean
+}
+
+interface ValidationErrors {
+  testsAverage?: string
+  testsWeight?: string
+  tccGrade?: string
+  tccWeight?: string
+}
+
+export default function StudentGradesReport({
+  userId,
+  userName,
+  showHeader = true,
+  allowExport = true,
+  dateRange,
+  allowEditing = false
+}: StudentGradesReportProps) {
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
+    initial: true,
+    grades: false,
+    tcc: false,
+    overrides: false,
+    export: false
+  })
+  const [gradesBySubject, setGradesBySubject] = useState<GradeBySubject[]>([])
+  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set())
+  const [totalTestsCount, setTotalTestsCount] = useState(0)
+  const [completedTestsCount, setCompletedTestsCount] = useState(0)
+  const [testsAverageRaw, setTestsAverageRaw] = useState(0)
+  const [tccGradeRaw, setTccGradeRaw] = useState<number | null>(null)
+  const [overrides, setOverrides] = useState<{
+    id?: string
+    tests_average_override?: number | null
+    tests_weight?: number | null
+    tcc_grade_override?: number | null
+    tcc_weight?: number | null
+  } | null>(null)
+  const [overrideForm, setOverrideForm] = useState({
+    testsAverage: '',
+    testsWeight: '1',
+    tccGrade: '',
+    tccWeight: '1'
+  })
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
+  const [isSavingOverrides, setIsSavingOverrides] = useState(false)
+  const [overrideMessage, setOverrideMessage] = useState<string | null>(null)
+  const [overrideError, setOverrideError] = useState<string | null>(null)
+  const [assigningGrade, setAssigningGrade] = useState<string | null>(null)
+  const [assigningAllGrades, setAssigningAllGrades] = useState(false)
+
+  const fetchStudentGrades = useCallback(async (options?: { skipLoading?: boolean }) => {
+    try {
+      if (!options?.skipLoading) {
+        setLoadingStates(prev => ({ ...prev, initial: true, grades: true, tcc: true, overrides: true }))
+      }
+
+      // Construir URL com parâmetros de data se fornecidos
+      const params = new URLSearchParams()
+      if (dateRange?.start) {
+        params.append('startDate', dateRange.start)
+      }
+      if (dateRange?.end) {
+        params.append('endDate', dateRange.end)
+      }
+
+      // Chamar API server-side que filtra por cursos matriculados e aplica segurança
+      const response = await fetch(`/api/admin/student-grades/${userId}?${params.toString()}`)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }))
+        console.error('Erro da API:', response.status, errorData)
+        throw new Error(errorData.error || `Erro ${response.status} ao buscar notas do aluno`)
+      }
+
+      const result = await response.json()
+
+      if (result.success && result.data) {
+        const {
+          gradesBySubject,
+          totalTestsCount,
+          completedTestsCount,
+          testsAverageRaw,
+          tccGradeRaw,
+          overrides: overrideData
+        } = result.data
+
+        // Formatar datas nos testes
+        gradesBySubject.forEach((subject: any) => {
+          subject.tests.forEach((test: any) => {
+            if (test.date) {
+              test.date = formatDate(test.date)
+            }
+          })
+        })
+
+        setTotalTestsCount(totalTestsCount)
+        setCompletedTestsCount(completedTestsCount)
+        setGradesBySubject(gradesBySubject)
+        setTestsAverageRaw(testsAverageRaw)
+        setTccGradeRaw(tccGradeRaw)
+
+        if (overrideData) {
+          setOverrides(overrideData)
+          setOverrideForm({
+            testsAverage: overrideData.tests_average_override != null ? String(Number(overrideData.tests_average_override)) : '',
+            testsWeight: String(Number(overrideData.tests_weight ?? 1)),
+            tccGrade: overrideData.tcc_grade_override != null ? String(Number(overrideData.tcc_grade_override)) : '',
+            tccWeight: String(Number(overrideData.tcc_weight ?? 1))
+          })
+        } else {
+          setOverrides(null)
+          setOverrideForm({
+            testsAverage: '',
+            testsWeight: '1',
+            tccGrade: '',
+            tccWeight: '1'
+          })
+        }
+
+        setLoadingStates(prev => ({ ...prev, grades: false, tcc: false, overrides: false }))
+      }
+    } catch (error) {
+      console.error('Erro ao buscar notas do aluno:', error)
+      setOverrideError('Não foi possível carregar as notas do aluno. Por favor, tente novamente.')
+    } finally {
+      if (!options?.skipLoading) {
+        setLoadingStates(prev => ({ ...prev, initial: false }))
+      }
+    }
+  }, [userId, dateRange])
+
+  useEffect(() => {
+    if (userId) {
+      fetchStudentGrades()
+    }
+  }, [userId, fetchStudentGrades])
+
+  const toggleSubject = (subjectId: string) => {
+    const newExpanded = new Set(expandedSubjects)
+    if (newExpanded.has(subjectId)) {
+      newExpanded.delete(subjectId)
+    } else {
+      newExpanded.add(subjectId)
+    }
+    setExpandedSubjects(newExpanded)
+  }
+
+  const parseMaybeNumber = (value: string) => {
+    if (value === undefined || value === null) return undefined
+    const trimmed = value.trim()
+    if (trimmed === '') return undefined
+    const normalized = trimmed.replace(',', '.')
+    const parsed = Number(normalized)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+
+  const computeGradeMetrics = () => {
+    const savedTestsAverage = overrides?.tests_average_override != null ? Number(overrides.tests_average_override) : undefined
+    const savedTestsWeight = overrides?.tests_weight != null ? Number(overrides.tests_weight) : undefined
+    const savedTccGrade = overrides?.tcc_grade_override != null ? Number(overrides.tcc_grade_override) : undefined
+    const savedTccWeight = overrides?.tcc_weight != null ? Number(overrides.tcc_weight) : undefined
+
+    const formTestsAverage = allowEditing ? parseMaybeNumber(overrideForm.testsAverage) : undefined
+    const formTestsWeight = allowEditing ? parseMaybeNumber(overrideForm.testsWeight) : undefined
+    const formTccGrade = allowEditing ? parseMaybeNumber(overrideForm.tccGrade) : undefined
+    const formTccWeight = allowEditing ? parseMaybeNumber(overrideForm.tccWeight) : undefined
+
+    const testsAverageOverride = formTestsAverage !== undefined ? formTestsAverage : savedTestsAverage
+    const testsWeight = formTestsWeight !== undefined
+      ? Math.max(formTestsWeight, 0)
+      : Math.max(savedTestsWeight ?? 1, 0)
+
+    const tccGradeOverride = formTccGrade !== undefined ? formTccGrade : savedTccGrade
+    const tccWeight = formTccWeight !== undefined
+      ? Math.max(formTccWeight, 0)
+      : Math.max(savedTccWeight ?? 1, 0)
+
+    const testsAverageEffective = testsAverageOverride ?? testsAverageRaw
+    const tccGradeBase = tccGradeOverride ?? (tccGradeRaw != null ? Number(tccGradeRaw) : 0)
+
+    const denominator = testsWeight + tccWeight
+    const finalAverage = denominator > 0
+      ? (testsAverageEffective * testsWeight + tccGradeBase * tccWeight) / denominator
+      : 0
+
+    return {
+      testsAverageEffective,
+      testsAverageRaw,
+      testsWeight,
+      tccGradeEffective: tccGradeBase,
+      tccGradeRaw: tccGradeRaw != null ? Number(tccGradeRaw) : null,
+      tccWeight,
+      finalAverage,
+      testsAverageOverride,
+      tccGradeOverride,
+      denominator
+    }
+  }
+
+  const gradeMetrics = useMemo(() => computeGradeMetrics(), [
+    testsAverageRaw,
+    tccGradeRaw,
+    overrides,
+    overrideForm,
+    allowEditing
+  ])
+
+  // Validação em tempo real
+  const validateField = useCallback((field: keyof typeof overrideForm, value: string): string | undefined => {
+    if (!value || value.trim() === '') {
+      return undefined
+    }
+
+    const normalized = value.replace(',', '.')
+    const num = Number(normalized)
+
+    if (!Number.isFinite(num)) {
+      return 'Valor inválido. Digite um número válido.'
+    }
+
+    if (field === 'testsAverage' || field === 'tccGrade') {
+      if (num < 0) return 'Nota não pode ser negativa.'
+      if (num > 100) return 'Nota não pode ser maior que 100.'
+    }
+
+    if (field === 'testsWeight' || field === 'tccWeight') {
+      if (num < 0) return 'Peso não pode ser negativo.'
+      if (num > 100) return 'Peso muito alto. Verifique o valor.'
+    }
+
+    return undefined
+  }, [])
+
+  const handleOverrideChange = (field: keyof typeof overrideForm) => (event: ChangeEvent<HTMLInputElement>) => {
+    const { value } = event.target
+    setOverrideForm(prev => ({ ...prev, [field]: value }))
+    setOverrideMessage(null)
+
+    // Validar campo em tempo real
+    const error = validateField(field, value)
+    setValidationErrors(prev => ({
+      ...prev,
+      [field]: error
+    }))
+
+    // Limpar erro geral se não houver erros de validação
+    if (!error && Object.values({ ...validationErrors, [field]: undefined }).every(e => !e)) {
+      setOverrideError(null)
+    }
+  }
+
+  const saveOverrides = async () => {
+    // Verificar erros de validação antes de salvar
+    const hasErrors = Object.values(validationErrors).some(e => e !== undefined)
+    if (hasErrors) {
+      setOverrideError('Por favor, corrija os erros nos campos antes de salvar.')
+      return
+    }
+
+    setIsSavingOverrides(true)
+    setOverrideMessage(null)
+    setOverrideError(null)
+
+    try {
+      const testsAverageValue = parseMaybeNumber(overrideForm.testsAverage)
+      const testsWeightValue = Math.max(parseMaybeNumber(overrideForm.testsWeight) ?? 1, 0)
+      const tccGradeValue = parseMaybeNumber(overrideForm.tccGrade)
+      const tccWeightValue = Math.max(parseMaybeNumber(overrideForm.tccWeight) ?? 1, 0)
+
+      const payload = {
+        user_id: userId,
+        tests_average_override: testsAverageValue ?? null,
+        tests_weight: testsWeightValue,
+        tcc_grade_override: tccGradeValue ?? null,
+        tcc_weight: tccWeightValue
+      }
+
+      const result = await saveGradeOverrides(payload)
+
+      if (!result.success) {
+        throw new Error(result.error || 'Falha ao salvar ajustes')
+      }
+
+      setOverrideMessage('✓ Ajustes salvos com sucesso.')
+      setValidationErrors({})
+      await fetchStudentGrades({ skipLoading: true })
+    } catch (error: any) {
+      console.error('Erro ao salvar ajustes de nota:', error)
+      const errorMessage = error?.message || 'Não foi possível salvar os ajustes.'
+      setOverrideError(`Erro ao salvar: ${errorMessage}`)
+    } finally {
+      setIsSavingOverrides(false)
+    }
+  }
+
+  const resetOverrides = async () => {
+    setIsSavingOverrides(true)
+    setOverrideMessage(null)
+    setOverrideError(null)
+
+    try {
+      const result = await resetGradeOverrides(userId)
+
+      if (!result.success) {
+        throw new Error(result.error || 'Falha ao remover ajustes')
+      }
+
+      setOverrides(null)
+      setOverrideForm({
+        testsAverage: '',
+        testsWeight: '1',
+        tccGrade: '',
+        tccWeight: '1'
+      })
+      setValidationErrors({})
+      setOverrideMessage('✓ Ajustes removidos. Valores calculados serão utilizados.')
+      await fetchStudentGrades({ skipLoading: true })
+    } catch (error: any) {
+      console.error('Erro ao remover ajustes de nota:', error)
+      const errorMessage = error?.message || 'Não foi possível remover os ajustes.'
+      setOverrideError(`Erro ao remover ajustes: ${errorMessage}`)
+    } finally {
+      setIsSavingOverrides(false)
+    }
+  }
+
+  const handleAssignMaxGrade = async (testId: string, testTitle: string) => {
+    if (!confirm(`Deseja atribuir nota máxima (100) ao teste "${testTitle}" para este aluno?`)) {
+      return
+    }
+
+    setAssigningGrade(testId)
+    setOverrideMessage(null)
+    setOverrideError(null)
+
+    try {
+      const response = await fetch('/api/admin/assign-grade', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId,
+          testId,
+          reason: 'Nota máxima atribuída via interface administrativa'
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        const errorMsg = data.error || 'Erro desconhecido ao atribuir nota'
+        throw new Error(errorMsg)
+      }
+
+      const previousScore = data.data?.previousScore
+      const previousText = previousScore !== null && previousScore !== undefined
+        ? `${previousScore.toFixed(1)}`
+        : 'Nenhuma'
+
+      setOverrideMessage(`✓ Nota máxima atribuída com sucesso ao teste "${testTitle}"! Nota anterior: ${previousText}`)
+      await fetchStudentGrades({ skipLoading: true })
+    } catch (error: any) {
+      console.error('Erro ao atribuir nota máxima:', error)
+      const errorMessage = error?.message || 'Não foi possível atribuir a nota máxima.'
+      setOverrideError(`Erro ao atribuir nota ao teste "${testTitle}": ${errorMessage}`)
+    } finally {
+      setAssigningGrade(null)
+    }
+  }
+
+  const handleAssignMaxGradeToAll = async () => {
+    // Coletar todos os testes
+    const allTests: Array<{ id: string; title: string }> = []
+    gradesBySubject.forEach(subject => {
+      subject.tests.forEach(test => {
+        allTests.push({ id: test.id, title: test.title })
+      })
+    })
+
+    if (allTests.length === 0) {
+      setOverrideError('Nenhum teste encontrado para atribuir notas.')
+      return
+    }
+
+    if (!confirm(
+      `Deseja atribuir nota máxima (100) a TODOS os ${allTests.length} testes deste aluno?\n\n` +
+      `Esta ação não pode ser desfeita e irá sobrescrever todas as notas existentes.`
+    )) {
+      return
+    }
+
+    setAssigningAllGrades(true)
+    setOverrideMessage(null)
+    setOverrideError(null)
+
+    let successCount = 0
+    let errorCount = 0
+    const errors: string[] = []
+
+    try {
+      // Processar em lote com Promise.allSettled para não interromper em caso de erro
+      const results = await Promise.allSettled(
+        allTests.map(async (test) => {
+          const response = await fetch('/api/admin/assign-grade', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              userId,
+              testId: test.id,
+              reason: 'Nota máxima atribuída em lote via interface administrativa'
+            })
+          })
+
+          const data = await response.json()
+
+          if (!response.ok) {
+            throw new Error(`${test.title}: ${data.error || 'Erro desconhecido'}`)
+          }
+
+          return { test: test.title, data }
+        })
+      )
+
+      // Contar sucessos e erros
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          successCount++
+        } else {
+          errorCount++
+          errors.push(result.reason.message)
+        }
+      })
+
+      // Mostrar resultado
+      if (errorCount === 0) {
+        setOverrideMessage(`✓ Nota máxima atribuída com sucesso a todos os ${successCount} testes!`)
+      } else if (successCount > 0) {
+        setOverrideMessage(`✓ Parcialmente concluído: ${successCount} testes atualizados com sucesso.`)
+        setOverrideError(`⚠️ ${errorCount} testes falharam: ${errors.slice(0, 3).join(', ')}${errors.length > 3 ? '...' : ''}`)
+      } else {
+        setOverrideError(`❌ Erro ao atribuir notas. Nenhum teste foi atualizado.`)
+      }
+
+      // Recarregar dados
+      await fetchStudentGrades({ skipLoading: true })
+    } catch (error: any) {
+      console.error('Erro ao atribuir notas máximas em lote:', error)
+      setOverrideError(`Erro ao processar atribuição em lote: ${error?.message || 'Erro desconhecido'}`)
+    } finally {
+      setAssigningAllGrades(false)
+    }
+  }
+
+  const exportToExcel = async () => {
+    try {
+      setLoadingStates(prev => ({ ...prev, export: true }))
+      setOverrideError(null)
+
+      const metrics = computeGradeMetrics()
+      const exporter = new ExcelExporter()
+    
+    // Preparar dados para exportação
+    const summaryData = gradesBySubject.map(subject => ({
+      'Disciplina': subject.subjectName,
+      'Curso': subject.courseName,
+      'Total de Testes': subject.totalTests,
+      'Testes Realizados': subject.testsCompleted,
+      'Testes Não Realizados': subject.testsMissed,
+      'Média': Number(subject.average.toFixed(1)),
+      'Maior Nota': subject.highestScore,
+      'Menor Nota': subject.lowestScore
+    }))
+    
+    const detailsData: any[] = []
+    gradesBySubject.forEach(subject => {
+      subject.tests.forEach(test => {
+        detailsData.push({
+          'Disciplina': subject.subjectName,
+          'Teste': test.title,
+          'Nota': test.score,
+          'Status': test.completed ? 'Realizado' : 'Não Realizado',
+          'Data': test.date || '-'
+        })
+      })
+    })
+    
+    // Adicionar aba de resumo
+    exporter.addDataSheet('Resumo por Disciplina', {
+      title: `Histórico de Notas - ${userName || 'Aluno'}`,
+      headers: Object.keys(summaryData[0] || {}),
+      data: summaryData.map(row => Object.values(row)),
+      metadata: {
+        date: formatDate(new Date()),
+        user: userName || 'Aluno'
+      },
+      formatting: {
+        conditionalFormatting: [
+          {
+            condition: (value) => typeof value === 'number' && value < 70,
+            font: { bold: true, color: '#FF0000' }
+          }
+        ],
+        columns: {
+          5: { // Coluna de Média
+            condition: (value) => typeof value === 'number' && value < 70,
+            font: { bold: true, color: '#FF0000' }
+          }
+        }
+      }
+    })
+    
+    // Adicionar aba de detalhes
+    exporter.addDataSheet('Detalhamento', {
+      title: 'Detalhamento de Testes',
+      headers: Object.keys(detailsData[0] || {}),
+      data: detailsData.map(row => Object.values(row)),
+      formatting: {
+        conditionalFormatting: [
+          {
+            condition: (value) => typeof value === 'number' && value < 70,
+            font: { bold: true, color: '#FF0000' }
+          },
+          {
+            condition: (value) => value === 'Não Realizado',
+            font: { color: '#808080' }
+          }
+        ]
+      }
+    })
+    
+    // Adicionar estatísticas
+    exporter.addSummarySheet('Estatísticas', {
+      title: 'Estatísticas Gerais',
+      sections: [
+        {
+          sectionTitle: 'Resumo',
+          metrics: [
+            { label: 'Média Final', value: metrics.finalAverage.toFixed(2) },
+            { label: 'Total de Testes', value: totalTestsCount },
+            { label: 'Testes Realizados', value: completedTestsCount },
+            { label: 'Testes Não Realizados', value: totalTestsCount - completedTestsCount },
+            { label: 'Taxa de Participação', value: totalTestsCount > 0 ? `${((completedTestsCount / totalTestsCount) * 100).toFixed(1)}%` : '0.0%' }
+          ]
+        },
+        {
+          sectionTitle: 'Médias Ponderadas',
+          metrics: [
+            { label: 'Média dos Testes', value: metrics.testsAverageEffective.toFixed(2) },
+            { label: 'Peso dos Testes', value: metrics.testsWeight.toFixed(2) },
+            { label: 'Nota do TCC', value: metrics.tccGradeEffective.toFixed(2) },
+            { label: 'Peso do TCC', value: metrics.tccWeight.toFixed(2) }
+          ]
+        }
+      ]
+    })
+
+
+      const fileName = `notas_${userName?.replace(/\s+/g, '_').toLowerCase() || 'aluno'}_${new Date().toISOString().split('T')[0]}.xlsx`
+      exporter.download(fileName)
+      setOverrideMessage('✓ Arquivo Excel exportado com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao exportar para Excel:', error)
+      const errorMessage = error?.message || 'Não foi possível gerar o arquivo Excel.'
+      setOverrideError(`Erro ao exportar: ${errorMessage}`)
+    } finally {
+      setLoadingStates(prev => ({ ...prev, export: false }))
+    }
+  }
+
+  if (loadingStates.initial) {
+    return (
+      <div className="space-y-4">
+        <div className="h-32 bg-navy-800/50 rounded-xl animate-pulse" />
+        <div className="h-24 bg-navy-800/50 rounded-xl animate-pulse" />
+        <div className="h-24 bg-navy-800/50 rounded-xl animate-pulse" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {showHeader && (
+        <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-2xl font-bold text-gold flex items-center gap-2">
+              <FileText className="w-6 h-6" />
+              Histórico de Notas
+            </h2>
+            {userName && (
+              <p className="text-gold-300 mt-1">Aluno: {userName}</p>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Botão de Exportar - sempre visível se allowExport for true */}
+      {allowExport && !showHeader && (
+        <div className="flex justify-end">
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<Download className="w-4 h-4" />}
+            onClick={exportToExcel}
+            disabled={loadingStates.export}
+          >
+            {loadingStates.export ? 'Exportando...' : 'Exportar Excel'}
+          </Button>
+        </div>
+      )}
+
+      {/* Se showHeader e allowExport, mostrar botão junto com header */}
+      {showHeader && allowExport && (
+        <div className="flex justify-end -mt-12">
+          <Button
+            variant="primary"
+            size="sm"
+            icon={<Download className="w-4 h-4" />}
+            onClick={exportToExcel}
+            disabled={loadingStates.export}
+          >
+            {loadingStates.export ? 'Exportando...' : 'Exportar Excel'}
+          </Button>
+        </div>
+      )}
+      
+      {/* Cards de Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-navy-800/50 to-navy-900/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-400 text-sm">Média Final</p>
+              <p className={`text-3xl font-bold ${gradeMetrics.finalAverage >= 70 ? 'text-gold' : 'text-red-500'}`}>
+                {gradeMetrics.finalAverage.toFixed(2)}
+              </p>
+              <p className="text-xs text-gold-400 mt-1">
+                Pesos: Testes {gradeMetrics.testsWeight.toFixed(2)} · TCC {gradeMetrics.tccWeight.toFixed(2)}
+              </p>
+            </div>
+            <TrendingUp className={`w-8 h-8 ${gradeMetrics.finalAverage >= 70 ? 'text-gold-500' : 'text-red-500'}`} />
+          </div>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-navy-800/50 to-navy-900/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-400 text-sm">Média dos Testes</p>
+              <p className="text-3xl font-bold text-gold">
+                {gradeMetrics.testsAverageEffective.toFixed(2)}
+              </p>
+              {gradeMetrics.testsAverageOverride !== undefined && (
+                <p className="text-xs text-gold-400 mt-1">
+                  (Calculada: {gradeMetrics.testsAverageRaw.toFixed(2)})
+                </p>
+              )}
+            </div>
+            <BookOpen className="w-8 h-8 text-gold-500" />
+          </div>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-navy-800/50 to-navy-900/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-400 text-sm">Nota do TCC</p>
+              <p className="text-3xl font-bold text-gold">
+                {gradeMetrics.tccGradeEffective.toFixed(2)}
+              </p>
+              {gradeMetrics.tccGradeOverride === undefined && gradeMetrics.tccGradeRaw !== null && (
+                <p className="text-xs text-gold-400 mt-1">Origem: {gradeMetrics.tccGradeRaw.toFixed(2)}</p>
+              )}
+              {gradeMetrics.tccGradeRaw === null && (
+                <p className="text-xs text-gold-400 mt-1">Sem nota de TCC registrada</p>
+              )}
+            </div>
+            <Scale className="w-8 h-8 text-gold-500" />
+          </div>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-navy-800/50 to-navy-900/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-400 text-sm">Participação nos Testes</p>
+              <p className="text-3xl font-bold text-gold">
+                {totalTestsCount > 0 ? Math.round((completedTestsCount / totalTestsCount) * 100) : 0}%
+              </p>
+              <p className="text-xs text-gold-400 mt-1">
+                {completedTestsCount}/{totalTestsCount} realizados
+              </p>
+            </div>
+            <Target className="w-8 h-8 text-gold-500" />
+          </div>
+        </Card>
+      </div>
+
+      {allowEditing && (
+        <>
+          <Card className="bg-gradient-to-br from-navy-800/40 to-navy-900/40 border border-gold-500/20">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
+                  <Target className="w-5 h-5" /> Atribuir Nota Máxima
+                </h3>
+                <p className="text-sm text-gold-300">
+                  Atribua nota máxima (100) a todos os testes de uma vez. Esta ação irá sobrescrever as notas existentes.
+                </p>
+              </div>
+              <div>
+                <Button
+                  variant="primary"
+                  onClick={handleAssignMaxGradeToAll}
+                  disabled={assigningAllGrades || gradesBySubject.length === 0}
+                  icon={<TrendingUp className="w-4 h-4" />}
+                >
+                  {assigningAllGrades ? 'Atribuindo notas...' : 'Nota Máxima em Todos os Testes'}
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-navy-800/40 to-navy-900/40 border border-gold-500/20">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gold flex items-center gap-2">
+                  <Scale className="w-5 h-5" /> Ajustes de Médias e Pesos
+                </h3>
+                <p className="text-sm text-gold-300">
+                  Ajuste manualmente as médias para correções e defina os pesos utilizados na média final.
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs uppercase text-gold-400">Pré-visualização média final</p>
+                <p className={`text-2xl font-bold ${gradeMetrics.finalAverage >= 70 ? 'text-gold' : 'text-red-400'}`}>
+                  {gradeMetrics.finalAverage.toFixed(2)}
+                </p>
+              </div>
+            </div>
+
+          {overrideMessage && (
+            <div className="mb-4 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-300 text-sm">
+              {overrideMessage}
+            </div>
+          )}
+
+          {overrideError && (
+            <div className="mb-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+              {overrideError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gold-300 mb-1">Média dos Testes (ajuste opcional)</label>
+                <input
+                  type="text"
+                  value={overrideForm.testsAverage}
+                  onChange={handleOverrideChange('testsAverage')}
+                  placeholder={gradeMetrics.testsAverageRaw.toFixed(2)}
+                  className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                    validationErrors.testsAverage
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gold-500/30 focus:ring-gold-500'
+                  }`}
+                />
+                {validationErrors.testsAverage && (
+                  <p className="text-xs text-red-400 mt-1">{validationErrors.testsAverage}</p>
+                )}
+                {!validationErrors.testsAverage && (
+                  <p className="text-xs text-gold-400 mt-1">
+                    Deixe em branco para usar a média calculada automaticamente ({gradeMetrics.testsAverageRaw.toFixed(2)}).
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gold-300 mb-1">Peso dos Testes</label>
+                <input
+                  type="text"
+                  value={overrideForm.testsWeight}
+                  onChange={handleOverrideChange('testsWeight')}
+                  className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                    validationErrors.testsWeight
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gold-500/30 focus:ring-gold-500'
+                  }`}
+                />
+                {validationErrors.testsWeight && (
+                  <p className="text-xs text-red-400 mt-1">{validationErrors.testsWeight}</p>
+                )}
+                {!validationErrors.testsWeight && (
+                  <p className="text-xs text-gold-400 mt-1">
+                    Valores maiores aumentam a influência dos testes na média final. Utilize 0 para desconsiderar.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gold-300 mb-1">Nota do TCC (ajuste opcional)</label>
+                <input
+                  type="text"
+                  value={overrideForm.tccGrade}
+                  onChange={handleOverrideChange('tccGrade')}
+                  placeholder={gradeMetrics.tccGradeRaw !== null ? gradeMetrics.tccGradeRaw.toFixed(2) : 'Sem nota registrada'}
+                  className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                    validationErrors.tccGrade
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gold-500/30 focus:ring-gold-500'
+                  }`}
+                />
+                {validationErrors.tccGrade && (
+                  <p className="text-xs text-red-400 mt-1">{validationErrors.tccGrade}</p>
+                )}
+                {!validationErrors.tccGrade && (
+                  <p className="text-xs text-gold-400 mt-1">
+                    Deixe em branco para usar a nota registrada na avaliação de TCC.{gradeMetrics.tccGradeRaw === null ? ' (Nenhuma nota cadastrada até o momento)' : ''}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gold-300 mb-1">Peso do TCC</label>
+                <input
+                  type="text"
+                  value={overrideForm.tccWeight}
+                  onChange={handleOverrideChange('tccWeight')}
+                  className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
+                    validationErrors.tccWeight
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gold-500/30 focus:ring-gold-500'
+                  }`}
+                />
+                {validationErrors.tccWeight && (
+                  <p className="text-xs text-red-400 mt-1">{validationErrors.tccWeight}</p>
+                )}
+                {!validationErrors.tccWeight && (
+                  <p className="text-xs text-gold-400 mt-1">
+                    Ajuste o peso para determinar a importância do TCC na média final. Utilize 0 para desconsiderar.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap justify-end gap-3 mt-6">
+            <Button
+              variant="secondary"
+              onClick={resetOverrides}
+              disabled={isSavingOverrides}
+            >
+              Restaurar valores calculados
+            </Button>
+            <Button
+              variant="primary"
+              onClick={saveOverrides}
+              disabled={isSavingOverrides}
+            >
+              {isSavingOverrides ? 'Salvando...' : 'Salvar ajustes'}
+            </Button>
+          </div>
+        </Card>
+        </>
+      )}
+
+      {/* Lista de Disciplinas */}
+      <div className="space-y-4">
+        {gradesBySubject.map(subject => (
+          <Card key={subject.subjectId} className="overflow-hidden">
+            <div 
+              className="p-6 cursor-pointer hover:bg-navy-800/30 transition-colors"
+              onClick={() => toggleSubject(subject.subjectId)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gold">{subject.subjectName}</h3>
+                  <p className="text-sm text-gold-400 mt-1">{subject.courseName}</p>
+                  
+                  <div className="flex items-center gap-6 mt-3">
+                    <div>
+                      <span className="text-gold-500 text-sm">Média: </span>
+                      <span className={`font-bold text-lg ${subject.average >= 70 ? 'text-gold' : 'text-red-500'}`}>
+                        {subject.average.toFixed(1)}
+                      </span>
+                    </div>
+                    
+                    <div>
+                      <span className="text-gold-500 text-sm">Progresso: </span>
+                      <span className="text-gold-200">
+                        {subject.testsCompleted}/{subject.totalTests} testes
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Barra de Progresso */}
+                  <div className="mt-3 bg-navy-900/50 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-gold-500 to-gold-600 transition-all duration-500"
+                      style={{ width: `${subject.totalTests > 0 ? (subject.testsCompleted / subject.totalTests) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+                
+                <div className="ml-4">
+                  {expandedSubjects.has(subject.subjectId) ? (
+                    <ChevronUp className="w-5 h-5 text-gold-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gold-400" />
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Detalhes Expandidos */}
+            {expandedSubjects.has(subject.subjectId) && (
+              <div className="border-t border-gold-500/20 p-6 bg-navy-900/30">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <p className="text-gold-500 text-sm">Maior Nota</p>
+                    <p className="text-2xl font-bold text-green-500">{subject.highestScore}</p>
+                  </div>
+                  <div>
+                    <p className="text-gold-500 text-sm">Menor Nota</p>
+                    <p className={`text-2xl font-bold ${subject.lowestScore >= 70 ? 'text-gold' : 'text-red-500'}`}>
+                      {subject.lowestScore}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gold-500 text-sm">Não Realizados</p>
+                    <p className="text-2xl font-bold text-orange-500">{subject.testsMissed}</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <p className="text-gold-400 font-medium mb-2">Detalhamento dos Testes:</p>
+                  {subject.tests.map(test => (
+                    <div
+                      key={test.id}
+                      className={`flex justify-between items-center p-3 rounded-lg ${
+                        test.completed ? 'bg-navy-800/50' : 'bg-navy-900/50'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <p className={`font-medium ${test.completed ? 'text-gold-200' : 'text-gold-600'}`}>
+                          {test.title}
+                        </p>
+                        {test.date && (
+                          <p className="text-xs text-gold-500 mt-1">Data: {test.date}</p>
+                        )}
+                      </div>
+                      <div className="ml-4 flex items-center gap-3">
+                        <div>
+                          {test.completed ? (
+                            <span className={`font-bold text-lg ${test.score >= 70 ? 'text-gold' : 'text-red-500'}`}>
+                              {test.score}
+                            </span>
+                          ) : (
+                            <span className="text-gold-600 text-sm">Não Realizado</span>
+                          )}
+                        </div>
+                        {allowEditing && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => handleAssignMaxGrade(test.id, test.title)}
+                            disabled={assigningGrade === test.id}
+                          >
+                            {assigningGrade === test.id ? 'Atribuindo...' : 'Nota Máxima'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        ))}
+      </div>
+      
+      {gradesBySubject.length === 0 && (
+        <Card className="text-center py-12">
+          <p className="text-gold-400">Nenhum teste encontrado para este aluno.</p>
+        </Card>
+      )}
+    </div>
+  )
+}
