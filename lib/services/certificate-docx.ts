@@ -1,6 +1,7 @@
 /**
  * Serviço para geração de certificados DOCX
  */
+import 'server-only'
 
 import Docxtemplater from 'docxtemplater'
 import PizZip from 'pizzip'

@@ -1,3 +1,4 @@
+import 'server-only'
 import PizZip from 'pizzip'
 import { DocxPlaceholder, CERTIFICATE_DOCX_FIELDS } from '@/types/certificate-docx'
 

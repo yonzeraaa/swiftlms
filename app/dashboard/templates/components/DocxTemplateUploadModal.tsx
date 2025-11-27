@@ -5,12 +5,7 @@ import { X, Upload, FileText, CheckCircle, AlertCircle, Settings, MapPin } from 
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
 import Card from '../../../components/Card'
-import {
-  uploadCertificateDocxTemplate,
-  updateTemplateMappings,
-  uploadDocxForAnalysis,
-  deleteDocxAnalysisFile,
-} from '@/lib/actions/certificate-docx-templates'
+import { updateTemplateMappings } from '@/lib/actions/certificate-docx-templates'
 import {
   CertificateKind,
   FieldMapping,
@@ -127,15 +122,24 @@ export default function DocxTemplateUploadModal({
     setErrorMessage('')
 
     try {
-      // 1. Upload para Storage via server action (contorna limite de payload)
-      const uploadResult = await uploadDocxForAnalysis(file)
+      // 1. Upload temporário via API (evita vazamento de libs com eval para o bundle cliente)
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
+
+      const uploadResponse = await fetch('/api/upload-docx-temp', {
+        method: 'POST',
+        body: uploadFormData,
+        credentials: 'include',
+      })
+
+      const uploadResult = await uploadResponse.json()
       if (!uploadResult.success || !uploadResult.storagePath) {
         throw new Error(uploadResult.error || 'Erro ao fazer upload para análise')
       }
 
       setTempStoragePath(uploadResult.storagePath)
 
-      // 2. Chamar API com path do Storage
+      // 2. Chamar API de análise com path do Storage
       const response = await fetch('/api/analyze-docx-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -160,7 +164,11 @@ export default function DocxTemplateUploadModal({
         setActiveTab('preview')
       } else {
         // Limpar arquivo temporário em caso de erro
-        await deleteDocxAnalysisFile(uploadResult.storagePath)
+        await fetch('/api/upload-docx-temp', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storagePath: uploadResult.storagePath }),
+        })
         setTempStoragePath(null)
         setErrorMessage(result.error || 'Erro ao analisar template')
       }
@@ -170,7 +178,11 @@ export default function DocxTemplateUploadModal({
       setErrorMessage(msg)
       // Limpar arquivo temporário em caso de erro
       if (tempStoragePath) {
-        await deleteDocxAnalysisFile(tempStoragePath)
+        await fetch('/api/upload-docx-temp', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ storagePath: tempStoragePath }),
+        })
         setTempStoragePath(null)
       }
     } finally {
@@ -189,18 +201,47 @@ export default function DocxTemplateUploadModal({
     setErrorMessage('')
 
     try {
-      const result = await uploadCertificateDocxTemplate(
-        file,
-        name,
-        description || null,
-        certificateKind,
-        user.id,
-        tempStoragePath || undefined
-      )
+      // Se não tiver feito preview, fazer upload temporário primeiro
+      let storagePath = tempStoragePath
+      if (!storagePath) {
+        const uploadFormData = new FormData()
+        uploadFormData.append('file', file)
 
-      // Limpar referência ao arquivo temporário após sucesso
+        const tempResponse = await fetch('/api/upload-docx-temp', {
+          method: 'POST',
+          body: uploadFormData,
+          credentials: 'include',
+        })
+
+        const tempResult = await tempResponse.json()
+        if (!tempResult.success) {
+          throw new Error(tempResult.error || 'Erro ao fazer upload temporário')
+        }
+        storagePath = tempResult.storagePath
+      }
+
+      // Chamar API de upload definitivo
+      const response = await fetch('/api/upload-docx-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tempStoragePath: storagePath,
+          name,
+          description: description || null,
+          certificateKind,
+          userId: user.id,
+          fileName: file.name,
+        }),
+        credentials: 'include',
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao fazer upload do template')
+      }
+
       setTempStoragePath(null)
-
       setTemplateId(result.templateId)
       setPlaceholders(result.placeholders)
       setWarnings(result.warnings)
