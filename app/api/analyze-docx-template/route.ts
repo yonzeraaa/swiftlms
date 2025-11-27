@@ -64,20 +64,7 @@ export async function POST(request: NextRequest) {
     // Gerar sugestões de mapeamento
     const suggestions = generateMappingSuggestions(placeholders)
 
-    // Validar campos obrigatórios
-    const requiredFields = Object.entries(CERTIFICATE_DOCX_FIELDS)
-      .filter(([, field]) => field.required)
-      .map(([name]) => name)
-
-    const missingRequired = requiredFields.filter(
-      (field) => !placeholders.find((p) => p.name === field)
-    )
-
-    if (missingRequired.length > 0) {
-      warnings.push(
-        `Campos obrigatórios ausentes: ${missingRequired.join(', ')}`
-      )
-    }
+    // Avisos de campos obrigatórios já são gerados pelo parser em extractPlaceholdersFromBuffer
 
     return NextResponse.json({
       success: true,
