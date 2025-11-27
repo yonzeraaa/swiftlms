@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { extractPlaceholdersFromBuffer } from '@/lib/docx-parser'
 import { CERTIFICATE_DOCX_FIELDS, FieldMapping, DocxPlaceholder } from '@/types/certificate-docx'
 
+// Usar Node.js runtime para suportar arquivos maiores (até 50MB)
+export const runtime = 'nodejs'
+
+// Configurar limite de tamanho do body (10MB)
+export const maxDuration = 30
+
 /**
  * Gera sugestões de mapeamento baseadas nos campos conhecidos
  */
