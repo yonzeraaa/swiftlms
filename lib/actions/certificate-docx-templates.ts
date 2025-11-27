@@ -7,6 +7,7 @@ import {
   CertificateKind,
   FieldMapping,
   DocxPlaceholder,
+  validateFieldMappings,
 } from '@/types/certificate-docx'
 import { generateCertificateDocx, generateCertificatePdf, certificateToDocxData } from '@/lib/services/certificate-docx'
 import { isDocxToPdfAvailable } from '@/lib/services/docx-to-pdf'
@@ -141,6 +142,12 @@ export async function updateTemplateMappings(
   mappings: FieldMapping[]
 ) {
   const supabase = await createClient()
+
+  // Validar mapeamentos
+  const validation = validateFieldMappings(mappings)
+  if (!validation.success) {
+    throw new Error(`Mapeamento inválido: ${validation.error.errors.map(e => e.message).join(', ')}`)
+  }
 
   // Buscar template atual
   const { data: template, error: fetchError } = await supabase

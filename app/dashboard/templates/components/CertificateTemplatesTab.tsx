@@ -8,6 +8,7 @@ import Card from '../../../components/Card'
 import Spinner from '../../../components/ui/Spinner'
 import Button from '../../../components/Button'
 import { CertificateTemplate, TEMPLATE_VARIABLES, DEFAULT_CERTIFICATE_HTML } from '@/types/certificates'
+import { CertificateDocxTemplate } from '@/types/certificate-docx'
 import {
   getCertificateTemplates,
   createCertificateTemplate,
@@ -29,6 +30,7 @@ export default function CertificateTemplatesTab() {
   const [showDocxModal, setShowDocxModal] = useState(false)
   const [docxRefresh, setDocxRefresh] = useState(0)
   const [editingTemplate, setEditingTemplate] = useState<CertificateTemplate | null>(null)
+  const [editingDocxTemplate, setEditingDocxTemplate] = useState<CertificateDocxTemplate | undefined>(undefined)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -289,15 +291,26 @@ export default function CertificateTemplatesTab() {
         </div>
       </Card>
       ) : (
-        <DocxTemplatesSection onRefresh={docxRefresh} />
+        <DocxTemplatesSection 
+          onRefresh={docxRefresh} 
+          onEdit={(template) => {
+            setEditingDocxTemplate(template)
+            setShowDocxModal(true)
+          }}
+        />
       )}
 
       {/* DOCX Upload Modal */}
       {showDocxModal && (
         <DocxTemplateUploadModal
-          onClose={() => setShowDocxModal(false)}
+          editingTemplate={editingDocxTemplate}
+          onClose={() => {
+            setShowDocxModal(false)
+            setEditingDocxTemplate(undefined)
+          }}
           onSuccess={() => {
             setShowDocxModal(false)
+            setEditingDocxTemplate(undefined)
             setDocxRefresh(prev => prev + 1)
           }}
         />

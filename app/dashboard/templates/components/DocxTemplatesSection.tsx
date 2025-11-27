@@ -15,9 +15,10 @@ import toast from 'react-hot-toast'
 
 interface DocxTemplatesSectionProps {
   onRefresh?: number
+  onEdit?: (template: CertificateDocxTemplate) => void
 }
 
-export default function DocxTemplatesSection({ onRefresh }: DocxTemplatesSectionProps) {
+export default function DocxTemplatesSection({ onRefresh, onEdit }: DocxTemplatesSectionProps) {
   const [templates, setTemplates] = useState<CertificateDocxTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [filterKind, setFilterKind] = useState<CertificateKind>('all')
@@ -223,6 +224,16 @@ export default function DocxTemplatesSection({ onRefresh }: DocxTemplatesSection
                     className={template.is_active ? 'text-yellow-600' : 'text-green-600'}
                   >
                     <Power className="w-4 h-4" />
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onEdit?.(template)}
+                    className="text-blue-600 hover:bg-blue-50"
+                    title="Editar Mapeamentos"
+                  >
+                    <Settings className="w-4 h-4" />
                   </Button>
 
                   <Button

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Upload, FileText, CheckCircle, AlertCircle, Settings, Eye } from 'lucide-react'
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
@@ -14,16 +14,19 @@ import {
   FieldMapping,
   DocxPlaceholder,
   CERTIFICATE_DOCX_FIELDS,
+  CertificateDocxTemplate,
 } from '@/types/certificate-docx'
 
 interface DocxTemplateUploadModalProps {
   onClose: () => void
   onSuccess: () => void
+  editingTemplate?: CertificateDocxTemplate
 }
 
 export default function DocxTemplateUploadModal({
   onClose,
   onSuccess,
+  editingTemplate,
 }: DocxTemplateUploadModalProps) {
   const { user } = useAuth()
   const [file, setFile] = useState<File | null>(null)
@@ -40,13 +43,36 @@ export default function DocxTemplateUploadModal({
   const [warnings, setWarnings] = useState<string[]>([])
   const [mappings, setMappings] = useState<FieldMapping[]>([])
   const [activeTab, setActiveTab] = useState<'info' | 'preview' | 'mapping'>('info')
-  const [previewing, setPreviewing] = useState(false)
   const [previewData, setPreviewData] = useState<{
     placeholders: DocxPlaceholder[]
     warnings: string[]
   } | null>(null)
   const [templateId, setTemplateId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editingTemplate) {
+      setName(editingTemplate.name)
+      setDescription(editingTemplate.description || '')
+      setCertificateKind(editingTemplate.certificate_kind)
+      setPlaceholders(editingTemplate.placeholders)
+      setTemplateId(editingTemplate.id)
+      setWarnings(editingTemplate.validation_warnings || [])
+      
+      if (editingTemplate.metadata?.mappings) {
+        setMappings(editingTemplate.metadata.mappings)
+      } else {
+        setMappings(editingTemplate.placeholders.map((p: DocxPlaceholder) => ({
+          placeholder: p.name,
+          source: p.source || '',
+          transform: p.format as FieldMapping['transform'],
+        })))
+      }
+      
+      setUploadStatus('success')
+      setActiveTab('mapping')
+    }
+  }, [editingTemplate])
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault()
@@ -166,7 +192,7 @@ export default function DocxTemplateUploadModal({
 
   const handleMappingChange = (index: number, field: keyof FieldMapping, value: string | undefined) => {
     const newMappings = [...mappings]
-    // @ts-ignore - TS doesn't like dynamic assignment to union type here easily
+    // @ts-expect-error - TS doesn't like dynamic assignment to union type here easily
     newMappings[index] = { ...newMappings[index], [field]: value }
     setMappings(newMappings)
   }
@@ -199,10 +225,10 @@ export default function DocxTemplateUploadModal({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-neutral-900">
-                Novo Template DOCX
+                {editingTemplate ? 'Editar Mapeamentos' : 'Novo Template DOCX'}
               </h2>
               <p className="text-sm text-neutral-500">
-                Upload de template de certificado
+                {editingTemplate ? 'Configure os campos do template' : 'Upload de template de certificado'}
               </p>
             </div>
           </div>
@@ -227,17 +253,19 @@ export default function DocxTemplateUploadModal({
             >
               Informações
             </button>
-            <button
-              onClick={() => setActiveTab('preview')}
-              disabled={!previewData && !previewing}
-              className={`py-3 px-1 border-b-2 transition-colors ${
-                activeTab === 'preview'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-neutral-500 hover:text-neutral-700'
-              } ${!previewData && !previewing ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              Preview
-            </button>
+            {!editingTemplate && (
+              <button
+                onClick={() => setActiveTab('preview')}
+                disabled={!previewData && !previewing}
+                className={`py-3 px-1 border-b-2 transition-colors ${
+                  activeTab === 'preview'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-neutral-500 hover:text-neutral-700'
+                } ${!previewData && !previewing ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                Preview
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('mapping')}
               disabled={uploadStatus !== 'success'}
@@ -257,45 +285,47 @@ export default function DocxTemplateUploadModal({
           {activeTab === 'info' && (
             <div className="space-y-6">
               {/* Upload Area */}
-              <div
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-xl p-8 transition-colors ${
-                  dragActive
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-neutral-300 bg-neutral-50'
-                }`}
-              >
-                <div className="text-center">
-                  <Upload
-                    className={`w-12 h-12 mx-auto mb-4 ${
-                      dragActive ? 'text-blue-500' : 'text-neutral-400'
-                    }`}
-                  />
-                  <p className="text-sm font-medium text-neutral-700 mb-2">
-                    {file
-                      ? file.name
-                      : 'Arraste um arquivo .docx ou clique para selecionar'}
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".docx"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    variant="outline"
-                    size="sm"
-                    disabled={uploading}
-                  >
-                    Selecionar Arquivo
-                  </Button>
+              {!editingTemplate && (
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-xl p-8 transition-colors ${
+                    dragActive
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-neutral-300 bg-neutral-50'
+                  }`}
+                >
+                  <div className="text-center">
+                    <Upload
+                      className={`w-12 h-12 mx-auto mb-4 ${
+                        dragActive ? 'text-blue-500' : 'text-neutral-400'
+                      }`}
+                    />
+                    <p className="text-sm font-medium text-neutral-700 mb-2">
+                      {file
+                        ? file.name
+                        : 'Arraste um arquivo .docx ou clique para selecionar'}
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".docx"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <Button
+                      onClick={() => fileInputRef.current?.click()}
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                    >
+                      Selecionar Arquivo
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Form Fields */}
               <div className="space-y-4">
@@ -307,9 +337,9 @@ export default function DocxTemplateUploadModal({
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-neutral-100 disabled:text-neutral-500"
                     placeholder="Ex: Certificado de Conclusão Técnico"
-                    disabled={uploading}
+                    disabled={uploading || !!editingTemplate}
                   />
                 </div>
 
@@ -320,10 +350,10 @@ export default function DocxTemplateUploadModal({
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-neutral-100 disabled:text-neutral-500"
                     placeholder="Descrição opcional do template"
                     rows={3}
-                    disabled={uploading}
+                    disabled={uploading || !!editingTemplate}
                   />
                 </div>
 
@@ -334,8 +364,8 @@ export default function DocxTemplateUploadModal({
                   <select
                     value={certificateKind}
                     onChange={(e) => setCertificateKind(e.target.value as CertificateKind)}
-                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={uploading}
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-neutral-100 disabled:text-neutral-500"
+                    disabled={uploading || !!editingTemplate}
                   >
                     <option value="all">Todos os tipos</option>
                     <option value="technical">Apenas Técnico</option>
@@ -605,7 +635,7 @@ export default function DocxTemplateUploadModal({
             Cancelar
           </Button>
 
-          {activeTab === 'info' && (
+          {activeTab === 'info' && !editingTemplate && (
             <Button
               onClick={handleUpload}
               disabled={!file || !name || uploading}
@@ -613,6 +643,11 @@ export default function DocxTemplateUploadModal({
             >
               {uploading ? 'Enviando...' : 'Enviar Template'}
             </Button>
+          )}
+          {activeTab === 'info' && editingTemplate && (
+             <Button onClick={() => setActiveTab('mapping')}>
+               Editar Mapeamentos
+             </Button>
           )}
 
           {activeTab === 'mapping' && (
