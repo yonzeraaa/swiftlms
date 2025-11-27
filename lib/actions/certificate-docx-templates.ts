@@ -13,59 +13,160 @@ import { generateCertificateDocx, generateCertificatePdf, certificateToDocxData 
 import { isDocxToPdfAvailable } from '@/lib/services/docx-to-pdf'
 
 /**
+ * Upload temporário de arquivo DOCX para análise
+ * Usado para contornar limite de payload do Vercel
+ */
+export async function uploadDocxForAnalysis(
+  file: File
+): Promise<{ success: boolean; storagePath?: string; error?: string }> {
+  try {
+    const supabase = await createClient()
+
+    if (!file.name.endsWith('.docx')) {
+      return { success: false, error: 'Apenas arquivos .docx são suportados' }
+    }
+
+    const timestamp = Date.now()
+    const uniqueId = crypto.randomUUID()
+    const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const storagePath = `temp-analysis/${timestamp}_${uniqueId}_${sanitizedName}`
+
+    const arrayBuffer = await file.arrayBuffer()
+    const fileBuffer = new Uint8Array(arrayBuffer)
+
+    const { error: uploadError } = await supabase.storage
+      .from('excel-templates')
+      .upload(storagePath, fileBuffer, {
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        upsert: false,
+      })
+
+    if (uploadError) {
+      return { success: false, error: `Erro no upload: ${uploadError.message}` }
+    }
+
+    return { success: true, storagePath }
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Erro desconhecido'
+    return { success: false, error: msg }
+  }
+}
+
+/**
+ * Remove arquivo temporário de análise
+ */
+export async function deleteDocxAnalysisFile(
+  storagePath: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+
+    const { error } = await supabase.storage
+      .from('excel-templates')
+      .remove([storagePath])
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true }
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Erro desconhecido'
+    return { success: false, error: msg }
+  }
+}
+
+/**
  * Upload e analisa um template DOCX
+ * Se tempStoragePath fornecido, move o arquivo de temp para certificate-docx/
  */
 export async function uploadCertificateDocxTemplate(
   file: File,
   name: string,
   description: string | null,
   certificateKind: CertificateKind,
-  userId: string
+  userId: string,
+  tempStoragePath?: string
 ) {
   const supabase = await createClient()
 
-  // Verificar se é DOCX
   if (!file.name.endsWith('.docx')) {
     throw new Error('Apenas arquivos .docx são suportados')
   }
 
-  // Analisar template para extrair placeholders
-  const formData = new FormData()
-  formData.append('file', file)
-
-  const analysisResponse = await fetch('/api/analyze-docx-template', {
-    method: 'POST',
-    body: formData,
-  })
-
-  if (!analysisResponse.ok) {
-    throw new Error('Erro ao analisar template')
-  }
-
-  const analysis = await analysisResponse.json()
-
-  if (!analysis.success) {
-    throw new Error(analysis.error || 'Erro ao analisar template')
-  }
-
-  // Upload do arquivo para storage
+  // Definir caminho final
   const timestamp = Date.now()
-  const fileName = `${timestamp}_${file.name}`
-  const storagePath = `certificate-docx/${fileName}`
+  const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const storagePath = `certificate-docx/${timestamp}_${sanitizedName}`
 
-  const arrayBuffer = await file.arrayBuffer()
-  const fileBuffer = Buffer.from(arrayBuffer)
+  let fileBuffer: Buffer
 
-  const { error: uploadError } = await supabase.storage
-    .from('excel-templates')
-    .upload(storagePath, fileBuffer, {
-      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      upsert: false,
-    })
+  if (tempStoragePath) {
+    // Se já existe arquivo temporário, baixar e mover
+    const { data: tempFile, error: downloadError } = await supabase.storage
+      .from('excel-templates')
+      .download(tempStoragePath)
 
-  if (uploadError) {
-    throw new Error(`Erro ao fazer upload: ${uploadError.message}`)
+    if (downloadError || !tempFile) {
+      throw new Error(`Erro ao acessar arquivo temporário: ${downloadError?.message}`)
+    }
+
+    const arrayBuffer = await tempFile.arrayBuffer()
+    fileBuffer = Buffer.from(arrayBuffer)
+
+    // Upload no local definitivo
+    const { error: uploadError } = await supabase.storage
+      .from('excel-templates')
+      .upload(storagePath, fileBuffer, {
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        upsert: false,
+      })
+
+    if (uploadError) {
+      throw new Error(`Erro ao fazer upload: ${uploadError.message}`)
+    }
+
+    // Deletar arquivo temporário
+    await supabase.storage.from('excel-templates').remove([tempStoragePath])
+  } else {
+    // Upload direto do arquivo
+    const arrayBuffer = await file.arrayBuffer()
+    fileBuffer = Buffer.from(arrayBuffer)
+
+    const { error: uploadError } = await supabase.storage
+      .from('excel-templates')
+      .upload(storagePath, fileBuffer, {
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        upsert: false,
+      })
+
+    if (uploadError) {
+      throw new Error(`Erro ao fazer upload: ${uploadError.message}`)
+    }
   }
+
+  // Extrair placeholders diretamente do buffer
+  const { extractPlaceholdersFromBuffer } = await import('@/lib/docx-parser')
+  const { CERTIFICATE_DOCX_FIELDS } = await import('@/types/certificate-docx')
+
+  const { placeholders, warnings } = extractPlaceholdersFromBuffer(fileBuffer)
+
+  // Gerar sugestões de mapeamento
+  const suggestions: FieldMapping[] = placeholders.map((placeholder) => {
+    const knownField = CERTIFICATE_DOCX_FIELDS[placeholder.name as keyof typeof CERTIFICATE_DOCX_FIELDS]
+    if (knownField) {
+      return {
+        placeholder: placeholder.name,
+        source: placeholder.name,
+        transform: placeholder.format as FieldMapping['transform'],
+      }
+    }
+    return {
+      placeholder: placeholder.name,
+      source: '',
+      fixedValue: '',
+    }
+  })
 
   // Criar registro no banco
   const { data: insertedTemplate, error: insertError } = await supabase
@@ -79,18 +180,17 @@ export async function uploadCertificateDocxTemplate(
       storage_bucket: 'excel-templates',
       created_by: userId,
       is_active: true,
-      placeholders: analysis.placeholders,
-      validation_warnings: analysis.warnings.length > 0 ? analysis.warnings : null,
+      placeholders,
+      validation_warnings: warnings.length > 0 ? warnings : null,
       metadata: {
         version: '1.0',
-        mappings: analysis.suggestions,
+        mappings: JSON.parse(JSON.stringify(suggestions)),
       },
     })
     .select('id')
     .single()
 
   if (insertError || !insertedTemplate) {
-    // Rollback: deletar arquivo do storage
     await supabase.storage.from('excel-templates').remove([storagePath])
     throw new Error(`Erro ao criar template: ${insertError?.message || 'Erro desconhecido'}`)
   }
@@ -100,9 +200,9 @@ export async function uploadCertificateDocxTemplate(
   return {
     success: true,
     templateId: insertedTemplate.id,
-    placeholders: analysis.placeholders,
-    warnings: analysis.warnings,
-    mappings: analysis.suggestions,
+    placeholders,
+    warnings,
+    mappings: suggestions,
   }
 }
 

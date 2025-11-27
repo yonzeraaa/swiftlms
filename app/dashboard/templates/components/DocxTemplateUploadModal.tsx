@@ -8,6 +8,8 @@ import Card from '../../../components/Card'
 import {
   uploadCertificateDocxTemplate,
   updateTemplateMappings,
+  uploadDocxForAnalysis,
+  deleteDocxAnalysisFile,
 } from '@/lib/actions/certificate-docx-templates'
 import {
   CertificateKind,
@@ -49,6 +51,7 @@ export default function DocxTemplateUploadModal({
   } | null>(null)
   const [templateId, setTemplateId] = useState<string | null>(null)
   const [previewing, setPreviewing] = useState(false)
+  const [tempStoragePath, setTempStoragePath] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -124,16 +127,22 @@ export default function DocxTemplateUploadModal({
     setErrorMessage('')
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
+      // 1. Upload para Storage via server action (contorna limite de payload)
+      const uploadResult = await uploadDocxForAnalysis(file)
+      if (!uploadResult.success || !uploadResult.storagePath) {
+        throw new Error(uploadResult.error || 'Erro ao fazer upload para análise')
+      }
 
+      setTempStoragePath(uploadResult.storagePath)
+
+      // 2. Chamar API com path do Storage
       const response = await fetch('/api/analyze-docx-template', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storagePath: uploadResult.storagePath }),
         credentials: 'include',
       })
 
-      // Verifica se a resposta é JSON antes de parsear
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text()
@@ -150,12 +159,20 @@ export default function DocxTemplateUploadModal({
         })
         setActiveTab('preview')
       } else {
+        // Limpar arquivo temporário em caso de erro
+        await deleteDocxAnalysisFile(uploadResult.storagePath)
+        setTempStoragePath(null)
         setErrorMessage(result.error || 'Erro ao analisar template')
       }
     } catch (error: unknown) {
       console.error('Erro ao fazer preview:', error)
       const msg = error instanceof Error ? error.message : 'Erro ao fazer preview do template'
       setErrorMessage(msg)
+      // Limpar arquivo temporário em caso de erro
+      if (tempStoragePath) {
+        await deleteDocxAnalysisFile(tempStoragePath)
+        setTempStoragePath(null)
+      }
     } finally {
       setPreviewing(false)
     }
@@ -177,8 +194,12 @@ export default function DocxTemplateUploadModal({
         name,
         description || null,
         certificateKind,
-        user.id
+        user.id,
+        tempStoragePath || undefined
       )
+
+      // Limpar referência ao arquivo temporário após sucesso
+      setTempStoragePath(null)
 
       setTemplateId(result.templateId)
       setPlaceholders(result.placeholders)

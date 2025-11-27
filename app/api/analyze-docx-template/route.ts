@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { extractPlaceholdersFromBuffer } from '@/lib/docx-parser'
 import { CERTIFICATE_DOCX_FIELDS, FieldMapping, DocxPlaceholder } from '@/types/certificate-docx'
 
-// Usar Node.js runtime para suportar arquivos maiores (até 50MB)
+// Usar Node.js runtime para suportar arquivos maiores
 export const runtime = 'nodejs'
-
-// Configurar limite de tamanho do body (10MB)
 export const maxDuration = 30
 
 /**
@@ -21,10 +20,9 @@ function generateMappingSuggestions(placeholders: DocxPlaceholder[]): FieldMappi
       suggestions.push({
         placeholder: placeholder.name,
         source: placeholder.name,
-        transform: placeholder.format as any,
+        transform: placeholder.format as FieldMapping['transform'],
       })
     } else {
-      // Campo desconhecido, sugerir mapeamento manual
       suggestions.push({
         placeholder: placeholder.name,
         source: '',
@@ -38,39 +36,65 @@ function generateMappingSuggestions(placeholders: DocxPlaceholder[]): FieldMappi
 
 /**
  * POST /api/analyze-docx-template
- * Analisa um template DOCX e extrai placeholders
+ * Analisa um template DOCX - aceita path do Storage ou FormData
  */
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData()
-    const file = formData.get('file') as File
+    const contentType = request.headers.get('content-type') || ''
+    let buffer: Buffer
 
-    if (!file) {
-      return NextResponse.json(
-        { success: false, error: 'Nenhum arquivo enviado' },
-        { status: 400 }
-      )
+    // Se JSON, buscar arquivo do Storage
+    if (contentType.includes('application/json')) {
+      const body = await request.json()
+      const { storagePath } = body
+
+      if (!storagePath) {
+        return NextResponse.json(
+          { success: false, error: 'Caminho do arquivo não informado' },
+          { status: 400 }
+        )
+      }
+
+      const supabase = await createClient()
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('excel-templates')
+        .download(storagePath)
+
+      if (downloadError || !fileData) {
+        return NextResponse.json(
+          { success: false, error: `Erro ao baixar arquivo: ${downloadError?.message}` },
+          { status: 400 }
+        )
+      }
+
+      const arrayBuffer = await fileData.arrayBuffer()
+      buffer = Buffer.from(arrayBuffer)
+    } else {
+      // FormData tradicional (mantido para compatibilidade com arquivos pequenos)
+      const formData = await request.formData()
+      const file = formData.get('file') as File
+
+      if (!file) {
+        return NextResponse.json(
+          { success: false, error: 'Nenhum arquivo enviado' },
+          { status: 400 }
+        )
+      }
+
+      if (!file.name.endsWith('.docx')) {
+        return NextResponse.json(
+          { success: false, error: 'Apenas arquivos .docx são suportados' },
+          { status: 400 }
+        )
+      }
+
+      const arrayBuffer = await file.arrayBuffer()
+      buffer = Buffer.from(arrayBuffer)
     }
 
-    // Verificar se é um arquivo DOCX
-    if (!file.name.endsWith('.docx')) {
-      return NextResponse.json(
-        { success: false, error: 'Apenas arquivos .docx são suportados' },
-        { status: 400 }
-      )
-    }
-
-    // Converter para buffer
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-
-    // Extrair placeholders usando o novo parser robusto
+    // Extrair placeholders
     const { placeholders, warnings } = extractPlaceholdersFromBuffer(buffer)
-
-    // Gerar sugestões de mapeamento
     const suggestions = generateMappingSuggestions(placeholders)
-
-    // Avisos de campos obrigatórios já são gerados pelo parser em extractPlaceholdersFromBuffer
 
     return NextResponse.json({
       success: true,
