@@ -130,7 +130,16 @@ export default function DocxTemplateUploadModal({
       const response = await fetch('/api/analyze-docx-template', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       })
+
+      // Verifica se a resposta é JSON antes de parsear
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Resposta não-JSON da API:', text.substring(0, 500))
+        throw new Error(`Erro do servidor (${response.status}): resposta inválida`)
+      }
 
       const result = await response.json()
 
@@ -145,7 +154,8 @@ export default function DocxTemplateUploadModal({
       }
     } catch (error: unknown) {
       console.error('Erro ao fazer preview:', error)
-      setErrorMessage('Erro ao fazer preview do template')
+      const msg = error instanceof Error ? error.message : 'Erro ao fazer preview do template'
+      setErrorMessage(msg)
     } finally {
       setPreviewing(false)
     }
