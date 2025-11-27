@@ -48,6 +48,7 @@ export default function DocxTemplateUploadModal({
     warnings: string[]
   } | null>(null)
   const [templateId, setTemplateId] = useState<string | null>(null)
+  const [previewing, setPreviewing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -192,7 +193,6 @@ export default function DocxTemplateUploadModal({
 
   const handleMappingChange = (index: number, field: keyof FieldMapping, value: string | undefined) => {
     const newMappings = [...mappings]
-    // @ts-expect-error - TS doesn't like dynamic assignment to union type here easily
     newMappings[index] = { ...newMappings[index], [field]: value }
     setMappings(newMappings)
   }

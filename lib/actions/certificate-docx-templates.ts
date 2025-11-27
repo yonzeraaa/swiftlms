@@ -146,7 +146,7 @@ export async function updateTemplateMappings(
   // Validar mapeamentos
   const validation = validateFieldMappings(mappings)
   if (!validation.success) {
-    throw new Error(`Mapeamento inválido: ${validation.error.errors.map(e => e.message).join(', ')}`)
+    throw new Error(`Mapeamento inválido: ${validation.error.issues.map(e => e.message).join(', ')}`)
   }
 
   // Buscar template atual
