@@ -67,7 +67,7 @@ export async function uploadCertificateDocxTemplate(
   }
 
   // Criar registro no banco
-  const { error: insertError } = await supabase
+  const { data: insertedTemplate, error: insertError } = await supabase
     .from('excel_templates')
     .insert({
       name,
@@ -85,19 +85,23 @@ export async function uploadCertificateDocxTemplate(
         mappings: analysis.suggestions,
       },
     })
+    .select('id')
+    .single()
 
-  if (insertError) {
+  if (insertError || !insertedTemplate) {
     // Rollback: deletar arquivo do storage
     await supabase.storage.from('excel-templates').remove([storagePath])
-    throw new Error(`Erro ao criar template: ${insertError.message}`)
+    throw new Error(`Erro ao criar template: ${insertError?.message || 'Erro desconhecido'}`)
   }
 
   revalidatePath('/dashboard/templates')
 
   return {
     success: true,
+    templateId: insertedTemplate.id,
     placeholders: analysis.placeholders,
     warnings: analysis.warnings,
+    mappings: analysis.suggestions,
   }
 }
 

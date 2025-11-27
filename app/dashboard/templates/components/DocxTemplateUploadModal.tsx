@@ -45,6 +45,7 @@ export default function DocxTemplateUploadModal({
     placeholders: DocxPlaceholder[]
     warnings: string[]
   } | null>(null)
+  const [templateId, setTemplateId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleDrag = (e: React.DragEvent) => {
@@ -115,7 +116,7 @@ export default function DocxTemplateUploadModal({
       } else {
         setErrorMessage(result.error || 'Erro ao analisar template')
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao fazer preview:', error)
       setErrorMessage('Erro ao fazer preview do template')
     } finally {
@@ -142,35 +143,50 @@ export default function DocxTemplateUploadModal({
         user.id
       )
 
+      setTemplateId(result.templateId)
       setPlaceholders(result.placeholders)
       setWarnings(result.warnings)
-      setMappings(result.placeholders.map((p: DocxPlaceholder) => ({
+      setMappings(result.mappings || result.placeholders.map((p: DocxPlaceholder) => ({
         placeholder: p.name,
         source: p.source || '',
-        transform: p.format as any,
+        transform: p.format as FieldMapping['transform'],
       })))
 
       setUploadStatus('success')
       setActiveTab('mapping')
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Erro ao fazer upload:', error)
-      setErrorMessage(error.message || 'Erro ao fazer upload do template')
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer upload do template'
+      setErrorMessage(errorMessage)
       setUploadStatus('error')
     } finally {
       setUploading(false)
     }
   }
 
-  const handleMappingChange = (index: number, field: keyof FieldMapping, value: any) => {
+  const handleMappingChange = (index: number, field: keyof FieldMapping, value: string | undefined) => {
     const newMappings = [...mappings]
+    // @ts-ignore - TS doesn't like dynamic assignment to union type here easily
     newMappings[index] = { ...newMappings[index], [field]: value }
     setMappings(newMappings)
   }
 
-  const handleFinish = () => {
-    setUploadStatus('idle')
-    onSuccess()
-    onClose()
+  const handleFinish = async () => {
+    if (!templateId) return
+
+    setUploading(true)
+    try {
+      await updateTemplateMappings(templateId, mappings)
+      setUploadStatus('idle')
+      onSuccess()
+      onClose()
+    } catch (error: unknown) {
+      console.error('Erro ao salvar mapeamentos:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar mapeamentos'
+      setErrorMessage(errorMessage)
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (

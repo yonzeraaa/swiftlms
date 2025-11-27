@@ -22,6 +22,10 @@ export interface DocxPlaceholder {
   format?: string
   /** Valor padrão se não houver dados */
   defaultValue?: string
+  /** Local onde foi encontrado (header, footer, body) */
+  location?: 'body' | 'header' | 'footer'
+  /** Número de ocorrências no documento */
+  occurrenceCount?: number
 }
 
 /**
