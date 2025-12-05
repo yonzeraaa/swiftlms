@@ -215,6 +215,8 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           certificate_number: string
+          certificate_type: string | null
+          conclusion_date: string | null
           course_hours: number | null
           course_id: string
           created_at: string | null
@@ -225,7 +227,9 @@ export type Database = {
           instructor_name: string | null
           issued_at: string | null
           metadata: Json | null
+          pdf_path: string | null
           rejection_reason: string | null
+          status: string | null
           tcc_id: string | null
           updated_at: string | null
           user_id: string
@@ -236,6 +240,8 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           certificate_number: string
+          certificate_type?: string | null
+          conclusion_date?: string | null
           course_hours?: number | null
           course_id: string
           created_at?: string | null
@@ -246,7 +252,9 @@ export type Database = {
           instructor_name?: string | null
           issued_at?: string | null
           metadata?: Json | null
+          pdf_path?: string | null
           rejection_reason?: string | null
+          status?: string | null
           tcc_id?: string | null
           updated_at?: string | null
           user_id: string
@@ -257,6 +265,8 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           certificate_number?: string
+          certificate_type?: string | null
+          conclusion_date?: string | null
           course_hours?: number | null
           course_id?: string
           created_at?: string | null
@@ -267,7 +277,9 @@ export type Database = {
           instructor_name?: string | null
           issued_at?: string | null
           metadata?: Json | null
+          pdf_path?: string | null
           rejection_reason?: string | null
+          status?: string | null
           tcc_id?: string | null
           updated_at?: string | null
           user_id?: string
