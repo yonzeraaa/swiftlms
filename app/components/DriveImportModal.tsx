@@ -55,8 +55,9 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
 useEffect(() => {
     if (!isOpen) return
 
-    // Limpar o Map quando o modal abre
-    driveIdToDbIdMap.current.clear()
+    // Resetar flags de cancelamento ao reabrir o modal
+    cancelledRef.current = false
+    setIsCancelled(false)
 
     const loadGoogleAPIs = () => {
       const script1 = document.createElement('script')
@@ -110,11 +111,10 @@ useEffect(() => {
 
   const handleDisconnect = () => {
     setAccessToken(null)
-    setItems([])
-    setDriveUrl('')
+    resetModalState(true) // Limpar histórico de importação ao desconectar
   }
 
-  const resetModalState = () => {
+  const resetModalState = (clearImportHistory = false) => {
     setItems([])
     setDriveUrl('')
     setError(null)
@@ -124,12 +124,21 @@ useEffect(() => {
     setShowSuccess(false)
     pausedRef.current = false
     cancelledRef.current = false
-    driveIdToDbIdMap.current.clear()
+    // Só limpa histórico de importação se explicitamente solicitado
+    if (clearImportHistory) {
+      driveIdToDbIdMap.current.clear()
+    }
   }
 
   useEffect(() => {
     if (!isOpen) {
-      resetModalState()
+      // Cancelar loop de importação ao fechar o modal
+      cancelledRef.current = true
+      pausedRef.current = false
+      setIsImporting(false)
+      setIsPaused(false)
+      setIsCancelled(true)
+      // Não chamar resetModalState completo para preservar estado ao reabrir
     }
   }, [isOpen])
 
@@ -177,8 +186,23 @@ useEffect(() => {
     })
   }
 
+  // Busca recursiva para encontrar item na árvore
+  const findItemInTree = (items: ProcessedItem[], itemId: string): ProcessedItem | null => {
+    for (const item of items) {
+      if (item.id === itemId) return item
+      if (item.children && item.children.length > 0) {
+        const found = findItemInTree(item.children, itemId)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
   const toggleExpand = (itemId: string) => {
-    setItems(prev => updateItemInTree(prev, itemId, { isExpanded: !prev.find(it => it.id === itemId)?.isExpanded }))
+    setItems(prev => {
+      const item = findItemInTree(prev, itemId)
+      return updateItemInTree(prev, itemId, { isExpanded: !item?.isExpanded })
+    })
   }
 
   const expandAll = () => {
@@ -309,13 +333,18 @@ useEffect(() => {
       })
 
       const processedItems: ProcessedItem[] = allFiles
-        .map((file: any) => ({
-          ...analyzeDriveItem(file),
-          status: 'pending' as const,
-          parentId: file.parentId,
-          children: [],
-          isExpanded: true
-        }))
+        .map((file: any) => {
+          const analyzed = analyzeDriveItem(file)
+          // Verificar se item já foi importado anteriormente
+          const alreadyImported = driveIdToDbIdMap.current.has(file.id)
+          return {
+            ...analyzed,
+            status: alreadyImported ? 'success' as const : 'pending' as const,
+            parentId: file.parentId,
+            children: [],
+            isExpanded: true
+          }
+        })
         .filter(item => item.type !== 'unknown')
 
       const itemsMap = new Map<string, ProcessedItem>()
