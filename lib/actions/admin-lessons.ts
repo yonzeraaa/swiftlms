@@ -193,12 +193,17 @@ export async function bulkDeleteLessons(lessonIds: string[]) {
       return { success: false, error: 'Não autenticado' }
     }
 
-    const { error } = await supabase
-      .from('lessons')
-      .delete()
-      .in('id', lessonIds)
+    // Processar em batches de 50 para evitar limite de URL do PostgREST
+    const BATCH_SIZE = 50
+    for (let i = 0; i < lessonIds.length; i += BATCH_SIZE) {
+      const batch = lessonIds.slice(i, i + BATCH_SIZE)
+      const { error } = await supabase
+        .from('lessons')
+        .delete()
+        .in('id', batch)
 
-    if (error) throw error
+      if (error) throw error
+    }
 
     return { success: true }
   } catch (error: any) {
