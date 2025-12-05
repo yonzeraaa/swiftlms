@@ -202,6 +202,7 @@ async function createOrUpdateModule(
     .from('course_modules')
     .insert({
       course_id: data.courseId,
+      code: data.code,
       title: data.name,
       description: `Módulo ${data.code}`,
       order_index: nextOrder

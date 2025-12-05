@@ -1,4 +1,8 @@
-import 'server-only'
+/**
+ * Script para testar a geração de diploma lato-sensu localmente
+ *
+ * Uso: npx tsx scripts/test-diploma-generation.ts
+ */
 
 import { PDFDocument } from 'pdf-lib'
 import QRCode from 'qrcode'
@@ -7,23 +11,16 @@ import * as path from 'path'
 
 const DIPLOMA_TEMPLATE_PATH = path.join(process.cwd(), 'public/templates/diploma-lato-sensu.pdf')
 
-export interface DiplomaData {
+interface DiplomaData {
   studentName: string
   courseName: string
-  conclusionDate: string // formato dd/mm/yyyy
+  conclusionDate: string
   courseHours: string
   grade: string
-  issueDate: string // formato dd/mm/yyyy
+  issueDate: string
   verificationUrl: string
 }
 
-// Mapeamento dos campos do formulário PDF
-// Text1 → nome do aluno
-// Text2 → curso
-// Text3 → data de conclusão
-// Text4 → carga horária
-// Text5 → nota
-// Text6 → data de emissão
 const FORM_FIELD_MAPPING = {
   studentName: 'Text1',
   courseName: 'Text2',
@@ -39,8 +36,18 @@ const QR_POSITION = {
   size: 70,
 }
 
-export async function generateDiplomaPdf(data: DiplomaData): Promise<Uint8Array> {
-  // Carregar o template PDF
+function formatDateBR(date: Date): string {
+  const day = date.getDate().toString().padStart(2, '0')
+  const month = (date.getMonth() + 1).toString().padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+function formatGrade(grade: number): string {
+  return grade.toFixed(1).replace('.', ',')
+}
+
+async function generateDiplomaPdf(data: DiplomaData): Promise<Uint8Array> {
   const templateBytes = fs.readFileSync(DIPLOMA_TEMPLATE_PATH)
   const pdfDoc = await PDFDocument.load(templateBytes)
 
@@ -70,13 +77,9 @@ export async function generateDiplomaPdf(data: DiplomaData): Promise<Uint8Array>
   const qrDataUrl = await QRCode.toDataURL(data.verificationUrl, {
     width: QR_POSITION.size * 2,
     margin: 1,
-    color: {
-      dark: '#000000',
-      light: '#ffffff',
-    },
+    color: { dark: '#000000', light: '#ffffff' },
   })
 
-  // Converter data URL para bytes e inserir QR Code
   const qrImageBytes = Buffer.from(qrDataUrl.split(',')[1], 'base64')
   const qrImage = await pdfDoc.embedPng(qrImageBytes)
 
@@ -93,19 +96,42 @@ export async function generateDiplomaPdf(data: DiplomaData): Promise<Uint8Array>
   // Flatten o formulário para tornar os campos não editáveis
   form.flatten()
 
-  // Salvar o PDF preenchido
-  const pdfBytes = await pdfDoc.save()
-
-  return pdfBytes
+  return await pdfDoc.save()
 }
 
-export function formatDateBR(date: Date): string {
-  const day = date.getDate().toString().padStart(2, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const year = date.getFullYear()
-  return `${day}/${month}/${year}`
+async function testDiplomaGeneration() {
+  console.log('🎓 Testando geração de diploma lato-sensu...\n')
+
+  const testData = {
+    studentName: 'João da Silva Santos',
+    courseName: 'Engenharia de Software',
+    conclusionDate: formatDateBR(new Date('2025-12-02')),
+    courseHours: '360',
+    grade: formatGrade(9.5),
+    issueDate: formatDateBR(new Date()),
+    verificationUrl: 'https://swiftlms.vercel.app/certificados/ABC12345',
+  }
+
+  console.log('📝 Dados de teste:')
+  console.log(JSON.stringify(testData, null, 2))
+  console.log('')
+
+  try {
+    console.log('⏳ Gerando PDF usando campos de formulário...')
+    const pdfBytes = await generateDiplomaPdf(testData)
+
+    const outputPath = path.join(process.cwd(), 'test-diploma-output.pdf')
+    fs.writeFileSync(outputPath, pdfBytes)
+
+    console.log(`✅ PDF gerado com sucesso!`)
+    console.log(`📄 Arquivo salvo em: ${outputPath}`)
+    console.log(`📊 Tamanho: ${(pdfBytes.length / 1024).toFixed(2)} KB`)
+    console.log('')
+    console.log('🔍 Abra o arquivo para verificar se os campos foram preenchidos corretamente.')
+  } catch (error) {
+    console.error('❌ Erro ao gerar diploma:', error)
+    process.exit(1)
+  }
 }
 
-export function formatGrade(grade: number): string {
-  return grade.toFixed(1).replace('.', ',')
-}
+testDiplomaGeneration()

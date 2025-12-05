@@ -18,16 +18,16 @@ export interface DriveItem {
  * Detecta o tipo do item baseado no nome
  *
  * Prioridade:
- * 1. Teste (contém "teste")
+ * 1. Teste (contém "teste" ou "test")
  * 2. Aula (1-4 letras + 6 dígitos)
  * 3. Disciplina (1-4 letras + 4 dígitos)
- * 4. Módulo (1-4 letras + 2 dígitos)
+ * 4. Módulo (1-4 letras + 2 dígitos OU "Módulo/Modulo/Module X")
  */
 export function detectItemType(name: string): ItemType {
   const lower = name.toLowerCase()
 
   // Prioridade 1: Teste
-  if (lower.includes('teste')) return 'test'
+  if (lower.includes('teste') || lower.includes('test')) return 'test'
 
   // Prioridade 2: Aula (6 dígitos)
   if (/^[A-Za-z]{1,4}\d{6}/.test(name)) return 'lesson'
@@ -38,16 +38,55 @@ export function detectItemType(name: string): ItemType {
   // Prioridade 4: Módulo (2 dígitos)
   if (/^[A-Za-z]{1,4}\d{2}/.test(name)) return 'module'
 
+  // Prioridade 5: Módulo com nome descritivo (Módulo 1, Module A, MOD 01, etc.)
+  if (/^(m[oó]dulo|module|mod)\s*[\d\w]/i.test(name)) return 'module'
+
+  // Prioridade 6: Disciplina com nome descritivo (Disciplina 1, Subject A, etc.)
+  if (/^(disciplina|subject|disc)\s*[\d\w]/i.test(name)) return 'subject'
+
+  // Prioridade 7: Aula com nome descritivo (Aula 1, Lesson A, etc.)
+  if (/^(aula|lesson|class)\s*[\d\w]/i.test(name)) return 'lesson'
+
   return 'unknown'
 }
 
 /**
  * Extrai o código do nome (prefixo + números)
  * Ex: "MAT020101_Introducao.pdf" → "MAT020101"
+ * Ex: "Módulo 1" → "MOD01"
+ * Ex: "Disciplina 02" → "DISC02"
+ * Ex: "Aula 3" → "AULA03"
  */
 export function extractCode(name: string): string | null {
-  const match = name.match(/^([A-Za-z]{1,4}\d{2,6})/)
-  return match ? match[1] : null
+  // Padrão tradicional: letras + dígitos no início
+  const traditionalMatch = name.match(/^([A-Za-z]{1,4}\d{2,6})/)
+  if (traditionalMatch) return traditionalMatch[1]
+
+  // Padrão descritivo para módulos: "Módulo 1", "Module A", "MOD 01"
+  const moduleMatch = name.match(/^(m[oó]dulo|module|mod)\s*(\d+|[a-z])/i)
+  if (moduleMatch) {
+    const num = moduleMatch[2]
+    const paddedNum = /^\d+$/.test(num) ? num.padStart(2, '0') : num.toUpperCase()
+    return `MOD${paddedNum}`
+  }
+
+  // Padrão descritivo para disciplinas: "Disciplina 1", "Subject A", "DISC 01"
+  const subjectMatch = name.match(/^(disciplina|subject|disc)\s*(\d+|[a-z])/i)
+  if (subjectMatch) {
+    const num = subjectMatch[2]
+    const paddedNum = /^\d+$/.test(num) ? num.padStart(4, '0') : num.toUpperCase()
+    return `DISC${paddedNum}`
+  }
+
+  // Padrão descritivo para aulas: "Aula 1", "Lesson A", "Class 01"
+  const lessonMatch = name.match(/^(aula|lesson|class)\s*(\d+|[a-z])/i)
+  if (lessonMatch) {
+    const num = lessonMatch[2]
+    const paddedNum = /^\d+$/.test(num) ? num.padStart(6, '0') : num.toUpperCase()
+    return `AULA${paddedNum}`
+  }
+
+  return null
 }
 
 /**
