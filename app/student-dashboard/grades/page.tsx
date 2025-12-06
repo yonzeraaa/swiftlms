@@ -5,6 +5,8 @@ import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Card from '@/app/components/Card'
 import GradesPageClient from './GradesPageClient'
 
+export const dynamic = 'force-dynamic'
+
 export default async function StudentGradesPage() {
   const userInfo = await getGradesUserInfo()
 
