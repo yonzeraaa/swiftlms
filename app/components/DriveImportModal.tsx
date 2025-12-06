@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import Modal from './Modal'
 import Button from './Button'
 import { analyzeDriveItem, extractFolderId, type ItemType, type DriveItem } from '@/lib/drive-import-utils'
@@ -13,6 +13,20 @@ interface DriveImportModalProps {
   courseId: string
   onImportComplete?: () => void
 }
+
+interface CourseOption {
+  id: string
+  title: string
+}
+
+interface ModuleOption {
+  id: string
+  title: string
+  course_id: string
+  code?: string
+}
+
+type ImportMode = 'full' | 'subject'
 
 interface ProcessedItem extends DriveItem {
   status: 'pending' | 'uploading' | 'success' | 'error'
@@ -46,6 +60,14 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isCheckingToken, setIsCheckingToken] = useState(true)
+
+  // Subject-only import mode states
+  const [importMode, setImportMode] = useState<ImportMode>('full')
+  const [availableCourses, setAvailableCourses] = useState<CourseOption[]>([])
+  const [availableModules, setAvailableModules] = useState<ModuleOption[]>([])
+  const [selectedTargetCourseId, setSelectedTargetCourseId] = useState<string | null>(null)
+  const [selectedTargetModuleId, setSelectedTargetModuleId] = useState<string | null>(null)
+  const [loadingTargets, setLoadingTargets] = useState(false)
 
   const tokenClientRef = useRef<any>(null)
   const pausedRef = useRef(false)
@@ -128,6 +150,41 @@ useEffect(() => {
     if (clearImportHistory) {
       driveIdToDbIdMap.current.clear()
     }
+  }
+
+  // Fetch courses and modules for subject-only mode
+  const fetchCoursesAndModules = async () => {
+    setLoadingTargets(true)
+    try {
+      const response = await fetch('/api/import/drive/courses-modules')
+      if (!response.ok) throw new Error('Erro ao buscar cursos')
+      const data = await response.json()
+      setAvailableCourses(data.courses || [])
+      setAvailableModules(data.modules || [])
+    } catch (err) {
+      setError('Erro ao carregar cursos e módulos')
+    } finally {
+      setLoadingTargets(false)
+    }
+  }
+
+  // Filter modules by selected course
+  const filteredModules = useMemo(() => {
+    if (!selectedTargetCourseId) return []
+    return availableModules.filter(m => m.course_id === selectedTargetCourseId)
+  }, [availableModules, selectedTargetCourseId])
+
+  // Fetch courses when switching to subject mode
+  useEffect(() => {
+    if (importMode === 'subject' && availableCourses.length === 0 && !loadingTargets) {
+      fetchCoursesAndModules()
+    }
+  }, [importMode])
+
+  // Reset module selection when course changes
+  const handleCourseSelect = (courseId: string) => {
+    setSelectedTargetCourseId(courseId || null)
+    setSelectedTargetModuleId(null)
   }
 
   useEffect(() => {
@@ -332,20 +389,39 @@ useEffect(() => {
         console.log(`  - ${f.name} (ID: ${f.id})`)
       })
 
-      const processedItems: ProcessedItem[] = allFiles
+      const processedItems = allFiles
         .map((file: any) => {
           const analyzed = analyzeDriveItem(file)
           // Verificar se item já foi importado anteriormente
           const alreadyImported = driveIdToDbIdMap.current.has(file.id)
-          return {
+
+          // Subject-only mode: force root folder to be 'subject'
+          let itemType = analyzed.type
+          if (importMode === 'subject' && !file.parentId) {
+            // Root folder in subject mode becomes the subject
+            if (file.mimeType === 'application/vnd.google-apps.folder') {
+              itemType = 'subject'
+              console.log(`[DriveImport] Modo disciplina: forçando "${file.name}" como subject`)
+            }
+          }
+
+          // Subject-only mode: skip module items (invalid structure)
+          if (importMode === 'subject' && itemType === 'module') {
+            console.log(`[DriveImport] Modo disciplina: ignorando módulo "${file.name}"`)
+            return null
+          }
+
+          const item: ProcessedItem = {
             ...analyzed,
-            status: alreadyImported ? 'success' as const : 'pending' as const,
+            type: itemType,
+            status: alreadyImported ? 'success' : 'pending',
             parentId: file.parentId,
             children: [],
             isExpanded: true
           }
+          return item
         })
-        .filter(item => item.type !== 'unknown')
+        .filter((item): item is ProcessedItem => item !== null && item.type !== 'unknown')
 
       const itemsMap = new Map<string, ProcessedItem>()
       const rootItems: ProcessedItem[] = []
@@ -430,15 +506,24 @@ useEffect(() => {
   const uploadItem = async (item: ProcessedItem) => {
     // Buscar o database ID do pai no Map
     let parentDatabaseId: string | null = null
-    if (item.parentId) {
+
+    if (importMode === 'subject' && item.type === 'subject') {
+      // Subject-only mode: the subject's parent is the selected module
+      parentDatabaseId = selectedTargetModuleId
+    } else if (item.parentId) {
       parentDatabaseId = driveIdToDbIdMap.current.get(item.parentId) || null
     }
+
+    // Determine courseId based on mode
+    const effectiveCourseId = importMode === 'subject' && selectedTargetCourseId
+      ? selectedTargetCourseId
+      : courseId
 
     const payload = {
       itemType: item.type,
       code: item.code || '',
       originalName: item.name,
-      courseId: courseId,
+      courseId: effectiveCourseId,
       driveFileId: item.id,
       mimeType: item.mimeType,
       parentDatabaseId: parentDatabaseId
@@ -828,36 +913,124 @@ useEffect(() => {
                 Desconectar
               </button>
             </div>
+
+            {/* Import Mode Toggle */}
+            <div className="flex gap-1 p-1 bg-navy-800 rounded-lg">
+              <button
+                onClick={() => setImportMode('full')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  importMode === 'full'
+                    ? 'bg-gold-500 text-navy-900'
+                    : 'text-gold-300 hover:bg-navy-700'
+                }`}
+              >
+                Curso Completo
+              </button>
+              <button
+                onClick={() => setImportMode('subject')}
+                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                  importMode === 'subject'
+                    ? 'bg-gold-500 text-navy-900'
+                    : 'text-gold-300 hover:bg-navy-700'
+                }`}
+              >
+                Apenas Disciplina
+              </button>
+            </div>
+
+            {/* Course/Module Selectors (subject mode only) */}
+            {importMode === 'subject' && (
+              <div className="space-y-3 p-4 bg-navy-700/50 rounded-lg border border-gold-500/20">
+                <p className="text-gold-300 text-xs font-medium mb-2">Selecione o destino da disciplina:</p>
+                {loadingTargets ? (
+                  <div className="flex items-center gap-2 text-gold-400 text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Carregando cursos e módulos...
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-gold-400 text-xs mb-1">Curso de Destino</label>
+                      <select
+                        value={selectedTargetCourseId || ''}
+                        onChange={(e) => handleCourseSelect(e.target.value)}
+                        className="w-full px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
+                      >
+                        <option value="">Selecione um curso...</option>
+                        {availableCourses.map(c => (
+                          <option key={c.id} value={c.id}>{c.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-gold-400 text-xs mb-1">Módulo de Destino</label>
+                      <select
+                        value={selectedTargetModuleId || ''}
+                        onChange={(e) => setSelectedTargetModuleId(e.target.value || null)}
+                        disabled={!selectedTargetCourseId}
+                        className="w-full px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <option value="">Selecione um módulo...</option>
+                        {filteredModules.map(m => (
+                          <option key={m.id} value={m.id}>{m.title}{m.code ? ` (${m.code})` : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="block text-gold-300 mb-2 text-sm font-medium">
                 URL da pasta do Google Drive
               </label>
 
-              {/* Estrutura esperada */}
-              <div className="mb-3 p-3 bg-navy-700/50 border border-gold-500/20 rounded-lg">
-                <p className="text-gold-300 text-xs font-medium mb-2">📋 Estrutura esperada:</p>
-                <div className="text-gold-400 text-xs space-y-1 font-mono">
-                  <div className="flex items-center gap-2">
-                    <Folder className="w-3 h-3 text-blue-400" />
-                    <span>Módulos (pastas raiz)</span>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <BookOpen className="w-3 h-3 text-purple-400" />
-                    <span>└─ Disciplinas (subpastas)</span>
-                  </div>
-                  <div className="flex items-center gap-2 ml-8">
-                    <FileText className="w-3 h-3 text-green-400" />
-                    <span>└─ Aulas (arquivos PDF)</span>
-                  </div>
-                  <div className="flex items-center gap-2 ml-8">
-                    <GraduationCap className="w-3 h-3 text-orange-400" />
-                    <span>└─ Testes (arquivos PDF)</span>
+              {/* Estrutura esperada - conditional based on mode */}
+              {importMode === 'full' ? (
+                <div className="mb-3 p-3 bg-navy-700/50 border border-gold-500/20 rounded-lg">
+                  <p className="text-gold-300 text-xs font-medium mb-2">Estrutura esperada (Curso):</p>
+                  <div className="text-gold-400 text-xs space-y-1 font-mono">
+                    <div className="flex items-center gap-2">
+                      <Folder className="w-3 h-3 text-blue-400" />
+                      <span>Módulos (pastas raiz)</span>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <BookOpen className="w-3 h-3 text-purple-400" />
+                      <span>Disciplinas (subpastas)</span>
+                    </div>
+                    <div className="flex items-center gap-2 ml-8">
+                      <FileText className="w-3 h-3 text-green-400" />
+                      <span>Aulas (arquivos)</span>
+                    </div>
+                    <div className="flex items-center gap-2 ml-8">
+                      <GraduationCap className="w-3 h-3 text-orange-400" />
+                      <span>Testes (arquivos)</span>
+                    </div>
                   </div>
                 </div>
-                <p className="text-gold-400/70 text-xs mt-2">
-                  ℹ️ A hierarquia de pastas será respeitada automaticamente
-                </p>
-              </div>
+              ) : (
+                <div className="mb-3 p-3 bg-navy-700/50 border border-gold-500/20 rounded-lg">
+                  <p className="text-gold-300 text-xs font-medium mb-2">Estrutura esperada (Disciplina):</p>
+                  <div className="text-gold-400 text-xs space-y-1 font-mono">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-3 h-3 text-purple-400" />
+                      <span>Pasta raiz = Disciplina</span>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <FileText className="w-3 h-3 text-green-400" />
+                      <span>Aulas (arquivos)</span>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <GraduationCap className="w-3 h-3 text-orange-400" />
+                      <span>Testes (arquivos)</span>
+                    </div>
+                  </div>
+                  <p className="text-gold-400/70 text-xs mt-2">
+                    A pasta será importada como disciplina no módulo selecionado
+                  </p>
+                </div>
+              )}
 
               <input
                 type="text"
@@ -870,12 +1043,18 @@ useEffect(() => {
             <Button
               onClick={handleListItems}
               isLoading={isListing}
-              disabled={!driveUrl}
+              disabled={!driveUrl || (importMode === 'subject' && !selectedTargetModuleId)}
               variant="primary"
               fullWidth
             >
               {isListing ? 'Explorando pastas...' : 'Listar Itens'}
             </Button>
+            {importMode === 'subject' && !selectedTargetModuleId && driveUrl && (
+              <p className="text-yellow-400 text-xs flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Selecione um módulo de destino para continuar
+              </p>
+            )}
           </div>
         )}
 
@@ -910,7 +1089,7 @@ useEffect(() => {
                   <div className="flex-1">
                     <p className="text-gold-300 font-medium mb-3">Resumo da Importação</p>
                     <div className="grid grid-cols-2 gap-3">
-                      {getItemStats().modules.total > 0 && (
+                      {importMode === 'full' && getItemStats().modules.total > 0 && (
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-blue-400"></div>
                           <span className="text-gold-200 text-sm">
@@ -964,6 +1143,8 @@ useEffect(() => {
                   { type: 'lessons', label: 'Aulas', icon: FileText, color: 'green' },
                   { type: 'tests', label: 'Testes', icon: GraduationCap, color: 'orange' }
                 ].map(({ type, label, icon: Icon, color }) => {
+                  // Hide modules in subject-only mode
+                  if (type === 'modules' && importMode === 'subject') return null
                   const stats = getItemStats()[type as keyof ReturnType<typeof getItemStats>]
                   if (stats.total === 0) return null
 
@@ -1116,7 +1297,9 @@ useEffect(() => {
               <div className="flex-1">
                 <p className="text-green-400 font-medium mb-2">Importação concluída com sucesso!</p>
                 <div className="text-green-300 text-sm space-y-1">
-                  <p>• {allFlatItems.filter(it => it.type === 'module' && it.status === 'success').length} módulos importados</p>
+                  {importMode === 'full' && (
+                    <p>• {allFlatItems.filter(it => it.type === 'module' && it.status === 'success').length} módulos importados</p>
+                  )}
                   <p>• {allFlatItems.filter(it => it.type === 'subject' && it.status === 'success').length} disciplinas importadas</p>
                   <p>• {allFlatItems.filter(it => it.type === 'lesson' && it.status === 'success').length} aulas importadas</p>
                   <p>• {allFlatItems.filter(it => it.type === 'test' && it.status === 'success').length} testes importados</p>
