@@ -177,6 +177,72 @@ export async function updateSubject(subjectId: string, subjectData: {
   }
 }
 
+async function deleteByIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  table: string,
+  column: string,
+  ids: string[]
+) {
+  if (ids.length === 0) return
+
+  const { error } = await (supabase as any)
+    .from(table)
+    .delete()
+    .in(column, ids)
+
+  if (error) {
+    throw new Error(`Erro ao limpar ${table}: ${error.message}`)
+  }
+}
+
+async function deleteSubjectCascade(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  subjectId: string
+) {
+  // Busca aulas vinculadas à disciplina
+  const { data: subjectLessons } = await supabase
+    .from('subject_lessons')
+    .select('lesson_id')
+    .eq('subject_id', subjectId)
+
+  const lessonIds: string[] = Array.from(
+    new Set(
+      (subjectLessons || [])
+        .map((entry: any) => entry.lesson_id)
+        .filter((id: any): id is string => Boolean(id))
+    )
+  )
+
+  // Busca testes vinculados à disciplina
+  const { data: subjectTests } = await supabase
+    .from('tests')
+    .select('id')
+    .eq('subject_id', subjectId)
+
+  const testIds: string[] = Array.from(
+    new Set(
+      (subjectTests || [])
+        .map((test: any) => test.id)
+        .filter((id: any): id is string => Boolean(id))
+    )
+  )
+
+  // Remove em ordem de dependência
+  await deleteByIds(supabase, 'test_answer_keys', 'test_id', testIds)
+  await deleteByIds(supabase, 'test_attempts', 'test_id', testIds)
+  await deleteByIds(supabase, 'test_grades', 'test_id', testIds)
+  await deleteByIds(supabase, 'tests', 'id', testIds)
+
+  await deleteByIds(supabase, 'lesson_progress', 'lesson_id', lessonIds)
+  await deleteByIds(supabase, 'subject_lessons', 'lesson_id', lessonIds)
+  await deleteByIds(supabase, 'subject_lessons', 'subject_id', [subjectId])
+  await deleteByIds(supabase, 'lessons', 'id', lessonIds)
+
+  await deleteByIds(supabase, 'module_subjects', 'subject_id', [subjectId])
+  await deleteByIds(supabase, 'course_subjects', 'subject_id', [subjectId])
+  await deleteByIds(supabase, 'subjects', 'id', [subjectId])
+}
+
 export async function deleteSubject(subjectId: string) {
   try {
     const supabase = await createClient()
@@ -186,12 +252,7 @@ export async function deleteSubject(subjectId: string) {
       return { success: false, error: 'Não autenticado' }
     }
 
-    const { error } = await supabase
-      .from('subjects')
-      .delete()
-      .eq('id', subjectId)
-
-    if (error) throw error
+    await deleteSubjectCascade(supabase, subjectId)
 
     return { success: true }
   } catch (error: any) {
@@ -209,17 +270,10 @@ export async function bulkDeleteSubjects(subjectIds: string[]) {
       return { success: false, error: 'Não autenticado' }
     }
 
-    await supabase
-      .from('subject_lessons')
-      .delete()
-      .in('subject_id', subjectIds)
-
-    const { error } = await supabase
-      .from('subjects')
-      .delete()
-      .in('id', subjectIds)
-
-    if (error) throw error
+    // Executa cascade para cada disciplina
+    for (const subjectId of subjectIds) {
+      await deleteSubjectCascade(supabase, subjectId)
+    }
 
     return { success: true }
   } catch (error: any) {
