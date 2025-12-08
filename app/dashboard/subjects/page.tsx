@@ -225,20 +225,22 @@ export default function SubjectsPage() {
   }
 
   const handleDelete = async (subject: Subject) => {
-    if (!confirm(`Tem certeza que deseja excluir a disciplina "${subject.name}"?`)) {
+    const usageCount = courseCount[subject.id] || 0
+    const subjectLessonCount = lessonCount[subject.id] || 0
+
+    let confirmMsg = `Tem certeza que deseja excluir a disciplina "${subject.name}"?`
+    if (usageCount > 0 || subjectLessonCount > 0) {
+      confirmMsg += `\n\n⚠️ ATENÇÃO: Esta ação removerá também:`
+      if (usageCount > 0) confirmMsg += `\n- Vínculo com ${usageCount} curso(s)`
+      if (subjectLessonCount > 0) confirmMsg += `\n- ${subjectLessonCount} aula(s) e seus progressos`
+      confirmMsg += `\n- Todos os testes e notas relacionados`
+    }
+
+    if (!confirm(confirmMsg)) {
       return
     }
 
     try {
-      const usageCount = courseCount[subject.id] || 0
-      if (usageCount > 0) {
-        setMessage({
-          type: 'error',
-          text: `Não é possível excluir. Esta disciplina está vinculada a ${usageCount} curso(s).`
-        })
-        return
-      }
-
       const result = await deleteSubject(subject.id)
 
       if (!result.success) {
