@@ -144,3 +144,92 @@ export function analyzeDriveItem(item: { id: string; name: string; mimeType: str
     prefix
   }
 }
+
+export interface ValidationError {
+  field: 'code' | 'type' | 'hierarchy'
+  message: string
+}
+
+/**
+ * Valida se o código tem o tamanho correto para o tipo
+ * module = 2 dígitos, subject = 4 dígitos, lesson/test = 6 dígitos
+ */
+export function validateCodeForType(code: string | null, type: ItemType): ValidationError | null {
+  // Testes sempre precisam de código
+  if (type === 'test' && !code) {
+    return { field: 'code', message: 'Testes precisam de código' }
+  }
+
+  if (!code) return null
+  if (type === 'unknown') return null
+
+  const numbers = code.replace(/[A-Za-z]/g, '')
+
+  const expectedLength: Record<string, number> = {
+    module: 2,
+    subject: 4,
+    lesson: 6,
+    test: 6
+  }
+
+  const expected = expectedLength[type]
+  if (expected && numbers.length !== expected) {
+    return {
+      field: 'code',
+      message: `Código de ${type} deve ter ${expected} dígitos (tem ${numbers.length})`
+    }
+  }
+
+  return null
+}
+
+/**
+ * Valida se o código do filho começa com o código do pai
+ */
+export function validateParentChildCode(parentCode: string | null, childCode: string | null): ValidationError | null {
+  if (!parentCode || !childCode) return null
+
+  const parentPrefix = extractPrefix(parentCode)
+  const childPrefix = extractPrefix(childCode)
+
+  // Prefixos devem ser iguais
+  if (parentPrefix.toUpperCase() !== childPrefix.toUpperCase()) {
+    return {
+      field: 'hierarchy',
+      message: `Prefixo incompatível: pai "${parentPrefix}", filho "${childPrefix}"`
+    }
+  }
+
+  const parentNumbers = parentCode.replace(/[A-Za-z]/g, '')
+  const childNumbers = childCode.replace(/[A-Za-z]/g, '')
+
+  // Código do filho deve começar com os dígitos do pai
+  if (!childNumbers.startsWith(parentNumbers)) {
+    return {
+      field: 'hierarchy',
+      message: `Código "${childCode}" não pertence ao pai "${parentCode}"`
+    }
+  }
+
+  return null
+}
+
+/**
+ * Valida um item completo e retorna todos os erros encontrados
+ */
+export function validateDriveItem(
+  item: { code: string | null; type: ItemType },
+  parentCode?: string | null
+): ValidationError[] {
+  const errors: ValidationError[] = []
+
+  const codeError = validateCodeForType(item.code, item.type)
+  if (codeError) errors.push(codeError)
+
+  if (parentCode) {
+    const hierarchyError = validateParentChildCode(parentCode, item.code)
+    if (hierarchyError) errors.push(hierarchyError)
+  }
+
+  return errors
+}

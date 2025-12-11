@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getParentPrefix } from '@/lib/drive-import-utils'
+import { getParentPrefix, validateCodeForType, type ItemType } from '@/lib/drive-import-utils'
 import { parseAnswerKeyFromText } from '../../tests/utils/answer-key'
 
 export async function POST(req: NextRequest) {
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
 
-    const itemType = body.itemType || 'unknown'
+    const itemType = (body.itemType || 'unknown') as ItemType
     const code = body.code || null
     const originalName = body.originalName || ''
     const courseId = body.courseId || null
@@ -19,6 +19,17 @@ export async function POST(req: NextRequest) {
 
     if (!courseId) {
       return NextResponse.json({ error: 'courseId é obrigatório' }, { status: 400 })
+    }
+
+    // Validar código/tipo
+    const validationError = validateCodeForType(code, itemType)
+    if (validationError) {
+      return NextResponse.json({
+        error: validationError.message,
+        field: validationError.field,
+        itemType,
+        code
+      }, { status: 400 })
     }
 
     let databaseId: string | null = null

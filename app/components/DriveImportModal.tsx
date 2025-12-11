@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import Modal from './Modal'
 import Button from './Button'
-import { analyzeDriveItem, extractFolderId, type ItemType, type DriveItem } from '@/lib/drive-import-utils'
-import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, ChevronsDown, ChevronsUp, BarChart3 } from 'lucide-react'
+import { analyzeDriveItem, extractFolderId, validateDriveItem, type ItemType, type DriveItem, type ValidationError } from '@/lib/drive-import-utils'
+import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, ChevronsDown, ChevronsUp, BarChart3, Square, CheckSquare, XCircle } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DriveImportModalProps {
@@ -34,6 +34,7 @@ interface ProcessedItem extends DriveItem {
   parentId?: string | null
   children?: ProcessedItem[]
   isExpanded?: boolean
+  validationErrors?: ValidationError[]
   answerKey?: {
     success: boolean
     questionCount?: number
@@ -68,6 +69,9 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
   const [selectedTargetCourseId, setSelectedTargetCourseId] = useState<string | null>(null)
   const [selectedTargetModuleId, setSelectedTargetModuleId] = useState<string | null>(null)
   const [loadingTargets, setLoadingTargets] = useState(false)
+
+  // Selection state
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())
 
   const tokenClientRef = useRef<any>(null)
   const pausedRef = useRef(false)
@@ -255,6 +259,82 @@ useEffect(() => {
     return null
   }
 
+  // Seleção de itens
+  const toggleItemSelection = (itemId: string, item: ProcessedItem) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev)
+
+      if (next.has(itemId)) {
+        // Deselecionar item e seus filhos
+        next.delete(itemId)
+        const deselectChildren = (children: ProcessedItem[] | undefined) => {
+          children?.forEach(child => {
+            next.delete(child.id)
+            deselectChildren(child.children)
+          })
+        }
+        deselectChildren(item.children)
+      } else {
+        // No modo subject, só pode selecionar um subject de cada vez
+        if (importMode === 'subject' && item.type === 'subject') {
+          // Limpar seleção de outros subjects
+          const allFlat = flattenItems(items)
+          allFlat.filter(i => i.type === 'subject' && i.id !== itemId).forEach(i => next.delete(i.id))
+        }
+
+        // Selecionar item e seus filhos (se não tiver erros de validação)
+        if (!item.validationErrors || item.validationErrors.length === 0) {
+          next.add(itemId)
+          const selectChildren = (children: ProcessedItem[] | undefined) => {
+            children?.forEach(child => {
+              if (!child.validationErrors || child.validationErrors.length === 0) {
+                next.add(child.id)
+                selectChildren(child.children)
+              }
+            })
+          }
+          selectChildren(item.children)
+        }
+      }
+
+      return next
+    })
+  }
+
+  const selectAllValidItems = () => {
+    const allFlat = flattenItems(items)
+    const validIds = allFlat
+      .filter(item => !item.validationErrors || item.validationErrors.length === 0)
+      .filter(item => item.type !== 'unknown')
+      .map(item => item.id)
+
+    // No modo subject, selecionar apenas o primeiro subject válido e seus filhos
+    if (importMode === 'subject') {
+      const firstSubject = allFlat.find(i => i.type === 'subject' && (!i.validationErrors || i.validationErrors.length === 0))
+      if (firstSubject) {
+        const idsToSelect = new Set<string>()
+        idsToSelect.add(firstSubject.id)
+        const addChildren = (children: ProcessedItem[] | undefined) => {
+          children?.forEach(child => {
+            if (!child.validationErrors || child.validationErrors.length === 0) {
+              idsToSelect.add(child.id)
+              addChildren(child.children)
+            }
+          })
+        }
+        addChildren(firstSubject.children)
+        setSelectedItems(idsToSelect)
+        return
+      }
+    }
+
+    setSelectedItems(new Set(validIds))
+  }
+
+  const clearSelection = () => {
+    setSelectedItems(new Set())
+  }
+
   const toggleExpand = (itemId: string) => {
     setItems(prev => {
       const item = findItemInTree(prev, itemId)
@@ -411,13 +491,17 @@ useEffect(() => {
             return null
           }
 
+          // Validar código/tipo
+          const validationErrors = validateDriveItem({ code: analyzed.code, type: itemType })
+
           const item: ProcessedItem = {
             ...analyzed,
             type: itemType,
             status: alreadyImported ? 'success' : 'pending',
             parentId: file.parentId,
             children: [],
-            isExpanded: true
+            isExpanded: true,
+            validationErrors: validationErrors.length > 0 ? validationErrors : undefined
           }
           return item
         })
@@ -450,6 +534,12 @@ useEffect(() => {
 
           // Verificar se a hierarquia é válida
           if (isValidHierarchy(parent, item)) {
+            // Validar código pai-filho
+            const hierarchyErrors = validateDriveItem({ code: item.code, type: item.type }, parent.code)
+            if (hierarchyErrors.length > 0) {
+              item.validationErrors = [...(item.validationErrors || []), ...hierarchyErrors]
+            }
+
             // Hierarquia válida: adicionar como filho
             parent.children = parent.children || []
             parent.children.push(item)
@@ -476,6 +566,14 @@ useEffect(() => {
 
       const sortedRootItems = sortTreeRecursively(rootItems)
       setItems(sortedRootItems)
+
+      // Limpar seleção e selecionar automaticamente itens válidos
+      const allFlat = flattenItems(sortedRootItems)
+      const validIds = allFlat
+        .filter(item => !item.validationErrors || item.validationErrors.length === 0)
+        .filter(item => item.type !== 'unknown')
+        .map(item => item.id)
+      setSelectedItems(new Set(validIds))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
@@ -578,6 +676,11 @@ useEffect(() => {
   }
 
   const handleImportAll = async () => {
+    if (selectedItems.size === 0) {
+      setError('Selecione ao menos um item para importar')
+      return
+    }
+
     if (!isImporting) {
       setIsImporting(true)
       setIsPaused(false)
@@ -590,7 +693,9 @@ useEffect(() => {
 
     const typeOrder = { 'module': 1, 'subject': 2, 'lesson': 3, 'test': 4, 'unknown': 5 }
     const allFlatItems = flattenItems(items)
-    const sortedItems = [...allFlatItems].sort((a, b) => typeOrder[a.type] - typeOrder[b.type])
+    // Filtrar apenas itens selecionados
+    const selectedFlatItems = allFlatItems.filter(item => selectedItems.has(item.id))
+    const sortedItems = [...selectedFlatItems].sort((a, b) => typeOrder[a.type] - typeOrder[b.type])
 
     for (let i = 0; i < sortedItems.length; i++) {
       if (cancelledRef.current) {
@@ -610,6 +715,8 @@ useEffect(() => {
 
       if (item.type === 'unknown') continue
       if (item.status === 'success') continue
+      // Pular itens com erros de validação
+      if (item.validationErrors && item.validationErrors.length > 0) continue
 
       setItems(prev => updateItemInTree(prev, item.id, { status: 'uploading' }))
 
@@ -712,6 +819,8 @@ useEffect(() => {
 
   const renderTreeItem = (item: ProcessedItem, depth: number = 0): React.ReactElement => {
     const hasChildren = item.children && item.children.length > 0
+    const isSelected = selectedItems.has(item.id)
+    const hasValidationErrors = item.validationErrors && item.validationErrors.length > 0
 
     // Classes base e status
     const borderColors = {
@@ -723,7 +832,7 @@ useEffect(() => {
     }
 
     const statusClasses = {
-      pending: 'opacity-60',
+      pending: isSelected ? 'opacity-100' : 'opacity-40',
       uploading: 'bg-blue-500/5 border-blue-500/40',
       success: 'bg-green-500/5',
       error: 'bg-red-500/5 border-red-500/40'
@@ -745,11 +854,33 @@ useEffect(() => {
             ${borderColors[item.type]}
             ${statusClasses[item.status]}
             ${item.status === 'uploading' ? 'animate-pulse' : ''}
+            ${hasValidationErrors ? 'border-red-500/50 bg-red-500/10' : ''}
           `}
           style={{ marginLeft: `${depth * 24}px` }}
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
         >
+          {/* Checkbox de seleção */}
+          <motion.button
+            onClick={() => toggleItemSelection(item.id, item)}
+            className={`p-1 rounded transition-colors flex-shrink-0 ${
+              hasValidationErrors
+                ? 'text-red-400 cursor-not-allowed'
+                : 'hover:bg-navy-600'
+            }`}
+            disabled={hasValidationErrors || item.status === 'success'}
+            whileHover={!hasValidationErrors ? { scale: 1.1 } : {}}
+            whileTap={!hasValidationErrors ? { scale: 0.9 } : {}}
+          >
+            {hasValidationErrors ? (
+              <XCircle className="w-5 h-5 text-red-400" />
+            ) : isSelected ? (
+              <CheckSquare className="w-5 h-5 text-gold-400" />
+            ) : (
+              <Square className="w-5 h-5 text-gold-400/50" />
+            )}
+          </motion.button>
+
           {/* Expand/Collapse button */}
           {hasChildren && (
             <motion.button
@@ -794,6 +925,22 @@ useEffect(() => {
               <p className="text-gold-400 text-xs font-mono">
                 {item.code}
               </p>
+            )}
+
+            {/* Validation errors */}
+            {item.validationErrors && item.validationErrors.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-400 text-xs mt-1 space-y-0.5"
+              >
+                {item.validationErrors.map((err, idx) => (
+                  <p key={idx} className="flex items-center gap-1">
+                    <XCircle className="w-3 h-3 flex-shrink-0" />
+                    {err.message}
+                  </p>
+                ))}
+              </motion.div>
             )}
 
             {/* Error message */}
@@ -1213,14 +1360,30 @@ useEffect(() => {
 
             {/* Action Buttons */}
             <div className="flex items-center justify-between">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  onClick={selectAllValidItems}
+                  variant="ghost"
+                  size="xs"
+                  icon={<CheckSquare className="w-3 h-3" />}
+                >
+                  Selecionar Válidos
+                </Button>
+                <Button
+                  onClick={clearSelection}
+                  variant="ghost"
+                  size="xs"
+                  icon={<Square className="w-3 h-3" />}
+                >
+                  Limpar Seleção
+                </Button>
                 <Button
                   onClick={expandAll}
                   variant="ghost"
                   size="xs"
                   icon={<ChevronsDown className="w-3 h-3" />}
                 >
-                  Expandir Todos
+                  Expandir
                 </Button>
                 <Button
                   onClick={collapseAll}
@@ -1228,19 +1391,24 @@ useEffect(() => {
                   size="xs"
                   icon={<ChevronsUp className="w-3 h-3" />}
                 >
-                  Colapsar Todos
+                  Colapsar
                 </Button>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                {selectedItems.size > 0 && !isImporting && (
+                  <span className="text-gold-400 text-xs">
+                    {selectedItems.size} selecionado{selectedItems.size !== 1 ? 's' : ''}
+                  </span>
+                )}
                 {!isImporting && !isCancelled && (
                   <Button
                     onClick={handleImportAll}
                     variant="success"
                     size="sm"
-                    disabled={validItems.length === 0}
+                    disabled={selectedItems.size === 0}
                   >
-                    {completedItems > 0 ? 'Continuar Importação' : 'Importar Todos'}
+                    {completedItems > 0 ? 'Continuar Importação' : `Importar (${selectedItems.size})`}
                   </Button>
                 )}
                 {isImporting && !isPaused && (
