@@ -111,7 +111,8 @@ export async function POST() {
       lessons: 0,
       tests: 0,
       tccs: 0,
-      certificates: 0
+      certificates: 0,
+      certificateErrors: 0
     }
 
     for (const course of courses) {
@@ -301,75 +302,39 @@ export async function POST() {
 
       // 8. Criar certificate_requests e certificates para ambos os tipos
       for (const certType of ['technical', 'lato-sensu'] as const) {
-        // Certificate request
-        const { data: existingRequest } = await adminClient
+        // Certificate request - usar upsert com onConflict
+        const { error: requestError } = await adminClient
           .from('certificate_requests')
-          .select('id')
-          .eq('user_id', dummyUserId)
-          .eq('course_id', course.id)
-          .eq('certificate_type', certType)
-          .single()
+          .upsert({
+            enrollment_id: enrollmentId,
+            user_id: dummyUserId,
+            course_id: course.id,
+            total_lessons: lessons?.length || 0,
+            completed_lessons: lessons?.length || 0,
+            request_date: now,
+            status: 'approved',
+            processed_at: now,
+            processed_by: currentUser.id,
+            notes: 'Aluno demonstração - aprovado automaticamente',
+            certificate_type: certType
+          }, { onConflict: 'enrollment_id,certificate_type' })
 
-        if (!existingRequest) {
-          await adminClient
-            .from('certificate_requests')
-            .insert({
-              enrollment_id: enrollmentId,
-              user_id: dummyUserId,
-              course_id: course.id,
-              total_lessons: lessons?.length || 0,
-              completed_lessons: lessons?.length || 0,
-              request_date: now,
-              status: 'approved',
-              processed_at: now,
-              processed_by: currentUser.id,
-              notes: 'Aluno demonstração - aprovado automaticamente',
-              certificate_type: certType
-            })
-        } else {
-          await adminClient
-            .from('certificate_requests')
-            .update({
-              status: 'approved',
-              processed_at: now,
-              processed_by: currentUser.id
-            })
-            .eq('id', existingRequest.id)
+        if (requestError) {
+          console.error(`Erro ao criar certificate_request (${certType}) para curso ${course.id}:`, requestError)
+          stats.certificateErrors++
         }
 
-        // Certificate
+        // Certificate - verificar se já existe
         const { data: existingCert } = await adminClient
           .from('certificates')
           .select('id')
-          .eq('user_id', dummyUserId)
-          .eq('course_id', course.id)
+          .eq('enrollment_id', enrollmentId)
           .eq('certificate_type', certType)
           .single()
 
-        if (!existingCert) {
-          await adminClient
-            .from('certificates')
-            .insert({
-              user_id: dummyUserId,
-              course_id: course.id,
-              enrollment_id: enrollmentId,
-              certificate_number: generateCertificateNumber(),
-              verification_code: generateVerificationCode(),
-              issued_at: now,
-              grade: 100,
-              final_grade: 100,
-              instructor_name: 'SwiftEDU Team',
-              course_hours: course.duration_hours || 0,
-              approval_status: 'approved',
-              approved_at: now,
-              approved_by: currentUser.id,
-              certificate_type: certType,
-              conclusion_date: today,
-              status: 'issued'
-            })
-          stats.certificates++
-        } else {
-          await adminClient
+        if (existingCert) {
+          // Atualizar certificado existente
+          const { error: updateError } = await adminClient
             .from('certificates')
             .update({
               grade: 100,
@@ -380,7 +345,58 @@ export async function POST() {
               status: 'issued'
             })
             .eq('id', existingCert.id)
-          stats.certificates++
+
+          if (updateError) {
+            console.error(`Erro ao atualizar certificado (${certType}) para curso ${course.id}:`, updateError)
+            stats.certificateErrors++
+          } else {
+            stats.certificates++
+          }
+        } else {
+          // Criar novo certificado com retry para evitar colisão de certificate_number/verification_code
+          let certCreated = false
+          let retries = 3
+
+          while (!certCreated && retries > 0) {
+            const { error: insertError } = await adminClient
+              .from('certificates')
+              .insert({
+                user_id: dummyUserId,
+                course_id: course.id,
+                enrollment_id: enrollmentId,
+                certificate_number: generateCertificateNumber(),
+                verification_code: generateVerificationCode(),
+                issued_at: now,
+                grade: 100,
+                final_grade: 100,
+                instructor_name: 'SwiftEDU Team',
+                course_hours: course.duration_hours || 0,
+                approval_status: 'approved',
+                approved_at: now,
+                approved_by: currentUser.id,
+                certificate_type: certType,
+                conclusion_date: today,
+                status: 'issued'
+              })
+
+            if (!insertError) {
+              certCreated = true
+              stats.certificates++
+            } else if (insertError.code === '23505') {
+              // Unique violation - tentar novamente com novos códigos
+              console.warn(`Colisão de certificate_number/verification_code, tentando novamente... (${retries} tentativas restantes)`)
+              retries--
+            } else {
+              console.error(`Erro ao criar certificado (${certType}) para curso ${course.id}:`, insertError)
+              stats.certificateErrors++
+              break
+            }
+          }
+
+          if (!certCreated && retries === 0) {
+            console.error(`Falha ao criar certificado (${certType}) após múltiplas tentativas para curso ${course.id}`)
+            stats.certificateErrors++
+          }
         }
       }
     }

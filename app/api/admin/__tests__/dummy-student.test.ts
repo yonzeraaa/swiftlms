@@ -267,6 +267,7 @@ describe('POST /api/admin/dummy-student', () => {
         }
         if (table === 'certificate_requests') {
           return {
+            upsert: vi.fn().mockResolvedValue({ error: null }),
             select: vi.fn(() => ({
               eq: vi.fn(() => ({
                 eq: vi.fn(() => ({
@@ -287,9 +288,7 @@ describe('POST /api/admin/dummy-student', () => {
             select: vi.fn(() => ({
               eq: vi.fn(() => ({
                 eq: vi.fn(() => ({
-                  eq: vi.fn(() => ({
-                    single: vi.fn().mockResolvedValue({ data: null, error: null })
-                  }))
+                  single: vi.fn().mockResolvedValue({ data: null, error: null })
                 }))
               }))
             })),
