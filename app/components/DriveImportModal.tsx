@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react'
 import Modal from './Modal'
 import Button from './Button'
 import { analyzeDriveItem, extractFolderId, validateDriveItem, type ItemType, type DriveItem, type ValidationError } from '@/lib/drive-import-utils'
-import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, ChevronsDown, ChevronsUp, BarChart3, Square, CheckSquare, XCircle } from 'lucide-react'
+import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, ChevronsDown, ChevronsUp, BarChart3, Square, CheckSquare, XCircle, ArrowLeft, Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DriveImportModalProps {
@@ -27,6 +27,10 @@ interface ModuleOption {
 }
 
 type ImportMode = 'full' | 'subject'
+type ImportStep = 'link' | 'review'
+
+const DRIVE_TOKEN_KEY = 'swiftlms_drive_token'
+const DRIVE_TOKEN_EXPIRY_KEY = 'swiftlms_drive_token_expiry'
 
 interface ProcessedItem extends DriveItem {
   status: 'pending' | 'uploading' | 'success' | 'error'
@@ -61,6 +65,7 @@ export default function DriveImportModal({ isOpen, onClose, courseId, onImportCo
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isCheckingToken, setIsCheckingToken] = useState(true)
+  const [step, setStep] = useState<ImportStep>('link')
 
   // Subject-only import mode states
   const [importMode, setImportMode] = useState<ImportMode>('full')
@@ -120,8 +125,45 @@ useEffect(() => {
   useEffect(() => {
     if (!isOpen) return
 
-    // Token is not persisted for security - user must re-authenticate each time
-    setIsCheckingToken(false)
+    const checkStoredToken = async () => {
+      // Verificar token em sessionStorage
+      const storedToken = sessionStorage.getItem(DRIVE_TOKEN_KEY)
+      const storedExpiry = sessionStorage.getItem(DRIVE_TOKEN_EXPIRY_KEY)
+
+      if (storedToken && storedExpiry) {
+        const expiryTime = parseInt(storedExpiry, 10)
+        const now = Date.now()
+
+        // Token ainda não expirou?
+        if (now < expiryTime) {
+          // Validar se ainda funciona
+          const isValid = await validateToken(storedToken)
+          if (isValid) {
+            setAccessToken(storedToken)
+            setIsCheckingToken(false)
+            return
+          }
+        }
+
+        // Token expirado ou inválido - limpar
+        sessionStorage.removeItem(DRIVE_TOKEN_KEY)
+        sessionStorage.removeItem(DRIVE_TOKEN_EXPIRY_KEY)
+      }
+
+      // Se já temos token em memória, verificar se ainda é válido
+      if (accessToken) {
+        const isValid = await validateToken(accessToken)
+        if (isValid) {
+          setIsCheckingToken(false)
+          return
+        }
+        setAccessToken(null)
+      }
+
+      setIsCheckingToken(false)
+    }
+
+    checkStoredToken()
   }, [isOpen])
 
   const validateToken = async (token: string): Promise<boolean> => {
@@ -137,7 +179,10 @@ useEffect(() => {
 
   const handleDisconnect = () => {
     setAccessToken(null)
+    sessionStorage.removeItem(DRIVE_TOKEN_KEY)
+    sessionStorage.removeItem(DRIVE_TOKEN_EXPIRY_KEY)
     resetModalState(true) // Limpar histórico de importação ao desconectar
+    setStep('link')
   }
 
   const resetModalState = (clearImportHistory = false) => {
@@ -193,13 +238,12 @@ useEffect(() => {
 
   useEffect(() => {
     if (!isOpen) {
-      // Cancelar loop de importação ao fechar o modal
+      // Cancelar loop de importação ao fechar o modal, mas manter token
       cancelledRef.current = true
       pausedRef.current = false
       setIsImporting(false)
       setIsPaused(false)
-      setIsCancelled(true)
-      // Não chamar resetModalState completo para preservar estado ao reabrir
+      // Não limpar accessToken para reaproveitar na próxima abertura
     }
   }, [isOpen])
 
@@ -335,6 +379,16 @@ useEffect(() => {
     setSelectedItems(new Set())
   }
 
+  const handleBackToLink = () => {
+    setStep('link')
+    setItems([])
+    setSelectedItems(new Set())
+    setError(null)
+    setShowSuccess(false)
+    setIsCancelled(false)
+    // Mantém driveUrl, importMode, curso/módulo selecionados
+  }
+
   const toggleExpand = (itemId: string) => {
     setItems(prev => {
       const item = findItemInTree(prev, itemId)
@@ -386,8 +440,12 @@ useEffect(() => {
         scope: 'https://www.googleapis.com/auth/drive.readonly',
         callback: (response: any) => {
           if (response.access_token) {
-            // Store token only in memory for security - not persisted
             setAccessToken(response.access_token)
+            // Salvar token e expiração em sessionStorage (expira em ~1h)
+            const expiresIn = response.expires_in || 3600
+            const expiryTime = Date.now() + (expiresIn * 1000)
+            sessionStorage.setItem(DRIVE_TOKEN_KEY, response.access_token)
+            sessionStorage.setItem(DRIVE_TOKEN_EXPIRY_KEY, expiryTime.toString())
             setIsAuthenticating(false)
           } else {
             setError('Falha na autenticação')
@@ -574,6 +632,9 @@ useEffect(() => {
         .filter(item => item.type !== 'unknown')
         .map(item => item.id)
       setSelectedItems(new Set(validIds))
+
+      // Mudar para etapa de revisão
+      setStep('review')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido')
     } finally {
@@ -776,7 +837,8 @@ useEffect(() => {
     }
   }
 
-  const getItemStats = () => {
+  // Conta apenas itens selecionados (válidos) nos totais
+  const getSelectedItemStats = () => {
     const stats = {
       modules: { total: 0, completed: 0 },
       subjects: { total: 0, completed: 0 },
@@ -786,18 +848,24 @@ useEffect(() => {
 
     const allFlatItems = flattenItems(items)
     allFlatItems.forEach(item => {
+      // Só contar se estiver selecionado ou já importado
+      const isSelected = selectedItems.has(item.id)
+      const isCompleted = item.status === 'success'
+
+      if (!isSelected && !isCompleted) return
+
       if (item.type === 'module') {
         stats.modules.total++
-        if (item.status === 'success') stats.modules.completed++
+        if (isCompleted) stats.modules.completed++
       } else if (item.type === 'subject') {
         stats.subjects.total++
-        if (item.status === 'success') stats.subjects.completed++
+        if (isCompleted) stats.subjects.completed++
       } else if (item.type === 'lesson') {
         stats.lessons.total++
-        if (item.status === 'success') stats.lessons.completed++
+        if (isCompleted) stats.lessons.completed++
       } else if (item.type === 'test') {
         stats.tests.total++
-        if (item.status === 'success') stats.tests.completed++
+        if (isCompleted) stats.tests.completed++
       }
     })
 
@@ -1045,8 +1113,8 @@ useEffect(() => {
           </div>
         )}
 
-        {/* URL Input */}
-        {!isCheckingToken && accessToken && items.length === 0 && (
+        {/* URL Input - Step: link */}
+        {!isCheckingToken && accessToken && step === 'link' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-4">
               <p className="text-green-400 text-sm flex items-center gap-2">
@@ -1133,6 +1201,26 @@ useEffect(() => {
                 URL da pasta do Google Drive
               </label>
 
+              {/* Mensagem explícita sobre o link */}
+              <div className="mb-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-blue-300 text-xs">
+                    {importMode === 'full' ? (
+                      <>
+                        <p className="font-medium mb-1">Cole o link da pasta que contém os módulos do curso.</p>
+                        <p className="text-blue-400/80">O link deve ser de uma pasta do Google Drive no formato: drive.google.com/drive/folders/...</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-medium mb-1">Cole o link da pasta da disciplina que deseja importar.</p>
+                        <p className="text-blue-400/80">Apenas as disciplinas dentro dessa pasta serão listadas para seleção e importação no módulo escolhido.</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Estrutura esperada - conditional based on mode */}
               {importMode === 'full' ? (
                 <div className="mb-3 p-3 bg-navy-700/50 border border-gold-500/20 rounded-lg">
@@ -1205,23 +1293,33 @@ useEffect(() => {
           </div>
         )}
 
-        {/* Items List */}
-        {items.length > 0 && (
+        {/* Items List - Step: review */}
+        {step === 'review' && items.length > 0 && (
           <div className="space-y-4">
-            {/* Header with connection status */}
+            {/* Header with connection status and back button */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
+                <Button
+                  onClick={handleBackToLink}
+                  variant="ghost"
+                  size="xs"
+                  icon={<ArrowLeft className="w-4 h-4" />}
+                  disabled={isImporting}
+                >
+                  Voltar
+                </Button>
                 <p className="text-green-400 text-sm flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" />
                   Conectado
                 </p>
-                <button
-                  onClick={handleDisconnect}
-                  className="text-red-400 hover:text-red-300 text-xs underline"
-                >
-                  Desconectar
-                </button>
               </div>
+              <button
+                onClick={handleDisconnect}
+                className="text-red-400 hover:text-red-300 text-xs underline"
+                disabled={isImporting}
+              >
+                Desconectar
+              </button>
             </div>
 
             {/* Pre-import Summary */}
@@ -1236,35 +1334,35 @@ useEffect(() => {
                   <div className="flex-1">
                     <p className="text-gold-300 font-medium mb-3">Resumo da Importação</p>
                     <div className="grid grid-cols-2 gap-3">
-                      {importMode === 'full' && getItemStats().modules.total > 0 && (
+                      {importMode === 'full' && getSelectedItemStats().modules.total > 0 && (
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-blue-400"></div>
                           <span className="text-gold-200 text-sm">
-                            {getItemStats().modules.total} {getItemStats().modules.total === 1 ? 'Módulo' : 'Módulos'}
+                            {getSelectedItemStats().modules.total} {getSelectedItemStats().modules.total === 1 ? 'Módulo' : 'Módulos'}
                           </span>
                         </div>
                       )}
-                      {getItemStats().subjects.total > 0 && (
+                      {getSelectedItemStats().subjects.total > 0 && (
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-purple-400"></div>
                           <span className="text-gold-200 text-sm">
-                            {getItemStats().subjects.total} {getItemStats().subjects.total === 1 ? 'Disciplina' : 'Disciplinas'}
+                            {getSelectedItemStats().subjects.total} {getSelectedItemStats().subjects.total === 1 ? 'Disciplina' : 'Disciplinas'}
                           </span>
                         </div>
                       )}
-                      {getItemStats().lessons.total > 0 && (
+                      {getSelectedItemStats().lessons.total > 0 && (
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-green-400"></div>
                           <span className="text-gold-200 text-sm">
-                            {getItemStats().lessons.total} {getItemStats().lessons.total === 1 ? 'Aula' : 'Aulas'}
+                            {getSelectedItemStats().lessons.total} {getSelectedItemStats().lessons.total === 1 ? 'Aula' : 'Aulas'}
                           </span>
                         </div>
                       )}
-                      {getItemStats().tests.total > 0 && (
+                      {getSelectedItemStats().tests.total > 0 && (
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 rounded-full bg-orange-400"></div>
                           <span className="text-gold-200 text-sm">
-                            {getItemStats().tests.total} {getItemStats().tests.total === 1 ? 'Teste' : 'Testes'}
+                            {getSelectedItemStats().tests.total} {getSelectedItemStats().tests.total === 1 ? 'Teste' : 'Testes'}
                           </span>
                         </div>
                       )}
@@ -1292,7 +1390,7 @@ useEffect(() => {
                 ].map(({ type, label, icon: Icon, color }) => {
                   // Hide modules in subject-only mode
                   if (type === 'modules' && importMode === 'subject') return null
-                  const stats = getItemStats()[type as keyof ReturnType<typeof getItemStats>]
+                  const stats = getSelectedItemStats()[type as keyof ReturnType<typeof getSelectedItemStats>]
                   if (stats.total === 0) return null
 
                   return (
