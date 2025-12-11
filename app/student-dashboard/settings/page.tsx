@@ -16,7 +16,6 @@ import {
   updateUserProfile,
   uploadAvatar,
   deleteOldAvatar,
-  updateUserPassword,
   exportUserData
 } from '@/lib/actions/student-settings'
 
@@ -215,10 +214,17 @@ export default function StudentSettingsPage() {
     }
 
     try {
-      const result = await updateUserPassword(passwordForm.newPassword)
+      const response = await fetch('/api/settings/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ newPassword: passwordForm.newPassword })
+      })
 
-      if (!result.success) {
-        throw new Error(result.error)
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao alterar senha')
       }
 
       setMessage({ type: 'success', text: t('settings.passwordUpdated') })

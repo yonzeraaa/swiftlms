@@ -11,7 +11,7 @@ import Button from '../../components/Button'
 import { Database } from '@/lib/database.types'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useLanguage, useTranslation } from '../../contexts/LanguageContext'
-import { getUserProfileData, updateUserProfile, updateUserPassword } from '@/lib/actions/admin-settings'
+import { getUserProfileData, updateUserProfile } from '@/lib/actions/admin-settings'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -189,9 +189,16 @@ export default function SettingsPage() {
     setMessage(null)
 
     try {
-      const result = await updateUserPassword(passwordForm.newPassword)
+      const response = await fetch('/api/settings/password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ newPassword: passwordForm.newPassword })
+      })
 
-      if (result.success) {
+      const result = await response.json()
+
+      if (response.ok) {
         setMessage({ type: 'success', text: t('settings.passwordChanged') })
         setPasswordForm({
           currentPassword: '',
