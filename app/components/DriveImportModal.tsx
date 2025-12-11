@@ -1208,13 +1208,13 @@ useEffect(() => {
                   <div className="text-blue-300 text-xs">
                     {importMode === 'full' ? (
                       <>
-                        <p className="font-medium mb-1">Cole o link da pasta que contém os módulos do curso.</p>
-                        <p className="text-blue-400/80">O link deve ser de uma pasta do Google Drive no formato: drive.google.com/drive/folders/...</p>
+                        <p className="font-medium mb-1">Cole o link da pasta do curso.</p>
+                        <p className="text-blue-400/80">A pasta deve conter os módulos como subpastas. Formato: drive.google.com/drive/folders/...</p>
                       </>
                     ) : (
                       <>
-                        <p className="font-medium mb-1">Cole o link da pasta da disciplina que deseja importar.</p>
-                        <p className="text-blue-400/80">Apenas as disciplinas dentro dessa pasta serão listadas para seleção e importação no módulo escolhido.</p>
+                        <p className="font-medium mb-1">Cole o link da pasta do módulo que contém as disciplinas.</p>
+                        <p className="text-blue-400/80">As disciplinas dentro desse módulo serão listadas para seleção e importação.</p>
                       </>
                     )}
                   </div>
