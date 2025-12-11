@@ -124,7 +124,9 @@ export default function UsersPage() {
   const [enrollError, setEnrollError] = useState<string | null>(null)
   const [showDummyModal, setShowDummyModal] = useState(false)
   const [dummyLoading, setDummyLoading] = useState(false)
-  const [dummyResult, setDummyResult] = useState<{ email: string; password: string; stats?: Record<string, number> } | null>(null)
+  const [dummyResult, setDummyResult] = useState<{ email: string; password: string; userId?: string; stats?: Record<string, number> } | null>(null)
+  const [dummyNewPassword, setDummyNewPassword] = useState('')
+  const [resettingDummyPassword, setResettingDummyPassword] = useState(false)
 
   const getErrorMessage = (error: unknown, fallback: string) => (
     error instanceof Error ? error.message : fallback
@@ -345,6 +347,7 @@ export default function UsersPage() {
       setDummyResult({
         email: data.email,
         password: data.password,
+        userId: data.userId,
         stats: data.stats
       })
       showToast('Aluno dummy criado com sucesso!')
@@ -361,6 +364,41 @@ export default function UsersPage() {
     setShowDummyModal(false)
     setDummyResult(null)
     setError(null)
+    setDummyNewPassword('')
+  }
+
+  const handleResetDummyPassword = async () => {
+    if (!dummyResult?.userId || !dummyNewPassword) return
+
+    setResettingDummyPassword(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/admin/reset-password', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          userId: dummyResult.userId,
+          newPassword: dummyNewPassword
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao resetar senha')
+      }
+
+      setDummyResult(prev => prev ? { ...prev, password: dummyNewPassword } : null)
+      setDummyNewPassword('')
+      showToast('Senha do aluno dummy resetada com sucesso!')
+    } catch (err) {
+      setError(getErrorMessage(err, 'Erro ao resetar senha'))
+      showToast(getErrorMessage(err, 'Erro ao resetar senha'))
+    } finally {
+      setResettingDummyPassword(false)
+    }
   }
 
   const copyToClipboard = (text: string) => {
@@ -1568,6 +1606,30 @@ export default function UsersPage() {
                       </button>
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gold-500/20">
+                  <p className="text-gold-200 font-medium mb-2">Resetar Senha</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={dummyNewPassword}
+                      onChange={(e) => setDummyNewPassword(e.target.value)}
+                      placeholder="Nova senha (mín. 6 caracteres)"
+                      className="flex-1 px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-400/50"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleResetDummyPassword}
+                      disabled={resettingDummyPassword || dummyNewPassword.length < 6}
+                    >
+                      {resettingDummyPassword ? 'Resetando...' : 'Resetar'}
+                    </Button>
+                  </div>
+                  <p className="text-gold-400 text-xs mt-1">
+                    Após resetar, a nova senha será exibida acima.
+                  </p>
                 </div>
 
                 {dummyResult.stats && (
