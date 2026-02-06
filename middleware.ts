@@ -305,10 +305,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // Authentication check for API routes
-  // Exceções: /api/auth/* e /api/debug-env (debug)
+  // Exceções: /api/auth/* e /api/import-from-drive-runner
   if (isAPI && !session &&
       !request.nextUrl.pathname.startsWith('/api/auth/') &&
-      !request.nextUrl.pathname.startsWith('/api/debug-env') &&
       !request.nextUrl.pathname.startsWith('/api/import-from-drive-runner')) {
     return NextResponse.json(
       { error: 'Unauthorized - Authentication required' },

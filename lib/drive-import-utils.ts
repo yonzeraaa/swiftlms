@@ -189,21 +189,11 @@ export function validateCodeForType(code: string | null, type: ItemType): Valida
 export function validateParentChildCode(parentCode: string | null, childCode: string | null): ValidationError | null {
   if (!parentCode || !childCode) return null
 
-  const parentPrefix = extractPrefix(parentCode)
-  const childPrefix = extractPrefix(childCode)
-
-  // Prefixos devem ser iguais
-  if (parentPrefix.toUpperCase() !== childPrefix.toUpperCase()) {
-    return {
-      field: 'hierarchy',
-      message: `Prefixo incompatível: pai "${parentPrefix}", filho "${childPrefix}"`
-    }
-  }
-
   const parentNumbers = parentCode.replace(/[A-Za-z]/g, '')
   const childNumbers = childCode.replace(/[A-Za-z]/g, '')
 
-  // Código do filho deve começar com os dígitos do pai
+  // Hierarquia flexível por prefixo: valida apenas a estrutura numérica.
+  // Ex.: MLTA01 pode ter filho DLA0101, pois "0101" começa com "01".
   if (!childNumbers.startsWith(parentNumbers)) {
     return {
       field: 'hierarchy',

@@ -3,31 +3,27 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
+    // This endpoint is for local diagnostics only
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
     const supabase = await createClient()
-    
+
     const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    if (userError) {
-      return NextResponse.json({ 
-        error: 'Failed to get user',
-        details: userError.message 
+    if (userError || !user) {
+      return NextResponse.json({
+        error: 'Unauthorized'
       }, { status: 401 })
     }
-    
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
+
+    const { data: { session } } = await supabase.auth.getSession()
+
     return NextResponse.json({
-      user: user ? {
-        id: user.id,
-        email: user.email,
-        role: user.role
-      } : null,
-      session: session ? {
-        access_token: session.access_token ? 'present' : 'missing',
-        refresh_token: session.refresh_token ? 'present' : 'missing',
-        expires_at: session.expires_at
-      } : null,
-      sessionError: sessionError?.message
+      authenticated: true,
+      userId: user.id,
+      hasSession: !!session,
+      expiresAt: session?.expires_at ?? null
     })
   } catch (error) {
     return NextResponse.json({ 

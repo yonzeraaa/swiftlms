@@ -3,40 +3,26 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    
-    // Tentar obter sessão de várias formas
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    
-    // Se temos usuário mas não sessão, tentar refresh
-    let refreshAttempted = false
-    let refreshSuccess = false
-    
-    if (user && !session) {
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-      refreshAttempted = true
-      refreshSuccess = !!refreshData.session
+    // This endpoint is for local diagnostics only
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    
+
+    const supabase = await createClient()
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: { session } } = await supabase.auth.getSession()
+
     return NextResponse.json({
-      timestamp: new Date().toISOString(),
+      authenticated: true,
+      userId: user.id,
       hasSession: !!session,
-      hasUser: !!user,
-      userId: user?.id,
-      userEmail: user?.email,
-      sessionError: sessionError?.message,
-      userError: userError?.message,
-      refreshAttempted,
-      refreshSuccess,
-      path: request.nextUrl.pathname,
-      middleware: {
-        shouldBlockDashboard: !session && (
-          request.nextUrl.pathname.startsWith('/dashboard') || 
-          request.nextUrl.pathname.startsWith('/student-dashboard')
-        ),
-        shouldRedirectFromLogin: !!session && request.nextUrl.pathname === '/'
-      }
+      expiresAt: session?.expires_at ?? null,
+      path: request.nextUrl.pathname
     })
   } catch (error: any) {
     return NextResponse.json({
