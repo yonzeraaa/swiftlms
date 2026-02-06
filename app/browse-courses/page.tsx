@@ -3,15 +3,13 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { ArrowLeft, BookOpen, Clock, ChevronDown, ChevronUp, Search, Filter } from 'lucide-react'
+import { ArrowLeft, BookOpen, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Playfair_Display, Inter } from 'next/font/google'
 import { getBrowsableCourses } from '@/lib/actions/browse-enroll'
-import Logo from '../components/Logo'
 import Button from '../components/Button'
 
-// Fonts
 const playfair = Playfair_Display({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800', '900'],
@@ -23,6 +21,30 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
 })
+
+function OrnamentalDivider({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 300 20" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="0" y1="10" x2="120" y2="10" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+      <line x1="180" y1="10" x2="300" y2="10" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+      <path
+        d="M130 10 C135 5 140 3 150 3 C160 3 165 5 170 10 C165 15 160 17 150 17 C140 17 135 15 130 10Z"
+        stroke="currentColor" strokeWidth="0.8" opacity="0.5" fill="currentColor" fillOpacity="0.1"
+      />
+      <circle cx="150" cy="10" r="2" fill="currentColor" opacity="0.6" />
+    </svg>
+  )
+}
+
+function CornerFlourish({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 80 80" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M5 5 C5 5 15 5 25 15 C35 25 30 40 20 35 C10 30 15 20 25 15" stroke="currentColor" strokeWidth="1" opacity="0.5" fill="none" />
+      <path d="M5 5 C5 5 5 15 15 25 C25 35 40 30 35 20 C30 10 20 15 15 25" stroke="currentColor" strokeWidth="1" opacity="0.5" fill="none" />
+      <circle cx="5" cy="5" r="2" fill="currentColor" opacity="0.6" />
+    </svg>
+  )
+}
 
 type Course = {
   id: string
@@ -176,58 +198,78 @@ export default function BrowseCoursesPage() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen w-full flex items-center justify-center bg-[#0F1115] relative overflow-hidden ${inter.className}`}>
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] opacity-20 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0F1115] via-[#1A1D23] to-[#0F1115] opacity-95" />
+      <div className={`min-h-screen w-full flex items-center justify-center relative overflow-hidden ${inter.className}`}
+        style={{ background: 'linear-gradient(145deg, #0a0806 0%, #1a1410 40%, #0f0b08 100%)' }}
+      >
         <div className="relative z-10 flex flex-col items-center">
-          <div className="w-16 h-16 border-4 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin mb-4" />
-          <p className={`${playfair.className} text-[#D4AF37] text-xl italic`}>Carregando acervo...</p>
+          <div className="w-16 h-16 flex items-center justify-center mb-4"
+            style={{ border: '1px solid rgba(201,168,76,0.3)' }}
+          >
+            <div className="w-10 h-10 border border-[#c9a84c]/20 border-t-[#c9a84c] rounded-full animate-spin" />
+          </div>
+          <p className={`${playfair.className} italic font-light`} style={{ color: '#c9a84c' }}>
+            Carregando acervo...
+          </p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className={`min-h-screen w-full bg-[#0F1115] relative overflow-x-hidden ${inter.className}`}>
-
-      {/* Background */}
-      <div className="fixed inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] opacity-20 pointer-events-none" />
-      <div className="fixed inset-0 bg-gradient-to-br from-[#0F1115] via-[#1A1D23] to-[#0F1115] opacity-95" />
-
-      {/* Decorative Circles */}
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
-        className="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] border border-[#D4AF37]/5 rounded-full pointer-events-none"
+    <div className={`min-h-screen w-full relative overflow-x-hidden ${inter.className}`}
+      style={{ background: 'linear-gradient(145deg, #0a0806 0%, #1a1410 40%, #0f0b08 100%)' }}
+    >
+      {/* Textura de fundo sutil */}
+      <div className="fixed inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at 30% 50%, rgba(139,115,85,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 30%, rgba(107,29,29,0.04) 0%, transparent 50%)'
+        }}
       />
-      <motion.div
-        animate={{ rotate: -360 }}
-        transition={{ duration: 150, repeat: Infinity, ease: "linear" }}
-        className="fixed bottom-[-20%] left-[-10%] w-[1000px] h-[1000px] border border-[#D4AF37]/5 rounded-full pointer-events-none"
+
+      {/* Moldura decorativa na borda da viewport */}
+      <div className="fixed inset-3 border pointer-events-none z-20" style={{ borderColor: 'rgba(201,168,76,0.08)' }} />
+
+      {/* Ornamentos de canto */}
+      <CornerFlourish className="fixed top-4 left-4 w-12 h-12 text-[#c9a84c] opacity-40 pointer-events-none z-20" />
+      <CornerFlourish className="fixed top-4 right-4 w-12 h-12 text-[#c9a84c] opacity-40 pointer-events-none z-20 -scale-x-100" />
+      <CornerFlourish className="fixed bottom-4 left-4 w-12 h-12 text-[#c9a84c] opacity-40 pointer-events-none z-20 -scale-y-100" />
+      <CornerFlourish className="fixed bottom-4 right-4 w-12 h-12 text-[#c9a84c] opacity-40 pointer-events-none z-20 -scale-x-100 -scale-y-100" />
+
+      {/* Textura de pergaminho */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03]"
+        style={{ background: 'repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(201,168,76,0.15) 28px, rgba(201,168,76,0.15) 29px)' }}
       />
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0F1115]/80 backdrop-blur-md border-b border-[#D4AF37]/10">
+      <header className="sticky top-0 z-50 border-b"
+        style={{
+          background: 'linear-gradient(170deg, rgba(26,20,16,0.95) 0%, rgba(21,17,12,0.95) 100%)',
+          borderBottomColor: 'rgba(201,168,76,0.12)',
+          backdropFilter: 'blur(8px)',
+        }}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div>
-                <h1 className={`${playfair.className} text-xl text-white tracking-wide`}>
-                  Swift<span className="text-[#D4AF37]">EDU</span>
-                </h1>
-                <p className="text-[10px] text-gray-400 uppercase tracking-[0.2em]">Catálogo Acadêmico</p>
-              </div>
+            <div>
+              <h1 className={`${playfair.className} text-xl font-medium`} style={{ color: '#e8dcc8' }}>
+                Swift<span style={{ color: '#c9a84c' }}>EDU</span>
+              </h1>
+              <p className="text-[10px] uppercase tracking-[0.2em]" style={{ color: '#8b7355', fontVariant: 'small-caps' }}>
+                Catálogo Acadêmico
+              </p>
             </div>
-            <Button
-              variant="outline"
+            <button
               onClick={() => router.push('/')}
-              className="!border-[#D4AF37]/30 !text-[#D4AF37] hover:!bg-[#D4AF37] hover:!text-[#0F1115] !rounded-sm !text-xs !uppercase !tracking-widest transition-all"
+              className={`${playfair.className} flex items-center gap-2 py-2 px-4 text-xs italic font-light transition-all duration-300 hover:text-[#c9a84c]`}
+              style={{
+                color: '#8b7355',
+                border: '1px solid rgba(139,115,85,0.25)',
+                letterSpacing: '0.1em',
+              }}
             >
-              <div className="flex items-center gap-2">
-                <ArrowLeft className="w-3 h-3" />
-                <span>Voltar</span>
-              </div>
-            </Button>
+              <ArrowLeft className="w-3 h-3" />
+              <span>Voltar</span>
+            </button>
           </div>
         </div>
       </header>
@@ -242,13 +284,30 @@ export default function BrowseCoursesPage() {
           transition={{ duration: 0.8 }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-3 mb-4 px-4 py-1.5 rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/5">
-            <span className="text-[#D4AF37] text-[10px] uppercase tracking-[0.2em] font-medium">Acervo Disponível</span>
+          <div className="inline-flex items-center gap-3 mb-4 px-5 py-1.5 border"
+            style={{
+              borderColor: 'rgba(201,168,76,0.2)',
+              background: 'radial-gradient(ellipse at center, rgba(107,29,29,0.2) 0%, rgba(107,29,29,0.05) 70%, transparent 100%)',
+              borderRadius: '50px',
+            }}
+          >
+            <div className="w-1.5 h-1.5 rounded-full bg-[#c9a84c]" style={{ boxShadow: '0 0 6px rgba(201,168,76,0.4)' }} />
+            <span className="text-[10px] uppercase tracking-[0.3em] font-bold" style={{ color: '#c9a84c', fontVariant: 'small-caps' }}>
+              Acervo Disponível
+            </span>
+            <div className="w-1.5 h-1.5 rounded-full bg-[#c9a84c]" style={{ boxShadow: '0 0 6px rgba(201,168,76,0.4)' }} />
           </div>
-          <h2 className={`${playfair.className} text-4xl md:text-5xl text-white mb-6`}>
-            Explore o <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] to-[#F4D03F]">Conhecimento</span>
+
+          <h2 className={`${playfair.className} text-4xl md:text-5xl font-medium mb-4`} style={{ color: '#e8dcc8' }}>
+            Explore o{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a84c] to-[#d4b85a]">
+              Conhecimento
+            </span>
           </h2>
-          <p className="text-gray-400 max-w-2xl mx-auto font-light leading-relaxed">
+
+          <OrnamentalDivider className="w-64 mx-auto text-[#c9a84c] mb-4" />
+
+          <p className="max-w-2xl mx-auto font-light leading-relaxed" style={{ color: '#8b7355' }}>
             Navegue por nossa seleção de cursos desenhados para a excelência.
             Cada módulo é uma nova página na sua jornada de aprendizado.
           </p>
@@ -258,26 +317,43 @@ export default function BrowseCoursesPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="max-w-md mx-auto text-center p-8 border border-red-900/30 bg-red-900/5 rounded-sm"
+            className="max-w-md mx-auto text-center p-8"
+            style={{
+              border: '1px solid rgba(107,29,29,0.3)',
+              background: 'linear-gradient(170deg, #1a1410 0%, #15110c 50%, #1a1410 100%)',
+            }}
           >
-            <h3 className={`${playfair.className} text-xl text-red-400 mb-2`}>Indisponibilidade Temporária</h3>
-            <p className="text-gray-400 mb-6 font-light">{error}</p>
-            <Button
+            <h3 className={`${playfair.className} text-xl italic mb-2`} style={{ color: '#c75050' }}>
+              Indisponibilidade Temporária
+            </h3>
+            <p className="font-light mb-6" style={{ color: '#8b7355' }}>{error}</p>
+            <button
               onClick={fetchPublicCourses}
-              className="!bg-[#D4AF37] !text-[#0F1115] hover:!bg-[#E5C150] !rounded-sm !uppercase !tracking-widest !text-xs !font-bold"
+              className={`${playfair.className} py-2.5 px-6 text-sm italic font-light transition-all duration-500 hover:bg-[#c9a84c] hover:text-[#0a0806] group`}
+              style={{
+                color: '#c9a84c',
+                border: '1px solid rgba(201,168,76,0.5)',
+              }}
             >
               Tentar Novamente
-            </Button>
+            </button>
           </motion.div>
         ) : courses.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="max-w-lg mx-auto text-center p-12 border border-[#D4AF37]/10 bg-[#14161B] rounded-sm"
+            className="max-w-lg mx-auto text-center p-12 relative"
+            style={{
+              background: 'linear-gradient(170deg, #1a1410 0%, #15110c 50%, #1a1410 100%)',
+              border: '1px solid rgba(201,168,76,0.15)',
+            }}
           >
-            <BookOpen className="w-12 h-12 text-[#D4AF37]/40 mx-auto mb-6" />
-            <h3 className={`${playfair.className} text-2xl text-white mb-3`}>O Acervo está Vazio</h3>
-            <p className="text-gray-400 font-light">
+            <div className="absolute inset-3 pointer-events-none" style={{ border: '1px solid rgba(201,168,76,0.07)' }} />
+            <BookOpen className="w-12 h-12 mx-auto mb-6" style={{ color: 'rgba(201,168,76,0.4)' }} />
+            <h3 className={`${playfair.className} text-2xl italic font-medium mb-3`} style={{ color: '#e8dcc8' }}>
+              O Acervo está Vazio
+            </h3>
+            <p className="font-light" style={{ color: '#8b7355' }}>
               No momento, não há cursos publicados. Nossos curadores estão trabalhando em novos conteúdos.
             </p>
           </motion.div>
@@ -292,78 +368,118 @@ export default function BrowseCoursesPage() {
                 className="group"
               >
                 {/* Course Card */}
-                <div className="relative bg-[#14161B] border border-[#D4AF37]/10 p-8 md:p-10 shadow-2xl transition-all duration-500 hover:border-[#D4AF37]/30">
-                  {/* Decorative corner */}
-                  <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden">
-                    <div className="absolute top-0 right-0 w-2 h-2 bg-[#D4AF37]/20" />
-                    <div className="absolute top-0 right-0 w-16 h-[1px] bg-gradient-to-l from-[#D4AF37]/20 to-transparent" />
-                    <div className="absolute top-0 right-0 h-16 w-[1px] bg-gradient-to-b from-[#D4AF37]/20 to-transparent" />
-                  </div>
+                <div className="relative p-8 md:p-10 shadow-2xl transition-all duration-500"
+                  style={{
+                    background: 'linear-gradient(170deg, #1a1410 0%, #15110c 50%, #1a1410 100%)',
+                    border: '1px solid rgba(201,168,76,0.12)',
+                  }}
+                >
+                  {/* Moldura interna */}
+                  <div className="absolute inset-3 pointer-events-none" style={{ border: '1px solid rgba(201,168,76,0.06)' }} />
 
-                  <div className="flex flex-col md:flex-row gap-8 md:gap-12">
+                  {/* Textura de pergaminho */}
+                  <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
+                    style={{ background: 'repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(201,168,76,0.15) 28px, rgba(201,168,76,0.15) 29px)' }}
+                  />
+
+                  {/* Flourishes nos cantos */}
+                  <CornerFlourish className="absolute top-1 left-1 w-8 h-8 text-[#c9a84c] opacity-20" />
+                  <CornerFlourish className="absolute top-1 right-1 w-8 h-8 text-[#c9a84c] opacity-20 -scale-x-100" />
+                  <CornerFlourish className="absolute bottom-1 left-1 w-8 h-8 text-[#c9a84c] opacity-20 -scale-y-100" />
+                  <CornerFlourish className="absolute bottom-1 right-1 w-8 h-8 text-[#c9a84c] opacity-20 -scale-x-100 -scale-y-100" />
+
+                  <div className="relative z-10 flex flex-col md:flex-row gap-8 md:gap-12">
                     {/* Course Info */}
                     <div className="flex-1">
                       <div className="flex flex-wrap items-center gap-3 mb-6">
-                        <span className="px-3 py-1 border border-[#D4AF37]/20 text-[#D4AF37] text-[10px] uppercase tracking-widest font-medium">
+                        <span className="px-3 py-1 text-[10px] uppercase tracking-widest font-bold"
+                          style={{ border: '1px solid rgba(201,168,76,0.25)', color: '#c9a84c', fontVariant: 'small-caps' }}
+                        >
                           {getCategoryLabel(course.category)}
                         </span>
-                        <span className={`px-3 py-1 border text-[10px] uppercase tracking-widest font-medium ${course.difficulty === 'beginner' ? 'border-green-900/30 text-green-400' :
-                          course.difficulty === 'intermediate' ? 'border-yellow-900/30 text-yellow-400' :
-                            'border-red-900/30 text-red-400'
-                          }`}>
+                        <span className={`px-3 py-1 text-[10px] uppercase tracking-widest font-bold ${
+                          course.difficulty === 'beginner'
+                            ? 'text-[#7a9a6b] border-[#7a9a6b]/25'
+                            : course.difficulty === 'intermediate'
+                              ? 'text-[#c9a84c] border-[#c9a84c]/25'
+                              : 'text-[#c75050] border-[#c75050]/25'
+                        }`}
+                          style={{ border: '1px solid', fontVariant: 'small-caps' }}
+                        >
                           {getDifficultyLabel(course.difficulty)}
                         </span>
-                        <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-widest ml-auto md:ml-0">
+                        <div className="flex items-center gap-2 text-xs uppercase tracking-widest ml-auto md:ml-0"
+                          style={{ color: '#6b5d4a' }}
+                        >
                           <Clock className="w-3 h-3" />
                           <span>{course.duration_hours}h Duração</span>
                         </div>
                       </div>
 
-                      <h3 className={`${playfair.className} text-3xl text-white mb-4 group-hover:text-[#D4AF37] transition-colors duration-300`}>
+                      <h3 className={`${playfair.className} text-3xl font-medium mb-4 group-hover:text-[#c9a84c] transition-colors duration-300`}
+                        style={{ color: '#e8dcc8' }}
+                      >
                         {course.title}
                       </h3>
 
                       {course.summary && (
-                        <p className="text-lg text-gray-300 mb-6 font-light leading-relaxed italic border-l-2 border-[#D4AF37]/20 pl-4">
-                          "{course.summary}"
+                        <p className={`${playfair.className} text-lg italic mb-6 font-light leading-relaxed pl-4`}
+                          style={{ color: 'rgba(232,220,200,0.7)', borderLeft: '2px solid rgba(201,168,76,0.25)' }}
+                        >
+                          &ldquo;{course.summary}&rdquo;
                         </p>
                       )}
 
                       {course.description && (
-                        <p className="text-gray-400 leading-relaxed font-light mb-8 text-sm">
+                        <p className="leading-relaxed font-light mb-8 text-sm" style={{ color: '#8b7355' }}>
                           {course.description}
                         </p>
                       )}
                     </div>
 
-                    {/* Modules List (Visual Representation) */}
-                    <div className="w-full md:w-1/3 border-t md:border-t-0 md:border-l border-[#D4AF37]/10 pt-8 md:pt-0 md:pl-8">
-                      <h4 className={`${playfair.className} text-white text-lg mb-6 flex items-center gap-3`}>
-                        <BookOpen className="w-4 h-4 text-[#D4AF37]" />
+                    {/* Modules List */}
+                    <div className="w-full md:w-1/3 border-t md:border-t-0 md:border-l pt-8 md:pt-0 md:pl-8"
+                      style={{ borderColor: 'rgba(201,168,76,0.1)' }}
+                    >
+                      <h4 className={`${playfair.className} text-lg mb-1 flex items-center gap-3 font-medium`}
+                        style={{ color: '#e8dcc8' }}
+                      >
+                        <BookOpen className="w-4 h-4" style={{ color: '#c9a84c' }} />
                         Estrutura Curricular
                       </h4>
+                      <OrnamentalDivider className="w-full text-[#c9a84c] opacity-40 mb-4" />
 
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         {course.modules.map((module, modIndex) => {
                           const isExpanded = expandedModules.has(module.id)
                           return (
-                            <div key={module.id} className="border border-[#D4AF37]/5 bg-[#0F1115]/50 hover:bg-[#0F1115] transition-colors">
+                            <div key={module.id}
+                              className="transition-colors"
+                              style={{
+                                border: '1px solid rgba(201,168,76,0.06)',
+                                background: isExpanded ? 'rgba(201,168,76,0.03)' : 'transparent',
+                              }}
+                            >
                               <button
                                 onClick={() => toggleModuleExpansion(module.id)}
-                                className="w-full flex items-center justify-between p-4 text-left group/module"
+                                className="w-full flex items-center justify-between p-3 text-left group/module"
                               >
                                 <div>
-                                  <span className="text-[#D4AF37] text-[10px] uppercase tracking-widest block mb-1">
+                                  <span className="text-[10px] uppercase tracking-widest block mb-1 font-bold"
+                                    style={{ color: '#c9a84c', fontVariant: 'small-caps' }}
+                                  >
                                     Módulo {String(modIndex + 1).padStart(2, '0')}
                                   </span>
-                                  <span className="text-gray-300 text-sm font-medium group-hover/module:text-white transition-colors">
+                                  <span className="text-sm font-light group-hover/module:text-[#e8dcc8] transition-colors"
+                                    style={{ color: '#8b7355' }}
+                                  >
                                     {module.title}
                                   </span>
                                 </div>
                                 {isExpanded ? (
-                                  <ChevronUp className="w-4 h-4 text-[#D4AF37]" />
+                                  <ChevronUp className="w-4 h-4" style={{ color: '#c9a84c' }} />
                                 ) : (
-                                  <ChevronDown className="w-4 h-4 text-gray-600 group-hover/module:text-[#D4AF37] transition-colors" />
+                                  <ChevronDown className="w-4 h-4 group-hover/module:text-[#c9a84c] transition-colors" style={{ color: '#6b5d4a' }} />
                                 )}
                               </button>
 
@@ -375,19 +491,23 @@ export default function BrowseCoursesPage() {
                                     exit={{ height: 0, opacity: 0 }}
                                     className="overflow-hidden"
                                   >
-                                    <div className="px-4 pb-4 pt-0 space-y-2">
+                                    <div className="px-3 pb-3 pt-0 space-y-1.5">
                                       {module.subjects.map((subject, subIndex) => (
-                                        <div key={subject.id} className="flex items-start gap-3 pl-2 border-l border-[#D4AF37]/10 py-1">
-                                          <span className="text-gray-600 text-[10px] mt-0.5 font-mono">
+                                        <div key={subject.id} className="flex items-start gap-3 pl-2 py-1"
+                                          style={{ borderLeft: '1px solid rgba(201,168,76,0.1)' }}
+                                        >
+                                          <span className="text-[10px] mt-0.5 font-mono" style={{ color: '#6b5d4a' }}>
                                             {String(subIndex + 1).padStart(2, '0')}
                                           </span>
-                                          <span className="text-gray-400 text-xs font-light">
+                                          <span className="text-xs font-light" style={{ color: '#8b7355' }}>
                                             {subject.name}
                                           </span>
                                         </div>
                                       ))}
                                       {module.subjects.length === 0 && (
-                                        <p className="text-gray-600 text-xs italic pl-2">Nenhuma disciplina cadastrada.</p>
+                                        <p className={`${playfair.className} text-xs italic pl-2`} style={{ color: '#6b5d4a' }}>
+                                          Nenhuma disciplina cadastrada.
+                                        </p>
                                       )}
                                     </div>
                                   </motion.div>

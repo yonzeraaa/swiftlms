@@ -15,7 +15,6 @@ import { useTranslation } from './contexts/LanguageContext'
 import type { Language } from './contexts/LanguageContext'
 import { checkAuthStatus } from '@/lib/actions/browse-enroll'
 
-// Fontes para o tema Vintage/Elegante
 const playfair = Playfair_Display({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800', '900'],
@@ -27,6 +26,101 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
 })
+
+// Ornamento SVG de filigrana para o topo do lado esquerdo
+function FloralOrnament({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 400 80" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M200 40 C200 40 220 10 250 10 C280 10 290 30 280 40 C270 50 250 45 250 40 C250 35 260 25 270 30"
+        stroke="currentColor" strokeWidth="1" opacity="0.6" fill="none"
+      />
+      <path
+        d="M200 40 C200 40 180 10 150 10 C120 10 110 30 120 40 C130 50 150 45 150 40 C150 35 140 25 130 30"
+        stroke="currentColor" strokeWidth="1" opacity="0.6" fill="none"
+      />
+      <path
+        d="M200 40 C200 40 230 60 260 55 C290 50 295 35 285 30 C275 25 260 35 260 40"
+        stroke="currentColor" strokeWidth="0.8" opacity="0.4" fill="none"
+      />
+      <path
+        d="M200 40 C200 40 170 60 140 55 C110 50 105 35 115 30 C125 25 140 35 140 40"
+        stroke="currentColor" strokeWidth="0.8" opacity="0.4" fill="none"
+      />
+      <circle cx="200" cy="40" r="3" fill="currentColor" opacity="0.8" />
+      <circle cx="200" cy="40" r="6" stroke="currentColor" strokeWidth="0.5" opacity="0.4" fill="none" />
+      {/* Folhas laterais */}
+      <path d="M160 40 C160 30 170 20 180 25 C175 30 165 35 160 40Z" fill="currentColor" opacity="0.15" />
+      <path d="M240 40 C240 30 230 20 220 25 C225 30 235 35 240 40Z" fill="currentColor" opacity="0.15" />
+      {/* Extensões horizontais */}
+      <line x1="80" y1="40" x2="140" y2="40" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+      <line x1="260" y1="40" x2="320" y2="40" stroke="currentColor" strokeWidth="0.5" opacity="0.3" />
+      <circle cx="80" cy="40" r="2" fill="currentColor" opacity="0.3" />
+      <circle cx="320" cy="40" r="2" fill="currentColor" opacity="0.3" />
+    </svg>
+  )
+}
+
+// Ornamento de canto (flourish)
+function CornerFlourish({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 80 80" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M5 5 C5 5 15 5 25 15 C35 25 30 40 20 35 C10 30 15 20 25 15"
+        stroke="currentColor" strokeWidth="1" opacity="0.5" fill="none"
+      />
+      <path
+        d="M5 5 C5 5 5 15 15 25 C25 35 40 30 35 20 C30 10 20 15 15 25"
+        stroke="currentColor" strokeWidth="1" opacity="0.5" fill="none"
+      />
+      <path
+        d="M25 15 C30 18 35 25 30 30 C25 35 18 30 20 25"
+        stroke="currentColor" strokeWidth="0.8" opacity="0.3" fill="none"
+      />
+      <circle cx="5" cy="5" r="2" fill="currentColor" opacity="0.6" />
+    </svg>
+  )
+}
+
+// Divider ornamental
+function OrnamentalDivider({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 300 20" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="0" y1="10" x2="120" y2="10" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+      <line x1="180" y1="10" x2="300" y2="10" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
+      <path
+        d="M130 10 C135 5 140 3 150 3 C160 3 165 5 170 10 C165 15 160 17 150 17 C140 17 135 15 130 10Z"
+        stroke="currentColor" strokeWidth="0.8" opacity="0.5" fill="currentColor" fillOpacity="0.1"
+      />
+      <circle cx="150" cy="10" r="2" fill="currentColor" opacity="0.6" />
+    </svg>
+  )
+}
+
+// Fleur-de-lis watermark
+function FleurDeLis({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 100 120" className={className} fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M50 10 C50 10 55 20 55 35 C55 45 52 50 50 55 C48 50 45 45 45 35 C45 20 50 10 50 10Z"
+        opacity="0.6"
+      />
+      <path
+        d="M50 55 C50 55 30 35 20 35 C15 35 12 40 15 45 C18 50 30 50 40 48 C45 47 48 50 50 55Z"
+        opacity="0.5"
+      />
+      <path
+        d="M50 55 C50 55 70 35 80 35 C85 35 88 40 85 45 C82 50 70 50 60 48 C55 47 52 50 50 55Z"
+        opacity="0.5"
+      />
+      <path
+        d="M50 55 C48 60 45 70 45 80 L50 85 L55 80 C55 70 52 60 50 55Z"
+        opacity="0.4"
+      />
+      <ellipse cx="50" cy="90" rx="12" ry="4" opacity="0.3" />
+    </svg>
+  )
+}
 
 export default function LoginPage() {
   const { t, language, setLanguage } = useTranslation()
@@ -44,10 +138,10 @@ export default function LoginPage() {
   const [currentQuote, setCurrentQuote] = useState(0)
 
   const quotes = [
-    { text: "A educação é a arma mais poderosa que você pode usar para mudar o mundo.", author: "Nelson Mandela" },
-    { text: "Liderança e aprendizado são indispensáveis um ao outro.", author: "John F. Kennedy" },
-    { text: "Investir em conhecimento rende sempre os melhores juros.", author: "Benjamin Franklin" },
-    { text: "A única coisa que interfere com meu aprendizado é a minha educação.", author: "Albert Einstein" }
+    { text: "A aprendizagem é o único tesouro que acompanha seu dono em toda parte.", author: "Leonardo da Vinci" },
+    { text: "Meça o que é mensurável e torne mensurável o que não o é.", author: "Galileu Galilei" },
+    { text: "Toda a nossa dignidade consiste no pensamento. É dele que devemos nos elevar.", author: "Nicolau Maquiavel" },
+    { text: "O maior perigo para a maioria de nós não é que nossa meta seja alta demais e não a alcancemos, mas que seja baixa demais e a alcancemos.", author: "Michelangelo" }
   ]
 
   useEffect(() => {
@@ -117,66 +211,143 @@ export default function LoginPage() {
   }
 
   return (
-    <div className={`min-h-screen w-full flex items-center justify-center bg-[#0F1115] relative overflow-hidden ${inter.className}`}>
+    <div className={`h-screen max-h-screen w-full flex items-center justify-center relative overflow-hidden ${inter.className}`}
+      style={{ background: 'linear-gradient(145deg, #0a0806 0%, #1a1410 40%, #0f0b08 100%)' }}
+    >
+      {/* CSS para animações de partículas de poeira dourada e glow dos inputs */}
+      <style jsx global>{`
+        @keyframes dust-float-1 {
+          0%, 100% { transform: translate(0, 0) scale(1); opacity: 0; }
+          10% { opacity: 0.8; }
+          50% { transform: translate(80px, -120px) scale(0.6); opacity: 0.4; }
+          90% { opacity: 0; }
+        }
+        @keyframes dust-float-2 {
+          0%, 100% { transform: translate(0, 0) scale(0.8); opacity: 0; }
+          15% { opacity: 0.6; }
+          60% { transform: translate(-60px, -100px) scale(0.4); opacity: 0.3; }
+          95% { opacity: 0; }
+        }
+        @keyframes dust-float-3 {
+          0%, 100% { transform: translate(0, 0) scale(1.2); opacity: 0; }
+          20% { opacity: 0.7; }
+          70% { transform: translate(100px, -80px) scale(0.5); opacity: 0.2; }
+          90% { opacity: 0; }
+        }
+        @keyframes dust-float-4 {
+          0%, 100% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+          5% { opacity: 0.9; }
+          55% { transform: translate(-40px, -140px) scale(0.3); opacity: 0.3; }
+          85% { opacity: 0; }
+        }
+        @keyframes dust-float-5 {
+          0%, 100% { transform: translate(0, 0) scale(1); opacity: 0; }
+          12% { opacity: 0.5; }
+          65% { transform: translate(50px, -110px) scale(0.4); opacity: 0.2; }
+          92% { opacity: 0; }
+        }
+        .renaissance-input:focus {
+          border-bottom-color: #c9a84c !important;
+          box-shadow: 0 2px 8px rgba(201, 168, 76, 0.15);
+        }
+        .renaissance-input::placeholder {
+          color: #5a4f3c;
+          font-style: italic;
+        }
+      `}</style>
 
-      {/* Background: Abstract Library / Knowledge Network */}
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] opacity-20 pointer-events-none" />
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0F1115] via-[#1A1D23] to-[#0F1115] opacity-95" />
-
-      {/* Decorative Elements: The "Golden Ratio" Circles - Animated */}
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
-        className="absolute top-[-20%] right-[-10%] w-[1000px] h-[1000px] border border-[#D4AF37]/5 rounded-full pointer-events-none"
+      {/* Textura de fundo sutil — gradiente que simula pergaminho escuro */}
+      <div className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at 30% 50%, rgba(139,115,85,0.06) 0%, transparent 60%), radial-gradient(ellipse at 70% 30%, rgba(107,29,29,0.04) 0%, transparent 50%)'
+        }}
       />
-      <motion.div
-        animate={{ rotate: -360 }}
-        transition={{ duration: 90, repeat: Infinity, ease: "linear" }}
-        className="absolute top-[-15%] right-[-5%] w-[800px] h-[800px] border border-[#D4AF37]/5 rounded-full pointer-events-none"
-      />
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 150, repeat: Infinity, ease: "linear" }}
-        className="absolute bottom-[-20%] left-[-10%] w-[1000px] h-[1000px] border border-[#D4AF37]/5 rounded-full pointer-events-none"
-      />
 
-      <div className="w-full max-w-[1400px] grid grid-cols-1 lg:grid-cols-12 gap-12 p-6 lg:p-12 relative z-10 h-full items-center">
+      {/* Moldura decorativa na borda da viewport */}
+      <div className="absolute inset-3 border pointer-events-none" style={{ borderColor: 'rgba(201,168,76,0.08)' }} />
+      <div className="absolute inset-5 border pointer-events-none" style={{ borderColor: 'rgba(201,168,76,0.04)' }} />
 
-        {/* Left Side: The "Manifesto" */}
-        <div className="hidden lg:flex lg:col-span-7 flex-col justify-center space-y-16 pr-12">
+      {/* Ornamentos de canto */}
+      <CornerFlourish className="absolute top-4 left-4 w-16 h-16 text-[#c9a84c] opacity-40 pointer-events-none" />
+      <CornerFlourish className="absolute top-4 right-4 w-16 h-16 text-[#c9a84c] opacity-40 pointer-events-none -scale-x-100" />
+      <CornerFlourish className="absolute bottom-4 left-4 w-16 h-16 text-[#c9a84c] opacity-40 pointer-events-none -scale-y-100" />
+      <CornerFlourish className="absolute bottom-4 right-4 w-16 h-16 text-[#c9a84c] opacity-40 pointer-events-none -scale-x-100 -scale-y-100" />
+
+      {/* Partículas de poeira dourada */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute w-1 h-1 rounded-full bg-[#c9a84c]" style={{ top: '20%', left: '15%', animation: 'dust-float-1 8s ease-in-out infinite' }} />
+        <div className="absolute w-0.5 h-0.5 rounded-full bg-[#c9a84c]" style={{ top: '60%', left: '25%', animation: 'dust-float-2 10s ease-in-out infinite 1s' }} />
+        <div className="absolute w-1 h-1 rounded-full bg-[#c9a84c]" style={{ top: '40%', left: '70%', animation: 'dust-float-3 12s ease-in-out infinite 2s' }} />
+        <div className="absolute w-0.5 h-0.5 rounded-full bg-[#c9a84c]" style={{ top: '75%', left: '80%', animation: 'dust-float-4 9s ease-in-out infinite 0.5s' }} />
+        <div className="absolute w-1 h-1 rounded-full bg-[#c9a84c]" style={{ top: '30%', left: '50%', animation: 'dust-float-5 11s ease-in-out infinite 3s' }} />
+        <div className="absolute w-0.5 h-0.5 rounded-full bg-[#c9a84c]" style={{ top: '85%', left: '40%', animation: 'dust-float-1 13s ease-in-out infinite 4s' }} />
+        <div className="absolute w-1 h-1 rounded-full bg-[#c9a84c]" style={{ top: '10%', left: '60%', animation: 'dust-float-2 7s ease-in-out infinite 2.5s' }} />
+        <div className="absolute w-0.5 h-0.5 rounded-full bg-[#c9a84c]" style={{ top: '50%', left: '90%', animation: 'dust-float-4 14s ease-in-out infinite 1.5s' }} />
+      </div>
+
+      {/* Fleur-de-lis watermark central */}
+      <FleurDeLis className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-72 text-[#c9a84c] opacity-[0.03] pointer-events-none" />
+
+      <div className="w-full max-w-[1400px] grid grid-cols-1 lg:grid-cols-12 gap-8 p-4 lg:px-12 lg:py-4 relative z-10 items-center">
+
+        {/* Lado Esquerdo — "O Manuscrito Iluminado" */}
+        <div className="hidden lg:flex lg:col-span-7 flex-col justify-center space-y-6 pr-12">
           <motion.div
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
           >
+            {/* Ornamento floral no topo */}
+            <FloralOrnament className="w-56 text-[#c9a84c] mb-4" />
+
+            {/* Badge estilo selo de cera */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2, duration: 0.8 }}
-              className="inline-flex items-center gap-3 mb-8 px-4 py-1.5 rounded-full border border-[#D4AF37]/20 bg-[#D4AF37]/5 backdrop-blur-sm"
+              className="inline-flex items-center gap-3 mb-4 px-5 py-1.5 border border-[#c9a84c]/20 backdrop-blur-sm"
+              style={{
+                background: 'radial-gradient(ellipse at center, rgba(107,29,29,0.3) 0%, rgba(107,29,29,0.1) 70%, transparent 100%)',
+                borderRadius: '50px',
+              }}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
-              <span className="text-[#D4AF37] text-xs uppercase tracking-[0.2em] font-bold">SwiftEDU</span>
+              <div className="w-2 h-2 rounded-full bg-[#c9a84c]" style={{ boxShadow: '0 0 6px rgba(201,168,76,0.5)' }} />
+              <span className="text-[#c9a84c] text-xs tracking-[0.3em] font-bold" style={{ fontVariant: 'small-caps' }}>SwiftEDU</span>
+              <div className="w-2 h-2 rounded-full bg-[#c9a84c]" style={{ boxShadow: '0 0 6px rgba(201,168,76,0.5)' }} />
             </motion.div>
 
-            <h1 className={`${playfair.className} text-6xl xl:text-7xl leading-[1.1] font-medium mb-8 text-white`}>
-              Onde o <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D4AF37] to-[#F4D03F]">Conhecimento</span> <br />
-              Encontra seu <br />
-              <span className="italic font-light opacity-80">Propósito.</span>
+            {/* Titulo com capitular ornamentada */}
+            <h1 className={`${playfair.className} text-5xl xl:text-6xl leading-[1.15] font-medium mb-4`} style={{ color: '#e8dcc8' }}>
+              Onde o{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#c9a84c] to-[#d4b85a]">
+                Conhecimento
+              </span> <br />
+              Encontra seu{' '}
+              <span className={`${playfair.className} italic font-light`} style={{ color: '#8b7355' }}>
+                Propósito.
+              </span>
             </h1>
 
             <motion.p
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.4, duration: 1 }}
-              className="text-gray-400 text-lg leading-relaxed max-w-xl font-light border-l-2 border-[#D4AF37]/20 pl-8"
+              className="text-base leading-relaxed max-w-lg font-light pl-6"
+              style={{
+                color: '#8b7355',
+                borderLeft: '2px solid rgba(201,168,76,0.25)',
+              }}
             >
-              Uma experiência de aprendizado imersiva e atemporal.
-              Gerencie cursos, desenvolva talentos e cultive a sabedoria em um ambiente desenhado para a excelência.
+              Cultive a sabedoria em um ambiente desenhado para a excelência.
+              Gerencie cursos, desenvolva talentos e alcance seu propósito.
             </motion.p>
           </motion.div>
 
-          <div className="relative h-48">
+          {/* Divider ornamental */}
+          <OrnamentalDivider className="w-64 text-[#c9a84c]" />
+
+          {/* Citações renascentistas */}
+          <div className="relative h-28">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentQuote}
@@ -184,15 +355,15 @@ export default function LoginPage() {
                 animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
                 transition={{ duration: 0.8, ease: "easeInOut" }}
-                className="absolute top-0 left-0 max-w-lg"
+                className="absolute top-0 left-0 max-w-md"
               >
-                <div className="text-[#D4AF37]/20 text-6xl font-serif absolute -top-6 -left-4">"</div>
-                <p className={`${playfair.className} text-2xl text-white/90 italic mb-4 leading-relaxed relative z-10`}>
+                <div className={`${playfair.className} text-5xl absolute -top-5 -left-3`} style={{ color: 'rgba(201,168,76,0.15)' }}>&ldquo;</div>
+                <p className={`${playfair.className} text-lg italic mb-3 leading-snug relative z-10`} style={{ color: 'rgba(232,220,200,0.85)' }}>
                   {quotes[currentQuote].text}
                 </p>
                 <div className="flex items-center gap-3 pl-1">
-                  <div className="h-[1px] w-12 bg-[#D4AF37]/30" />
-                  <span className="text-[#D4AF37] text-sm uppercase tracking-widest font-bold opacity-90">
+                  <div className="h-[1px] w-12" style={{ background: 'rgba(201,168,76,0.3)' }} />
+                  <span className="text-sm font-bold opacity-90 tracking-[0.15em]" style={{ color: '#c9a84c', fontVariant: 'small-caps' }}>
                     {quotes[currentQuote].author}
                   </span>
                 </div>
@@ -201,54 +372,76 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Right Side: The "Access Card" */}
+        {/* Lado Direito — "O Decreto Real" (formulário de login) */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
           className="lg:col-span-5 w-full max-w-md mx-auto lg:mx-0 lg:ml-auto"
         >
-          <div className="relative group perspective-1000">
-            {/* Vintage Book Binding Effect */}
-            <motion.div
-              initial={{ rotateY: -15, opacity: 0 }}
-              animate={{ rotateY: 0, opacity: 1 }}
-              transition={{ duration: 1.5, delay: 0.5 }}
-              className="absolute -left-3 top-2 bottom-2 w-4 bg-[#1a150d] rounded-l-sm shadow-2xl z-0 hidden lg:block border-l border-white/5 origin-right"
-            />
+          <div className="relative group">
+            {/* Moldura externa — quadro renascentista */}
+            <div className="absolute -inset-1 pointer-events-none" style={{
+              border: '1px solid rgba(201,168,76,0.12)',
+            }} />
 
-            <div className="relative bg-[#14161B] border border-[#D4AF37]/10 p-8 sm:p-12 shadow-2xl z-10 transform transition-transform duration-500 group-hover:translate-y-[-2px]">
-              {/* Decorative Frame */}
-              <div className="absolute inset-2 border border-[#D4AF37]/5 pointer-events-none" />
-              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/noise.png')] opacity-[0.03] pointer-events-none" />
+            {/* Card principal com textura de pergaminho */}
+            <div className="relative p-6 sm:p-8 shadow-2xl z-10"
+              style={{
+                background: 'linear-gradient(170deg, #1a1410 0%, #15110c 50%, #1a1410 100%)',
+                border: '1px solid rgba(201,168,76,0.15)',
+              }}
+            >
+              {/* Moldura interna decorativa */}
+              <div className="absolute inset-3 pointer-events-none" style={{ border: '1px solid rgba(201,168,76,0.07)' }} />
 
-              <div className="text-center mb-10 relative">
+              {/* Textura de pergaminho (CSS gradient) */}
+              <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
+                style={{
+                  background: 'repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(201,168,76,0.15) 28px, rgba(201,168,76,0.15) 29px)'
+                }}
+              />
+
+              {/* Flourishes nos cantos do card */}
+              <CornerFlourish className="absolute top-1 left-1 w-10 h-10 text-[#c9a84c] opacity-30" />
+              <CornerFlourish className="absolute top-1 right-1 w-10 h-10 text-[#c9a84c] opacity-30 -scale-x-100" />
+              <CornerFlourish className="absolute bottom-1 left-1 w-10 h-10 text-[#c9a84c] opacity-30 -scale-y-100" />
+              <CornerFlourish className="absolute bottom-1 right-1 w-10 h-10 text-[#c9a84c] opacity-30 -scale-x-100 -scale-y-100" />
+
+              <div className="text-center mb-6 relative">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.6, duration: 0.8 }}
-                  className="-mb-60 relative z-10 flex flex-col items-center justify-center"
+                  className="-mb-32 relative z-10 flex flex-col items-center justify-center"
                 >
-                  <Logo width={440} height={440} className="text-white opacity-90 drop-shadow-[0_0_15px_rgba(212,175,55,0.15)]" />
+                  <Logo width={260} height={260} className="text-white opacity-90 drop-shadow-[0_0_15px_rgba(201,168,76,0.15)]" />
                 </motion.div>
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.8 }}
                 >
-                  <p className="text-[#D4AF37] text-[10px] uppercase tracking-[0.4em] font-medium mb-2 border-b border-[#D4AF37]/20 pb-2 inline-block">Portal do Aluno</p>
+                  <OrnamentalDivider className="w-48 mx-auto text-[#c9a84c] mb-3" />
+                  <p className="text-sm tracking-[0.4em] font-medium mb-2 inline-block"
+                    style={{ color: '#c9a84c', fontVariant: 'small-caps', letterSpacing: '0.4em' }}
+                  >
+                    Portal do Aluno
+                  </p>
                 </motion.div>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-8 relative z-10">
-                <div className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-5 relative z-10">
+                <div className="space-y-4">
                   <motion.div
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.9 }}
                     className="group/input"
                   >
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 group-focus-within/input:text-[#D4AF37] transition-colors">
+                    <label className="block text-sm mb-2 transition-colors group-focus-within/input:text-[#c9a84c]"
+                      style={{ fontVariant: 'small-caps', letterSpacing: '0.2em', color: '#8b7355' }}
+                    >
                       Endereço de Email
                     </label>
                     <div className="relative">
@@ -256,11 +449,15 @@ export default function LoginPage() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-[#0F1115] border border-gray-800 text-white py-3.5 px-4 focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 outline-none transition-all duration-300 placeholder-gray-700 font-light"
+                        className="renaissance-input w-full bg-transparent border-0 border-b py-2.5 px-1 text-lg outline-none transition-all duration-300 font-light"
+                        style={{
+                          borderBottomWidth: '1px',
+                          borderBottomColor: 'rgba(139,115,85,0.3)',
+                          color: '#e8dcc8',
+                        }}
                         placeholder="exemplo@dominio.com"
                         required
                       />
-                      <div className="absolute inset-0 border border-[#D4AF37]/0 pointer-events-none transition-all duration-500 group-hover/input:border-[#D4AF37]/10" />
                     </div>
                   </motion.div>
 
@@ -270,7 +467,9 @@ export default function LoginPage() {
                     transition={{ delay: 1.0 }}
                     className="group/input"
                   >
-                    <label className="block text-[10px] uppercase tracking-widest text-gray-500 mb-2 group-focus-within/input:text-[#D4AF37] transition-colors">
+                    <label className="block text-sm mb-2 transition-colors group-focus-within/input:text-[#c9a84c]"
+                      style={{ fontVariant: 'small-caps', letterSpacing: '0.2em', color: '#8b7355' }}
+                    >
                       Senha Pessoal
                     </label>
                     <div className="relative">
@@ -278,7 +477,12 @@ export default function LoginPage() {
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-[#0F1115] border border-gray-800 text-white py-3.5 px-4 focus:border-[#D4AF37]/50 focus:ring-1 focus:ring-[#D4AF37]/50 outline-none transition-all duration-300 placeholder-gray-700 font-light"
+                        className="renaissance-input w-full bg-transparent border-0 border-b py-2.5 px-1 text-lg outline-none transition-all duration-300 font-light"
+                        style={{
+                          borderBottomWidth: '1px',
+                          borderBottomColor: 'rgba(139,115,85,0.3)',
+                          color: '#e8dcc8',
+                        }}
                         placeholder="••••••••"
                         required
                       />
@@ -290,11 +494,16 @@ export default function LoginPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 1.1 }}
-                  className="flex items-center justify-between text-xs"
+                  className="flex items-center justify-between text-base"
                 >
                   <label className="flex items-center gap-2 cursor-pointer group select-none">
-                    <div className={`w-4 h-4 border ${rememberMe ? 'border-[#D4AF37] bg-[#D4AF37]' : 'border-gray-700'} flex items-center justify-center transition-all duration-300`}>
-                      {rememberMe && <Check size={12} className="text-[#0F1115]" />}
+                    <div className="w-4 h-4 flex items-center justify-center transition-all duration-300"
+                      style={{
+                        border: `1px solid ${rememberMe ? '#c9a84c' : 'rgba(139,115,85,0.4)'}`,
+                        backgroundColor: rememberMe ? '#c9a84c' : 'transparent',
+                      }}
+                    >
+                      {rememberMe && <Check size={12} style={{ color: '#0a0806' }} />}
                     </div>
                     <input
                       type="checkbox"
@@ -302,12 +511,15 @@ export default function LoginPage() {
                       checked={rememberMe}
                       onChange={(e) => setRememberMe(e.target.checked)}
                     />
-                    <span className="text-gray-500 group-hover:text-gray-400 transition-colors font-light">Memorizar acesso</span>
+                    <span className="font-light transition-colors group-hover:text-[#8b7355]" style={{ color: '#6b5d4a' }}>
+                      Memorizar acesso
+                    </span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setForgotPasswordModalOpen(true)}
-                    className="text-gray-500 hover:text-[#D4AF37] transition-colors font-light italic"
+                    className={`${playfair.className} italic font-light transition-colors hover:text-[#c9a84c]`}
+                    style={{ color: '#6b5d4a' }}
                   >
                     Esqueci minha senha
                   </button>
@@ -317,14 +529,29 @@ export default function LoginPage() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 1.2 }}
+                  className="relative"
                 >
+                  {/* Ornamento floral ao redor do botão */}
+                  <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-3 text-[#c9a84c] opacity-30">
+                    <svg viewBox="0 0 12 40" fill="none">
+                      <path d="M6 0 C6 10 0 15 0 20 C0 25 6 30 6 40" stroke="currentColor" strokeWidth="0.5" />
+                    </svg>
+                  </div>
+                  <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-3 text-[#c9a84c] opacity-30">
+                    <svg viewBox="0 0 12 40" fill="none">
+                      <path d="M6 0 C6 10 12 15 12 20 C12 25 6 30 6 40" stroke="currentColor" strokeWidth="0.5" />
+                    </svg>
+                  </div>
                   <Button
                     type="submit"
                     loading={isLoading}
                     disabled={isLoading}
-                    className={`w-full !rounded-sm !h-14 !text-sm !tracking-[0.2em] relative overflow-hidden group/btn border border-[#D4AF37] !bg-transparent hover:!bg-[#D4AF37] transition-all duration-500 ${playfair.className}`}
+                    className={`w-full !rounded-none !h-14 !text-lg !tracking-[0.2em] relative overflow-hidden group/btn !bg-transparent hover:!bg-[#c9a84c] transition-all duration-500 ${playfair.className}`}
+                    style={{
+                      border: '1px solid rgba(201,168,76,0.5)',
+                    } as React.CSSProperties}
                   >
-                    <span className="relative z-10 flex items-center justify-center gap-3 text-[#D4AF37] group-hover/btn:text-[#0F1115] transition-colors duration-500 font-medium italic">
+                    <span className="relative z-10 flex items-center justify-center gap-3 text-[#c9a84c] group-hover/btn:text-[#0a0806] transition-colors duration-500 font-medium italic">
                       Iniciar Sessão
                     </span>
                   </Button>
@@ -332,14 +559,15 @@ export default function LoginPage() {
               </form>
 
               {/* Feedback Messages */}
-              <div className="mt-8 min-h-[24px]">
+              <div className="mt-4 min-h-[20px]">
                 <AnimatePresence mode="wait">
                   {error && (
                     <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="text-red-400 text-xs text-center border-l-2 border-red-500 pl-3 py-1"
+                      className="text-sm text-center py-1"
+                      style={{ color: '#c75050', borderLeft: '2px solid #6b1d1d', paddingLeft: '12px' }}
                     >
                       {error}
                     </motion.div>
@@ -349,7 +577,8 @@ export default function LoginPage() {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="text-[#D4AF37] text-xs text-center border-l-2 border-[#D4AF37] pl-3 py-1"
+                      className="text-sm text-center py-1"
+                      style={{ color: '#c9a84c', borderLeft: '2px solid #c9a84c', paddingLeft: '12px' }}
                     >
                       Bem-vindo de volta.
                     </motion.div>
@@ -357,26 +586,32 @@ export default function LoginPage() {
                 </AnimatePresence>
               </div>
 
+              {/* Footer ornamental */}
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1.4 }}
-                className="mt-10 pt-6 border-t border-gray-800/50 flex items-center justify-center gap-6 text-[10px] text-gray-600 uppercase tracking-widest"
+                className="mt-5 pt-4 flex flex-col items-center gap-3"
               >
-                <button onClick={() => setContactModalOpen(true)} className="hover:text-[#D4AF37] transition-colors duration-300">
-                  Ajuda
-                </button>
-                <span className="text-gray-800">/</span>
-                <button
-                  onClick={() => router.push('/browse-courses')}
-                  className="hover:text-[#D4AF37] transition-colors duration-300"
+                <OrnamentalDivider className="w-40 text-[#c9a84c] opacity-50" />
+                <div className="flex items-center justify-center gap-6 text-base tracking-[0.2em]"
+                  style={{ color: '#5a4f3c', fontVariant: 'small-caps' }}
                 >
-                  Catálogo
-                </button>
-                <span className="text-gray-800">/</span>
-                <div className="flex items-center gap-2 hover:text-[#D4AF37] transition-colors duration-300 cursor-pointer">
-                  <Globe size={10} />
-                  <span>PT</span>
+                  <button onClick={() => setContactModalOpen(true)} className="hover:text-[#c9a84c] transition-colors duration-300">
+                    Ajuda
+                  </button>
+                  <span style={{ color: '#3a3226' }}>&bull;</span>
+                  <button
+                    onClick={() => router.push('/browse-courses')}
+                    className="hover:text-[#c9a84c] transition-colors duration-300"
+                  >
+                    Catálogo
+                  </button>
+                  <span style={{ color: '#3a3226' }}>&bull;</span>
+                  <div className="flex items-center gap-2 hover:text-[#c9a84c] transition-colors duration-300 cursor-pointer">
+                    <Globe size={14} />
+                    <span>PT</span>
+                  </div>
                 </div>
               </motion.div>
             </div>
