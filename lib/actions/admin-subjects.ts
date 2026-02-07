@@ -30,7 +30,12 @@ export async function getSubjectsData() {
           order_index,
           course_modules(
             id,
-            title
+            title,
+            course_id,
+            courses(
+              id,
+              title
+            )
           )
         )
       `)

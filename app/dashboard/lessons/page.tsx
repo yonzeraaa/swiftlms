@@ -48,6 +48,7 @@ interface LessonWithRelations extends Lesson {
 export default function LessonsPage() {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('todos')
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('todas')
   const [loading, setLoading] = useState(true)
   const [lessons, setLessons] = useState<LessonWithRelations[]>([])
@@ -228,6 +229,21 @@ export default function LessonsPage() {
     })
   }, [lessons])
 
+  const availableCourses = useMemo(() => {
+    const coursesMap = new Map<string, { id: string; title: string }>()
+
+    lessons.forEach(lesson => {
+      const course = lesson.course_modules?.courses
+      if (course && !coursesMap.has(course.id)) {
+        coursesMap.set(course.id, { id: course.id, title: course.title })
+      }
+    })
+
+    return Array.from(coursesMap.values()).sort((a, b) =>
+      a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
+    )
+  }, [lessons])
+
   const filteredLessons = useMemo(() => {
     return lessons.filter(lesson => {
       const matchesSearch =
@@ -235,6 +251,11 @@ export default function LessonsPage() {
         lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
 
       if (!matchesSearch) return false
+
+      if (selectedCourseId !== 'todos') {
+        const lessonCourseId = lesson.course_modules?.courses?.id
+        if (lessonCourseId !== selectedCourseId) return false
+      }
 
       if (selectedSubjectId === 'todas') return true
 
@@ -244,7 +265,7 @@ export default function LessonsPage() {
 
       return lesson.subject_lessons?.some(sl => sl.subject_id === selectedSubjectId) ?? false
     })
-  }, [lessons, searchTerm, selectedSubjectId])
+  }, [lessons, searchTerm, selectedCourseId, selectedSubjectId])
 
   const getLessonSubjectCode = (lesson: LessonWithRelations) => {
     const code = (lesson as any).subject_lessons?.[0]?.subjects?.code
@@ -508,6 +529,16 @@ export default function LessonsPage() {
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gold-400 flex-shrink-0" />
             <select
+              value={selectedCourseId}
+              onChange={(e) => setSelectedCourseId(e.target.value)}
+              className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
+            >
+              <option value="todos">Todos os cursos</option>
+              {availableCourses.map(course => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+            </select>
+            <select
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
               className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[200px]"
@@ -574,6 +605,13 @@ export default function LessonsPage() {
           </div>
         )}
       </Card>
+
+      {/* Showing count */}
+      {(selectedCourseId !== 'todos' || selectedSubjectId !== 'todas' || searchTerm) && (
+        <p className="text-sm text-gold-300">
+          Mostrando {filteredLessons.length} de {lessons.length} aulas
+        </p>
+      )}
 
       {/* Lessons Table */}
       <Card>

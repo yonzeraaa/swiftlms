@@ -34,6 +34,11 @@ type SubjectWithModules = Subject & {
     course_modules?: {
       id: string
       title: string
+      course_id: string
+      courses?: {
+        id: string
+        title: string
+      } | null
     } | null
   }> | null
 }
@@ -53,6 +58,7 @@ export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<SubjectWithModules[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCourseId, setSelectedCourseId] = useState<string>('todos')
   const [selectedModuleId, setSelectedModuleId] = useState<string>('todos')
   const [showModal, setShowModal] = useState(false)
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
@@ -453,6 +459,23 @@ export default function SubjectsPage() {
     )
   }, [subjects])
 
+  const availableCourses = useMemo(() => {
+    const coursesMap = new Map<string, { id: string; title: string }>()
+
+    subjects.forEach(subject => {
+      subject.module_subjects?.forEach(ms => {
+        const course = ms.course_modules?.courses
+        if (course && !coursesMap.has(course.id)) {
+          coursesMap.set(course.id, { id: course.id, title: course.title })
+        }
+      })
+    })
+
+    return Array.from(coursesMap.values()).sort((a, b) =>
+      a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
+    )
+  }, [subjects])
+
   const filteredSubjects = useMemo(() => {
     return subjects.filter((subject) => {
       const matchesSearch =
@@ -462,6 +485,13 @@ export default function SubjectsPage() {
 
       if (!matchesSearch) return false
 
+      if (selectedCourseId !== 'todos') {
+        const matchesCourse = subject.module_subjects?.some(
+          ms => ms.course_modules?.course_id === selectedCourseId
+        ) ?? false
+        if (!matchesCourse) return false
+      }
+
       if (selectedModuleId === 'todos') return true
 
       if (selectedModuleId === 'sem-modulo') {
@@ -470,7 +500,7 @@ export default function SubjectsPage() {
 
       return subject.module_subjects?.some(ms => ms.module_id === selectedModuleId) ?? false
     })
-  }, [subjects, searchTerm, selectedModuleId])
+  }, [subjects, searchTerm, selectedCourseId, selectedModuleId])
 
   const sortedSubjects = useMemo(() => {
     const list = [...filteredSubjects]
@@ -614,6 +644,16 @@ export default function SubjectsPage() {
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-gold-400 flex-shrink-0" />
             <select
+              value={selectedCourseId}
+              onChange={(e) => setSelectedCourseId(e.target.value)}
+              className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
+            >
+              <option value="todos">Todos os cursos</option>
+              {availableCourses.map(course => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+            </select>
+            <select
               value={selectedModuleId}
               onChange={(e) => setSelectedModuleId(e.target.value)}
               className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
@@ -679,6 +719,13 @@ export default function SubjectsPage() {
           </div>
         )}
       </Card>
+
+      {/* Showing count */}
+      {(selectedCourseId !== 'todos' || selectedModuleId !== 'todos' || searchTerm) && (
+        <p className="text-sm text-gold-300">
+          Mostrando {filteredSubjects.length} de {subjects.length} disciplinas
+        </p>
+      )}
 
       {/* Subjects Table */}
       <Card>

@@ -618,6 +618,13 @@ export default function TestsManagementPage() {
         </div>
       </Card>
 
+      {/* Showing count */}
+      {!loading && (filterCourse !== 'all' || filterSubject !== 'all' || filterStatus !== 'all' || searchTerm) && (
+        <p className="text-sm text-gold-300">
+          Mostrando {filteredTests.length} de {tests.length} testes
+        </p>
+      )}
+
       {/* Lista de Testes */}
       {loading ? (
         <div className="grid gap-4">

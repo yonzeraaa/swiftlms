@@ -44,10 +44,49 @@ export async function getCoursesData() {
       return acc
     }, {} as Record<string, number>) || {}
 
+    // Buscar contagens de módulos, disciplinas, aulas e testes por curso
+    const [
+      { data: modulesData },
+      { data: moduleSubjectsData },
+      { data: lessonsData },
+      { data: testsData }
+    ] = await Promise.all([
+      supabase.from('course_modules').select('course_id').in('course_id', courseIds),
+      supabase.from('module_subjects').select('module_id, course_modules!inner(course_id)').in('course_modules.course_id', courseIds),
+      supabase.from('lessons').select('module_id, course_modules!inner(course_id)').in('course_modules.course_id', courseIds),
+      supabase.from('tests').select('course_id').in('course_id', courseIds)
+    ])
+
+    const moduleCounts: Record<string, number> = {}
+    modulesData?.forEach((m: any) => {
+      moduleCounts[m.course_id] = (moduleCounts[m.course_id] || 0) + 1
+    })
+
+    const subjectCounts: Record<string, number> = {}
+    moduleSubjectsData?.forEach((ms: any) => {
+      const cid = ms.course_modules?.course_id
+      if (cid) subjectCounts[cid] = (subjectCounts[cid] || 0) + 1
+    })
+
+    const lessonCounts: Record<string, number> = {}
+    lessonsData?.forEach((l: any) => {
+      const cid = l.course_modules?.course_id
+      if (cid) lessonCounts[cid] = (lessonCounts[cid] || 0) + 1
+    })
+
+    const testCounts: Record<string, number> = {}
+    testsData?.forEach((t: any) => {
+      testCounts[t.course_id] = (testCounts[t.course_id] || 0) + 1
+    })
+
     const transformedData = coursesData?.map((course: any) => ({
       ...course,
       _count: {
-        enrollments: enrollmentCounts[course.id] || 0
+        enrollments: enrollmentCounts[course.id] || 0,
+        modules: moduleCounts[course.id] || 0,
+        subjects: subjectCounts[course.id] || 0,
+        lessons: lessonCounts[course.id] || 0,
+        tests: testCounts[course.id] || 0
       }
     })) || []
 

@@ -39,6 +39,10 @@ interface Course {
   } | null
   _count?: {
     enrollments: number
+    modules: number
+    subjects: number
+    lessons: number
+    tests: number
   }
 }
 
@@ -579,6 +583,25 @@ export default function CoursesPage() {
                     </span>
                   </div>
                 )}
+
+                <div className="grid grid-cols-4 gap-2 text-center text-xs pt-3 border-t border-gold-500/10">
+                  <div>
+                    <p className="text-gold-400">Módulos</p>
+                    <p className="text-gold-100 font-bold text-sm">{course._count?.modules || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-gold-400">Disciplinas</p>
+                    <p className="text-gold-100 font-bold text-sm">{course._count?.subjects || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-gold-400">Aulas</p>
+                    <p className="text-gold-100 font-bold text-sm">{course._count?.lessons || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-gold-400">Testes</p>
+                    <p className="text-gold-100 font-bold text-sm">{course._count?.tests || 0}</p>
+                  </div>
+                </div>
 
                 <div className="flex justify-between items-center pt-4 border-t border-gold-500/20">
                   <span className={`text-sm font-medium ${
