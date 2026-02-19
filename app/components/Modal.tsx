@@ -1,7 +1,7 @@
 'use client'
 
 import { ReactNode, useEffect, useRef } from 'react'
-import { X } from 'lucide-react'
+import { X, Minimize2 } from 'lucide-react'
 import Button from './Button'
 
 interface ModalProps {
@@ -15,6 +15,7 @@ interface ModalProps {
   closeOnEscape?: boolean
   className?: string
   footer?: ReactNode
+  onMinimize?: () => void
 }
 
 export default function Modal({
@@ -27,7 +28,8 @@ export default function Modal({
   closeOnBackdrop = true,
   closeOnEscape = true,
   className = '',
-  footer
+  footer,
+  onMinimize,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -135,13 +137,25 @@ export default function Modal({
                   </h2>
                 )}
                 {showCloseButton && (
-                  <button
-                    onClick={onClose}
-                    className="absolute right-4 sm:right-6 text-gold-400 hover:text-gold-200 transition-colors p-1 rounded-lg hover:bg-gold-500/10"
-                    aria-label="Close modal"
-                  >
-                    <X className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
+                  <div className="absolute right-4 sm:right-6 flex items-center gap-1">
+                    {onMinimize && (
+                      <button
+                        onClick={onMinimize}
+                        className="text-gold-400 hover:text-gold-200 transition-colors p-1 rounded-lg hover:bg-gold-500/10"
+                        aria-label="Minimizar"
+                        title="Minimizar"
+                      >
+                        <Minimize2 className="w-5 h-5 sm:w-5 sm:h-5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={onClose}
+                      className="text-gold-400 hover:text-gold-200 transition-colors p-1 rounded-lg hover:bg-gold-500/10"
+                      aria-label="Fechar"
+                    >
+                      <X className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </button>
+                  </div>
                 )}
               </div>
             )}

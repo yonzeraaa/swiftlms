@@ -35,6 +35,8 @@ import { useTranslation } from '../contexts/LanguageContext'
 import PageTransition from '../components/ui/PageTransition'
 import { motion, AnimatePresence } from 'framer-motion'
 import MobileDrawer from '../components/MobileDrawer'
+import { DriveImportProvider } from '../contexts/DriveImportContext'
+import ImportOverlay from '../components/ImportOverlay'
 
 export default function DashboardLayout({
   children,
@@ -148,6 +150,7 @@ export default function DashboardLayout({
   }
 
   return (
+    <DriveImportProvider>
     <div className="min-h-screen bg-navy-900">
       <div className="absolute inset-0 bg-gradient-to-b from-navy-800/30 to-navy-900" />
 
@@ -425,6 +428,10 @@ export default function DashboardLayout({
           </button>
         </nav>
       </MobileDrawer>
+
+      {/* Drive import modal and floating widget — rendered here so they persist across navigation */}
+      <ImportOverlay />
     </div>
+    </DriveImportProvider>
   )
 }

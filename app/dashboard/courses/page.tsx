@@ -9,7 +9,7 @@ import Spinner from '../../components/ui/Spinner'
 import { useTranslation } from '../../contexts/LanguageContext'
 import CourseStructureManager from '../../components/CourseStructureManager'
 import { useAuth } from '../../providers/AuthProvider'
-import DriveImportModal from '../../components/DriveImportModal'
+import { useDriveImport } from '../../contexts/DriveImportContext'
 import {
   getCoursesData,
   getEnrolledStudents,
@@ -92,7 +92,7 @@ export default function CoursesPage() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
-  const [showDriveImportModal, setShowDriveImportModal] = useState(false)
+  const { openImport } = useDriveImport()
   
   // Usar o contexto global de autenticação
   const { session, user, isLoading: authLoading, refreshSession } = useAuth()
@@ -1501,7 +1501,7 @@ export default function CoursesPage() {
               onClick={() => {
                 console.log('Import Drive clicked for course:', dropdownCourse);
                 setSelectedCourse(dropdownCourse);
-                setShowDriveImportModal(true);
+                openImport(dropdownCourse?.id ?? '', dropdownCourse?.title ?? '');
                 setOpenDropdown(null);
                 setDropdownCourse(null);
                 setDropdownPosition(null);
@@ -1535,18 +1535,6 @@ export default function CoursesPage() {
         </>
       )}
 
-      {/* Drive Import Modal */}
-      {selectedCourse && (
-        <DriveImportModal
-          isOpen={showDriveImportModal}
-          onClose={() => setShowDriveImportModal(false)}
-          courseId={selectedCourse.id}
-          onImportComplete={() => {
-            setShowDriveImportModal(false)
-            fetchCourses()
-          }}
-        />
-      )}
     </div>
   )
 }

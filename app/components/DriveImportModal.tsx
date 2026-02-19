@@ -1,17 +1,26 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Modal from './Modal'
 import Button from './Button'
 import { analyzeDriveItem, extractFolderId, validateDriveItem, type ItemType, type DriveItem, type ValidationError } from '@/lib/drive-import-utils'
 import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, ChevronsDown, ChevronsUp, BarChart3, Square, CheckSquare, XCircle, ArrowLeft, Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
+interface ImportProgress {
+  completed: number
+  total: number
+  isImporting: boolean
+  isPaused: boolean
+}
+
 interface DriveImportModalProps {
   isOpen: boolean
   onClose: () => void
   courseId: string
   onImportComplete?: () => void
+  onMinimize?: () => void
+  onProgressUpdate?: (progress: ImportProgress) => void
 }
 
 interface CourseOption {
@@ -53,7 +62,7 @@ declare global {
   }
 }
 
-export default function DriveImportModal({ isOpen, onClose, courseId, onImportComplete }: DriveImportModalProps) {
+export default function DriveImportModal({ isOpen, onClose, courseId, onImportComplete, onMinimize, onProgressUpdate }: DriveImportModalProps) {
   const [driveUrl, setDriveUrl] = useState('')
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [isListing, setIsListing] = useState(false)
@@ -885,6 +894,16 @@ useEffect(() => {
   const validItems = allFlatItems.filter(item => item.type !== 'unknown')
   const completedItems = allFlatItems.filter(item => item.status === 'success').length
 
+  // Report progress to layout-level context so the floating widget stays updated
+  useEffect(() => {
+    onProgressUpdate?.({
+      completed: completedItems,
+      total: validItems.length,
+      isImporting,
+      isPaused,
+    })
+  }, [completedItems, validItems.length, isImporting, isPaused, onProgressUpdate])
+
   const renderTreeItem = (item: ProcessedItem, depth: number = 0): React.ReactElement => {
     const hasChildren = item.children && item.children.length > 0
     const isSelected = selectedItems.has(item.id)
@@ -1087,6 +1106,9 @@ useEffect(() => {
       onClose={onClose}
       title="Importar do Google Drive"
       size="xl"
+      onMinimize={onMinimize}
+      closeOnBackdrop={!isImporting}
+      closeOnEscape={!isImporting}
     >
       <div className="space-y-6">
         {/* Checking Token */}
