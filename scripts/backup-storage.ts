@@ -7,7 +7,7 @@
  * under <output-dir>/storage/<bucket>/<path>.
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -26,7 +26,8 @@ function requireEnv(name: string): string {
  * Supabase `list()` returns both files and "folders" (items with id === null).
  */
 export async function listFilesRecursively(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
   bucket: string,
   folder: string = ""
 ): Promise<string[]> {
@@ -64,7 +65,8 @@ export async function listFilesRecursively(
  * Download a single file from Supabase Storage and write it to disk.
  */
 export async function downloadFile(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
   bucket: string,
   filePath: string,
   outputDir: string
@@ -90,7 +92,8 @@ export async function downloadFile(
  * Back up all files from all buckets to outputDir.
  */
 export async function backupAllBuckets(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
   outputDir: string,
   buckets: string[] = BUCKETS
 ): Promise<void> {
