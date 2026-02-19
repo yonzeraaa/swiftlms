@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Save, Bell, Shield, Palette, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail, Settings as SettingsIcon, HardDriveDownload, ExternalLink, Loader2 } from 'lucide-react'
+import { Save, Bell, Shield, Palette, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail, Settings as SettingsIcon, HardDriveDownload, ExternalLink, Loader2, Trash2, AlertTriangle } from 'lucide-react'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
@@ -84,6 +84,12 @@ export default function SettingsPage() {
     lastResult: { backupId: string; driveFolderUrl: string; tablesExported: number } | null
     error: string | null
   }>({ status: 'idle', lastResult: null, error: null })
+  const [clearModal, setClearModal] = useState<{
+    open: boolean
+    password: string
+    status: 'idle' | 'running' | 'success' | 'error'
+    error: string | null
+  }>({ open: false, password: '', status: 'idle', error: null })
 
   useEffect(() => {
     fetchUserData()
@@ -234,6 +240,23 @@ export default function SettingsPage() {
       setMessage({ type: 'error', text: t('settings.error') + ' ' + t('settings.title').toLowerCase() })
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleClearData = async () => {
+    setClearModal(prev => ({ ...prev, status: 'running', error: null }))
+    try {
+      const response = await fetch('/api/admin/clear-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password: clearModal.password }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Falha ao limpar dados')
+      setClearModal(prev => ({ ...prev, status: 'success', error: null }))
+    } catch (error: any) {
+      setClearModal(prev => ({ ...prev, status: 'error', error: error.message }))
     }
   }
 
@@ -726,8 +749,106 @@ export default function SettingsPage() {
               </code>
               <p className="mt-2">O backup via cron executa o mesmo export de dados dos alunos.</p>
             </div>
+
+            {/* Danger zone */}
+            <div className="border border-red-500/30 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-red-400 font-medium">
+                <AlertTriangle className="w-5 h-5" />
+                Zona de Perigo
+              </div>
+              <p className="text-gold-400 text-sm">
+                Remove permanentemente todos os dados dos alunos (matrículas, progresso, notas,
+                certificados, etc.). Esta ação não pode ser desfeita.
+              </p>
+              <Button
+                variant="danger"
+                onClick={() => setClearModal({ open: true, password: '', status: 'idle', error: null })}
+                icon={<Trash2 className="w-5 h-5 flex-shrink-0" />}
+              >
+                Limpar Todos os Dados
+              </Button>
+            </div>
           </div>
         </Card>
+      )}
+
+      {/* Clear data confirmation modal */}
+      {clearModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-navy-800 border border-red-500/30 rounded-xl p-6 w-full max-w-md mx-4 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-red-400">
+              <AlertTriangle className="w-6 h-6 flex-shrink-0" />
+              <h2 className="text-lg font-semibold">Confirmar limpeza de dados</h2>
+            </div>
+
+            <p className="text-gold-300 text-sm">
+              Todos os dados dos alunos serão apagados permanentemente. Digite sua senha de
+              administrador para confirmar.
+            </p>
+
+            {clearModal.status === 'success' ? (
+              <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400">
+                <Check className="w-5 h-5" />
+                Dados removidos com sucesso.
+              </div>
+            ) : (
+              <>
+                {clearModal.error && (
+                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                    <X className="w-4 h-4 flex-shrink-0" />
+                    {clearModal.error}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gold-200 mb-2">
+                    Senha do administrador
+                  </label>
+                  <input
+                    type="password"
+                    value={clearModal.password}
+                    onChange={e => setClearModal(prev => ({ ...prev, password: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && clearModal.password && handleClearData()}
+                    autoFocus
+                    className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <div className="flex gap-3 justify-end pt-1">
+                  <button
+                    onClick={() => setClearModal({ open: false, password: '', status: 'idle', error: null })}
+                    className="px-4 py-2 text-gold-300 hover:text-gold-100 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <Button
+                    variant="danger"
+                    onClick={handleClearData}
+                    disabled={!clearModal.password || clearModal.status === 'running'}
+                    icon={clearModal.status === 'running'
+                      ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
+                      : <Trash2 className="w-4 h-4 flex-shrink-0" />
+                    }
+                  >
+                    {clearModal.status === 'running' ? 'Removendo...' : 'Confirmar e Limpar'}
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {clearModal.status === 'success' && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setClearModal({ open: false, password: '', status: 'idle', error: null })}
+                  className="px-4 py-2 text-gold-300 hover:text-gold-100 transition-colors"
+                >
+                  Fechar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* System Info */}
