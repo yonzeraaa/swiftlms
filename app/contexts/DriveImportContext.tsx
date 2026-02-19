@@ -1,6 +1,9 @@
 'use client'
 
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react'
+
+// Key used to signal to useInactivityTimeout that a long-running import is active
+export const IMPORT_ACTIVE_KEY = 'swiftlms_import_active'
 
 export interface ImportProgress {
   completed: number
@@ -70,6 +73,17 @@ export function DriveImportProvider({ children }: { children: React.ReactNode })
   const updateProgress = useCallback((p: ImportProgress) => {
     setProgress(p)
   }, [])
+
+  // Keep a sessionStorage flag in sync so useInactivityTimeout can skip logout
+  // while the import loop is running, even if the modal is minimized.
+  const isWindowActive = isOpen || isMinimized
+  useEffect(() => {
+    if (isWindowActive && progress.isImporting) {
+      sessionStorage.setItem(IMPORT_ACTIVE_KEY, '1')
+    } else {
+      sessionStorage.removeItem(IMPORT_ACTIVE_KEY)
+    }
+  }, [isWindowActive, progress.isImporting])
 
   return (
     <DriveImportContext.Provider value={{

@@ -7,6 +7,7 @@ import { signOutAction } from '@/lib/actions/auth'
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000 // 15 minutos em ms
 const STORAGE_KEY = 'last_activity_timestamp'
 const BROADCAST_CHANNEL_NAME = 'inactivity_sync'
+const IMPORT_ACTIVE_KEY = 'swiftlms_import_active'
 
 /**
  * Hook para logout automático por inatividade
@@ -24,6 +25,13 @@ export function useInactivityTimeout() {
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null)
 
   const performLogout = useCallback(async () => {
+    // Don't log out while a Drive import is running — reschedule and check again later
+    if (sessionStorage.getItem(IMPORT_ACTIVE_KEY)) {
+      console.log('[INACTIVITY] Import active, skipping logout and rescheduling check')
+      timeoutRef.current = setTimeout(performLogout, INACTIVITY_TIMEOUT)
+      return
+    }
+
     console.log('[INACTIVITY] Performing logout due to inactivity')
 
     // Limpar timer
@@ -86,8 +94,8 @@ export function useInactivityTimeout() {
       const lastActivity = lastActivityRef.current
       const timeSinceLastActivity = now - lastActivity
 
-      if (timeSinceLastActivity > INACTIVITY_TIMEOUT) {
-        // Mais de 15min desde a última atividade - fazer logout imediatamente
+      if (timeSinceLastActivity > INACTIVITY_TIMEOUT && !sessionStorage.getItem(IMPORT_ACTIVE_KEY)) {
+        // Mais de 15min desde a última atividade e sem importação ativa - fazer logout
         console.log('[INACTIVITY] Tab became visible after timeout period - logging out')
         performLogout()
       } else {
