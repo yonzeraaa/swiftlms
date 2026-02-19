@@ -19,6 +19,7 @@ export default function ImportOverlay() {
     updateProgress,
   } = useDriveImport()
 
+
   const isActive = isOpen || isMinimized
 
   if (!isActive || !courseId) return null
@@ -34,6 +35,7 @@ export default function ImportOverlay() {
       <DriveImportModal
         key={sessionKey}
         isOpen={isOpen}
+        isMinimized={isMinimized}
         courseId={courseId}
         onClose={closeImport}
         onMinimize={minimizeImport}

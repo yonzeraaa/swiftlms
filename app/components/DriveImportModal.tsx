@@ -16,6 +16,7 @@ interface ImportProgress {
 
 interface DriveImportModalProps {
   isOpen: boolean
+  isMinimized?: boolean
   onClose: () => void
   courseId: string
   onImportComplete?: () => void
@@ -62,7 +63,7 @@ declare global {
   }
 }
 
-export default function DriveImportModal({ isOpen, onClose, courseId, onImportComplete, onMinimize, onProgressUpdate }: DriveImportModalProps) {
+export default function DriveImportModal({ isOpen, isMinimized = false, onClose, courseId, onImportComplete, onMinimize, onProgressUpdate }: DriveImportModalProps) {
   const [driveUrl, setDriveUrl] = useState('')
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [isListing, setIsListing] = useState(false)
@@ -246,15 +247,14 @@ useEffect(() => {
   }
 
   useEffect(() => {
-    if (!isOpen) {
-      // Cancelar loop de importação ao fechar o modal, mas manter token
+    // Só cancela o loop em fechamento real — minimizar apenas esconde o modal
+    if (!isOpen && !isMinimized) {
       cancelledRef.current = true
       pausedRef.current = false
       setIsImporting(false)
       setIsPaused(false)
-      // Não limpar accessToken para reaproveitar na próxima abertura
     }
-  }, [isOpen])
+  }, [isOpen, isMinimized])
 
   const flattenItems = (items: ProcessedItem[]): ProcessedItem[] => {
     const result: ProcessedItem[] = []
