@@ -45,11 +45,11 @@ export default function TestsManagementPage() {
   const [viewingAnswerKey, setViewingAnswerKey] = useState<Array<{ question_number: number; correct_answer: string; points?: number; justification?: string | null }> | null>(null)
   const [viewingTestTitle, setViewingTestTitle] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [showFilters, setShowFilters] = useState(false)
   const [filterCourse, setFilterCourse] = useState('all')
   const [filterSubject, setFilterSubject] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  // showFilters removed — filters are always visible
   const dropdownRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
@@ -499,24 +499,49 @@ export default function TestsManagementPage() {
       {/* Barra de busca e filtros */}
       <Card variant="elevated" className="mb-6">
         <div className="space-y-4">
-          <div className="flex gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gold-400 w-5 h-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gold-400 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Buscar testes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
               />
             </div>
-            <Button
-              variant="secondary"
-              onClick={() => setShowFilters(!showFilters)}
-              icon={<Filter className="w-5 h-5 flex-shrink-0" />}
-            >
-              Filtros ({filteredTests.length})
-            </Button>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gold-400 flex-shrink-0" />
+              <select
+                value={filterCourse}
+                onChange={(e) => setFilterCourse(e.target.value)}
+                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
+              >
+                <option value="all">Todos os cursos</option>
+                {courses.map(course => (
+                  <option key={course.id} value={course.id}>{course.title}</option>
+                ))}
+              </select>
+              <select
+                value={filterSubject}
+                onChange={(e) => setFilterSubject(e.target.value)}
+                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
+              >
+                <option value="all">Todas as disciplinas</option>
+                {subjects.map(subject => (
+                  <option key={subject.id} value={subject.id}>{subject.name}</option>
+                ))}
+              </select>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[140px]"
+              >
+                <option value="all">Todos os status</option>
+                <option value="active">Ativos</option>
+                <option value="inactive">Inativos</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -544,52 +569,6 @@ export default function TestsManagementPage() {
               Título do teste (A-Z)
             </button>
           </div>
-
-          {/* Filtros expandidos */}
-          {showFilters && (
-            <div className="pt-4 border-t border-gold-500/20">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">Curso</label>
-                <select
-                    value={filterCourse}
-                    onChange={(e) => setFilterCourse(e.target.value)}
-                    className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  >
-                    <option value="all">Todos os cursos</option>
-                    {courses.map(course => (
-                      <option key={course.id} value={course.id}>{course.title}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gold-200 mb-2">Disciplina</label>
-                  <select
-                    value={filterSubject}
-                    onChange={(e) => setFilterSubject(e.target.value)}
-                    className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  >
-                    <option value="all">Todas as disciplinas</option>
-                    {subjects.map(subject => (
-                      <option key={subject.id} value={subject.id}>{subject.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gold-200 mb-2">Status</label>
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  >
-                    <option value="all">Todos</option>
-                    <option value="active">Ativos</option>
-                    <option value="inactive">Inativos</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
 
           {tests.length > 0 && (
             <div className="flex items-center gap-2 text-sm text-gold-300 pt-1">
@@ -619,7 +598,7 @@ export default function TestsManagementPage() {
       </Card>
 
       {/* Showing count */}
-      {!loading && (filterCourse !== 'all' || filterSubject !== 'all' || filterStatus !== 'all' || searchTerm) && (
+      {!loading && (filterCourse !== 'all' || filterSubject !== 'all' || filterStatus !== 'all' || searchTerm !== '') && (
         <p className="text-sm text-gold-300">
           Mostrando {filteredTests.length} de {tests.length} testes
         </p>
