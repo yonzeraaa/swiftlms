@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createDriveClient, createDriveFolder, uploadToDrive } from "./drive-client";
 
 // Tables exported as JSON in every backup
@@ -119,7 +119,8 @@ export async function runBackup(
  * Folders are items with id === null.
  */
 export async function listStorageFilesRecursively(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: SupabaseClient<any, any, any>,
   bucket: string,
   folder: string = ""
 ): Promise<string[]> {
