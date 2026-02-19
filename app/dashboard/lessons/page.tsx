@@ -20,6 +20,7 @@ import {
   bulkDeleteLessons,
   toggleLessonPreview
 } from '@/lib/actions/admin-lessons'
+import { getAllCourses } from '@/lib/actions/admin-courses'
 
 type Lesson = Database['public']['Tables']['lessons']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
@@ -74,6 +75,7 @@ export default function LessonsPage() {
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([])
   const [selectAllLessons, setSelectAllLessons] = useState(false)
   const [bulkDeletingLessons, setBulkDeletingLessons] = useState(false)
+  const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([])
 
   useEffect(() => {
     fetchData()
@@ -92,6 +94,7 @@ export default function LessonsPage() {
 
       setLessons(data.lessons)
       setLessonProgress(data.lessonProgress)
+      setAllCourses(await getAllCourses())
     } catch (error) {
       console.error('Error fetching data:', error)
       setMessage({ type: 'error', text: 'Erro ao carregar aulas' })
@@ -534,7 +537,7 @@ export default function LessonsPage() {
               className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
             >
               <option value="todos">Todos os cursos</option>
-              {availableCourses.map(course => (
+              {allCourses.map(course => (
                 <option key={course.id} value={course.id}>{course.title}</option>
               ))}
             </select>

@@ -276,3 +276,16 @@ export async function unenrollStudent(enrollmentId: string) {
     return { success: false, error: error.message || 'Erro ao desmatricular aluno' }
   }
 }
+
+export async function getAllCourses(): Promise<{ id: string; title: string }[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('courses')
+      .select('id, title')
+      .order('title', { ascending: true })
+    return data ?? []
+  } catch {
+    return []
+  }
+}

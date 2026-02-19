@@ -19,6 +19,7 @@ import {
   associateLessonsWithSubject,
   getModuleSubject
 } from '@/lib/actions/admin-subjects'
+import { getAllCourses } from '@/lib/actions/admin-courses'
 
 type Subject = Database['public']['Tables']['subjects']['Row']
 type SubjectLessonView = Database['public']['Views']['subject_lessons_view']['Row']
@@ -87,6 +88,7 @@ export default function SubjectsPage() {
   const [selectAll, setSelectAll] = useState(false)
   const [deletingMultiple, setDeletingMultiple] = useState(false)
   const [subjectSortMode, setSubjectSortMode] = useState<'code' | 'name'>('code')
+  const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([])
 
   const sortLessonOptions = (options: LessonAssociationOption[]) => {
     const priority = {
@@ -149,6 +151,7 @@ export default function SubjectsPage() {
       setSubjects(data.subjects)
       setCourseCount(data.courseCounts)
       setLessonCount(data.lessonCounts)
+      setAllCourses(await getAllCourses())
     } catch (error) {
       console.error('Error fetching subjects:', error)
       setMessage({ type: 'error', text: 'Erro ao carregar disciplinas' })
@@ -649,7 +652,7 @@ export default function SubjectsPage() {
               className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
             >
               <option value="todos">Todos os cursos</option>
-              {availableCourses.map(course => (
+              {allCourses.map(course => (
                 <option key={course.id} value={course.id}>{course.title}</option>
               ))}
             </select>
