@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Save, Bell, Shield, Palette, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail, Settings as SettingsIcon } from 'lucide-react'
+import { Save, Bell, Shield, Palette, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail, Settings as SettingsIcon, HardDriveDownload, ExternalLink, Loader2 } from 'lucide-react'
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
@@ -79,6 +79,11 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile')
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const [userId, setUserId] = useState<string>('')
+  const [backupState, setBackupState] = useState<{
+    status: 'idle' | 'running' | 'success' | 'error'
+    lastResult: { backupId: string; driveFolderUrl: string; tablesExported: number; storageFilesExported: number } | null
+    error: string | null
+  }>({ status: 'idle', lastResult: null, error: null })
 
   useEffect(() => {
     fetchUserData()
@@ -232,12 +237,25 @@ export default function SettingsPage() {
     }
   }
 
+  const handleBackup = async () => {
+    setBackupState({ status: 'running', lastResult: null, error: null })
+    try {
+      const response = await fetch('/api/admin/backup', { method: 'POST', credentials: 'include' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Falha ao executar backup')
+      setBackupState({ status: 'success', lastResult: data, error: null })
+    } catch (error: any) {
+      setBackupState({ status: 'error', lastResult: null, error: error.message })
+    }
+  }
+
   const tabs = [
     { id: 'profile', label: t('settings.profile'), icon: User },
     { id: 'password', label: t('settings.password'), icon: Key },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'appearance', label: t('settings.appearance'), icon: Palette },
-    { id: 'privacy', label: t('settings.privacy'), icon: Shield }
+    { id: 'privacy', label: t('settings.privacy'), icon: Shield },
+    { id: 'backup', label: 'Backup', icon: HardDriveDownload }
   ]
 
   if (loading) {
@@ -644,6 +662,70 @@ export default function SettingsPage() {
               >
                 {saving ? 'Salvando...' : 'Salvar Privacidade'}
               </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Backup Tab */}
+      {activeTab === 'backup' && (
+        <Card title="Backup para Google Drive">
+          <div className="space-y-6">
+            <p className="text-gold-300 text-sm">
+              Exporta todas as tabelas do banco de dados (JSON) e os arquivos de storage
+              para uma pasta datada no Google Drive da conta de serviço configurada.
+            </p>
+
+            {/* Status feedback */}
+            {backupState.status === 'success' && backupState.lastResult && (
+              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-green-400 font-medium">
+                  <Check className="w-5 h-5" />
+                  Backup concluído: {backupState.lastResult.backupId}
+                </div>
+                <div className="text-gold-300 text-sm space-y-1">
+                  <p>Tabelas exportadas: <span className="text-gold-100">{backupState.lastResult.tablesExported}</span></p>
+                  <p>Arquivos de storage: <span className="text-gold-100">{backupState.lastResult.storageFilesExported}</span></p>
+                </div>
+                <a
+                  href={backupState.lastResult.driveFolderUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-gold hover:underline"
+                >
+                  Abrir pasta no Drive <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            )}
+
+            {backupState.status === 'error' && (
+              <div className="flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
+                <X className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <span className="text-sm">{backupState.error}</span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-4">
+              <Button
+                variant="primary"
+                onClick={handleBackup}
+                disabled={backupState.status === 'running'}
+                icon={backupState.status === 'running'
+                  ? <Loader2 className="w-5 h-5 flex-shrink-0 animate-spin" />
+                  : <HardDriveDownload className="w-5 h-5 flex-shrink-0" />
+                }
+              >
+                {backupState.status === 'running' ? 'Executando backup...' : 'Executar Backup Agora'}
+              </Button>
+            </div>
+
+            <div className="p-4 bg-navy-900/30 rounded-lg space-y-1 text-sm text-gold-400">
+              <p className="font-medium text-gold-200">Sobre o backup automático (cron)</p>
+              <p>Configure o cron diário no servidor para rodar automaticamente às 02h:</p>
+              <code className="block mt-2 text-xs bg-navy-900/60 p-2 rounded text-gold-300 font-mono">
+                0 2 * * * cd /home/y0n/swiftlms &amp;&amp; bash scripts/backup.sh
+              </code>
+              <p className="mt-2">O backup via cron também inclui um dump completo PostgreSQL (<code>pg_dump</code>).</p>
             </div>
           </div>
         </Card>
