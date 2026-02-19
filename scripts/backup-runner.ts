@@ -17,7 +17,6 @@ async function main() {
   console.log(`Backup ID:       ${result.backupId}`);
   console.log(`Drive folder:    ${result.driveFolderUrl}`);
   console.log(`Tables:          ${result.tablesExported}`);
-  console.log(`Storage files:   ${result.storageFilesExported}`);
 }
 
 main().catch((err) => {
