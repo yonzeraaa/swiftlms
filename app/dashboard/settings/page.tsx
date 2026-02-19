@@ -81,7 +81,7 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState<string>('')
   const [backupState, setBackupState] = useState<{
     status: 'idle' | 'running' | 'success' | 'error'
-    lastResult: { backupId: string; driveFolderUrl: string; tablesExported: number; storageFilesExported: number } | null
+    lastResult: { backupId: string; driveFolderUrl: string; tablesExported: number } | null
     error: string | null
   }>({ status: 'idle', lastResult: null, error: null })
 
@@ -672,8 +672,8 @@ export default function SettingsPage() {
         <Card title="Backup para Google Drive">
           <div className="space-y-6">
             <p className="text-gold-300 text-sm">
-              Exporta todas as tabelas do banco de dados (JSON) e os arquivos de storage
-              para uma pasta datada no Google Drive da conta de serviço configurada.
+              Exporta todos os dados dos alunos (matrículas, progresso, notas, certificados, etc.)
+              como JSON para uma pasta datada no Google Drive.
             </p>
 
             {/* Status feedback */}
@@ -683,9 +683,8 @@ export default function SettingsPage() {
                   <Check className="w-5 h-5" />
                   Backup concluído: {backupState.lastResult.backupId}
                 </div>
-                <div className="text-gold-300 text-sm space-y-1">
+                <div className="text-gold-300 text-sm">
                   <p>Tabelas exportadas: <span className="text-gold-100">{backupState.lastResult.tablesExported}</span></p>
-                  <p>Arquivos de storage: <span className="text-gold-100">{backupState.lastResult.storageFilesExported}</span></p>
                 </div>
                 <a
                   href={backupState.lastResult.driveFolderUrl}
@@ -725,7 +724,7 @@ export default function SettingsPage() {
               <code className="block mt-2 text-xs bg-navy-900/60 p-2 rounded text-gold-300 font-mono">
                 0 2 * * * cd /home/y0n/swiftlms &amp;&amp; bash scripts/backup.sh
               </code>
-              <p className="mt-2">O backup via cron também inclui um dump completo PostgreSQL (<code>pg_dump</code>).</p>
+              <p className="mt-2">O backup via cron executa o mesmo export de dados dos alunos.</p>
             </div>
           </div>
         </Card>

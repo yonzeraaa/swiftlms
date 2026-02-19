@@ -1,74 +1,44 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { createDriveClient, createDriveFolder, uploadToDrive } from "./drive-client";
 
-// Tables exported as JSON in every backup
-const BACKUP_TABLES = [
-  "profiles",
-  "courses",
-  "course_modules",
-  "subjects",
-  "module_subjects",
-  "course_subjects",
-  "subject_lessons",
-  "lessons",
-  "tests",
-  "test_answer_keys",
-  "test_attempts",
-  "test_grades",
+// Only student-related tables — course structure and platform config are excluded
+const STUDENT_TABLES = [
+  "profiles",           // student accounts (filtered by role)
   "enrollments",
   "enrollment_modules",
   "lesson_progress",
+  "test_attempts",
+  "test_grades",
   "certificates",
   "certificate_requests",
-  "certificate_requirements",
-  "certificate_templates",
-  "excel_templates",
   "tcc_submissions",
   "student_grade_overrides",
   "student_schedules",
   "activity_logs",
 ] as const;
 
-const STORAGE_BUCKETS = ["certificates", "avatars", "templates", "excel_templates"];
-
 export interface BackupResult {
   backupId: string;
   driveFolderUrl: string;
   tablesExported: number;
-  storageFilesExported: number;
 }
 
 /**
- * Runs a full backup:
- * 1. Exports all key tables as JSON
- * 2. Downloads and uploads all storage files
- * 3. Creates a dated folder in Google Drive with everything
- *
- * @param extraFiles - Optional extra files to include (e.g. pg_dump).
- *                     Key = file name in Drive, Value = file Buffer.
+ * Exports all student-related Supabase tables as JSON
+ * and uploads them to a dated folder in Google Drive.
  */
-export async function runBackup(
-  extraFiles?: Record<string, Buffer>
-): Promise<BackupResult> {
+export async function runBackup(): Promise<BackupResult> {
   const supabase = createSupabaseAdminClient();
   const drive = createDriveClient();
 
   const backupId = buildBackupId();
   const parentFolderId = requireEnv("GOOGLE_DRIVE_BACKUP_FOLDER_ID");
 
-  // Create dated folder in Drive
   const folderId = await createDriveFolder(drive, backupId, parentFolderId);
   const driveFolderUrl = `https://drive.google.com/drive/folders/${folderId}`;
 
-  // Sub-folders
-  const [dbFolderId, storageFolderId] = await Promise.all([
-    createDriveFolder(drive, "database", folderId),
-    createDriveFolder(drive, "storage", folderId),
-  ]);
-
-  // Export tables
   let tablesExported = 0;
-  for (const table of BACKUP_TABLES) {
+  for (const table of STUDENT_TABLES) {
     const { data, error } = await supabase.from(table).select("*");
     if (error) {
       console.warn(`Skipping table ${table}: ${error.message}`);
@@ -79,44 +49,19 @@ export async function runBackup(
       `${table}.json`,
       JSON.stringify(data, null, 2),
       "application/json",
-      dbFolderId
+      folderId
     );
     tablesExported++;
   }
 
-  // Export storage buckets
-  let storageFilesExported = 0;
-  for (const bucket of STORAGE_BUCKETS) {
-    const bucketFolderId = await createDriveFolder(drive, bucket, storageFolderId);
-    const files = await listStorageFilesRecursively(supabase, bucket);
-
-    for (const filePath of files) {
-      const { data, error } = await supabase.storage.from(bucket).download(filePath);
-      if (error) {
-        console.warn(`Skipping ${bucket}/${filePath}: ${error.message}`);
-        continue;
-      }
-      const buffer = Buffer.from(await data.arrayBuffer());
-      // Flatten path to avoid nested folder creation complexity
-      const safeName = filePath.replace(/\//g, "__");
-      await uploadToDrive(drive, safeName, buffer, data.type || "application/octet-stream", bucketFolderId);
-      storageFilesExported++;
-    }
-  }
-
-  // Upload any extra files (e.g. pg_dump from cron)
-  if (extraFiles) {
-    for (const [fileName, buffer] of Object.entries(extraFiles)) {
-      await uploadToDrive(drive, fileName, buffer, "application/octet-stream", folderId);
-    }
-  }
-
-  return { backupId, driveFolderUrl, tablesExported, storageFilesExported };
+  return { backupId, driveFolderUrl, tablesExported };
 }
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 /**
  * Lists all file paths in a Supabase Storage bucket recursively.
- * Folders are items with id === null.
+ * Kept here for use by the legacy backup-storage.ts script.
  */
 export async function listStorageFilesRecursively(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
