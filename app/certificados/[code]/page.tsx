@@ -1,4 +1,3 @@
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import { Metadata } from 'next'
@@ -18,9 +17,9 @@ export async function generateMetadata({ params }: CertificatePageProps): Promis
 
 export default async function CertificateVerificationPage({ params }: CertificatePageProps) {
   const { code } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
-  const { data: certificate } = await supabase
+  const { data: certificate } = await adminClient
     .from('certificates')
     .select(`
       id,
@@ -54,7 +53,6 @@ export default async function CertificateVerificationPage({ params }: Certificat
   // Gerar URL assinada para download (se tiver pdf_path)
   let downloadUrl: string | null = null
   if (certificate.pdf_path) {
-    const adminClient = createAdminClient()
     const { data: signedUrl } = await adminClient.storage
       .from('certificados')
       .createSignedUrl(certificate.pdf_path, 3600)
