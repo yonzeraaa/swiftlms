@@ -6,16 +6,26 @@ import {
   extractFolderId,
   getParentPrefix,
   analyzeDriveItem,
+  extractDisplayName,
   type ItemType,
   type DriveItem,
 } from '@/lib/drive-import-utils'
 
 describe('drive-import-utils', () => {
   describe('detectItemType', () => {
-    it('should detect test type for items containing "teste"', () => {
+    it('should detect test type for items with "teste" or "test" as whole words', () => {
       expect(detectItemType('Teste de Matemática')).toBe('test')
       expect(detectItemType('MAT0201 - Teste Final')).toBe('test')
       expect(detectItemType('teste basico')).toBe('test')
+      expect(detectItemType('DCMD010101-AVALIAÇÃO TESTE')).toBe('test')
+      expect(detectItemType('Test Final')).toBe('test')
+    })
+
+    it('should NOT classify as test when "test" is only a substring', () => {
+      // "atestado", "contestação", "protesto" contêm "test" mas não são testes
+      expect(detectItemType('MAT0201-ATESTADO DE CONCLUSÃO')).toBe('subject')
+      expect(detectItemType('MAT020101-CONTESTAÇÃO DA PROVA')).toBe('lesson')
+      expect(detectItemType('MAT020101-SISTEMA DE PROTEÇÃO ANTIINCRUSTANTE')).toBe('lesson')
     })
 
     it('should detect lesson type for 6-digit codes', () => {
@@ -174,6 +184,38 @@ describe('drive-import-utils', () => {
     it('should handle single-letter prefixes', () => {
       expect(getParentPrefix('M020101')).toBe('M0201')
       expect(getParentPrefix('M0201')).toBe('M02')
+    })
+  })
+
+  describe('extractDisplayName', () => {
+    it('should strip code with hyphen separator', () => {
+      expect(extractDisplayName('DCMD0101-CENÁRIO DE OPORTUNIDADES', 'DCMD0101')).toBe('CENÁRIO DE OPORTUNIDADES')
+      expect(extractDisplayName('MAT020101-Introdução à Álgebra', 'MAT020101')).toBe('Introdução à Álgebra')
+    })
+
+    it('should strip code with underscore separator', () => {
+      expect(extractDisplayName('MAT0201_Cálculo Diferencial', 'MAT0201')).toBe('Cálculo Diferencial')
+    })
+
+    it('should strip code with space separator', () => {
+      expect(extractDisplayName('MCMD01 Princípios Básicos', 'MCMD01')).toBe('Princípios Básicos')
+    })
+
+    it('should return original name if code is null', () => {
+      expect(extractDisplayName('DCMD0101-CENÁRIO DE OPORTUNIDADES', null)).toBe('DCMD0101-CENÁRIO DE OPORTUNIDADES')
+    })
+
+    it('should return original name if code is not at start', () => {
+      expect(extractDisplayName('Introdução DCMD0101', 'DCMD0101')).toBe('Introdução DCMD0101')
+    })
+
+    it('should return original name when stripping would leave empty string', () => {
+      expect(extractDisplayName('DCMD0101', 'DCMD0101')).toBe('DCMD0101')
+    })
+
+    it('should handle names without separator after code', () => {
+      // Sem separador → não remove (exige pelo menos um separador)
+      expect(extractDisplayName('DCMD0101TÍTULO', 'DCMD0101')).toBe('DCMD0101TÍTULO')
     })
   })
 

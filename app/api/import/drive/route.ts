@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getParentPrefix, validateCodeForType, type ItemType } from '@/lib/drive-import-utils'
+import { getParentPrefix, validateCodeForType, extractDisplayName, type ItemType } from '@/lib/drive-import-utils'
 import { parseAnswerKeyFromText } from '../../tests/utils/answer-key'
 
 export async function POST(req: NextRequest) {
@@ -11,7 +11,9 @@ export async function POST(req: NextRequest) {
 
     const itemType = (body.itemType || 'unknown') as ItemType
     const code = body.code || null
-    const originalName = body.originalName || ''
+    const rawName = body.originalName || ''
+    // Remove o prefixo do código do nome para evitar duplicação na exibição
+    const originalName = extractDisplayName(rawName, code)
     const courseId = body.courseId || null
     const driveFileId = body.driveFileId || null
     const mimeType = body.mimeType || null

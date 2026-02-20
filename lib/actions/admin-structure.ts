@@ -74,10 +74,16 @@ export async function getHierarchicalData() {
 
       const moduleSubjectsData = subjects.filter((s: any) => moduleSubjectIds.includes(s.id))
       moduleSubjectsData.forEach((subject: any) => {
+        // Evita duplicar o código no título caso o nome já comece com ele
+        // Ex: code="DCMD0101", name="DCMD0101-CENÁRIO..." → exibe "DCMD0101-CENÁRIO..." (sem re-prefixar)
+        const subjectTitle = subject.code && !subject.name.startsWith(subject.code)
+          ? `${subject.code} - ${subject.name}`
+          : subject.name
+
         const subjectNode: TreeNode = {
           id: subject.id,
           type: 'subject',
-          title: subject.code ? `${subject.code} - ${subject.name}` : subject.name,
+          title: subjectTitle,
           parentId: module.id,
           data: subject,
           children: []
@@ -171,7 +177,9 @@ export async function getAvailableItemsForAssociation(
 
       return {
         id: subject.id,
-        displayName: subject.code ? `${subject.code} - ${subject.name}` : subject.name,
+        displayName: subject.code && !subject.name.startsWith(subject.code)
+          ? `${subject.code} - ${subject.name}`
+          : subject.name,
         description: subject.description,
         availability,
         statusText:

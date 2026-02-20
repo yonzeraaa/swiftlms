@@ -24,10 +24,10 @@ export interface DriveItem {
  * 4. Módulo (1-4 letras + 2 dígitos OU "Módulo/Modulo/Module X")
  */
 export function detectItemType(name: string): ItemType {
-  const lower = name.toLowerCase()
-
   // Prioridade 1: Teste
-  if (lower.includes('teste') || lower.includes('test')) return 'test'
+  // Usa word boundary (\b) para evitar falsos positivos com palavras que
+  // contenham "test" como substring (ex: "Atestado", "Contestação").
+  if (/\b(test|teste)\b/i.test(name)) return 'test'
 
   // Prioridade 2: Aula (6 dígitos)
   if (/^[A-Za-z]{1,4}\d{6}/.test(name)) return 'lesson'
@@ -95,6 +95,24 @@ export function extractCode(name: string): string | null {
  */
 export function extractPrefix(code: string): string {
   return code.replace(/\d/g, '')
+}
+
+/**
+ * Remove o código do início do nome para evitar duplicação na exibição.
+ * Ex: "DCMD0101-CENÁRIO DE OPORTUNIDADES" com code "DCMD0101" → "CENÁRIO DE OPORTUNIDADES"
+ * Ex: "MAT020101 Introdução" com code "MAT020101" → "Introdução"
+ * Se o nome não começar com o código, retorna o nome original intacto.
+ */
+export function extractDisplayName(fullName: string, code: string | null): string {
+  if (!code) return fullName
+
+  // Escapa caracteres especiais do código para uso em regex
+  const escapedCode = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  // Remove o código do início, seguido de separador opcional (-, _, espaço)
+  const stripped = fullName.replace(new RegExp(`^${escapedCode}[-_\\s]+`, 'i'), '').trim()
+
+  return stripped || fullName
 }
 
 /**

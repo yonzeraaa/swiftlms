@@ -468,41 +468,34 @@ useEffect(() => {
   }
 
   const listFilesRecursively = async (folderId: string, parentId: string | null = null, allFiles: any[] = [], depth: number = 0): Promise<any[]> => {
-    // DEBUG: Log da busca atual
-    console.log(`[DriveImport] ${'  '.repeat(depth)}📁 Buscando arquivos em folder ID: ${folderId}`)
-    console.log(`[DriveImport] ${'  '.repeat(depth)}   Parent ID: ${parentId || 'ROOT'}`)
+    let pageToken: string | null = null
 
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=files(id,name,mimeType,parents)&pageSize=1000`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`
+    // Busca todas as páginas de resultados (a API retorna até 1000 por vez)
+    do {
+      const url = pageToken
+        ? `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=nextPageToken,files(id,name,mimeType)&pageSize=1000&pageToken=${pageToken}`
+        : `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=nextPageToken,files(id,name,mimeType)&pageSize=1000`
+
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+
+      if (!response.ok) {
+        throw new Error('Erro ao listar arquivos')
+      }
+
+      const data = await response.json()
+      const files = data.files || []
+      pageToken = data.nextPageToken || null
+
+      for (const file of files) {
+        allFiles.push({ ...file, parentId })
+
+        if (file.mimeType === 'application/vnd.google-apps.folder') {
+          await listFilesRecursively(file.id, file.id, allFiles, depth + 1)
         }
       }
-    )
-
-    if (!response.ok) {
-      throw new Error('Erro ao listar arquivos')
-    }
-
-    const data = await response.json()
-    const files = data.files || []
-
-    console.log(`[DriveImport] ${'  '.repeat(depth)}   Encontrados ${files.length} itens`)
-
-    for (const file of files) {
-      // DEBUG: Log de cada arquivo/pasta encontrado
-      const icon = file.mimeType === 'application/vnd.google-apps.folder' ? '📁' : '📄'
-      console.log(`[DriveImport] ${'  '.repeat(depth)}   ${icon} ${file.name} (ID: ${file.id})`)
-      console.log(`[DriveImport] ${'  '.repeat(depth)}      Parents retornados pela API: ${JSON.stringify(file.parents || [])}`)
-      console.log(`[DriveImport] ${'  '.repeat(depth)}      Parent ID atribuído: ${parentId}`)
-
-      allFiles.push({ ...file, parentId })
-
-      if (file.mimeType === 'application/vnd.google-apps.folder') {
-        await listFilesRecursively(file.id, file.id, allFiles, depth + 1)
-      }
-    }
+    } while (pageToken)
 
     return allFiles
   }
