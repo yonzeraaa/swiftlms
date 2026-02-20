@@ -269,7 +269,8 @@ export async function updateCertificateStatus(
 
     const updateData: any = {
       approval_status: status,
-      approved_at: new Date().toISOString()
+      approved_at: new Date().toISOString(),
+      ...(status === 'approved' && { status: 'issued' }),
     }
 
     if (status === 'rejected' && rejectionReason) {

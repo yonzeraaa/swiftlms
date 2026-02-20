@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       .select('id, verification_code')
       .eq('enrollment_id', enrollmentId)
       .eq('certificate_type', 'lato-sensu')
-      .eq('status', 'issued')
+      .or('status.eq.issued,approval_status.eq.approved')
       .maybeSingle()
 
     if (existingCertificate) {

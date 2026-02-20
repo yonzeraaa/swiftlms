@@ -123,9 +123,11 @@ export async function evaluateTccSubmission(data: {
             .update({
               tcc_id: data.submissionId,
               final_grade: finalGradeData,
+              status: 'issued',
               approval_status: 'approved',
               approved_at: new Date().toISOString(),
               approved_by: user.id,
+              issued_at: new Date().toISOString(),
               certificate_type: certificateType
             })
             .eq('id', existingCert.id)
@@ -153,9 +155,11 @@ export async function evaluateTccSubmission(data: {
                 tcc_id: data.submissionId,
                 final_grade: finalGradeData,
                 grade: finalGradeData,
+                status: 'issued',
                 approval_status: 'approved',
                 approved_at: new Date().toISOString(),
                 approved_by: user.id,
+                issued_at: new Date().toISOString(),
                 certificate_type: certificateType
               })
           }
