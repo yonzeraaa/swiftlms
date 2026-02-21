@@ -271,7 +271,11 @@ export async function updateCertificateStatus(
     const updateData: any = {
       approval_status: status,
       approved_at: new Date().toISOString(),
+      approved_by: user.id,
+      // O trigger sync_certificate_state também garante isso, mas setar explicitamente
+      // evita qualquer janela de inconsistência antes do trigger disparar.
       ...(status === 'approved' && { status: 'issued' }),
+      ...(status === 'rejected' && { status: null }),
     }
 
     if (status === 'rejected' && rejectionReason) {

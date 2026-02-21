@@ -15,12 +15,16 @@ interface GenerateDiplomaRequest {
 }
 
 function generateVerificationCode(): string {
-  return randomUUID().split('-')[0].toUpperCase()
+  // UUID v4 tem 122 bits de entropia; usar os dois primeiros segmentos
+  // (8+4 = 12 hex chars) reduz colisão a ~1 em 281 trilhões de tentativas.
+  const [a, b] = randomUUID().split('-')
+  return `${a}${b}`.toUpperCase()
 }
 
 function generateCertificateNumber(): string {
   const year = new Date().getFullYear()
-  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0')
+  // randomUUID garante entropia criptográfica, evitando colisões de Math.random
+  const random = randomUUID().split('-')[0].slice(0, 6).toUpperCase()
   return `LS-${year}-${random}`
 }
 
@@ -140,43 +144,81 @@ export async function POST(request: Request) {
       )
     }
 
-    // Inserir registro na tabela certificates
-    const { data: certificate, error: insertError } = await supabase
-      .from('certificates')
-      .insert({
-        enrollment_id: enrollmentId,
-        user_id: enrollment.user_id,
-        course_id: courseId,
-        certificate_number: certificateNumber,
-        verification_code: verificationCode,
-        certificate_type: 'lato-sensu',
-        status: 'issued',
-        approval_status: 'approved',
-        approved_by: user.id,
-        approved_at: new Date().toISOString(),
-        issued_at: issueDateObj.toISOString(),
-        conclusion_date: conclusionDateObj.toISOString().split('T')[0],
-        grade,
-        course_hours: courseHours,
-        pdf_path: pdfPath,
-        pdf_sha256: pdfSha256,
-        metadata: {
-          student_name: studentName,
-          course_name: courseName,
-          issue_date_br: formatDateBR(issueDateObj),
-          conclusion_date_br: formatDateBR(conclusionDateObj),
-        },
-      })
-      .select()
-      .single()
+    // Inserir com retry em caso de colisão de unique constraint
+    // (verification_code e certificate_number são UNIQUE — colisão rara mas possível)
+    let certificate: { id: string } | null = null
+    let finalVerificationCode = verificationCode
+    let finalCertificateNumber = certificateNumber
+    const MAX_RETRIES = 3
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      const code = attempt === 1 ? verificationCode : generateVerificationCode()
+      const certNum = attempt === 1 ? certificateNumber : generateCertificateNumber()
+      finalVerificationCode = code
+      finalCertificateNumber = certNum
 
-    if (insertError) {
-      logger.error('Erro ao inserir certificado:', insertError, { context: 'DIPLOMA' })
-      // Tentar remover o PDF do storage em caso de falha
+      const { data, error: insertError } = await supabase
+        .from('certificates')
+        .insert({
+          enrollment_id: enrollmentId,
+          user_id: enrollment.user_id,
+          course_id: courseId,
+          certificate_number: certNum,
+          verification_code: code,
+          certificate_type: 'lato-sensu',
+          status: 'issued',
+          approval_status: 'approved',
+          approved_by: user.id,
+          approved_at: new Date().toISOString(),
+          issued_at: issueDateObj.toISOString(),
+          conclusion_date: conclusionDateObj.toISOString().split('T')[0],
+          grade,
+          course_hours: courseHours,
+          pdf_path: pdfPath,
+          pdf_sha256: pdfSha256,
+          metadata: {
+            student_name: studentName,
+            course_name: courseName,
+            issue_date_br: formatDateBR(issueDateObj),
+            conclusion_date_br: formatDateBR(conclusionDateObj),
+          },
+        })
+        .select('id')
+        .single()
+
+      if (!insertError) {
+        certificate = data
+        break
+      }
+
+      // Colisão de unique constraint: tentar novamente com novos códigos
+      const isUniqueViolation = insertError.code === '23505'
+      if (isUniqueViolation && attempt < MAX_RETRIES) {
+        logger.warn(`Colisão de código no diploma (tentativa ${attempt}), gerando novo...`, { context: 'DIPLOMA' })
+        continue
+      }
+
+      // Falha definitiva: rollback do PDF e retornar erro
       await adminClient.storage.from('certificados').remove([pdfPath])
+
+      if (isUniqueViolation) {
+        return NextResponse.json(
+          { error: 'Não foi possível gerar um código único após múltiplas tentativas. Tente novamente.' },
+          { status: 409 }
+        )
+      }
+
+      logger.error('Erro ao inserir certificado:', insertError, { context: 'DIPLOMA' })
       return NextResponse.json(
         { error: 'Erro ao registrar o diploma', details: insertError.message },
         { status: 500 }
+      )
+    }
+
+    if (!certificate) {
+      await adminClient.storage.from('certificados').remove([pdfPath])
+      return NextResponse.json(
+        { error: 'Não foi possível registrar o diploma após múltiplas tentativas.' },
+        { status: 409 }
       )
     }
 
@@ -192,8 +234,8 @@ export async function POST(request: Request) {
         metadata: {
           student_id: enrollment.user_id,
           course_id: courseId,
-          verification_code: verificationCode,
-          certificate_number: certificateNumber,
+          verification_code: finalVerificationCode,
+          certificate_number: finalCertificateNumber,
         },
       })
 
@@ -206,8 +248,8 @@ export async function POST(request: Request) {
       success: true,
       certificate: {
         id: certificate.id,
-        certificateNumber,
-        verificationCode,
+        certificateNumber: finalCertificateNumber,
+        verificationCode: finalVerificationCode,
         verificationUrl,
         pdfPath,
         downloadUrl: signedUrl?.signedUrl,
