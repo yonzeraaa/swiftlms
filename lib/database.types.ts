@@ -272,6 +272,8 @@ export type Database = {
           course_id: string
           created_at: string | null
           enrollment_id: string
+          file_path: string | null
+          file_type: string | null
           final_grade: number | null
           grade: number | null
           id: string
@@ -279,8 +281,10 @@ export type Database = {
           issued_at: string | null
           metadata: Json | null
           pdf_path: string | null
+          pdf_sha256: string | null
           rejection_reason: string | null
           status: string | null
+          storage_bucket: string | null
           tcc_id: string | null
           updated_at: string | null
           user_id: string
@@ -297,6 +301,8 @@ export type Database = {
           course_id: string
           created_at?: string | null
           enrollment_id: string
+          file_path?: string | null
+          file_type?: string | null
           final_grade?: number | null
           grade?: number | null
           id?: string
@@ -304,8 +310,10 @@ export type Database = {
           issued_at?: string | null
           metadata?: Json | null
           pdf_path?: string | null
+          pdf_sha256?: string | null
           rejection_reason?: string | null
           status?: string | null
+          storage_bucket?: string | null
           tcc_id?: string | null
           updated_at?: string | null
           user_id: string
@@ -322,6 +330,8 @@ export type Database = {
           course_id?: string
           created_at?: string | null
           enrollment_id?: string
+          file_path?: string | null
+          file_type?: string | null
           final_grade?: number | null
           grade?: number | null
           id?: string
@@ -329,8 +339,10 @@ export type Database = {
           issued_at?: string | null
           metadata?: Json | null
           pdf_path?: string | null
+          pdf_sha256?: string | null
           rejection_reason?: string | null
           status?: string | null
+          storage_bucket?: string | null
           tcc_id?: string | null
           updated_at?: string | null
           user_id?: string
@@ -789,6 +801,7 @@ export type Database = {
       excel_templates: {
         Row: {
           category: string
+          certificate_kind: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -796,12 +809,15 @@ export type Database = {
           is_active: boolean
           metadata: Json | null
           name: string
+          placeholders: Json | null
           storage_bucket: string
           storage_path: string
           updated_at: string
+          validation_warnings: string[] | null
         }
         Insert: {
           category: string
+          certificate_kind?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -809,12 +825,15 @@ export type Database = {
           is_active?: boolean
           metadata?: Json | null
           name: string
+          placeholders?: Json | null
           storage_bucket?: string
           storage_path: string
           updated_at?: string
+          validation_warnings?: string[] | null
         }
         Update: {
           category?: string
+          certificate_kind?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -822,9 +841,11 @@ export type Database = {
           is_active?: boolean
           metadata?: Json | null
           name?: string
+          placeholders?: Json | null
           storage_bucket?: string
           storage_path?: string
           updated_at?: string
+          validation_warnings?: string[] | null
         }
         Relationships: []
       }

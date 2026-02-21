@@ -9,6 +9,7 @@ import {
   DocxPlaceholder,
   validateFieldMappings,
 } from '@/types/certificate-docx'
+import type { Json } from '@/lib/database.types'
 import { generateCertificateDocx, generateCertificatePdf, certificateToDocxData } from '@/lib/services/certificate-docx'
 import { isDocxToPdfAvailable } from '@/lib/services/docx-to-pdf'
 
@@ -180,7 +181,7 @@ export async function uploadCertificateDocxTemplate(
       storage_bucket: 'excel-templates',
       created_by: userId,
       is_active: true,
-      placeholders,
+      placeholders: placeholders as unknown as Json,
       validation_warnings: warnings.length > 0 ? warnings : null,
       metadata: {
         version: '1.0',

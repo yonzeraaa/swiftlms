@@ -7,6 +7,7 @@ import {
   FieldMapping,
   CertificateKind,
 } from '@/types/certificate-docx'
+import type { Json } from '@/lib/database.types'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
         storage_bucket: 'excel-templates',
         created_by: userId,
         is_active: true,
-        placeholders,
+        placeholders: placeholders as unknown as Json,
         validation_warnings: warnings.length > 0 ? warnings : null,
         metadata: {
           version: '1.0',

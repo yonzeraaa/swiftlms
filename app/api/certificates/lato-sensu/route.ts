@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateDiplomaPdf, formatDateBR, formatGrade } from '@/lib/services/diploma-pdf'
 import { logger } from '@/lib/utils/logger'
-import { randomUUID } from 'crypto'
+import { randomUUID, createHash } from 'crypto'
 
 interface GenerateDiplomaRequest {
   enrollmentId: string
@@ -118,6 +118,9 @@ export async function POST(request: Request) {
       verificationUrl,
     })
 
+    // Calcular SHA-256 do PDF antes do upload para integridade criptográfica
+    const pdfSha256 = createHash('sha256').update(pdfBytes).digest('hex')
+
     // Upload do PDF para o Storage usando admin client
     const adminClient = createAdminClient()
     const pdfPath = `lato-sensu/${enrollmentId}-${verificationCode}.pdf`
@@ -156,6 +159,7 @@ export async function POST(request: Request) {
         grade,
         course_hours: courseHours,
         pdf_path: pdfPath,
+        pdf_sha256: pdfSha256,
         metadata: {
           student_name: studentName,
           course_name: courseName,

@@ -211,6 +211,7 @@ export async function generateCertificate(enrollmentData: {
         grade: enrollmentData.progress_percentage || 100,
         issued_at: new Date().toISOString(),
         instructor_name: instructorName,
+        status: 'issued',
         approval_status: 'approved',
         approved_at: new Date().toISOString(),
         approved_by: user.id

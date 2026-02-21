@@ -32,6 +32,7 @@ export default async function CertificateVerificationPage({ params }: Certificat
       grade,
       course_hours,
       pdf_path,
+      pdf_sha256,
       metadata,
       user:profiles!certificates_user_id_fkey(full_name),
       course:courses!certificates_course_id_fkey(title)
@@ -172,6 +173,14 @@ export default async function CertificateVerificationPage({ params }: Certificat
                   </div>
                 )}
               </div>
+
+              {/* Hash de integridade */}
+              {certificate.pdf_sha256 && (
+                <div className="bg-stone-50 rounded-lg p-4 border border-stone-200">
+                  <p className="text-xs text-stone-500 mb-1">SHA-256 do arquivo (integridade)</p>
+                  <p className="text-xs font-mono text-stone-600 break-all">{certificate.pdf_sha256}</p>
+                </div>
+              )}
 
               {/* Botão de Download */}
               {downloadUrl && isValid && (
