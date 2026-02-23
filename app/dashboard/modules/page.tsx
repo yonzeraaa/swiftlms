@@ -34,9 +34,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable'
-import {
-  useSortable
-} from '@dnd-kit/sortable'
+import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
@@ -46,23 +44,16 @@ const CODE_PREFIX_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9._-]+/
 
 const getModuleIdentifier = (module: CourseModule) => {
   const rawCode = (module as Record<string, any>)?.code
-
-  if (typeof rawCode === 'string' && rawCode.trim().length > 0) {
-    return rawCode.trim()
-  }
-
+  if (typeof rawCode === 'string' && rawCode.trim().length > 0) return rawCode.trim()
   if (typeof module.title === 'string') {
     const match = module.title.match(CODE_PREFIX_REGEX)
-    if (match && match[0].length > 0) {
-      return match[0]
-    }
+    if (match && match[0].length > 0) return match[0]
     return module.title
   }
-
   return ''
 }
 
-interface ModuleCardProps {
+interface ModuleRowProps {
   module: CourseModule
   course?: Course
   stats: { subjects: number }
@@ -70,12 +61,9 @@ interface ModuleCardProps {
   onDelete: (module: CourseModule) => void
   isSelected: boolean
   onToggleSelect: (moduleId: string) => void
-  isDragging?: boolean
-  isSorting?: boolean
-  showDragHandle?: boolean
 }
 
-function ModuleCard({
+function ModuleRowCells({
   module,
   course,
   stats,
@@ -83,12 +71,11 @@ function ModuleCard({
   onDelete,
   isSelected,
   onToggleSelect,
-  isDragging = false,
-  isSorting = false,
-  showDragHandle = true
-}: ModuleCardProps) {
+  showGrip
+}: ModuleRowProps & { showGrip?: boolean }) {
   const moduleCode = getModuleIdentifier(module)
-  const showModuleCode = moduleCode.trim().length > 0 && moduleCode.trim().toLowerCase() !== (module.title || '').trim().toLowerCase()
+  const hasDistinctCode = moduleCode.trim().length > 0 &&
+    moduleCode.trim().toLowerCase() !== (module.title || '').trim().toLowerCase()
   const totalHours = typeof module.total_hours === 'number' ? module.total_hours : 0
   const formattedHours = (() => {
     const clamped = Math.max(totalHours, 0)
@@ -97,127 +84,91 @@ function ModuleCard({
   })()
 
   return (
-    <Card 
-      variant="gradient" 
-      className={`
-        relative group transition-all duration-200
-        ${isDragging ? 'shadow-2xl ring-2 ring-gold-500/50' : 'hover:shadow-xl'}
-        ${!isDragging && !isSorting ? 'hover:scale-[1.02]' : ''}
-      `}
-    >
-      {/* Drag Indicator Overlay */}
-      {isDragging && (
-        <div className="absolute inset-0 bg-gradient-to-r from-gold-500/20 to-transparent rounded-xl pointer-events-none" />
+    <>
+      {showGrip && (
+        <td className="py-4 px-2 text-gold-500/30 cursor-grab w-8">
+          <GripVertical className="w-4 h-4" />
+        </td>
       )}
-      
-      <div className="space-y-4">
-        <div className="flex justify-between items-start gap-2">
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <div className="flex items-center gap-2 min-w-0">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onToggleSelect(module.id)
-                }}
-                className="text-gold-400 hover:text-gold-200 transition-colors flex-shrink-0"
-              >
-                {isSelected ? (
-                  <CheckSquare className="w-5 h-5" />
-                ) : (
-                  <Square className="w-5 h-5" />
-                )}
-              </button>
-              {showDragHandle && (
-                <GripVertical className={`
-                  w-5 h-5 transition-all duration-200 flex-shrink-0
-                  ${isDragging ? 'text-gold-400' : 'text-gold-500/30 group-hover:text-gold-500/50'}
-                `} />
-              )}
-              <h3 className="text-lg sm:text-xl font-bold text-gold truncate min-w-0" title={module.title}>
-                {module.title}
-              </h3>
-            </div>
-            {showModuleCode && (
-              <p className="text-xs uppercase tracking-wider text-gold-500 ml-7">
-                {moduleCode}
-              </p>
-            )}
-            {course && (
-              <p className="text-sm text-gold-400 mt-1 flex items-center gap-1 ml-7 min-w-0">
-                <BookOpen className="w-4 h-4 flex-shrink-0" />
-                <span className="truncate" title={course.title}>
-                  {course.title}
-                </span>
-              </p>
-            )}
-          </div>
-          <div className="flex gap-2 flex-shrink-0">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onEdit(module)
-              }}
-              className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700 rounded-lg transition-colors"
-              title="Editar módulo"
-            >
-              <Edit className="w-4 h-4" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete(module)
-              }}
-              className="p-2 text-red-400 hover:text-red-300 hover:bg-navy-700 rounded-lg transition-colors"
-              title="Excluir módulo"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
+      <td className="py-4 px-4 text-center w-10">
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(module.id) }}
+          className="text-gold-400 hover:text-gold-200 transition-colors"
+        >
+          {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+        </button>
+      </td>
+      <td className="py-4 px-4">
+        <span className="text-gold-400 font-mono text-sm">{hasDistinctCode ? moduleCode : '-'}</span>
+      </td>
+      <td className="py-4 px-4">
+        <span className="text-gold-100 font-medium">{module.title}</span>
         {module.description && (
-          <p className="text-gold-300 text-sm ml-7">
-            {module.description}
-          </p>
+          <p className="text-gold-400 text-xs mt-0.5 line-clamp-1">{module.description}</p>
         )}
-
-        <div className="flex items-center justify-between pt-4 border-t border-gold-500/20">
-          <div className="flex items-center flex-wrap gap-2 md:gap-4 text-xs sm:text-sm ml-7">
-            <span className="text-gold-400">
-              {stats.subjects} disciplina{stats.subjects !== 1 ? 's' : ''}
-            </span>
-            <span className="text-gold-400 flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              {formattedHours}h
-            </span>
-            <span className={`
-              px-2 py-0.5 rounded text-xs
-              ${module.is_required === false
-                ? 'bg-blue-500/20 text-blue-300'
-                : 'bg-green-500/20 text-green-300'
-              }
-            `}>
-              {module.is_required === false ? 'Opcional' : 'Obrigatório'}
-            </span>
-            <span className={`
-              px-2 py-0.5 rounded transition-all duration-200
-              ${isDragging
-                ? 'bg-gold-500/30 text-gold-200 font-semibold'
-                : 'bg-navy-900/50 text-gold-400'
-              }
-            `}>
-              Ordem: {(module.order_index || 0) + 1}
-            </span>
-          </div>
+      </td>
+      <td className="py-4 px-4">
+        {course ? (
+          <span className="text-gold-300 text-sm flex items-center gap-1">
+            <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="truncate max-w-[160px]" title={course.title}>{course.title}</span>
+          </span>
+        ) : (
+          <span className="text-gold-500/50 text-sm">-</span>
+        )}
+      </td>
+      <td className="py-4 px-4 text-right">
+        <span className="text-gold-200">{stats.subjects}</span>
+      </td>
+      <td className="py-4 px-4 text-right">
+        <span className="text-gold-200 flex items-center justify-end gap-1">
+          <Clock className="w-3.5 h-3.5" />
+          {formattedHours}h
+        </span>
+      </td>
+      <td className="py-4 px-4">
+        <span className={`px-2 py-0.5 rounded text-xs ${
+          module.is_required === false
+            ? 'bg-blue-500/20 text-blue-300'
+            : 'bg-green-500/20 text-green-300'
+        }`}>
+          {module.is_required === false ? 'Opcional' : 'Obrigatório'}
+        </span>
+      </td>
+      <td className="py-4 px-4 text-right text-gold-400 text-sm">
+        {(module.order_index || 0) + 1}
+      </td>
+      <td className="py-4 px-4">
+        <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(module) }}
+            className="p-2 text-gold-400 hover:text-gold-200 hover:bg-navy-700 rounded-lg transition-colors"
+            title="Editar módulo"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(module) }}
+            className="p-2 text-red-400 hover:text-red-300 hover:bg-navy-700 rounded-lg transition-colors"
+            title="Excluir módulo"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
         </div>
-      </div>
-    </Card>
+      </td>
+    </>
   )
 }
 
-interface SortableModuleProps extends Omit<ModuleCardProps, 'isDragging' | 'isSorting' | 'showDragHandle'> {}
+function ModuleRow(props: ModuleRowProps) {
+  return (
+    <tr className="border-b border-gold-500/10 hover:bg-navy-800/30">
+      <ModuleRowCells {...props} showGrip={false} />
+    </tr>
+  )
+}
 
-function SortableModule(props: SortableModuleProps) {
+function SortableModuleRow(props: ModuleRowProps) {
   const {
     attributes,
     listeners,
@@ -225,34 +176,25 @@ function SortableModule(props: SortableModuleProps) {
     transform,
     transition,
     isDragging,
-    isSorting
   } = useSortable({ id: props.module.id })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.3 : 1,
-    scale: isDragging ? 1.05 : 1,
   }
 
   return (
-    <div
+    <tr
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`
-        cursor-grab active:cursor-grabbing transition-all duration-200
-        ${isDragging ? 'z-50 rotate-2' : 'z-0'}
-        ${isSorting ? 'cursor-grabbing' : ''}
-      `}
+      className={`border-b border-gold-500/10 hover:bg-navy-800/30 ${isDragging ? 'ring-1 ring-gold-500/50' : ''}`}
     >
-      <ModuleCard
-        {...props}
-        isDragging={isDragging}
-        isSorting={isSorting}
-      />
-    </div>
+      <td className="py-4 px-2 w-8" {...attributes} {...listeners}>
+        <GripVertical className={`w-4 h-4 cursor-grab transition-colors ${isDragging ? 'text-gold-400' : 'text-gold-500/30 hover:text-gold-500/60'}`} />
+      </td>
+      <ModuleRowCells {...props} showGrip={false} />
+    </tr>
   )
 }
 
@@ -281,31 +223,20 @@ export default function ModulesPage() {
   const [sortMode, setSortMode] = useState<'code' | 'structure'>('code')
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  useEffect(() => { fetchData() }, [])
 
   const fetchData = async () => {
     try {
       setLoading(true)
-
       const data = await getModulesData()
-
       if (!data) {
         setMessage({ type: 'error', text: 'Erro ao carregar módulos' })
         return
       }
-
       setModules(data.modules)
       setCourses(data.courses)
       setModuleStats(data.moduleStats)
@@ -334,19 +265,13 @@ export default function ModulesPage() {
       let result
       if (editingModule) {
         result = await updateModule(editingModule.id, moduleData)
-        if (result.success) {
-          setMessage({ type: 'success', text: 'Módulo atualizado com sucesso!' })
-        }
+        if (result.success) setMessage({ type: 'success', text: 'Módulo atualizado com sucesso!' })
       } else {
         result = await createModule(moduleData)
-        if (result.success) {
-          setMessage({ type: 'success', text: 'Módulo criado com sucesso!' })
-        }
+        if (result.success) setMessage({ type: 'success', text: 'Módulo criado com sucesso!' })
       }
 
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao salvar módulo')
-      }
+      if (!result.success) throw new Error(result.error || 'Erro ao salvar módulo')
 
       setFormData({ title: '', description: '', course_id: '', order_index: '0', is_required: true })
       setEditingModule(null)
@@ -354,10 +279,7 @@ export default function ModulesPage() {
       await fetchData()
     } catch (error: any) {
       console.error('Error saving module:', error)
-      setMessage({
-        type: 'error',
-        text: error.message || 'Erro ao salvar módulo'
-      })
+      setMessage({ type: 'error', text: error.message || 'Erro ao salvar módulo' })
     } finally {
       setSubmitting(false)
     }
@@ -376,31 +298,20 @@ export default function ModulesPage() {
   }
 
   const handleDelete = async (module: CourseModule) => {
-    if (!confirm(`Tem certeza que deseja excluir o módulo "${module.title}"? Isso removerá todas as associações com disciplinas.`)) {
-      return
-    }
-
+    if (!confirm(`Tem certeza que deseja excluir o módulo "${module.title}"? Isso removerá todas as associações com disciplinas.`)) return
     try {
       const result = await deleteModule(module.id)
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao excluir módulo')
-      }
-
+      if (!result.success) throw new Error(result.error || 'Erro ao excluir módulo')
       setMessage({ type: 'success', text: 'Módulo excluído com sucesso!' })
       await fetchData()
     } catch (error: any) {
       console.error('Error deleting module:', error)
-      setMessage({
-        type: 'error',
-        text: error.message || 'Erro ao excluir módulo'
-      })
+      setMessage({ type: 'error', text: error.message || 'Erro ao excluir módulo' })
     }
   }
 
   const handleBulkDelete = async () => {
     if (selectedModules.size === 0) return
-
     if (!confirm(`Tem certeza que deseja excluir ${selectedModules.size} módulos permanentemente? Isso removerá todas as associações com disciplinas.`)) return
 
     setIsDeleting(true)
@@ -408,11 +319,7 @@ export default function ModulesPage() {
 
     try {
       const result = await bulkDeleteModules(Array.from(selectedModules))
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao excluir módulos')
-      }
-
+      if (!result.success) throw new Error(result.error || 'Erro ao excluir módulos')
       setMessage({ type: 'success', text: `${selectedModules.size} módulos excluídos com sucesso!` })
       setSelectedModules(new Set())
       await fetchData()
@@ -426,62 +333,38 @@ export default function ModulesPage() {
 
   const toggleSelectModule = (moduleId: string) => {
     const newSelection = new Set(selectedModules)
-    if (newSelection.has(moduleId)) {
-      newSelection.delete(moduleId)
-    } else {
-      newSelection.add(moduleId)
-    }
+    if (newSelection.has(moduleId)) newSelection.delete(moduleId)
+    else newSelection.add(moduleId)
     setSelectedModules(newSelection)
   }
 
-  const selectAllModules = () => {
-    const allIds = sortedModules.map(m => m.id)
-    setSelectedModules(new Set(allIds))
-  }
-
-  const deselectAllModules = () => {
-    setSelectedModules(new Set())
-  }
+  const selectAllModules = () => setSelectedModules(new Set(sortedModules.map(m => m.id)))
+  const deselectAllModules = () => setSelectedModules(new Set())
 
   const openCreateModal = () => {
     setEditingModule(null)
-    // Calcula o próximo order_index disponível (máximo + 1)
-    const maxOrderIndex = modules.length > 0 
+    const maxOrderIndex = modules.length > 0
       ? Math.max(...modules.map(m => m.order_index || 0)) + 1
       : 0
-    setFormData({ 
-      title: '', 
-      description: '', 
-      course_id: '', 
-      order_index: maxOrderIndex.toString(),
-      is_required: true 
-    })
+    setFormData({ title: '', description: '', course_id: '', order_index: maxOrderIndex.toString(), is_required: true })
     setShowModal(true)
   }
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string)
-  }
+  const handleDragStart = (event: DragStartEvent) => setActiveId(event.active.id as string)
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveId(null)
-
     if (!over || active.id === over.id) return
 
     const oldIndex = modules.findIndex(m => m.id === active.id)
     const newIndex = modules.findIndex(m => m.id === over.id)
-
     if (oldIndex === -1 || newIndex === -1) return
 
-    // Store original order for rollback
     const originalModules = [...modules]
-
-    // Reorder locally for immediate feedback
     const reorderedModules = arrayMove(modules, oldIndex, newIndex)
     setModules(reorderedModules)
 
-    // Save to database
     setIsSaving(true)
     setMessage({ type: 'info', text: 'Salvando nova ordem...' })
 
@@ -490,30 +373,16 @@ export default function ModulesPage() {
       if (!courseId) throw new Error('Course ID not found')
 
       const courseModules = reorderedModules.filter(m => m.course_id === courseId)
-
-      const modulesToUpdate = courseModules.map((module, index) => ({
-        id: module.id,
-        order_index: index
-      }))
-
+      const modulesToUpdate = courseModules.map((module, index) => ({ id: module.id, order_index: index }))
       const result = await updateModulesOrder(modulesToUpdate)
 
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao atualizar ordem')
-      }
+      if (!result.success) throw new Error(result.error || 'Erro ao atualizar ordem')
 
       setMessage({ type: 'success', text: '✓ Ordem atualizada com sucesso!' })
-
-      setTimeout(() => {
-        fetchData()
-      }, 500)
-
+      setTimeout(() => fetchData(), 500)
     } catch (error: any) {
       console.error('Error reordering modules:', error)
-      setMessage({
-        type: 'error',
-        text: `Erro ao reordenar: ${error.message || 'Tente novamente'}`
-      })
+      setMessage({ type: 'error', text: `Erro ao reordenar: ${error.message || 'Tente novamente'}` })
       setModules(originalModules)
     } finally {
       setIsSaving(false)
@@ -524,18 +393,14 @@ export default function ModulesPage() {
     return modules.filter(module => {
       const matchesSearch = module.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         module.description?.toLowerCase().includes(searchTerm.toLowerCase())
-      
       const matchesCourse = selectedCourse === 'all' || module.course_id === selectedCourse
-      
       return matchesSearch && matchesCourse
     })
   }, [modules, searchTerm, selectedCourse])
 
   const coursesById = useMemo(() => {
     const map = new Map<string, Course>()
-    courses.forEach(course => {
-      map.set(course.id, course)
-    })
+    courses.forEach(course => map.set(course.id, course))
     return map
   }, [courses])
 
@@ -547,9 +412,7 @@ export default function ModulesPage() {
         const codeA = getModuleIdentifier(a)
         const codeB = getModuleIdentifier(b)
         const codeCompare = codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
-
         if (codeCompare !== 0) return codeCompare
-
         return a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
       })
     }
@@ -558,9 +421,7 @@ export default function ModulesPage() {
       const courseA = coursesById.get(a.course_id)?.title || ''
       const courseB = coursesById.get(b.course_id)?.title || ''
       const courseCompare = courseA.localeCompare(courseB, 'pt-BR', { sensitivity: 'base' })
-
       if (courseCompare !== 0) return courseCompare
-
       return (a.order_index || 0) - (b.order_index || 0)
     })
   }, [filteredModules, sortMode, coursesById])
@@ -575,9 +436,47 @@ export default function ModulesPage() {
     )
   }
 
+  const tableHeader = (showGrip: boolean) => (
+    <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
+      <tr className="border-b border-gold-500/20">
+        {showGrip && <th className="w-8 py-4 px-2" />}
+        <th className="w-10 py-4 px-4 text-center">
+          <button
+            onClick={selectedModules.size === sortedModules.length ? deselectAllModules : selectAllModules}
+            className="text-gold-400 hover:text-gold-200 transition-colors"
+          >
+            {selectedModules.size === sortedModules.length && sortedModules.length > 0
+              ? <CheckSquare className="w-5 h-5" />
+              : <Square className="w-5 h-5" />}
+          </button>
+        </th>
+        <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">Código</th>
+        <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">Título</th>
+        <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">Curso</th>
+        <th scope="col" className="text-right py-4 px-4 text-gold-200 font-medium">Disciplinas</th>
+        <th scope="col" className="text-right py-4 px-4 text-gold-200 font-medium">Horas</th>
+        <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">Tipo</th>
+        <th scope="col" className="text-right py-4 px-4 text-gold-200 font-medium">Ordem</th>
+        <th scope="col" className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
+      </tr>
+    </thead>
+  )
+
+  const emptyRow = (colSpan: number) => (
+    <tr>
+      <td colSpan={colSpan} className="py-12 text-center">
+        <Folder className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
+        <p className="text-gold-300">
+          {searchTerm ? 'Nenhum módulo encontrado' : 'Nenhum módulo cadastrado'}
+        </p>
+      </td>
+    </tr>
+  )
+
   return (
     <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       <Breadcrumbs className="mb-2" />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
@@ -586,13 +485,10 @@ export default function ModulesPage() {
             Módulos
           </h1>
           <p className="text-sm sm:text-base text-gold-300 mt-1">
-            Gerencie os módulos dos cursos. Arraste para reordenar.
+            Gerencie os módulos dos cursos. Arraste para reordenar no modo estrutura.
           </p>
         </div>
-        <Button
-          onClick={openCreateModal}
-          icon={<Plus className="w-4 h-4" />}
-        >
+        <Button onClick={openCreateModal} icon={<Plus className="w-4 h-4" />}>
           Novo Módulo
         </Button>
       </div>
@@ -609,8 +505,8 @@ export default function ModulesPage() {
               <Spinner size="sm" className="text-blue-400" />
             )}
             <p className={
-              message.type === 'success' ? 'text-green-300' : 
-              message.type === 'error' ? 'text-red-300' : 
+              message.type === 'success' ? 'text-green-300' :
+              message.type === 'error' ? 'text-red-300' :
               'text-blue-300'
             }>
               {message.text}
@@ -633,18 +529,15 @@ export default function ModulesPage() {
               Desmarcar todos
             </button>
           </div>
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Button
-              variant="danger"
-              size="sm"
-              icon={<Trash className="w-4 h-4" />}
-              onClick={handleBulkDelete}
-              disabled={isDeleting}
-              className="w-full sm:w-auto"
-            >
-              {isDeleting ? 'Excluindo...' : 'Excluir Selecionados'}
-            </Button>
-          </div>
+          <Button
+            variant="danger"
+            size="sm"
+            icon={<Trash className="w-4 h-4" />}
+            onClick={handleBulkDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Excluindo...' : 'Excluir Selecionados'}
+          </Button>
         </div>
       )}
 
@@ -669,9 +562,7 @@ export default function ModulesPage() {
             >
               <option value="all">Todos os cursos</option>
               {courses.map(course => (
-                <option key={course.id} value={course.id}>
-                  {course.title}
-                </option>
+                <option key={course.id} value={course.id}>{course.title}</option>
               ))}
             </select>
           </div>
@@ -701,35 +592,10 @@ export default function ModulesPage() {
               Curso e ordem manual
             </button>
           </div>
-        
-          {/* Actions Row */}
-          <div className="flex items-center justify-between">
-            {sortedModules.length > 0 && (
-              <button
-                onClick={selectedModules.size === sortedModules.length ? deselectAllModules : selectAllModules}
-                className="flex items-center gap-2 text-gold-400 hover:text-gold-200 transition-colors"
-              >
-                {selectedModules.size === sortedModules.length ? (
-                  <CheckSquare className="w-5 h-5" />
-                ) : (
-                  <Square className="w-5 h-5" />
-                )}
-                <span className="text-sm font-medium">
-                  {selectedModules.size === sortedModules.length ? 'Desmarcar todos' : 'Selecionar todos'}
-                </span>
-              </button>
-            )}
-            {sortedModules.length > 1 && sortMode === 'structure' && (
-              <div className="flex items-center gap-2 text-sm text-gold-400/70">
-                <GripVertical className="w-4 h-4" />
-                <span>Arraste os cards para reordenar os módulos</span>
-              </div>
-            )}
-          </div>
         </div>
       </Card>
 
-      {/* Modules Grid */}
+      {/* Modules Table */}
       <div className="relative">
         {sortMode === 'structure' && isSaving && (
           <div className="absolute inset-0 bg-navy-900/50 backdrop-blur-sm flex items-center justify-center z-50 rounded-xl">
@@ -739,102 +605,79 @@ export default function ModulesPage() {
           </div>
         )}
 
-        {sortMode === 'structure' ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={sortedModules.map(m => m.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-                {sortedModules.length > 0 ? (
-                  sortedModules.map((module) => {
-                    const course = courses.find(c => c.id === module.course_id)
-                    const stats = moduleStats[module.id] || { subjects: 0 }
-                    
-                    return (
-                      <SortableModule
-                        key={module.id}
-                        module={module}
-                        course={course}
-                        stats={stats}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        isSelected={selectedModules.has(module.id)}
-                        onToggleSelect={toggleSelectModule}
-                      />
-                    )
-                  })
-                ) : (
-                  <div className="col-span-full">
-                    <Card>
-                      <div className="text-center py-12">
-                        <Folder className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                        <p className="text-gold-300">
-                          {searchTerm ? 'Nenhum módulo encontrado' : 'Nenhum módulo cadastrado'}
-                        </p>
-                      </div>
-                    </Card>
-                  </div>
-                )}
-              </div>
-            </SortableContext>
-            
-            <DragOverlay>
-              {activeModule ? (
-                <div className="transform rotate-3 scale-105">
-                  <Card variant="gradient" className="shadow-2xl ring-2 ring-gold-500 bg-navy-800/95">
-                    <div className="flex items-center gap-3 px-4 py-3">
+        <Card>
+          <div className="overflow-x-auto">
+            {sortMode === 'structure' ? (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={sortedModules.map(m => m.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <table className="w-full table-density density-compact">
+                    {tableHeader(true)}
+                    <tbody>
+                      {sortedModules.length > 0 ? (
+                        sortedModules.map((module) => (
+                          <SortableModuleRow
+                            key={module.id}
+                            module={module}
+                            course={coursesById.get(module.course_id)}
+                            stats={moduleStats[module.id] || { subjects: 0 }}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                            isSelected={selectedModules.has(module.id)}
+                            onToggleSelect={toggleSelectModule}
+                          />
+                        ))
+                      ) : (
+                        emptyRow(11)
+                      )}
+                    </tbody>
+                  </table>
+                </SortableContext>
+
+                <DragOverlay>
+                  {activeModule ? (
+                    <div className="bg-navy-800/95 border border-gold-500/50 rounded-lg px-4 py-3 shadow-2xl flex items-center gap-3">
                       <GripVertical className="w-5 h-5 text-gold-400 animate-pulse" />
                       <div>
                         <p className="text-gold-200 font-semibold">{activeModule.title}</p>
                         <p className="text-gold-400 text-xs">Solte para reordenar</p>
                       </div>
                     </div>
-                  </Card>
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-            {sortedModules.length > 0 ? (
-              sortedModules.map((module) => {
-                const course = coursesById.get(module.course_id)
-                const stats = moduleStats[module.id] || { subjects: 0 }
-
-                return (
-                  <ModuleCard
-                    key={module.id}
-                    module={module}
-                    course={course}
-                    stats={stats}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    isSelected={selectedModules.has(module.id)}
-                    onToggleSelect={toggleSelectModule}
-                    showDragHandle={false}
-                  />
-                )
-              })
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             ) : (
-              <div className="col-span-full">
-                <Card>
-                  <div className="text-center py-12">
-                    <Folder className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                    <p className="text-gold-300">
-                      {searchTerm ? 'Nenhum módulo encontrado' : 'Nenhum módulo cadastrado'}
-                    </p>
-                  </div>
-                </Card>
-              </div>
+              <table className="w-full table-density density-compact">
+                {tableHeader(false)}
+                <tbody>
+                  {sortedModules.length > 0 ? (
+                    sortedModules.map((module) => (
+                      <ModuleRow
+                        key={module.id}
+                        module={module}
+                        course={coursesById.get(module.course_id)}
+                        stats={moduleStats[module.id] || { subjects: 0 }}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        isSelected={selectedModules.has(module.id)}
+                        onToggleSelect={toggleSelectModule}
+                      />
+                    ))
+                  ) : (
+                    emptyRow(10)
+                  )}
+                </tbody>
+              </table>
             )}
           </div>
-        )}
+        </Card>
       </div>
 
       {/* Create/Edit Modal */}
@@ -863,7 +706,7 @@ export default function ModulesPage() {
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
                   placeholder="Ex: Módulo 1: Fundamentos"
                 />
               </div>
@@ -877,24 +720,17 @@ export default function ModulesPage() {
                   value={formData.course_id}
                   onChange={(e) => {
                     const courseId = e.target.value
-                    // Recalcula o order_index baseado nos módulos do curso selecionado
                     const courseModules = modules.filter(m => m.course_id === courseId)
-                    const maxOrderIndex = courseModules.length > 0 
+                    const maxOrderIndex = courseModules.length > 0
                       ? Math.max(...courseModules.map(m => m.order_index || 0)) + 1
                       : 0
-                    setFormData({ 
-                      ...formData, 
-                      course_id: courseId,
-                      order_index: maxOrderIndex.toString()
-                    })
+                    setFormData({ ...formData, course_id: courseId, order_index: maxOrderIndex.toString() })
                   }}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
                 >
                   <option value="">Selecione um curso</option>
                   {courses.map(course => (
-                    <option key={course.id} value={course.id}>
-                      {course.title}
-                    </option>
+                    <option key={course.id} value={course.id}>{course.title}</option>
                   ))}
                 </select>
               </div>
@@ -907,7 +743,7 @@ export default function ModulesPage() {
                   type="number"
                   value={formData.order_index}
                   onChange={(e) => setFormData({ ...formData, order_index: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
                   placeholder="Ex: 0"
                   min="0"
                   step="1"
@@ -950,7 +786,7 @@ export default function ModulesPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus-ring"
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
                   placeholder="Breve descrição do módulo..."
                   rows={3}
                 />
@@ -966,16 +802,9 @@ export default function ModulesPage() {
                 >
                   Cancelar
                 </Button>
-                <Button
-                  type="submit"
-                  className="flex-1"
-                  disabled={submitting}
-                >
+                <Button type="submit" className="flex-1" disabled={submitting}>
                   {submitting ? (
-                    <>
-                      <Spinner size="sm" className="mr-2" />
-                      Salvando...
-                    </>
+                    <><Spinner size="sm" className="mr-2" />Salvando...</>
                   ) : (
                     editingModule ? 'Salvar Alterações' : 'Criar Módulo'
                   )}

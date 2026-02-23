@@ -139,6 +139,7 @@ export async function getEnrolledStudents(courseId: string) {
 
 export async function createCourse(courseData: {
   title: string
+  code: string
   description: string
   summary: string
   category: string
@@ -178,6 +179,7 @@ export async function createCourse(courseData: {
 
 export async function updateCourse(courseId: string, courseData: {
   title: string
+  code: string
   description: string
   summary: string
   category: string

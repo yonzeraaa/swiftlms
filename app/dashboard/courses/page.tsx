@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, DollarSign, X, AlertCircle, CheckCircle, XCircle, BookMarked, UserMinus, Upload, FileText, FolderInput } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, X, AlertCircle, CheckCircle, XCircle, BookMarked, UserMinus, Upload, FolderInput } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
@@ -22,6 +22,8 @@ import {
 
 interface Course {
   id: string
+  slug: string
+  code: string | null
   title: string
   description: string | null
   summary: string | null
@@ -46,17 +48,9 @@ interface Course {
   }
 }
 
-interface MediaFileSummary {
-  moduleName: string
-  subjectName: string
-  itemName: string
-  mimeType: string
-  sizeBytes: number | null
-}
-
-
 interface NewCourseForm {
   title: string
+  code: string
   description: string
   summary: string
   category: string
@@ -75,7 +69,6 @@ export default function CoursesPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [showFilters, setShowFilters] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [dropdownCourse, setDropdownCourse] = useState<Course | null>(null)
   const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null)
@@ -93,14 +86,13 @@ export default function CoursesPage() {
   const [importFile, setImportFile] = useState<File | null>(null)
   const [importing, setImporting] = useState(false)
   const { openImport } = useDriveImport()
-  
-  // Usar o contexto global de autenticação
+
   const { session, user, isLoading: authLoading, refreshSession } = useAuth()
-  const isAuthenticated = !!session
   const { t } = useTranslation()
-  
+
   const [newCourseForm, setNewCourseForm] = useState<NewCourseForm>({
     title: '',
+    code: '',
     description: '',
     summary: '',
     category: 'engineering',
@@ -110,22 +102,9 @@ export default function CoursesPage() {
     is_featured: false
   })
 
-  const formatBytes = (bytes: number | null) => {
-    if (!bytes || bytes <= 0) return 'tamanho desconhecido'
-    const units = ['B', 'KB', 'MB', 'GB', 'TB']
-    let value = bytes
-    let unitIndex = 0
-    while (value >= 1024 && unitIndex < units.length - 1) {
-      value /= 1024
-      unitIndex++
-    }
-    const rounded = unitIndex === 0 ? Math.round(value) : parseFloat(value.toFixed(value >= 10 ? 0 : 1))
-    return `${rounded} ${units[unitIndex]}`
-  }
-
-  
   const [editForm, setEditForm] = useState<NewCourseForm>({
     title: '',
+    code: '',
     description: '',
     summary: '',
     category: 'engineering',
@@ -136,20 +115,17 @@ export default function CoursesPage() {
   })
 
   useEffect(() => {
-    // Fetch data when authenticated (using useAuth provider)
     if (session && !authLoading) {
       fetchCourses()
     }
   }, [session, authLoading])
-  
-  // Close dropdown when clicking outside
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (openDropdown && !(event.target as Element).closest('.dropdown-menu')) {
         setOpenDropdown(null)
       }
     }
-
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [openDropdown])
@@ -157,14 +133,8 @@ export default function CoursesPage() {
   const fetchCourses = async () => {
     try {
       const result = await getCoursesData()
-
-      if (!result) {
-        throw new Error('Failed to fetch courses')
-      }
-
-      const transformedData = result.courses || []
-
-      setCourses(transformedData)
+      if (!result) throw new Error('Failed to fetch courses')
+      setCourses(result.courses || [])
       setInstructors(result.instructors || [])
     } catch (error) {
       console.error('Error fetching courses:', error)
@@ -176,28 +146,14 @@ export default function CoursesPage() {
   const createCourse = async () => {
     setCreating(true)
     setError(null)
-
     try {
       const result = await createCourseAction(newCourseForm)
-
-      if (!result.success) {
-        throw new Error(result.error || t('courses.createError'))
-      }
-
-      // Reset form and close modal
+      if (!result.success) throw new Error(result.error || t('courses.createError'))
       setNewCourseForm({
-        title: '',
-        description: '',
-        summary: '',
-        category: 'engineering',
-        difficulty: 'beginner',
-        duration_hours: 40,
-        price: 0,
-        is_featured: false
+        title: '', code: '', description: '', summary: '', category: 'engineering',
+        difficulty: 'beginner', duration_hours: 40, price: 0, is_featured: false
       })
       setShowNewCourseModal(false)
-
-      // Refresh courses
       fetchCourses()
     } catch (error: any) {
       setError(error.message || t('courses.createError'))
@@ -205,19 +161,14 @@ export default function CoursesPage() {
       setCreating(false)
     }
   }
-  
+
   const updateCourse = async () => {
     if (!selectedCourse) return
     setUpdating(true)
     setError(null)
-
     try {
       const result = await updateCourseAction(selectedCourse.id, editForm)
-
-      if (!result.success) {
-        throw new Error(result.error || t('courses.updateError'))
-      }
-
+      if (!result.success) throw new Error(result.error || t('courses.updateError'))
       setShowEditModal(false)
       setSelectedCourse(null)
       fetchCourses()
@@ -227,19 +178,14 @@ export default function CoursesPage() {
       setUpdating(false)
     }
   }
-  
+
   const deleteCourse = async () => {
     if (!selectedCourse) return
     setUpdating(true)
     setError(null)
-
     try {
       const result = await deleteCourseAction(selectedCourse.id)
-
-      if (!result.success) {
-        throw new Error(result.error || t('courses.deleteError'))
-      }
-
+      if (!result.success) throw new Error(result.error || t('courses.deleteError'))
       setShowDeleteModal(false)
       setSelectedCourse(null)
       fetchCourses()
@@ -249,16 +195,11 @@ export default function CoursesPage() {
       setUpdating(false)
     }
   }
-  
+
   const togglePublishStatus = async (course: Course) => {
     try {
       const result = await toggleCoursePublishStatus(course.id, course.is_published || false)
-
-      if (!result.success || result.newStatus === null) {
-        throw new Error(result.error)
-      }
-
-      // Update local state
+      if (!result.success || result.newStatus === null) throw new Error(result.error)
       setCourses(courses.map(c =>
         c.id === course.id ? { ...c, is_published: result.newStatus } : c
       ))
@@ -267,11 +208,12 @@ export default function CoursesPage() {
       console.error('Error toggling publish status:', error)
     }
   }
-  
+
   const openEditModal = (course: Course) => {
     setSelectedCourse(course)
     setEditForm({
       title: course.title,
+      code: course.code || '',
       description: course.description || '',
       summary: course.summary || '',
       category: course.category,
@@ -283,58 +225,39 @@ export default function CoursesPage() {
     setShowEditModal(true)
     setOpenDropdown(null)
   }
-  
+
   const openDeleteModal = (course: Course) => {
     setSelectedCourse(course)
     setShowDeleteModal(true)
     setOpenDropdown(null)
   }
-  
+
   const openViewModal = (course: Course) => {
     setSelectedCourse(course)
     setShowViewModal(true)
   }
-  
+
   const openManageStudentsModal = async (course: Course) => {
-    console.log('[MANAGE_STUDENTS] Opening modal for course:', course.id, course.title)
-
-    // Verificar autenticação usando o contexto global
     if (!session) {
-      console.warn('[MANAGE_STUDENTS] Não autenticado, tentando refresh...')
       await refreshSession()
-
-      // Aguardar um momento para o estado atualizar
       await new Promise(resolve => setTimeout(resolve, 100))
-
-      // Verificar novamente usando useAuth
       if (!session) {
-        console.error('[MANAGE_STUDENTS] Falha na autenticação')
         alert('Sua sessão expirou. Por favor, faça login novamente.')
         window.location.href = '/'
         return
       }
     }
-
-    console.log('[MANAGE_STUDENTS] Sessão válida:', {
-      userId: user?.id,
-      email: user?.email
-    })
-
     setSelectedCourse(course)
     setShowManageStudentsModal(true)
     setOpenDropdown(null)
     await fetchEnrolledStudents(course.id)
   }
-  
+
   const fetchEnrolledStudents = async (courseId: string) => {
     setLoadingEnrolledStudents(true)
     try {
       const result = await getEnrolledStudents(courseId)
-
-      if (!result || !result.success) {
-        throw new Error(result?.error || 'Failed to fetch enrolled students')
-      }
-
+      if (!result || !result.success) throw new Error(result?.error || 'Failed to fetch enrolled students')
       setEnrolledStudents(result.students || [])
     } catch (error) {
       console.error('Error fetching enrolled students:', error)
@@ -343,90 +266,56 @@ export default function CoursesPage() {
       setLoadingEnrolledStudents(false)
     }
   }
-  
-  const unenrollStudent = async (enrollmentId: string, studentName: string) => {
-    if (!confirm(`Tem certeza que deseja desmatricular ${studentName} deste curso?`)) {
-      return
-    }
 
+  const unenrollStudent = async (enrollmentId: string, studentName: string) => {
+    if (!confirm(`Tem certeza que deseja desmatricular ${studentName} deste curso?`)) return
     try {
       const result = await unenrollStudentAction(enrollmentId)
-
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-
-      // Refresh enrolled students list
-      if (selectedCourse) {
-        await fetchEnrolledStudents(selectedCourse.id)
-      }
-
-      // Refresh courses to update enrollment count
+      if (!result.success) throw new Error(result.error)
+      if (selectedCourse) await fetchEnrolledStudents(selectedCourse.id)
       await fetchCourses()
-
       alert(`Aluno ${studentName} foi desmatriculado com sucesso!`)
     } catch (error: any) {
       console.error('Error unenrolling student:', error)
       alert('Erro ao desmatricular aluno: ' + error.message)
     }
   }
-  
+
   const handleImport = async () => {
     if (!importFile || !selectedCourse) return
-    
     setImporting(true)
     setError(null)
-    
     try {
       const formData = new FormData()
       formData.append('file', importFile)
       formData.append('courseId', selectedCourse.id)
-      
-      const response = await fetch('/api/import-course-structure', {
-        method: 'POST',
-        body: formData
-      })
-      
+      const response = await fetch('/api/import-course-structure', { method: 'POST', body: formData })
       const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro na importação')
-      }
-      
+      if (!response.ok) throw new Error(result.error || 'Erro na importação')
       alert(`Importação concluída! ${result.modulesImported} módulos e ${result.subjectsImported} disciplinas importados.`)
-      
       setShowImportModal(false)
       setImportFile(null)
       setSelectedCourse(null)
-      
     } catch (error: any) {
       setError(error.message || 'Erro ao importar arquivo')
     } finally {
       setImporting(false)
     }
   }
-  
-  const filteredCourses = courses
-    .filter(course => {
-      const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (course.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
-      const matchesCategory = selectedCategory === 'all' || course.category === selectedCategory
-      return matchesSearch && matchesCategory
-    })
+
+  const filteredCourses = courses.filter(course => {
+    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (course.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
+    const matchesCategory = selectedCategory === 'all' || course.category === selectedCategory
+    return matchesSearch && matchesCategory
+  })
 
   const getLevelColor = (level: string) => {
     switch(level.toLowerCase()) {
-      case 'beginner': 
-      case 'iniciante': 
-        return 'bg-green-500/20 text-green-400'
-      case 'intermediate':
-      case 'intermediário': 
-        return 'bg-yellow-500/20 text-yellow-400'
-      case 'advanced':
-      case 'avançado': 
-        return 'bg-red-500/20 text-red-400'
-      default: 
-        return 'bg-gold-500/20 text-gold-400'
+      case 'beginner': case 'iniciante': return 'bg-green-500/20 text-green-400'
+      case 'intermediate': case 'intermediário': return 'bg-yellow-500/20 text-yellow-400'
+      case 'advanced': case 'avançado': return 'bg-red-500/20 text-red-400'
+      default: return 'bg-gold-500/20 text-gold-400'
     }
   }
 
@@ -442,6 +331,7 @@ export default function CoursesPage() {
   return (
     <div className="space-y-6">
       <Breadcrumbs className="mb-2" />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -451,8 +341,8 @@ export default function CoursesPage() {
           </h1>
           <p className="text-gold-300 mt-1">{t('courses.subtitle')}</p>
         </div>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           icon={<Plus className="w-5 h-5" />}
           onClick={() => setShowNewCourseModal(true)}
         >
@@ -460,179 +350,7 @@ export default function CoursesPage() {
         </Button>
       </div>
 
-      {/* Filters and Search */}
-      <Card>
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
-            <input
-              type="text"
-              placeholder={t('courses.searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-            />
-          </div>
-          <Button 
-            variant="secondary" 
-            icon={<Filter className="w-5 h-5" />}
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            {t('courses.filters')}
-          </Button>
-        </div>
-      </Card>
-      
-      {/* Filter Panel */}
-      {showFilters && (
-        <Card>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
-                {t('courses.category')}
-              </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-              >
-                <option value="all">{t('courses.allCategories')}</option>
-                <option value="engineering">{t('courses.engineering')}</option>
-                <option value="safety">{t('courses.safety')}</option>
-                <option value="operations">{t('courses.operations')}</option>
-                <option value="maintenance">{t('courses.maintenance')}</option>
-              </select>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Courses Grid */}
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <Spinner size="xl" />
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredCourses.map((course) => (
-            <Card key={course.id} className="hover:shadow-2xl transition-shadow relative">
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-gold mb-2">{course.title}</h3>
-                  <p className="text-gold-300 text-sm line-clamp-2">{course.description || course.summary}</p>
-                </div>
-                <div className="relative">
-                  <button 
-                    ref={(el) => { dropdownRefs.current[course.id] = el }}
-                    className="text-gold-400 hover:text-gold-200 transition-colors ml-4 p-1"
-                    aria-label="Abrir menu de ações do curso"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (openDropdown === course.id) {
-                        setOpenDropdown(null);
-                        setDropdownCourse(null);
-                        setDropdownPosition(null);
-                      } else {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setDropdownPosition({
-                          top: rect.bottom + window.scrollY,
-                          left: rect.right - 224 + window.scrollX // 224px = 14rem (w-56)
-                        });
-                        setOpenDropdown(course.id);
-                        setDropdownCourse(course);
-                      }
-                    }}
-                  >
-                    <MoreVertical className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gold-400">{t('courses.instructor')}</span>
-                  <span className="text-gold-200">{course.instructor?.full_name || t('courses.noInstructor')}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="flex items-center gap-1 text-gold-300">
-                      <Users className="w-4 h-4" />
-                      {course._count?.enrollments || 0} {t('courses.students')}
-                    </span>
-                    <span className="flex items-center gap-1 text-gold-300">
-                      <Clock className="w-4 h-4" />
-                      {course.duration_hours} {t('common.hours')}
-                    </span>
-                  </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getLevelColor(course.difficulty)}`}>
-                    {getDifficultyLabel(course.difficulty)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gold-400">{t('courses.category')}</span>
-                  <span className="text-gold-200">{course.category}</span>
-                </div>
-
-                {course.price !== null && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gold-400">{t('courses.price')}</span>
-                    <span className="text-gold-200 font-semibold">
-                      {course.price === 0 ? t('courses.free') : `R$ ${course.price.toFixed(2)}`}
-                    </span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-4 gap-2 text-center text-xs pt-3 border-t border-gold-500/10">
-                  <div>
-                    <p className="text-gold-400">Módulos</p>
-                    <p className="text-gold-100 font-bold text-sm">{course._count?.modules || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-gold-400">Disciplinas</p>
-                    <p className="text-gold-100 font-bold text-sm">{course._count?.subjects || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-gold-400">Aulas</p>
-                    <p className="text-gold-100 font-bold text-sm">{course._count?.lessons || 0}</p>
-                  </div>
-                  <div>
-                    <p className="text-gold-400">Testes</p>
-                    <p className="text-gold-100 font-bold text-sm">{course._count?.tests || 0}</p>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t border-gold-500/20">
-                  <span className={`text-sm font-medium ${
-                    course.is_published ? 'text-green-400' : 'text-yellow-400'
-                  }`}>
-                    {course.is_published ? t('courses.published') : t('courses.draft')}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="secondary" 
-                      size="sm"
-                      onClick={() => openEditModal(course)}
-                    >
-                      {t('courses.edit')}
-                    </Button>
-                    <Button 
-                      variant="primary" 
-                      size="sm"
-                      onClick={() => openViewModal(course)}
-                    >
-                      {t('courses.view')}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Stats Summary */}
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
         <Card>
           <div className="flex items-center justify-between">
@@ -666,7 +384,165 @@ export default function CoursesPage() {
           </div>
         </Card>
       </div>
-      
+
+      {/* Search and Filters */}
+      <Card>
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+            <input
+              type="text"
+              placeholder={t('courses.searchPlaceholder')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gold-400 flex-shrink-0" />
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="px-3 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+            >
+              <option value="all">{t('courses.allCategories')}</option>
+              <option value="engineering">{t('courses.engineering')}</option>
+              <option value="safety">{t('courses.safety')}</option>
+              <option value="operations">{t('courses.operations')}</option>
+              <option value="maintenance">{t('courses.maintenance')}</option>
+            </select>
+          </div>
+        </div>
+      </Card>
+
+      {/* Courses Table */}
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <Spinner size="xl" />
+        </div>
+      ) : (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full table-density density-compact">
+              <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
+                <tr className="border-b border-gold-500/20">
+                  <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">Código</th>
+                  <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">{t('courses.courseTitle')}</th>
+                  <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">{t('courses.category')}</th>
+                  <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">{t('courses.level')}</th>
+                  <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">{t('courses.instructor')}</th>
+                  <th scope="col" className="text-right py-4 px-4 text-gold-200 font-medium">{t('courses.students')}</th>
+                  <th scope="col" className="text-right py-4 px-4 text-gold-200 font-medium">Módulos</th>
+                  <th scope="col" className="text-right py-4 px-4 text-gold-200 font-medium">Disciplinas</th>
+                  <th scope="col" className="text-right py-4 px-4 text-gold-200 font-medium">Aulas</th>
+                  <th scope="col" className="text-right py-4 px-4 text-gold-200 font-medium">Testes</th>
+                  <th scope="col" className="text-right py-4 px-4 text-gold-200 font-medium">{t('courses.duration')}</th>
+                  <th scope="col" className="text-left py-4 px-4 text-gold-200 font-medium">Status</th>
+                  <th scope="col" className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredCourses.length > 0 ? (
+                  filteredCourses.map((course) => (
+                    <tr key={course.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">
+                      <td className="py-4 px-4">
+                        <span className="text-gold-400 font-mono text-sm">{course.code || '-'}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-gold-100 font-medium">{course.title}</span>
+                        {course.description && (
+                          <p className="text-gold-400 text-xs mt-0.5 line-clamp-1">{course.description}</p>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-gold-300 text-sm">{course.category}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getLevelColor(course.difficulty)}`}>
+                          {getDifficultyLabel(course.difficulty)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-gold-300 text-sm">
+                          {course.instructor?.full_name || t('courses.noInstructor')}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="text-gold-200">{course._count?.enrollments || 0}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="text-gold-200">{course._count?.modules || 0}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="text-gold-200">{course._count?.subjects || 0}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="text-gold-200">{course._count?.lessons || 0}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="text-gold-200">{course._count?.tests || 0}</span>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <span className="text-gold-200">{course.duration_hours}h</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className={`text-sm font-medium ${
+                          course.is_published ? 'text-green-400' : 'text-yellow-400'
+                        }`}>
+                          {course.is_published ? t('courses.published') : t('courses.draft')}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-center">
+                          <button
+                            ref={(el) => { dropdownRefs.current[course.id] = el }}
+                            className="text-gold-400 hover:text-gold-200 transition-colors p-1"
+                            aria-label="Abrir menu de ações do curso"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (openDropdown === course.id) {
+                                setOpenDropdown(null)
+                                setDropdownCourse(null)
+                                setDropdownPosition(null)
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect()
+                                // ~380px = altura estimada do menu (8 itens × 48px)
+                                const DROPDOWN_HEIGHT = 380
+                                const spaceBelow = window.innerHeight - rect.bottom
+                                const openAbove = spaceBelow < DROPDOWN_HEIGHT
+                                setDropdownPosition({
+                                  top: openAbove
+                                    ? rect.top + window.scrollY - DROPDOWN_HEIGHT
+                                    : rect.bottom + window.scrollY,
+                                  left: rect.right - 224 + window.scrollX
+                                })
+                                setOpenDropdown(course.id)
+                                setDropdownCourse(course)
+                              }
+                            }}
+                          >
+                            <MoreVertical className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={13} className="py-12 text-center">
+                      <BookOpen className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
+                      <p className="text-gold-300">
+                        {searchTerm ? 'Nenhum curso encontrado' : 'Nenhum curso cadastrado'}
+                      </p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {/* Create Course Modal */}
       {showNewCourseModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
@@ -683,27 +559,43 @@ export default function CoursesPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             {error && (
               <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                 <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
-            
+
             <form onSubmit={(e) => { e.preventDefault(); createCourse(); }} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
-                  {t('courses.courseTitle')}
-                </label>
-                <input
-                  type="text"
-                  value={newCourseForm.title}
-                  onChange={(e) => setNewCourseForm({ ...newCourseForm, title: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gold-200 mb-2">
+                    {t('courses.courseTitle')}
+                  </label>
+                  <input
+                    type="text"
+                    value={newCourseForm.title}
+                    onChange={(e) => setNewCourseForm({ ...newCourseForm, title: e.target.value })}
+                    className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gold-200 mb-2">
+                    Código
+                  </label>
+                  <input
+                    type="text"
+                    value={newCourseForm.code}
+                    onChange={(e) => setNewCourseForm({ ...newCourseForm, code: e.target.value.toUpperCase() })}
+                    className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 font-mono"
+                    placeholder="Ex: ENG1"
+                    maxLength={10}
+                    required
+                  />
+                </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gold-200 mb-2">
                   {t('courses.summary')}
@@ -716,7 +608,7 @@ export default function CoursesPage() {
                   placeholder={t('courses.briefSummary')}
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gold-200 mb-2">
                   {t('courses.description')}
@@ -729,7 +621,7 @@ export default function CoursesPage() {
                   required
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gold-200 mb-2">
@@ -746,7 +638,7 @@ export default function CoursesPage() {
                     <option value="maintenance">{t('courses.maintenance')}</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gold-200 mb-2">
                     {t('courses.level')}
@@ -762,7 +654,7 @@ export default function CoursesPage() {
                   </select>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gold-200 mb-2">
@@ -777,7 +669,7 @@ export default function CoursesPage() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gold-200 mb-2">
                     {t('courses.price')} (R$)
@@ -792,7 +684,7 @@ export default function CoursesPage() {
                   />
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -805,7 +697,7 @@ export default function CoursesPage() {
                   {t('courses.markAsFeatured')}
                 </label>
               </div>
-              
+
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
@@ -828,7 +720,7 @@ export default function CoursesPage() {
           </Card>
         </div>
       )}
-      
+
       {/* Edit Course Modal */}
       {showEditModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
@@ -845,27 +737,43 @@ export default function CoursesPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             {error && (
               <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                 <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
-            
+
             <form onSubmit={(e) => { e.preventDefault(); updateCourse(); }} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
-                  {t('courses.courseTitle')}
-                </label>
-                <input
-                  type="text"
-                  value={editForm.title}
-                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gold-200 mb-2">
+                    {t('courses.courseTitle')}
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                    className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gold-200 mb-2">
+                    Código
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.code}
+                    onChange={(e) => setEditForm({ ...editForm, code: e.target.value.toUpperCase() })}
+                    className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 font-mono"
+                    placeholder="Ex: ENG1"
+                    maxLength={10}
+                    required
+                  />
+                </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gold-200 mb-2">
                   {t('courses.summary')}
@@ -877,7 +785,7 @@ export default function CoursesPage() {
                   className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gold-200 mb-2">
                   {t('courses.description')}
@@ -890,7 +798,7 @@ export default function CoursesPage() {
                   required
                 />
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gold-200 mb-2">
@@ -907,7 +815,7 @@ export default function CoursesPage() {
                     <option value="maintenance">{t('courses.maintenance')}</option>
                   </select>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gold-200 mb-2">
                     {t('courses.level')}
@@ -923,7 +831,7 @@ export default function CoursesPage() {
                   </select>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gold-200 mb-2">
@@ -938,7 +846,7 @@ export default function CoursesPage() {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gold-200 mb-2">
                     {t('courses.price')} (R$)
@@ -953,7 +861,7 @@ export default function CoursesPage() {
                   />
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -966,7 +874,7 @@ export default function CoursesPage() {
                   {t('courses.markAsFeatured')}
                 </label>
               </div>
-              
+
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
@@ -989,7 +897,7 @@ export default function CoursesPage() {
           </Card>
         </div>
       )}
-      
+
       {/* Delete Course Modal */}
       {showDeleteModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
@@ -1006,26 +914,22 @@ export default function CoursesPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             {error && (
               <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
                 <p className="text-sm text-red-400">{error}</p>
               </div>
             )}
-            
+
             <div className="mb-6">
-              <p className="text-gold-200 mb-2">
-                {t('courses.confirmDelete')}
-              </p>
+              <p className="text-gold-200 mb-2">{t('courses.confirmDelete')}</p>
               <div className="bg-navy-900/50 p-3 rounded-lg">
                 <p className="text-gold font-medium">{selectedCourse.title}</p>
                 <p className="text-gold-300 text-sm">{selectedCourse.category} - {getDifficultyLabel(selectedCourse.difficulty)}</p>
               </div>
-              <p className="text-red-400 text-sm mt-3">
-                ⚠️ {t('courses.deleteWarning')}
-              </p>
+              <p className="text-red-400 text-sm mt-3">⚠️ {t('courses.deleteWarning')}</p>
             </div>
-            
+
             <div className="flex gap-3">
               <Button
                 type="button"
@@ -1048,7 +952,7 @@ export default function CoursesPage() {
           </Card>
         </div>
       )}
-      
+
       {/* View Course Modal */}
       {showViewModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
@@ -1065,83 +969,63 @@ export default function CoursesPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="space-y-6">
-              {/* Course Info */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <h3 className="text-sm font-medium text-gold-400 mb-2">{t('courses.instructor')}</h3>
-                  <p className="text-gold-200">
-                    {selectedCourse.instructor?.full_name || t('courses.noInstructor')}
-                  </p>
+                  <p className="text-gold-200">{selectedCourse.instructor?.full_name || t('courses.noInstructor')}</p>
                 </div>
-                
                 <div>
                   <h3 className="text-sm font-medium text-gold-400 mb-2">{t('courses.category')}</h3>
                   <p className="text-gold-200">{selectedCourse.category}</p>
                 </div>
-                
                 <div>
                   <h3 className="text-sm font-medium text-gold-400 mb-2">{t('courses.level')}</h3>
                   <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getLevelColor(selectedCourse.difficulty)}`}>
                     {getDifficultyLabel(selectedCourse.difficulty)}
                   </span>
                 </div>
-                
                 <div>
                   <h3 className="text-sm font-medium text-gold-400 mb-2">{t('courses.duration')}</h3>
                   <p className="text-gold-200">{selectedCourse.duration_hours} {t('common.hours')}</p>
                 </div>
-                
                 <div>
                   <h3 className="text-sm font-medium text-gold-400 mb-2">{t('courses.price')}</h3>
                   <p className="text-gold-200 font-semibold">
                     {selectedCourse.price === 0 ? t('courses.free') : `R$ ${selectedCourse.price?.toFixed(2)}`}
                   </p>
                 </div>
-                
                 <div>
                   <h3 className="text-sm font-medium text-gold-400 mb-2">{t('courses.students')}</h3>
-                  <p className="text-gold-200">
-                    {selectedCourse._count?.enrollments || 0} {t('courses.enrolled')}
-                  </p>
+                  <p className="text-gold-200">{selectedCourse._count?.enrollments || 0} {t('courses.enrolled')}</p>
                 </div>
               </div>
-              
-              {/* Summary */}
+
               {selectedCourse.summary && (
                 <div>
                   <h3 className="text-lg font-semibold text-gold mb-2">{t('courses.summary')}</h3>
                   <p className="text-gold-300">{selectedCourse.summary}</p>
                 </div>
               )}
-              
-              {/* Description */}
+
               <div>
                 <h3 className="text-lg font-semibold text-gold mb-2">{t('courses.description')}</h3>
                 <p className="text-gold-300 whitespace-pre-wrap">
                   {selectedCourse.description || t('courses.noDescription')}
                 </p>
               </div>
-              
-              {/* Status */}
+
               <div className="flex items-center gap-4">
                 <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
                   selectedCourse.is_published ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
                 }`}>
                   {selectedCourse.is_published ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      {t('courses.published')}
-                    </>
+                    <><CheckCircle className="w-4 h-4" />{t('courses.published')}</>
                   ) : (
-                    <>
-                      <XCircle className="w-4 h-4" />
-                      {t('courses.draft')}
-                    </>
+                    <><XCircle className="w-4 h-4" />{t('courses.draft')}</>
                   )}
                 </span>
-                
                 {selectedCourse.is_featured && (
                   <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium bg-gold-500/20 text-gold-400">
                     <Award className="w-4 h-4" />
@@ -1149,8 +1033,7 @@ export default function CoursesPage() {
                   </span>
                 )}
               </div>
-              
-              {/* Action Buttons */}
+
               <div className="flex justify-end gap-3 pt-4 border-t border-gold-500/20">
                 <Button
                   variant="secondary"
@@ -1166,7 +1049,7 @@ export default function CoursesPage() {
           </Card>
         </div>
       )}
-      
+
       {/* Manage Students Modal */}
       {showManageStudentsModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
@@ -1183,13 +1066,13 @@ export default function CoursesPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="mb-4 p-3 bg-navy-900/50 rounded-lg">
               <p className="text-gold-300 text-sm">
                 Total de alunos matriculados: <span className="font-bold text-gold">{enrolledStudents.length}</span>
               </p>
             </div>
-            
+
             {loadingEnrolledStudents ? (
               <div className="flex justify-center py-8">
                 <Spinner size="lg" />
@@ -1245,19 +1128,16 @@ export default function CoursesPage() {
                 ))}
               </div>
             )}
-            
+
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gold-500/20">
-              <Button
-                variant="secondary"
-                onClick={() => setShowManageStudentsModal(false)}
-              >
+              <Button variant="secondary" onClick={() => setShowManageStudentsModal(false)}>
                 Fechar
               </Button>
             </div>
           </Card>
         </div>
       )}
-      
+
       {/* Course Structure Manager Modal */}
       {showSubjectsModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
@@ -1274,25 +1154,22 @@ export default function CoursesPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <CourseStructureManager 
-              courseId={selectedCourse.id} 
+
+            <CourseStructureManager
+              courseId={selectedCourse.id}
               courseName={selectedCourse.title}
               canManage={true}
             />
-            
+
             <div className="flex justify-end mt-6 pt-4 border-t border-gold-500/20">
-              <Button
-                variant="secondary"
-                onClick={() => setShowSubjectsModal(false)}
-              >
+              <Button variant="secondary" onClick={() => setShowSubjectsModal(false)}>
                 Fechar
               </Button>
             </div>
           </Card>
         </div>
       )}
-      
+
       {/* Import Modal */}
       {showImportModal && selectedCourse && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
@@ -1303,30 +1180,26 @@ export default function CoursesPage() {
                 Importar Estrutura do Curso
               </h2>
               <button
-                onClick={() => {
-                  setShowImportModal(false)
-                  setImportFile(null)
-                  setError(null)
-                }}
+                onClick={() => { setShowImportModal(false); setImportFile(null); setError(null) }}
                 className="text-gold-400 hover:text-gold-200 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
-            
+
             {error && (
               <div className="mb-4 p-3 bg-red-900/20 border border-red-500/50 rounded-lg text-red-400 text-sm flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 {error}
               </div>
             )}
-            
+
             <div className="space-y-4">
               <div>
                 <p className="text-gold-300 text-sm mb-4">
                   Importar módulos e disciplinas para o curso: <strong className="text-gold">{selectedCourse.title}</strong>
                 </p>
-                
+
                 <div className="bg-navy-800/50 border-2 border-dashed border-gold-500/30 rounded-lg p-6 text-center">
                   <input
                     type="file"
@@ -1335,20 +1208,15 @@ export default function CoursesPage() {
                     onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                     className="hidden"
                   />
-                  <label 
-                    htmlFor="import-file" 
-                    className="cursor-pointer block"
-                  >
+                  <label htmlFor="import-file" className="cursor-pointer block">
                     <Upload className="w-12 h-12 text-gold-400 mx-auto mb-3" />
                     <p className="text-gold-200 mb-1">
                       {importFile ? importFile.name : 'Clique para selecionar arquivo'}
                     </p>
-                    <p className="text-gold-400 text-xs">
-                      Aceita arquivos .xlsx ou .xls
-                    </p>
+                    <p className="text-gold-400 text-xs">Aceita arquivos .xlsx ou .xls</p>
                   </label>
                 </div>
-                
+
                 <div className="mt-4 text-xs text-gold-400 space-y-1">
                   <p>O arquivo deve conter:</p>
                   <ul className="list-disc list-inside space-y-1 ml-2">
@@ -1358,16 +1226,12 @@ export default function CoursesPage() {
                   </ul>
                 </div>
               </div>
-              
+
               <div className="flex gap-3 pt-4">
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={() => {
-                    setShowImportModal(false)
-                    setImportFile(null)
-                    setError(null)
-                  }}
+                  onClick={() => { setShowImportModal(false); setImportFile(null); setError(null) }}
                   className="flex-1"
                 >
                   Cancelar
@@ -1386,33 +1250,29 @@ export default function CoursesPage() {
           </Card>
         </div>
       )}
+
       {/* Dropdown Portal */}
       {dropdownCourse && dropdownPosition && (
         <>
-          <div 
-            className="fixed inset-0 z-[9998]" 
+          <div
+            className="fixed inset-0 z-[9998]"
             onClick={() => {
-              console.log('Overlay clicked - closing dropdown');
-              setOpenDropdown(null);
-              setDropdownCourse(null);
-              setDropdownPosition(null);
+              setOpenDropdown(null)
+              setDropdownCourse(null)
+              setDropdownPosition(null)
             }}
           />
-          <div 
+          <div
             className="fixed w-56 bg-navy-800 border border-gold-500/20 rounded-lg shadow-xl z-[9999]"
-            style={{
-              top: `${dropdownPosition.top}px`,
-              left: `${dropdownPosition.left}px`
-            }}
+            style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }}
           >
-            <button 
+            <button
               type="button"
               onClick={() => {
-                console.log('Edit clicked for course:', dropdownCourse);
-                openEditModal(dropdownCourse);
-                setOpenDropdown(null);
-                setDropdownCourse(null);
-                setDropdownPosition(null);
+                openEditModal(dropdownCourse)
+                setOpenDropdown(null)
+                setDropdownCourse(null)
+                setDropdownPosition(null)
               }}
               className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
@@ -1422,38 +1282,30 @@ export default function CoursesPage() {
               </div>
             </button>
             <button
-              type="button" 
+              type="button"
               onClick={() => {
-                console.log('Toggle publish clicked for course:', dropdownCourse);
-                togglePublishStatus(dropdownCourse);
-                setOpenDropdown(null);
-                setDropdownCourse(null);
-                setDropdownPosition(null);
+                togglePublishStatus(dropdownCourse)
+                setOpenDropdown(null)
+                setDropdownCourse(null)
+                setDropdownPosition(null)
               }}
               className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
               <div className="flex items-center gap-3 text-left">
                 {dropdownCourse.is_published ? (
-                  <>
-                    <XCircle className="w-4 h-4 text-gold-400 flex-shrink-0" />
-                    <span className="text-gold-200 text-left flex-1">{t('courses.unpublish')}</span>
-                  </>
+                  <><XCircle className="w-4 h-4 text-gold-400 flex-shrink-0" /><span className="text-gold-200 text-left flex-1">{t('courses.unpublish')}</span></>
                 ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4 text-gold-400 flex-shrink-0" />
-                    <span className="text-gold-200 text-left flex-1">{t('courses.publish')}</span>
-                  </>
+                  <><CheckCircle className="w-4 h-4 text-gold-400 flex-shrink-0" /><span className="text-gold-200 text-left flex-1">{t('courses.publish')}</span></>
                 )}
               </div>
             </button>
             <button
-              type="button" 
+              type="button"
               onClick={() => {
-                console.log('Manage students clicked for course:', dropdownCourse);
-                openManageStudentsModal(dropdownCourse);
-                setOpenDropdown(null);
-                setDropdownCourse(null);
-                setDropdownPosition(null);
+                openManageStudentsModal(dropdownCourse)
+                setOpenDropdown(null)
+                setDropdownCourse(null)
+                setDropdownPosition(null)
               }}
               className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
@@ -1463,14 +1315,13 @@ export default function CoursesPage() {
               </div>
             </button>
             <button
-              type="button" 
+              type="button"
               onClick={() => {
-                console.log('Manage subjects clicked for course:', dropdownCourse);
-                setSelectedCourse(dropdownCourse);
-                setShowSubjectsModal(true);
-                setOpenDropdown(null);
-                setDropdownCourse(null);
-                setDropdownPosition(null);
+                setSelectedCourse(dropdownCourse)
+                setShowSubjectsModal(true)
+                setOpenDropdown(null)
+                setDropdownCourse(null)
+                setDropdownPosition(null)
               }}
               className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
@@ -1482,12 +1333,11 @@ export default function CoursesPage() {
             <button
               type="button"
               onClick={() => {
-                console.log('Import Excel clicked for course:', dropdownCourse);
-                setSelectedCourse(dropdownCourse);
-                setShowImportModal(true);
-                setOpenDropdown(null);
-                setDropdownCourse(null);
-                setDropdownPosition(null);
+                setSelectedCourse(dropdownCourse)
+                setShowImportModal(true)
+                setOpenDropdown(null)
+                setDropdownCourse(null)
+                setDropdownPosition(null)
               }}
               className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
@@ -1499,12 +1349,11 @@ export default function CoursesPage() {
             <button
               type="button"
               onClick={() => {
-                console.log('Import Drive clicked for course:', dropdownCourse);
-                setSelectedCourse(dropdownCourse);
-                openImport(dropdownCourse?.id ?? '', dropdownCourse?.title ?? '');
-                setOpenDropdown(null);
-                setDropdownCourse(null);
-                setDropdownPosition(null);
+                setSelectedCourse(dropdownCourse)
+                openImport(dropdownCourse?.id ?? '', dropdownCourse?.title ?? '')
+                setOpenDropdown(null)
+                setDropdownCourse(null)
+                setDropdownPosition(null)
               }}
               className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
             >
@@ -1515,13 +1364,12 @@ export default function CoursesPage() {
             </button>
             <div className="border-t border-gold-500/20 mt-2 pt-2">
               <button
-                type="button" 
+                type="button"
                 onClick={() => {
-                  console.log('Delete clicked for course:', dropdownCourse);
-                  openDeleteModal(dropdownCourse);
-                  setOpenDropdown(null);
-                  setDropdownCourse(null);
-                  setDropdownPosition(null);
+                  openDeleteModal(dropdownCourse)
+                  setOpenDropdown(null)
+                  setDropdownCourse(null)
+                  setDropdownPosition(null)
                 }}
                 className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors block"
               >
@@ -1534,7 +1382,6 @@ export default function CoursesPage() {
           </div>
         </>
       )}
-
     </div>
   )
 }
