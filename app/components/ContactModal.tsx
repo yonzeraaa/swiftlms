@@ -26,9 +26,9 @@ const ACCENT = '#8b6d22'
 const MUTED  = '#7a6350'
 const BORDER = 'rgba(30,19,12,0.14)'
 
-function ClassicRule({ className = '' }: { className?: string }) {
+function ClassicRule({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
   return (
-    <svg viewBox="0 0 300 14" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 300 14" className={className} style={style} fill="none" xmlns="http://www.w3.org/2000/svg">
       <line x1="0"   y1="7" x2="133" y2="7" stroke="currentColor" strokeWidth="0.7" opacity="0.3" />
       <line x1="167" y1="7" x2="300" y2="7" stroke="currentColor" strokeWidth="0.7" opacity="0.3" />
       <path d="M150,2 L155,7 L150,12 L145,7 Z" stroke="currentColor" strokeWidth="1.1" opacity="0.5" fill="none" />
