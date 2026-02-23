@@ -3,37 +3,46 @@
 import { useState } from 'react'
 import { X, Check, AlertCircle } from 'lucide-react'
 import { useTranslation } from '../contexts/LanguageContext'
-import Button from './Button'
 import { sendPasswordResetEmail } from '@/lib/actions/forgot-password'
-import { Playfair_Display } from 'next/font/google'
+import { Playfair_Display, Lora } from 'next/font/google'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '600', '700'],
   style: ['normal', 'italic'],
+  variable: '--font-playfair',
   display: 'swap',
 })
 
-function ModalDivider({ className = '' }: { className?: string }) {
+const lora = Lora({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-lora',
+  display: 'swap',
+})
+
+const INK    = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED  = '#7a6350'
+const BORDER = 'rgba(30,19,12,0.14)'
+
+function ClassicRule({ className = '' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 300 20" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <line x1="0" y1="10" x2="120" y2="10" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
-      <line x1="180" y1="10" x2="300" y2="10" stroke="currentColor" strokeWidth="0.5" opacity="0.4" />
-      <path
-        d="M130 10 C135 5 140 3 150 3 C160 3 165 5 170 10 C165 15 160 17 150 17 C140 17 135 15 130 10Z"
-        stroke="currentColor" strokeWidth="0.8" opacity="0.5" fill="currentColor" fillOpacity="0.1"
-      />
-      <circle cx="150" cy="10" r="2" fill="currentColor" opacity="0.6" />
+    <svg viewBox="0 0 300 14" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="0"   y1="7" x2="133" y2="7" stroke="currentColor" strokeWidth="0.7" opacity="0.3" />
+      <line x1="167" y1="7" x2="300" y2="7" stroke="currentColor" strokeWidth="0.7" opacity="0.3" />
+      <path d="M150,2 L155,7 L150,12 L145,7 Z" stroke="currentColor" strokeWidth="1.1" opacity="0.5" fill="none" />
+      <circle cx="140" cy="7" r="1.3" fill="currentColor" opacity="0.32" />
+      <circle cx="160" cy="7" r="1.3" fill="currentColor" opacity="0.32" />
     </svg>
   )
 }
 
-function CornerFlourish({ className = '' }: { className?: string }) {
+function CornerBracket({ className = '' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 80 80" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M5 5 C5 5 15 5 25 15 C35 25 30 40 20 35 C10 30 15 20 25 15" stroke="currentColor" strokeWidth="1" opacity="0.5" fill="none" />
-      <path d="M5 5 C5 5 5 15 15 25 C25 35 40 30 35 20 C30 10 20 15 15 25" stroke="currentColor" strokeWidth="1" opacity="0.5" fill="none" />
-      <circle cx="5" cy="5" r="2" fill="currentColor" opacity="0.6" />
+    <svg viewBox="0 0 30 30" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2,18 L2,2 L18,2" stroke="currentColor" strokeWidth="1.5" opacity="0.4" />
     </svg>
   )
 }
@@ -45,17 +54,14 @@ interface ForgotPasswordModalProps {
 
 export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordModalProps) {
   const { t } = useTranslation()
-  const [email, setEmail] = useState('')
+  const [email, setEmail]   = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]   = useState<string | null>(null)
 
   if (!isOpen) return null
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
+  const validateEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,7 +73,6 @@ export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordM
       setIsLoading(false)
       return
     }
-
     if (!validateEmail(email)) {
       setError(t('forgotPassword.emailInvalid'))
       setIsLoading(false)
@@ -76,27 +81,20 @@ export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordM
 
     try {
       const result = await sendPasswordResetEmail(email)
-
       if (!result.success) {
-        if (result.error?.includes('não encontrado') || result.error?.includes('not found')) {
-          setError(t('forgotPassword.emailNotFound'))
-        } else {
-          setError(result.error || t('forgotPassword.sendError'))
-        }
+        const isNotFound = result.error?.includes('não encontrado') || result.error?.includes('not found')
+        setError(isNotFound ? t('forgotPassword.emailNotFound') : (result.error || t('forgotPassword.sendError')))
         setIsLoading(false)
         return
       }
-
       setStatus('success')
       setIsLoading(false)
-
       setTimeout(() => {
         onClose()
         setStatus('idle')
         setEmail('')
         setError(null)
       }, 3000)
-
     } catch (err) {
       console.error('Erro inesperado:', err)
       setError(t('forgotPassword.unexpectedError'))
@@ -114,81 +112,96 @@ export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordM
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity">
-      <div className="relative max-w-md w-full shadow-2xl"
-        style={{
-          background: 'linear-gradient(170deg, #1a1410 0%, #15110c 50%, #1a1410 100%)',
-          border: '1px solid rgba(201,168,76,0.15)',
-        }}
+    <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 ${playfair.variable} ${lora.variable}`}>
+      <div
+        className="relative max-w-md w-full shadow-xl"
+        style={{ backgroundColor: '#faf6ee', border: `1px solid ${BORDER}` }}
       >
-        {/* Moldura interna */}
-        <div className="absolute inset-3 pointer-events-none" style={{ border: '1px solid rgba(201,168,76,0.07)' }} />
-
-        {/* Textura de pergaminho */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
-          style={{ background: 'repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(201,168,76,0.15) 28px, rgba(201,168,76,0.15) 29px)' }}
-        />
-
-        {/* Flourishes nos cantos */}
-        <CornerFlourish className="absolute top-1 left-1 w-8 h-8 text-[#c9a84c] opacity-30" />
-        <CornerFlourish className="absolute top-1 right-1 w-8 h-8 text-[#c9a84c] opacity-30 -scale-x-100" />
-        <CornerFlourish className="absolute bottom-1 left-1 w-8 h-8 text-[#c9a84c] opacity-30 -scale-y-100" />
-        <CornerFlourish className="absolute bottom-1 right-1 w-8 h-8 text-[#c9a84c] opacity-30 -scale-x-100 -scale-y-100" />
+        {/* Corner brackets */}
+        <div className="absolute top-0 left-0 w-8 h-8" style={{ color: ACCENT }}><CornerBracket /></div>
+        <div className="absolute top-0 right-0 w-8 h-8" style={{ color: ACCENT, transform: 'scaleX(-1)' }}><CornerBracket /></div>
+        <div className="absolute bottom-0 left-0 w-8 h-8" style={{ color: ACCENT, transform: 'scaleY(-1)' }}><CornerBracket /></div>
+        <div className="absolute bottom-0 right-0 w-8 h-8" style={{ color: ACCENT, transform: 'scale(-1)' }}><CornerBracket /></div>
 
         {/* Header */}
-        <div className="relative z-10 flex items-center justify-between p-6 pb-4">
+        <div className="flex items-start justify-between p-7 pb-4">
           <div>
-            <h2 className={`${playfair.className} text-xl font-medium italic`} style={{ color: '#e8dcc8' }}>
+            <h2
+              style={{
+                fontFamily: 'var(--font-playfair)',
+                color: INK,
+                fontSize: '1.35rem',
+                fontWeight: 700,
+                lineHeight: 1.2,
+              }}
+            >
               {t('forgotPassword.title')}
             </h2>
-            <p className="text-sm mt-1 font-light" style={{ color: '#8b7355' }}>
+            <p
+              className="mt-1"
+              style={{ fontFamily: 'var(--font-lora)', color: MUTED, fontSize: '0.88rem', fontStyle: 'italic' }}
+            >
               {t('forgotPassword.subtitle')}
             </p>
           </div>
           <button
             onClick={handleClose}
             disabled={isLoading}
-            className="transition-colors disabled:opacity-50 hover:text-[#c9a84c]"
-            style={{ color: '#8b7355' }}
+            className="transition-colors hover:opacity-80 disabled:opacity-40 ml-4 mt-0.5"
+            style={{ color: MUTED }}
             aria-label={t('forgotPassword.close')}
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="px-6">
-          <ModalDivider className="w-full text-[#c9a84c] opacity-60" />
+        <div className="px-7">
+          <ClassicRule className="w-full" style={{ color: INK } as React.CSSProperties} />
         </div>
 
-        {/* Content */}
-        <div className="relative z-10 p-6 pt-4">
+        <div className="p-7 pt-5">
           {status === 'success' ? (
             <div className="text-center space-y-4 py-4">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto"
-                style={{ border: '1px solid rgba(201,168,76,0.3)', background: 'rgba(201,168,76,0.08)' }}
+              <div
+                className="w-12 h-12 flex items-center justify-center mx-auto"
+                style={{ border: `1px solid ${BORDER}`, backgroundColor: 'rgba(139,109,34,0.08)' }}
               >
-                <Check className="w-7 h-7" style={{ color: '#c9a84c' }} />
+                <Check className="w-5 h-5" style={{ color: ACCENT }} />
               </div>
               <div>
-                <h3 className={`${playfair.className} text-lg font-medium italic mb-2`} style={{ color: '#c9a84c' }}>
+                <h3
+                  style={{ fontFamily: 'var(--font-playfair)', color: ACCENT, fontSize: '1.1rem', fontWeight: 600, fontStyle: 'italic' }}
+                >
                   {t('forgotPassword.successTitle')}
                 </h3>
-                <p className="text-sm font-light" style={{ color: '#8b7355' }}>
+                <p
+                  className="mt-1"
+                  style={{ fontFamily: 'var(--font-lora)', color: MUTED, fontSize: '0.88rem' }}
+                >
                   {t('forgotPassword.successMessage')}
                 </p>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-5">
-              <p className="text-sm font-light" style={{ color: '#8b7355' }}>
+              <p style={{ fontFamily: 'var(--font-lora)', color: MUTED, fontSize: '0.9rem', lineHeight: 1.65 }}>
                 {t('forgotPassword.instructions')}
               </p>
 
-              {/* Email Field */}
-              <div className="group/input">
-                <label htmlFor="reset-email"
-                  className="block text-xs mb-2 transition-colors group-focus-within/input:text-[#c9a84c]"
-                  style={{ fontVariant: 'small-caps', letterSpacing: '0.2em', color: '#8b7355' }}
+              {/* Email */}
+              <div>
+                <label
+                  htmlFor="reset-email"
+                  style={{
+                    fontFamily: 'var(--font-lora)',
+                    color: MUTED,
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase' as const,
+                    display: 'block',
+                    marginBottom: '0.4rem',
+                  }}
                 >
                   {t('forgotPassword.email')}
                 </label>
@@ -196,57 +209,68 @@ export default function ForgotPasswordModal({ isOpen, onClose }: ForgotPasswordM
                   type="email"
                   id="reset-email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-transparent border-0 border-b py-2.5 px-1 text-base outline-none transition-all duration-300 font-light"
-                  style={{
-                    borderBottomWidth: '1px',
-                    borderBottomColor: 'rgba(139,115,85,0.3)',
-                    color: '#e8dcc8',
-                  }}
+                  onChange={e => setEmail(e.target.value)}
                   placeholder={t('forgotPassword.emailPlaceholder')}
-                  disabled={isLoading}
                   required
+                  disabled={isLoading}
+                  className="w-full bg-transparent px-0 py-2.5 focus:outline-none transition-colors duration-200 placeholder:italic"
+                  style={{
+                    fontFamily: 'var(--font-lora)',
+                    fontSize: '1rem',
+                    color: INK,
+                    borderBottom: `1px solid rgba(30,19,12,0.25)`,
+                    caretColor: ACCENT,
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderBottomColor = ACCENT)}
+                  onBlur={e => (e.currentTarget.style.borderBottomColor = 'rgba(30,19,12,0.25)')}
                 />
-                <style jsx>{`
-                  input:focus { border-bottom-color: #c9a84c !important; box-shadow: 0 2px 8px rgba(201,168,76,0.15); }
-                  input::placeholder { color: #5a4f3c; font-style: italic; }
-                `}</style>
               </div>
 
               {/* Error */}
               {error && (
-                <div className="flex items-center gap-2 py-2 px-3"
-                  style={{ borderLeft: '2px solid #6b1d1d', background: 'rgba(107,29,29,0.1)' }}
+                <div
+                  className="flex items-center gap-2 py-2 px-3"
+                  style={{ borderLeft: `2px solid #8b2525`, backgroundColor: 'rgba(139,37,37,0.06)' }}
                 >
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#c75050' }} />
-                  <p className="text-sm" style={{ color: '#c75050' }}>{error}</p>
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#8b2525' }} />
+                  <p style={{ fontFamily: 'var(--font-lora)', color: '#8b2525', fontSize: '0.85rem' }}>{error}</p>
                 </div>
               )}
 
-              {/* Buttons */}
+              {/* Actions */}
               <div className="flex gap-3 pt-1">
                 <button
                   type="button"
                   onClick={handleClose}
                   disabled={isLoading}
-                  className={`${playfair.className} flex-1 py-2.5 text-sm italic font-light transition-all duration-300 disabled:opacity-50 hover:text-[#c9a84c]`}
+                  className="flex-1 py-2.5 transition-colors disabled:opacity-50"
                   style={{
-                    color: '#8b7355',
-                    border: '1px solid rgba(139,115,85,0.25)',
+                    fontFamily: 'var(--font-lora)',
+                    color: MUTED,
+                    fontSize: '0.88rem',
+                    border: `1px solid ${BORDER}`,
                   }}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(30,19,12,0.3)')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = BORDER)}
                 >
                   {t('forgotPassword.cancel')}
                 </button>
-                <Button
+                <button
                   type="submit"
-                  loading={isLoading}
-                  className={`flex-1 !rounded-none !text-sm !tracking-[0.1em] !bg-transparent hover:!bg-[#c9a84c] transition-all duration-500 group/btn ${playfair.className}`}
-                  style={{ border: '1px solid rgba(201,168,76,0.5)' } as React.CSSProperties}
+                  disabled={isLoading}
+                  className="flex-1 py-2.5 transition-all duration-200 disabled:opacity-60"
+                  style={{
+                    fontFamily: 'var(--font-lora)',
+                    color: '#faf6ee',
+                    fontSize: '0.88rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.08em',
+                    backgroundColor: INK,
+                    border: `1px solid ${INK}`,
+                  }}
                 >
-                  <span className="text-[#c9a84c] group-hover/btn:text-[#0a0806] transition-colors duration-500 italic">
-                    {t('forgotPassword.send')}
-                  </span>
-                </Button>
+                  {isLoading ? '...' : t('forgotPassword.send')}
+                </button>
               </div>
             </form>
           )}

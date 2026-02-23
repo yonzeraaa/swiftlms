@@ -60,6 +60,15 @@ interface NewCourseForm {
   is_featured: boolean
 }
 
+// "João Carlos Silva" → "João C. S."
+function abbreviateName(fullName: string | null | undefined): string {
+  if (!fullName) return '—'
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0]
+  const initials = parts.slice(1).map(p => p[0].toUpperCase() + '.').join(' ')
+  return `${parts[0]} ${initials}`
+}
+
 export default function CoursesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [courses, setCourses] = useState<Course[]>([])
@@ -449,10 +458,12 @@ export default function CoursesPage() {
                         <span className="text-gold-400 font-mono text-sm">{course.code || '-'}</span>
                       </td>
                       <td className="py-4 px-4">
-                        <span className="text-gold-100 font-medium">{course.title}</span>
-                        {course.description && (
-                          <p className="text-gold-400 text-xs mt-0.5 line-clamp-1">{course.description}</p>
-                        )}
+                        <div className="w-44 min-w-0">
+                          <span className="text-gold-100 font-medium block truncate">{course.title}</span>
+                          {course.description && (
+                            <p className="text-gold-400 text-xs mt-0.5 truncate">{course.description}</p>
+                          )}
+                        </div>
                       </td>
                       <td className="py-4 px-4">
                         <span className="text-gold-300 text-sm">{course.category}</span>
@@ -463,9 +474,13 @@ export default function CoursesPage() {
                         </span>
                       </td>
                       <td className="py-4 px-4">
-                        <span className="text-gold-300 text-sm">
-                          {course.instructor?.full_name || t('courses.noInstructor')}
-                        </span>
+                        <div className="w-28 min-w-0">
+                          <span className="text-gold-300 text-sm block truncate">
+                            {abbreviateName(course.instructor?.full_name) !== '—'
+                              ? abbreviateName(course.instructor?.full_name)
+                              : t('courses.noInstructor')}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-4 px-4 text-right">
                         <span className="text-gold-200">{course._count?.enrollments || 0}</span>
