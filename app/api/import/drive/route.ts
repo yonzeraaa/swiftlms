@@ -190,13 +190,13 @@ async function createOrUpdateModule(
     throw new Error('Código do módulo não encontrado')
   }
 
-  // Buscar módulo existente
+  // Buscar módulo existente pelo código
   const { data: existing } = await supabase
     .from('course_modules')
     .select('id')
     .eq('course_id', data.courseId)
-    .ilike('title', `${data.code}%`)
-    .single()
+    .eq('code', data.code)
+    .maybeSingle()
 
   if (existing) {
     // Atualizar módulo existente
@@ -444,13 +444,12 @@ async function createOrUpdateLesson(
     ? `https://drive.google.com/file/d/${data.driveFileId}/view`
     : null
 
-  // Buscar lesson existente
+  // Buscar lesson existente pelo código
   const { data: existingLesson } = await supabase
     .from('lessons')
     .select('id')
-    .eq('module_id', moduleId)
-    .ilike('title', `${data.code}%`)
-    .single()
+    .eq('code', data.code)
+    .maybeSingle()
 
   let lessonId: string
 
@@ -565,27 +564,27 @@ async function createOrUpdateTest(
     ? `https://drive.google.com/file/d/${data.driveFileId}/view`
     : ''
 
-  // Verificar se já existe um teste com o mesmo google_drive_url
-  if (driveUrl) {
-    const { data: existingTest } = await supabase
+  // Verificar se já existe um teste com o mesmo código ou google_drive_url
+  const existingTestQuery = data.code
+    ? supabase.from('tests').select('id').eq('code', data.code).maybeSingle()
+    : driveUrl
+      ? supabase.from('tests').select('id').eq('google_drive_url', driveUrl).maybeSingle()
+      : Promise.resolve({ data: null })
+
+  const { data: existingTest } = await existingTestQuery
+
+  if (existingTest) {
+    await supabase
       .from('tests')
-      .select('id')
-      .eq('google_drive_url', driveUrl)
-      .maybeSingle()
+      .update({
+        title: data.name,
+        module_id: moduleId,
+        subject_id: subjectId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingTest.id)
 
-    if (existingTest) {
-      await supabase
-        .from('tests')
-        .update({
-          title: data.name,
-          module_id: moduleId,
-          subject_id: subjectId,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', existingTest.id)
-
-      return { id: existingTest.id, answerKey: { success: false, error: 'Teste já existia' } }
-    }
+    return { id: existingTest.id, answerKey: { success: false, error: 'Teste já existia' } }
   }
 
   const { data: newTest, error } = await supabase
