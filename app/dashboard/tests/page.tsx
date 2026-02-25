@@ -323,7 +323,6 @@ export default function TestsManagementPage() {
       return
     }
 
-    setOpenDropdown(null)
     await performDeleteTests([id])
   }
 
