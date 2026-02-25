@@ -48,6 +48,7 @@ interface LessonWithRelations extends Lesson {
 
 export default function LessonsPage() {
   const router = useRouter()
+  const [codeFilter, setCodeFilter] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCourseId, setSelectedCourseId] = useState<string>('todos')
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('todas')
@@ -249,11 +250,14 @@ export default function LessonsPage() {
 
   const filteredLessons = useMemo(() => {
     return lessons.filter(lesson => {
-      const matchesSearch =
-        lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      if (codeFilter && !lesson.code?.toLowerCase().includes(codeFilter.toLowerCase())) return false
 
-      if (!matchesSearch) return false
+      if (searchTerm) {
+        const matchesSearch =
+          lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
+        if (!matchesSearch) return false
+      }
 
       if (selectedCourseId !== 'todos') {
         const lessonCourseId = lesson.course_modules?.courses?.id
@@ -268,7 +272,7 @@ export default function LessonsPage() {
 
       return lesson.subject_lessons?.some(sl => sl.subject_id === selectedSubjectId) ?? false
     })
-  }, [lessons, searchTerm, selectedCourseId, selectedSubjectId])
+  }, [lessons, codeFilter, searchTerm, selectedCourseId, selectedSubjectId])
 
   const getLessonSubjectCode = (lesson: LessonWithRelations) => {
     const code = (lesson as any).subject_lessons?.[0]?.subjects?.code
@@ -284,13 +288,9 @@ export default function LessonsPage() {
 
     if (lessonSortMode === 'code') {
       return list.sort((a, b) => {
-        const codeA = getLessonSubjectCode(a)
-        const codeB = getLessonSubjectCode(b)
-        const codeCompare = codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
-
-        if (codeCompare !== 0) return codeCompare
-
-        return a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
+        const codeA = a.code || a.title
+        const codeB = b.code || b.title
+        return codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
       })
     }
 
@@ -518,23 +518,33 @@ export default function LessonsPage() {
 
       {/* Search and Filters */}
       <Card>
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
+        <div className="flex flex-wrap gap-3">
+          <div className="relative w-44 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
             <input
               type="text"
-              placeholder="Buscar por título, descrição, módulo ou curso..."
+              placeholder="XXXX123456"
+              value={codeFilter}
+              onChange={(e) => setCodeFilter(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 font-mono"
+            />
+          </div>
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+            <input
+              type="text"
+              placeholder="Buscar por título ou descrição..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Filter className="w-4 h-4 text-gold-400 flex-shrink-0" />
             <select
               value={selectedCourseId}
               onChange={(e) => setSelectedCourseId(e.target.value)}
-              className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
+              className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
             >
               <option value="todos">Todos os cursos</option>
               {allCourses.map(course => (
@@ -544,7 +554,7 @@ export default function LessonsPage() {
             <select
               value={selectedSubjectId}
               onChange={(e) => setSelectedSubjectId(e.target.value)}
-              className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[200px]"
+              className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
             >
               <option value="todas">Todas as disciplinas</option>
               <option value="sem-disciplina">Sem disciplina</option>
@@ -610,7 +620,7 @@ export default function LessonsPage() {
       </Card>
 
       {/* Showing count */}
-      {(selectedCourseId !== 'todos' || selectedSubjectId !== 'todas' || searchTerm) && (
+      {(codeFilter || selectedCourseId !== 'todos' || selectedSubjectId !== 'todas' || searchTerm) && (
         <p className="text-sm text-gold-300">
           Mostrando {filteredLessons.length} de {lessons.length} aulas
         </p>

@@ -52,11 +52,16 @@ export async function getTestsData() {
         .select('*')
         .order('title')
 
+      const { count: lessonsCount } = await supabase
+        .from('lessons')
+        .select('*', { count: 'exact', head: true })
+
       return {
         tests: testsWithAnswerKeys,
         courses: coursesData || [],
         subjects: subjectsData || [],
-        modules: modulesData || []
+        modules: modulesData || [],
+        lessonsCount: lessonsCount || 0
       }
     }
 
@@ -64,7 +69,8 @@ export async function getTestsData() {
       tests: [],
       courses: [],
       subjects: [],
-      modules: []
+      modules: [],
+      lessonsCount: 0
     }
   } catch (error) {
     console.error('Error fetching tests data:', error)

@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, FileCheck, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare } from 'lucide-react'
+import { Plus, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, FileCheck, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare, PlayCircle } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
@@ -33,6 +33,7 @@ export default function TestsManagementPage() {
   const [courses, setCourses] = useState<Course[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [modules, setModules] = useState<Module[]>([])
+  const [lessonsCount, setLessonsCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [editingTest, setEditingTest] = useState<Test | null>(null)
@@ -42,6 +43,7 @@ export default function TestsManagementPage() {
   const [showAnswerKeyModal, setShowAnswerKeyModal] = useState(false)
   const [viewingAnswerKey, setViewingAnswerKey] = useState<Array<{ question_number: number; correct_answer: string; points?: number; justification?: string | null }> | null>(null)
   const [viewingTestTitle, setViewingTestTitle] = useState('')
+  const [codeFilter, setCodeFilter] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCourse, setFilterCourse] = useState('all')
   const [filterSubject, setFilterSubject] = useState('all')
@@ -86,6 +88,7 @@ export default function TestsManagementPage() {
       setCourses(data.courses)
       setSubjects(data.subjects)
       setModules(data.modules)
+      setLessonsCount(data.lessonsCount)
       setSelectedTests([])
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
@@ -125,43 +128,36 @@ export default function TestsManagementPage() {
   }
 
   const filteredTests = tests.filter(test => {
-    const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (test.description && test.description.toLowerCase().includes(searchTerm.toLowerCase()))
-    
+    if (codeFilter && !test.code?.toLowerCase().includes(codeFilter.toLowerCase())) return false
+
+    if (searchTerm) {
+      const matchesSearch = test.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (test.description && test.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      if (!matchesSearch) return false
+    }
+
     const matchesCourse = filterCourse === 'all' || test.course_id === filterCourse
     const matchesSubject = filterSubject === 'all' || test.subject_id === filterSubject
-    const matchesStatus = filterStatus === 'all' || 
+    const matchesStatus = filterStatus === 'all' ||
       (filterStatus === 'active' && test.is_active) ||
       (filterStatus === 'inactive' && !test.is_active)
-    
-    return matchesSearch && matchesCourse && matchesSubject && matchesStatus
-  })
 
-  const subjectsById = useMemo(() => {
-    const map = new Map<string, Subject>()
-    subjects.forEach(subject => {
-      map.set(subject.id, subject)
-    })
-    return map
-  }, [subjects])
+    return matchesCourse && matchesSubject && matchesStatus
+  })
 
   const sortedTests = useMemo(() => {
     const list = [...filteredTests]
 
     if (testSortMode === 'code') {
       return list.sort((a, b) => {
-        const codeA = subjectsById.get(a.subject_id || '')?.code || ''
-        const codeB = subjectsById.get(b.subject_id || '')?.code || ''
-        const codeCompare = codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
-
-        if (codeCompare !== 0) return codeCompare
-
-        return a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
+        const codeA = a.code || a.title
+        const codeB = b.code || b.title
+        return codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
       })
     }
 
     return list.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' }))
-  }, [filteredTests, testSortMode, subjectsById])
+  }, [filteredTests, testSortMode])
 
   const anySelection = selectedTests.length > 0
   const allFilteredSelected = filteredTests.length > 0 && filteredTests.every(test => selectedTests.includes(test.id))
@@ -475,26 +471,67 @@ export default function TestsManagementPage() {
         </div>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Total de Testes</p>
+              <p className="text-2xl font-bold text-gold mt-1">{tests.length}</p>
+            </div>
+            <FileCheck className="w-8 h-8 text-gold-500/30" />
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Testes Ativos</p>
+              <p className="text-2xl font-bold text-gold mt-1">{tests.filter(t => t.is_active).length}</p>
+            </div>
+            <Check className="w-8 h-8 text-green-500/30" />
+          </div>
+        </Card>
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gold-300 text-sm">Total de Aulas</p>
+              <p className="text-2xl font-bold text-gold mt-1">{lessonsCount}</p>
+            </div>
+            <PlayCircle className="w-8 h-8 text-blue-500/30" />
+          </div>
+        </Card>
+      </div>
+
       {/* Barra de busca e filtros */}
       <Card variant="elevated" className="mb-6">
         <div className="space-y-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
+          <div className="flex flex-wrap gap-3">
+            <div className="relative w-44 shrink-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gold-400 w-5 h-5" />
               <input
                 type="text"
-                placeholder="Buscar testes..."
+                placeholder="XXXX123456"
+                value={codeFilter}
+                onChange={(e) => setCodeFilter(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 font-mono"
+              />
+            </div>
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gold-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Buscar por título ou descrição..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Filter className="w-4 h-4 text-gold-400 flex-shrink-0" />
               <select
                 value={filterCourse}
                 onChange={(e) => setFilterCourse(e.target.value)}
-                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
+                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
               >
                 <option value="all">Todos os cursos</option>
                 {courses.map(course => (
@@ -504,7 +541,7 @@ export default function TestsManagementPage() {
               <select
                 value={filterSubject}
                 onChange={(e) => setFilterSubject(e.target.value)}
-                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[180px]"
+                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
               >
                 <option value="all">Todas as disciplinas</option>
                 {subjects.map(subject => (
@@ -514,7 +551,7 @@ export default function TestsManagementPage() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 min-w-[140px]"
+                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
               >
                 <option value="all">Todos os status</option>
                 <option value="active">Ativos</option>
@@ -552,7 +589,7 @@ export default function TestsManagementPage() {
         </div>
       </Card>
 
-      {(filterCourse !== 'all' || filterSubject !== 'all' || filterStatus !== 'all' || searchTerm !== '') && (
+      {(codeFilter || filterCourse !== 'all' || filterSubject !== 'all' || filterStatus !== 'all' || searchTerm !== '') && (
         <p className="text-sm text-gold-300">
           Mostrando {filteredTests.length} de {tests.length} testes
         </p>
