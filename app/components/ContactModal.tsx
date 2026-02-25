@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { X, Check, AlertCircle } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from '../contexts/LanguageContext'
 import { Playfair_Display, Lora } from 'next/font/google'
 
@@ -46,25 +47,15 @@ function CornerBracket({ className = '' }: { className?: string }) {
   )
 }
 
-// Shared underline input style — changes border on focus/blur
-function useUnderlineInput() {
-  const borderIdle   = 'rgba(30,19,12,0.25)'
-  const borderFocus  = ACCENT
-  return {
-    base: {
-      fontFamily: 'var(--font-lora)',
-      fontSize: '1rem',
-      color: INK,
-      borderBottom: `1px solid ${borderIdle}`,
-      caretColor: ACCENT,
-    } as React.CSSProperties,
-    onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      e.currentTarget.style.borderBottomColor = borderFocus
-    },
-    onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      e.currentTarget.style.borderBottomColor = borderIdle
-    },
-  }
+const labelStyle: React.CSSProperties = {
+  fontFamily: 'var(--font-lora)',
+  color: MUTED,
+  fontSize: '0.72rem',
+  fontWeight: 600,
+  letterSpacing: '0.12em',
+  textTransform: 'uppercase',
+  display: 'block',
+  marginBottom: '0.4rem',
 }
 
 interface ContactModalProps {
@@ -74,12 +65,9 @@ interface ContactModalProps {
 
 export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
   const { t } = useTranslation()
-  const [formData, setFormData] = useState({ name: '', email: '', courseInterest: '', message: '' })
+  const [formData, setFormData]     = useState({ name: '', email: '', courseInterest: '', message: '' })
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
-  const [errors, setErrors]   = useState<Record<string, string>>({})
-  const inputStyle = useUnderlineInput()
-
-  if (!isOpen) return null
+  const [errors, setErrors]         = useState<Record<string, string>>({})
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -109,17 +97,6 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: '' }))
   }
 
-  const labelStyle: React.CSSProperties = {
-    fontFamily: 'var(--font-lora)',
-    color: MUTED,
-    fontSize: '0.72rem',
-    fontWeight: 600,
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase',
-    display: 'block',
-    marginBottom: '0.4rem',
-  }
-
   const fieldError = (key: string) => errors[key] ? (
     <div
       className="flex items-center gap-2 mt-2 py-1.5 px-3"
@@ -130,185 +107,241 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
     </div>
   ) : null
 
+  const inputBase: React.CSSProperties = {
+    fontFamily: 'var(--font-lora)',
+    fontSize: '1rem',
+    color: INK,
+    borderBottom: `1px solid rgba(30,19,12,0.25)`,
+    caretColor: ACCENT,
+  }
+  const onFocusInput = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderBottomColor = ACCENT
+  }
+  const onBlurInput = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    e.currentTarget.style.borderBottomColor = 'rgba(30,19,12,0.25)'
+  }
+
   return (
-    <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 ${playfair.variable} ${lora.variable}`}>
-      <div
-        className="relative max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl"
-        style={{ backgroundColor: '#faf6ee', border: `1px solid ${BORDER}` }}
-      >
-        {/* Corner brackets */}
-        <div className="absolute top-0 left-0 w-8 h-8 pointer-events-none" style={{ color: ACCENT }}><CornerBracket /></div>
-        <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none" style={{ color: ACCENT, transform: 'scaleX(-1)' }}><CornerBracket /></div>
-        <div className="absolute bottom-0 left-0 w-8 h-8 pointer-events-none" style={{ color: ACCENT, transform: 'scaleY(-1)' }}><CornerBracket /></div>
-        <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none" style={{ color: ACCENT, transform: 'scale(-1)' }}><CornerBracket /></div>
-
-        {/* Header */}
-        <div className="flex items-start justify-between p-7 pb-4">
-          <div>
-            <h2
-              style={{ fontFamily: 'var(--font-playfair)', color: INK, fontSize: '1.35rem', fontWeight: 700, lineHeight: 1.2 }}
-            >
-              {t('contact.title')}
-            </h2>
-            <p
-              className="mt-1"
-              style={{ fontFamily: 'var(--font-lora)', color: MUTED, fontSize: '0.88rem', fontStyle: 'italic' }}
-            >
-              {t('contact.subtitle')}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="transition-opacity hover:opacity-60 ml-4 mt-0.5"
-            style={{ color: MUTED }}
-            aria-label={t('contact.close')}
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className={`fixed inset-0 flex items-center justify-center p-4 z-50 ${playfair.variable} ${lora.variable}`}
+          style={{ backgroundColor: 'rgba(30,19,12,0.4)', backdropFilter: 'blur(3px)' }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+        >
+          <motion.div
+            className="relative max-w-md w-full max-h-[90vh] overflow-y-auto"
+            style={{
+              backgroundColor: '#faf6ee',
+              border: `1px solid ${BORDER}`,
+              boxShadow: '0 8px 48px rgba(30,19,12,0.16)',
+            }}
+            initial={{ opacity: 0, y: -10, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
           >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            {/* Corner brackets */}
+            <div className="absolute top-0 left-0 w-8 h-8 pointer-events-none" style={{ color: ACCENT }}><CornerBracket /></div>
+            <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none" style={{ color: ACCENT, transform: 'scaleX(-1)' }}><CornerBracket /></div>
+            <div className="absolute bottom-0 left-0 w-8 h-8 pointer-events-none" style={{ color: ACCENT, transform: 'scaleY(-1)' }}><CornerBracket /></div>
+            <div className="absolute bottom-0 right-0 w-8 h-8 pointer-events-none" style={{ color: ACCENT, transform: 'scale(-1)' }}><CornerBracket /></div>
 
-        <div className="px-7">
-          <ClassicRule className="w-full" style={{ color: INK } as React.CSSProperties} />
-        </div>
-
-        <div className="p-7 pt-5">
-          {submitStatus === 'success' ? (
-            <div className="text-center space-y-4 py-4">
-              <div
-                className="w-12 h-12 flex items-center justify-center mx-auto"
-                style={{ border: `1px solid ${BORDER}`, backgroundColor: 'rgba(139,109,34,0.08)' }}
+            {/* Header */}
+            <div className="flex items-start justify-between p-7 pb-4">
+              <div>
+                <h2
+                  style={{ fontFamily: 'var(--font-playfair)', color: INK, fontSize: '1.35rem', fontWeight: 700, lineHeight: 1.2 }}
+                >
+                  {t('contact.title')}
+                </h2>
+                <p
+                  className="mt-1"
+                  style={{ fontFamily: 'var(--font-lora)', color: MUTED, fontSize: '0.88rem', fontStyle: 'italic' }}
+                >
+                  {t('contact.subtitle')}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="ml-4 mt-0.5 transition-all duration-150"
+                style={{ color: MUTED, opacity: 0.55 }}
+                aria-label={t('contact.close')}
+                onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                onMouseLeave={e => (e.currentTarget.style.opacity = '0.55')}
               >
-                <Check className="w-5 h-5" style={{ color: ACCENT }} />
-              </div>
-              <h3 style={{ fontFamily: 'var(--font-playfair)', color: ACCENT, fontSize: '1.1rem', fontWeight: 600, fontStyle: 'italic' }}>
-                {t('contact.success')}
-              </h3>
+                <X className="w-4 h-4" />
+              </button>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
 
-              {/* Name */}
-              <div>
-                <label htmlFor="contact-name" style={labelStyle}>
-                  {t('contact.name')} <span style={{ color: '#8b2525' }}>*</span>
-                </label>
-                <input
-                  id="contact-name"
-                  type="text"
-                  value={formData.name}
-                  onChange={e => handleChange('name', e.target.value)}
-                  placeholder={t('contact.namePlaceholder')}
-                  className="w-full bg-transparent px-0 py-2.5 focus:outline-none transition-colors duration-200 placeholder:italic"
-                  style={{ ...inputStyle.base, borderBottomColor: errors.name ? '#8b2525' : 'rgba(30,19,12,0.25)' }}
-                  onFocus={inputStyle.onFocus}
-                  onBlur={inputStyle.onBlur}
-                />
-                {fieldError('name')}
-              </div>
+            <div className="px-7">
+              <ClassicRule className="w-full" style={{ color: INK } as React.CSSProperties} />
+            </div>
 
-              {/* Email */}
-              <div>
-                <label htmlFor="contact-email" style={labelStyle}>
-                  {t('contact.email')} <span style={{ color: '#8b2525' }}>*</span>
-                </label>
-                <input
-                  id="contact-email"
-                  type="email"
-                  value={formData.email}
-                  onChange={e => handleChange('email', e.target.value)}
-                  placeholder={t('contact.emailPlaceholder')}
-                  className="w-full bg-transparent px-0 py-2.5 focus:outline-none transition-colors duration-200 placeholder:italic"
-                  style={{ ...inputStyle.base, borderBottomColor: errors.email ? '#8b2525' : 'rgba(30,19,12,0.25)' }}
-                  onFocus={inputStyle.onFocus}
-                  onBlur={inputStyle.onBlur}
-                />
-                {fieldError('email')}
-              </div>
-
-              {/* Course interest (optional) */}
-              <div>
-                <label htmlFor="contact-course" style={labelStyle}>
-                  {t('contact.courseInterest')}
-                </label>
-                <input
-                  id="contact-course"
-                  type="text"
-                  value={formData.courseInterest}
-                  onChange={e => handleChange('courseInterest', e.target.value)}
-                  placeholder={t('contact.courseInterestPlaceholder')}
-                  className="w-full bg-transparent px-0 py-2.5 focus:outline-none transition-colors duration-200 placeholder:italic"
-                  style={inputStyle.base}
-                  onFocus={inputStyle.onFocus}
-                  onBlur={inputStyle.onBlur}
-                />
-              </div>
-
-              {/* Message */}
-              <div>
-                <label htmlFor="contact-message" style={labelStyle}>
-                  {t('contact.message')} <span style={{ color: '#8b2525' }}>*</span>
-                </label>
-                <textarea
-                  id="contact-message"
-                  value={formData.message}
-                  onChange={e => handleChange('message', e.target.value)}
-                  placeholder={t('contact.messagePlaceholder')}
-                  rows={4}
-                  className="w-full bg-transparent px-0 py-2.5 focus:outline-none transition-colors duration-200 resize-none placeholder:italic"
-                  style={{ ...inputStyle.base, borderBottomColor: errors.message ? '#8b2525' : 'rgba(30,19,12,0.25)' }}
-                  onFocus={inputStyle.onFocus}
-                  onBlur={inputStyle.onBlur}
-                />
-                {fieldError('message')}
-              </div>
-
-              {submitStatus === 'error' && (
-                <div
-                  className="flex items-center gap-2 py-2 px-3"
-                  style={{ borderLeft: '2px solid #8b2525', backgroundColor: 'rgba(139,37,37,0.06)' }}
+            <div className="p-7 pt-5">
+              {submitStatus === 'success' ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-center space-y-4 py-4"
                 >
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#8b2525' }} />
-                  <p style={{ fontFamily: 'var(--font-lora)', color: '#8b2525', fontSize: '0.88rem' }}>{t('contact.error')}</p>
-                </div>
+                  <div
+                    className="w-12 h-12 flex items-center justify-center mx-auto"
+                    style={{ border: `1px solid ${BORDER}`, backgroundColor: 'rgba(139,109,34,0.08)' }}
+                  >
+                    <Check className="w-5 h-5" style={{ color: ACCENT }} />
+                  </div>
+                  <h3 style={{ fontFamily: 'var(--font-playfair)', color: ACCENT, fontSize: '1.1rem', fontWeight: 600, fontStyle: 'italic' }}>
+                    {t('contact.success')}
+                  </h3>
+                </motion.div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-5">
+
+                  {/* Name */}
+                  <div>
+                    <label htmlFor="contact-name" style={labelStyle}>
+                      {t('contact.name')} <span style={{ color: '#8b2525' }}>*</span>
+                    </label>
+                    <input
+                      id="contact-name"
+                      type="text"
+                      value={formData.name}
+                      onChange={e => handleChange('name', e.target.value)}
+                      placeholder={t('contact.namePlaceholder')}
+                      className="w-full bg-transparent px-0 py-2.5 focus:outline-none transition-colors duration-200 placeholder:italic"
+                      style={{ ...inputBase, borderBottomColor: errors.name ? '#8b2525' : 'rgba(30,19,12,0.25)' }}
+                      onFocus={onFocusInput}
+                      onBlur={onBlurInput}
+                    />
+                    {fieldError('name')}
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label htmlFor="contact-email" style={labelStyle}>
+                      {t('contact.email')} <span style={{ color: '#8b2525' }}>*</span>
+                    </label>
+                    <input
+                      id="contact-email"
+                      type="email"
+                      value={formData.email}
+                      onChange={e => handleChange('email', e.target.value)}
+                      placeholder={t('contact.emailPlaceholder')}
+                      className="w-full bg-transparent px-0 py-2.5 focus:outline-none transition-colors duration-200 placeholder:italic"
+                      style={{ ...inputBase, borderBottomColor: errors.email ? '#8b2525' : 'rgba(30,19,12,0.25)' }}
+                      onFocus={onFocusInput}
+                      onBlur={onBlurInput}
+                    />
+                    {fieldError('email')}
+                  </div>
+
+                  {/* Course interest (optional) */}
+                  <div>
+                    <label htmlFor="contact-course" style={labelStyle}>
+                      {t('contact.courseInterest')}
+                    </label>
+                    <input
+                      id="contact-course"
+                      type="text"
+                      value={formData.courseInterest}
+                      onChange={e => handleChange('courseInterest', e.target.value)}
+                      placeholder={t('contact.courseInterestPlaceholder')}
+                      className="w-full bg-transparent px-0 py-2.5 focus:outline-none transition-colors duration-200 placeholder:italic"
+                      style={inputBase}
+                      onFocus={onFocusInput}
+                      onBlur={onBlurInput}
+                    />
+                  </div>
+
+                  {/* Message */}
+                  <div>
+                    <label htmlFor="contact-message" style={labelStyle}>
+                      {t('contact.message')} <span style={{ color: '#8b2525' }}>*</span>
+                    </label>
+                    <textarea
+                      id="contact-message"
+                      value={formData.message}
+                      onChange={e => handleChange('message', e.target.value)}
+                      placeholder={t('contact.messagePlaceholder')}
+                      rows={4}
+                      className="w-full bg-transparent px-0 py-2.5 focus:outline-none transition-colors duration-200 resize-none placeholder:italic"
+                      style={{ ...inputBase, borderBottomColor: errors.message ? '#8b2525' : 'rgba(30,19,12,0.25)' }}
+                      onFocus={onFocusInput}
+                      onBlur={onBlurInput}
+                    />
+                    {fieldError('message')}
+                  </div>
+
+                  {submitStatus === 'error' && (
+                    <div
+                      className="flex items-center gap-2 py-2 px-3"
+                      style={{ borderLeft: '2px solid #8b2525', backgroundColor: 'rgba(139,37,37,0.06)' }}
+                    >
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: '#8b2525' }} />
+                      <p style={{ fontFamily: 'var(--font-lora)', color: '#8b2525', fontSize: '0.88rem' }}>{t('contact.error')}</p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="flex-1 py-2.5 transition-all duration-200"
+                      style={{
+                        fontFamily: 'var(--font-lora)',
+                        color: MUTED,
+                        fontSize: '0.88rem',
+                        border: `1px solid ${BORDER}`,
+                        backgroundColor: 'transparent',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.backgroundColor = 'rgba(30,19,12,0.04)'
+                        e.currentTarget.style.borderColor = 'rgba(30,19,12,0.28)'
+                        e.currentTarget.style.color = INK
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = 'transparent'
+                        e.currentTarget.style.borderColor = BORDER
+                        e.currentTarget.style.color = MUTED
+                      }}
+                    >
+                      {t('contact.cancel')}
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 transition-all duration-200"
+                      style={{
+                        fontFamily: 'var(--font-lora)',
+                        color: '#faf6ee',
+                        fontSize: '0.88rem',
+                        fontWeight: 600,
+                        letterSpacing: '0.08em',
+                        backgroundColor: INK,
+                        border: `1px solid ${INK}`,
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.backgroundColor = '#2c1c0e'
+                        e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(250,246,238,0.1)'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.backgroundColor = INK
+                        e.currentTarget.style.boxShadow = 'none'
+                      }}
+                    >
+                      {t('contact.send')}
+                    </button>
+                  </div>
+                </form>
               )}
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 py-2.5 transition-colors"
-                  style={{
-                    fontFamily: 'var(--font-lora)',
-                    color: MUTED,
-                    fontSize: '0.88rem',
-                    border: `1px solid ${BORDER}`,
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(30,19,12,0.3)')}
-                  onMouseLeave={e => (e.currentTarget.style.borderColor = BORDER)}
-                >
-                  {t('contact.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2.5 transition-all duration-200"
-                  style={{
-                    fontFamily: 'var(--font-lora)',
-                    color: '#faf6ee',
-                    fontSize: '0.88rem',
-                    fontWeight: 600,
-                    letterSpacing: '0.08em',
-                    backgroundColor: INK,
-                    border: `1px solid ${INK}`,
-                  }}
-                >
-                  {t('contact.send')}
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

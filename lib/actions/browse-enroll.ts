@@ -218,7 +218,6 @@ export async function getBrowsableCourses() {
           subject:subjects (
             id,
             name,
-            title,
             description,
             code,
             hours
