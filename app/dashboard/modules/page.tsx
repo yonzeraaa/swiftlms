@@ -103,9 +103,6 @@ function ModuleRowCells({
       </td>
       <td className="py-4 px-4">
         <span className="text-gold-100 font-medium">{module.title}</span>
-        {module.description && (
-          <p className="text-gold-400 text-xs mt-0.5 line-clamp-1">{module.description}</p>
-        )}
       </td>
       <td className="py-4 px-4">
         {course ? (

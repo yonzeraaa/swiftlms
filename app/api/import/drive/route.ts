@@ -3,6 +3,17 @@ import { createClient } from '@/lib/supabase/server'
 import { getParentPrefix, validateCodeForType, extractDisplayName, type ItemType } from '@/lib/drive-import-utils'
 import { parseAnswerKeyFromText } from '../../tests/utils/answer-key'
 
+/**
+ * Extrai o order_index de um código baseando-se nos últimos 2 dígitos numéricos.
+ * Ex: "MAT02" → 2, "MAT0203" → 3, "MAT020301" → 1
+ */
+function extractOrderFromCode(code: string | null): number {
+  if (!code) return 1
+  const numbers = code.replace(/[A-Za-z]/g, '')
+  if (numbers.length < 2) return 1
+  return parseInt(numbers.slice(-2), 10) || 1
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient()
 
@@ -201,16 +212,7 @@ async function createOrUpdateModule(
     return existing.id
   }
 
-  // Criar novo módulo
-  const { data: orderData } = await supabase
-    .from('course_modules')
-    .select('order_index')
-    .eq('course_id', data.courseId)
-    .order('order_index', { ascending: false })
-    .limit(1)
-
-  const nextOrder = orderData?.[0]?.order_index ? orderData[0].order_index + 1 : 1
-
+  // Criar novo módulo com order_index baseado no código
   const { data: newModule, error } = await supabase
     .from('course_modules')
     .insert({
@@ -218,7 +220,7 @@ async function createOrUpdateModule(
       code: data.code,
       title: data.name,
       description: `Módulo ${data.code}`,
-      order_index: nextOrder
+      order_index: extractOrderFromCode(data.code)
     })
     .select('id')
     .single()
@@ -317,21 +319,12 @@ async function createOrUpdateSubject(
       .maybeSingle()
 
     if (!existingLink) {
-      const { data: orderData } = await supabase
-        .from('module_subjects')
-        .select('order_index')
-        .eq('module_id', moduleId)
-        .order('order_index', { ascending: false })
-        .limit(1)
-
-      const nextOrder = orderData?.[0]?.order_index ? orderData[0].order_index + 1 : 1
-
       const { error: linkError } = await supabase
         .from('module_subjects')
         .insert({
           module_id: moduleId,
           subject_id: subjectId,
-          order_index: nextOrder
+          order_index: extractOrderFromCode(data.code)
         })
 
       if (linkError) {
@@ -355,21 +348,12 @@ async function createOrUpdateSubject(
     .single()
 
   if (!existingCourseLink) {
-    const { data: courseOrderData } = await supabase
-      .from('course_subjects')
-      .select('order_index')
-      .eq('course_id', data.courseId)
-      .order('order_index', { ascending: false })
-      .limit(1)
-
-    const nextCourseOrder = courseOrderData?.[0]?.order_index ? courseOrderData[0].order_index + 1 : 1
-
     await supabase
       .from('course_subjects')
       .insert({
         course_id: data.courseId,
         subject_id: subjectId,
-        order_index: nextCourseOrder,
+        order_index: extractOrderFromCode(data.code),
         is_required: true
       })
   }
@@ -484,25 +468,17 @@ async function createOrUpdateLesson(
       })
       .eq('id', lessonId)
   } else {
-    // Criar nova lesson
-    const { data: orderData } = await supabase
-      .from('lessons')
-      .select('order_index')
-      .eq('module_id', moduleId)
-      .order('order_index', { ascending: false })
-      .limit(1)
-
-    const nextOrder = orderData?.[0]?.order_index ? orderData[0].order_index + 1 : 1
-
+    // Criar nova lesson com order_index baseado no código
     const { data: newLesson, error: lessonError } = await supabase
       .from('lessons')
       .insert({
         module_id: moduleId,
+        code: data.code,
         title: data.name,
         description: `Aula ${data.code}`,
         content_type: contentType,
         content_url: contentUrl,
-        order_index: nextOrder
+        order_index: extractOrderFromCode(data.code)
       })
       .select('id')
       .single()
@@ -589,13 +565,36 @@ async function createOrUpdateTest(
     ? `https://drive.google.com/file/d/${data.driveFileId}/view`
     : ''
 
-  // Criar teste (sempre cria novo, não atualiza)
+  // Verificar se já existe um teste com o mesmo google_drive_url
+  if (driveUrl) {
+    const { data: existingTest } = await supabase
+      .from('tests')
+      .select('id')
+      .eq('google_drive_url', driveUrl)
+      .maybeSingle()
+
+    if (existingTest) {
+      await supabase
+        .from('tests')
+        .update({
+          title: data.name,
+          module_id: moduleId,
+          subject_id: subjectId,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingTest.id)
+
+      return { id: existingTest.id, answerKey: { success: false, error: 'Teste já existia' } }
+    }
+  }
+
   const { data: newTest, error } = await supabase
     .from('tests')
     .insert({
       course_id: data.courseId,
       module_id: moduleId,
       subject_id: subjectId,
+      code: data.code,
       title: data.name,
       description: `Teste importado: ${data.name}`,
       google_drive_url: driveUrl,

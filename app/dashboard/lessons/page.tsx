@@ -634,7 +634,9 @@ export default function LessonsPage() {
                     )}
                   </button>
                 </th>
-                <th scope="col" className="text-left text-gold-200 font-medium">Aula</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Código</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Título</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Descrição</th>
                 <th scope="col" className="text-left text-gold-200 font-medium">
                   <button
                     type="button"
@@ -651,7 +653,6 @@ export default function LessonsPage() {
                 </th>
                 <th scope="col" className="text-center text-gold-200 font-medium">Tipo</th>
                 <th scope="col" className="text-center text-gold-200 font-medium">Duração</th>
-                <th scope="col" className="text-center text-gold-200 font-medium">Ordem</th>
                 <th scope="col" className="text-center text-gold-200 font-medium">Preview</th>
                 <th scope="col" className="text-center text-gold-200 font-medium">Ações</th>
               </tr>
@@ -675,31 +676,25 @@ export default function LessonsPage() {
                         </button>
                       </td>
                       <td className="py-4 px-4">
-                        <div className="max-w-[220px] md:max-w-[300px]">
-                          <p className="text-gold-100 font-medium truncate" title={lesson.title}>
-                            {lesson.title}
-                          </p>
-                          {lesson.description && (
-                            <p className="text-gold-400 text-sm mt-1 truncate" title={lesson.description}>
-                              {lesson.description}
-                            </p>
-                          )}
-                        </div>
+                        <span className="text-gold-400 font-mono text-sm">{lesson.code || '-'}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-gold-100 font-medium truncate max-w-[220px] md:max-w-[300px] block" title={lesson.title}>
+                          {lesson.title}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-gold-300 text-sm">{lesson.description || '-'}</span>
                       </td>
                       <td className="py-4 px-4">
                         <div className="text-gold-300 text-sm">
                           {(lesson as any).subject_lessons?.[0]?.subjects ? (
-                            <div className="max-w-[200px] md:max-w-[240px]">
-                              <p
-                                className="text-gold-200 truncate"
-                                title={(lesson as any).subject_lessons[0].subjects.name}
-                              >
-                                {(lesson as any).subject_lessons[0].subjects.name}
-                              </p>
-                              <p className="text-gold-400 text-xs truncate" title={(lesson as any).subject_lessons[0].subjects.code || undefined}>
-                                {(lesson as any).subject_lessons[0].subjects.code}
-                              </p>
-                            </div>
+                            <span
+                              className="text-gold-200 truncate max-w-[200px] md:max-w-[240px] block"
+                              title={(lesson as any).subject_lessons[0].subjects.name}
+                            >
+                              {(lesson as any).subject_lessons[0].subjects.name}
+                            </span>
                           ) : (
                             <span className="text-gold-500">-</span>
                           )}
@@ -715,9 +710,6 @@ export default function LessonsPage() {
                         <span className="text-gold-200">
                           {lesson.duration_minutes ? `${lesson.duration_minutes} min` : '-'}
                         </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="text-gold-200">{lesson.order_index}</span>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <button
@@ -795,7 +787,7 @@ export default function LessonsPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center">
+                  <td colSpan={9} className="py-12 text-center">
                     <BookOpen className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
                     <p className="text-gold-300">
                       {searchTerm ? 'Nenhuma aula encontrada com os critérios de busca' : 'Nenhuma aula cadastrada'}

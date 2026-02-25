@@ -916,6 +916,7 @@ export type Database = {
       }
       lessons: {
         Row: {
+          code: string | null
           content: string | null
           content_type: string
           content_url: string | null
@@ -930,6 +931,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          code?: string | null
           content?: string | null
           content_type: string
           content_url?: string | null
@@ -944,6 +946,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          code?: string | null
           content?: string | null
           content_type?: string
           content_url?: string | null
@@ -1525,6 +1528,7 @@ export type Database = {
       }
       tests: {
         Row: {
+          code: string | null
           course_id: string | null
           created_at: string | null
           description: string | null
@@ -1541,6 +1545,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          code?: string | null
           course_id?: string | null
           created_at?: string | null
           description?: string | null
@@ -1557,6 +1562,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          code?: string | null
           course_id?: string | null
           created_at?: string | null
           description?: string | null

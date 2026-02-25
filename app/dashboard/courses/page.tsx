@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, X, AlertCircle, CheckCircle, XCircle, BookMarked, UserMinus, Upload, FolderInput } from 'lucide-react'
+import { Search, Filter, Plus, MoreVertical, Users, Clock, Award, Edit, Trash2, Eye, BookOpen, X, AlertCircle, CheckCircle, XCircle, BookMarked, UserMinus, FolderInput } from 'lucide-react'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
@@ -91,9 +91,6 @@ export default function CoursesPage() {
   const [showManageStudentsModal, setShowManageStudentsModal] = useState(false)
   const [enrolledStudents, setEnrolledStudents] = useState<any[]>([])
   const [loadingEnrolledStudents, setLoadingEnrolledStudents] = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
-  const [importFile, setImportFile] = useState<File | null>(null)
-  const [importing, setImporting] = useState(false)
   const { openImport } = useDriveImport()
 
   const { session, user, isLoading: authLoading, refreshSession } = useAuth()
@@ -287,28 +284,6 @@ export default function CoursesPage() {
     } catch (error: any) {
       console.error('Error unenrolling student:', error)
       alert('Erro ao desmatricular aluno: ' + error.message)
-    }
-  }
-
-  const handleImport = async () => {
-    if (!importFile || !selectedCourse) return
-    setImporting(true)
-    setError(null)
-    try {
-      const formData = new FormData()
-      formData.append('file', importFile)
-      formData.append('courseId', selectedCourse.id)
-      const response = await fetch('/api/import-course-structure', { method: 'POST', body: formData })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || 'Erro na importação')
-      alert(`Importação concluída! ${result.modulesImported} módulos e ${result.subjectsImported} disciplinas importados.`)
-      setShowImportModal(false)
-      setImportFile(null)
-      setSelectedCourse(null)
-    } catch (error: any) {
-      setError(error.message || 'Erro ao importar arquivo')
-    } finally {
-      setImporting(false)
     }
   }
 
@@ -1185,87 +1160,6 @@ export default function CoursesPage() {
         </div>
       )}
 
-      {/* Import Modal */}
-      {showImportModal && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
-          <Card className="w-full max-w-md">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
-                <Upload className="w-6 h-6" />
-                Importar Estrutura do Curso
-              </h2>
-              <button
-                onClick={() => { setShowImportModal(false); setImportFile(null); setError(null) }}
-                className="text-gold-400 hover:text-gold-200 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            {error && (
-              <div className="mb-4 p-3 bg-red-900/20 border border-red-500/50 rounded-lg text-red-400 text-sm flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <p className="text-gold-300 text-sm mb-4">
-                  Importar módulos e disciplinas para o curso: <strong className="text-gold">{selectedCourse.title}</strong>
-                </p>
-
-                <div className="bg-navy-800/50 border-2 border-dashed border-gold-500/30 rounded-lg p-6 text-center">
-                  <input
-                    type="file"
-                    id="import-file"
-                    accept=".xlsx,.xls"
-                    onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-                    className="hidden"
-                  />
-                  <label htmlFor="import-file" className="cursor-pointer block">
-                    <Upload className="w-12 h-12 text-gold-400 mx-auto mb-3" />
-                    <p className="text-gold-200 mb-1">
-                      {importFile ? importFile.name : 'Clique para selecionar arquivo'}
-                    </p>
-                    <p className="text-gold-400 text-xs">Aceita arquivos .xlsx ou .xls</p>
-                  </label>
-                </div>
-
-                <div className="mt-4 text-xs text-gold-400 space-y-1">
-                  <p>O arquivo deve conter:</p>
-                  <ul className="list-disc list-inside space-y-1 ml-2">
-                    <li>Módulos com seus títulos</li>
-                    <li>Disciplinas com código, nome e carga horária</li>
-                    <li>Descrição das disciplinas (opcional)</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => { setShowImportModal(false); setImportFile(null); setError(null) }}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={handleImport}
-                  disabled={!importFile || importing}
-                  className="flex-1"
-                >
-                  {importing ? 'Importando...' : 'Importar'}
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
       {/* Dropdown Portal */}
       {dropdownCourse && dropdownPosition && (
         <>
@@ -1343,22 +1237,6 @@ export default function CoursesPage() {
               <div className="flex items-center gap-3 text-left">
                 <BookMarked className="w-4 h-4 text-gold-400 flex-shrink-0" />
                 <span className="text-gold-200 text-left flex-1">Gerenciar Disciplinas</span>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCourse(dropdownCourse)
-                setShowImportModal(true)
-                setOpenDropdown(null)
-                setDropdownCourse(null)
-                setDropdownPosition(null)
-              }}
-              className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
-            >
-              <div className="flex items-center gap-3 text-left">
-                <Upload className="w-4 h-4 text-gold-400 flex-shrink-0" />
-                <span className="text-gold-200 text-left flex-1">Importar Estrutura (Excel)</span>
               </div>
             </button>
             <button

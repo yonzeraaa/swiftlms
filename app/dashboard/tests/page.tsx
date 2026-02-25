@@ -2,16 +2,14 @@
 
 export const dynamic = 'force-dynamic'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
-import { Plus, FileText, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, BookOpen, FileCheck, Sparkles, MoreVertical, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Plus, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, FileCheck, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Modal from '../../components/Modal'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { useToast } from '../../components/Toast'
-import EmptyState from '../../components/EmptyState'
-import { SkeletonCard } from '../../components/Skeleton'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
 import { Chip } from '../../components/Badge'
@@ -48,9 +46,6 @@ export default function TestsManagementPage() {
   const [filterCourse, setFilterCourse] = useState('all')
   const [filterSubject, setFilterSubject] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  // showFilters removed — filters are always visible
-  const dropdownRefs = useRef<{ [key: string]: HTMLButtonElement | null }>({})
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -199,29 +194,6 @@ export default function TestsManagementPage() {
   useEffect(() => {
     setSelectedTests(prev => prev.filter(id => tests.some(test => test.id === id)))
   }, [tests])
-
-  const handleDropdownClick = (e: React.MouseEvent, testId: string) => {
-    e.stopPropagation()
-    setOpenDropdown(openDropdown === testId ? null : testId)
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      // Verifica se o clique foi fora de todos os dropdowns
-      const target = event.target as Node
-      const isInsideDropdown = Object.values(dropdownRefs.current).some(ref => {
-        return ref && (ref.contains(target) || ref.parentElement?.contains(target))
-      })
-      
-      if (openDropdown && !isInsideDropdown) {
-        setOpenDropdown(null)
-      }
-    }
-
-    // Usar 'click' ao invés de 'mousedown' para melhor compatibilidade
-    document.addEventListener('click', handleClickOutside)
-    return () => document.removeEventListener('click', handleClickOutside)
-  }, [openDropdown])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -457,6 +429,14 @@ export default function TestsManagementPage() {
     console.log('Modal deve estar visível:', true)
   }
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Spinner size="xl" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <Breadcrumbs className="mb-2" />
@@ -570,262 +550,162 @@ export default function TestsManagementPage() {
             </button>
           </div>
 
-          {tests.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-gold-300 pt-1">
-              <button
-                type="button"
-                onClick={toggleSelectAllFiltered}
-                disabled={filteredTests.length === 0}
-                aria-pressed={allFilteredSelected && filteredTests.length > 0}
-                className={`text-gold-400 hover:text-gold-200 transition-colors ${
-                  filteredTests.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                {allFilteredSelected && filteredTests.length > 0 ? (
-                  <CheckSquare className="w-5 h-5" />
-                ) : (
-                  <Square className="w-5 h-5" />
-                )}
-              </button>
-              <span>
-                {allFilteredSelected && filteredTests.length > 0
-                  ? 'Resultados filtrados selecionados'
-                  : 'Selecionar resultados filtrados'}
-              </span>
-            </div>
-          )}
         </div>
       </Card>
 
-      {/* Showing count */}
-      {!loading && (filterCourse !== 'all' || filterSubject !== 'all' || filterStatus !== 'all' || searchTerm !== '') && (
+      {(filterCourse !== 'all' || filterSubject !== 'all' || filterStatus !== 'all' || searchTerm !== '') && (
         <p className="text-sm text-gold-300">
           Mostrando {filteredTests.length} de {tests.length} testes
         </p>
       )}
 
-      {/* Lista de Testes */}
-      {loading ? (
-        <div className="grid gap-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ animationDelay: `${i * 100}ms` }}>
-              <SkeletonCard />
-            </div>
-          ))}
-        </div>
-      ) : (
-      <div className="grid gap-4">
-        {sortedTests.map((test) => {
-          const course = courses.find(c => c.id === test.course_id)
-          const subject = subjects.find(s => s.id === test.subject_id)
-          const isSelected = selectedTests.includes(test.id)
-
-          return (
-            <Card
-              key={test.id}
-              variant="elevated"
-              hoverable
-              className={`relative transition-all ${
-                isSelected ? 'border-2 border-gold-500/60 shadow-gold-500/20' : ''
-              }`}
-            >
-              <div className="flex justify-between items-start gap-4">
-                <div className="flex items-start gap-3 flex-1">
+      <Card>
+        <div className="overflow-x-auto table-sticky">
+          <table className="w-full table-density density-compact">
+            <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
+              <tr className="border-b border-gold-500/20">
+                <th className="text-center py-4 px-4 text-gold-200 font-medium w-12">
                   <button
-                    type="button"
-                    onClick={() => toggleTestSelection(test.id)}
-                    className="mt-1 text-gold-400 hover:text-gold-200 transition-colors"
-                    aria-pressed={isSelected}
-                    aria-label={isSelected ? 'Remover teste da seleção' : 'Selecionar teste'}
+                    onClick={toggleSelectAllFiltered}
+                    className="text-gold-400 hover:text-gold-200 transition-colors"
+                    title={allFilteredSelected ? 'Deselecionar todos' : 'Selecionar todos'}
                   >
-                    {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                    {allFilteredSelected && filteredTests.length > 0 ? (
+                      <CheckSquare className="w-5 h-5" />
+                    ) : (
+                      <Square className="w-5 h-5" />
+                    )}
                   </button>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="p-2 bg-gold-100 rounded-lg border border-gold-500/20">
-                        <FileCheck className="w-5 h-5 text-gold-600" />
-                      </div>
-                      <h3 className="text-xl font-bold text-gold">
-                        <span
-                          className="inline-block max-w-[240px] md:max-w-[360px] truncate align-middle"
-                          title={test.title}
+                </th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Código</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Título</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Disciplina</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Duração</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Aprovação</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Status</th>
+                <th scope="col" className="text-left text-gold-200 font-medium">Gabarito</th>
+                <th scope="col" className="text-center text-gold-200 font-medium">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedTests.length > 0 ? (
+                sortedTests.map((test) => {
+                  const subject = subjects.find(s => s.id === test.subject_id)
+                  const isSelected = selectedTests.includes(test.id)
+
+                  return (
+                    <tr key={test.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">
+                      <td className="py-4 px-4 text-center">
+                        <button
+                          onClick={() => toggleTestSelection(test.id)}
+                          className="text-gold-400 hover:text-gold-200 transition-colors"
                         >
+                          {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                        </button>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-gold-400 font-mono text-sm">{test.code || '-'}</span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-gold-100 font-medium truncate max-w-[220px] md:max-w-[300px] block" title={test.title}>
                           {test.title}
                         </span>
-                      </h3>
-                    </div>
-
-                    {test.description && (
-                      <p className="text-gold-300 mb-4 leading-relaxed">{test.description}</p>
-                    )}
-                    
-                    <div className="flex flex-wrap gap-3 mb-4">
-                      {course && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20 max-w-full">
-                          <BookOpen className="w-5 h-5 text-gold-400 flex-shrink-0" />
-                          <span
-                            className="text-sm font-medium text-gold-200 truncate max-w-[180px] md:max-w-[240px]"
-                            title={course.title}
-                          >
-                            {course.title}
+                      </td>
+                      <td className="py-4 px-4">
+                        {subject ? (
+                          <span className="text-gold-200 truncate max-w-[200px] block" title={subject.name}>
+                            {subject.name}
                           </span>
-                        </div>
-                      )}
-                      {subject && (
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-navy-700 rounded-lg border border-gold-500/20">
-                          <FileText className="w-5 h-5 text-gold-400" />
-                          <div className="text-sm font-medium text-gold-200 flex flex-col leading-tight max-w-[180px] md:max-w-[220px] truncate">
-                            <span className="truncate" title={subject.name}>{subject.name}</span>
-                            {subject.code && (
-                              <span className="text-xs uppercase tracking-wide text-gold-400">{subject.code}</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                      <div className="flex items-center gap-1.5 text-gold-300">
-                        <Clock className="w-5 h-5 text-gold-400" />
-                        <span className="font-medium">{test.duration_minutes} {t('tests.minutes')}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-gold-300">
-                        <Target className="w-5 h-5 text-gold-400" />
-                        <span className="font-medium">{t('tests.minimum')}: {test.passing_score}%</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-gold-300">
-                        <RotateCcw className="w-5 h-5 text-gold-400" />
-                        <span className="font-medium">{test.max_attempts} {t('tests.attempts')}</span>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex items-center gap-3 flex-wrap">
-                      <Chip
-                        label={test.is_active ? t('tests.active') : t('tests.inactive')}
-                        color={test.is_active ? 'green' : 'gold'}
-                      />
-                      {test.answer_key_count !== undefined && (
-                        <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border ${
-                          test.answer_key_count > 0 
-                            ? 'bg-green-900/30 border-green-500/30' 
-                            : 'bg-red-900/30 border-red-500/30'
-                        }`}>
-                          {test.answer_key_count > 0 ? (
-                            <>
-                              <Check className="w-4 h-4 text-green-400" />
-                              <span className="text-sm font-medium text-green-400">
-                                Gabarito: {test.answer_key_count} questões
-                              </span>
-                            </>
+                        ) : (
+                          <span className="text-gold-500">-</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="text-gold-200">{test.duration_minutes ? `${test.duration_minutes} min` : '-'}</span>
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="text-gold-200">{test.passing_score != null ? `${test.passing_score}%` : '-'}</span>
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <Chip
+                          label={test.is_active ? t('tests.active') : t('tests.inactive')}
+                          color={test.is_active ? 'green' : 'gold'}
+                        />
+                      </td>
+                      <td className="py-4 px-4">
+                        {test.answer_key_count !== undefined ? (
+                          test.answer_key_count > 0 ? (
+                            <span className="flex items-center gap-1.5 text-green-400 text-sm">
+                              <Check className="w-4 h-4" />
+                              {test.answer_key_count} questões
+                            </span>
                           ) : (
-                            <>
-                              <X className="w-4 h-4 text-red-400" />
-                              <span className="text-sm font-medium text-red-400">
-                                Sem gabarito
-                              </span>
-                            </>
-                          )}
+                            <span className="flex items-center gap-1.5 text-red-400 text-sm">
+                              <X className="w-4 h-4" />
+                              Sem gabarito
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-gold-500">-</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-center gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => window.open(test.google_drive_url, '_blank')}
+                            title="Ver Documento"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => viewAnswerKey(test)}
+                            title="Ver Gabarito"
+                          >
+                            <FileCheck className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => editTest(test)}
+                            title="Editar"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={async () => {
+                              if (!confirm(`Excluir o teste "${test.title}"?`)) return
+                              await deleteTest(test.id)
+                            }}
+                            title="Excluir"
+                            disabled={bulkDeleting}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="relative z-20">
-                  <button
-                    ref={el => {
-                      if (el) dropdownRefs.current[test.id] = el
-                    }}
-                    onClick={(e) => handleDropdownClick(e, test.id)}
-                    className="p-2 hover:bg-navy-700 rounded-lg transition-colors border border-transparent hover:border-gold-500/30"
-                    aria-label="Abrir menu de ações do teste"
-                    type="button"
-                    disabled={bulkDeleting}
-                  >
-                    <MoreVertical className="w-5 h-5 text-gold-400" />
-                  </button>
-                  
-                  {openDropdown === test.id && (
-                    <div className="absolute right-0 mt-2 w-56 bg-navy-800 rounded-lg shadow-xl border border-gold-500/20 z-50 pointer-events-auto">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          window.open(test.google_drive_url, '_blank')
-                          setOpenDropdown(null)
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
-                      >
-                        <div className="flex items-center gap-3 text-left">
-                          <ExternalLink className="w-4 h-4 text-gold-400 flex-shrink-0" />
-                          <span className="text-gold-200 text-left flex-1">Ver Documento</span>
-                        </div>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setOpenDropdown(null)
-                          viewAnswerKey(test)
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
-                      >
-                        <div className="flex items-center gap-3 text-left">
-                          <FileCheck className="w-4 h-4 text-gold-400 flex-shrink-0" />
-                          <span className="text-gold-200 text-left flex-1">Ver Gabarito</span>
-                        </div>
-                      </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            console.log('Editando teste:', test.id)
-                            setOpenDropdown(null)
-                            editTest(test)
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-navy-700/50 transition-colors block"
-                      >
-                        <div className="flex items-center gap-3 text-left">
-                          <Edit className="w-4 h-4 text-gold-400 flex-shrink-0" />
-                          <span className="text-gold-200 text-left flex-1">Editar</span>
-                        </div>
-                      </button>
-                      <div className="border-t border-gold-500/20 mt-2 pt-2">
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation()
-                            setOpenDropdown(null)
-                            await deleteTest(test.id)
-                          }}
-                          className="w-full px-4 py-3 text-left hover:bg-red-900/20 transition-colors block disabled:opacity-50 disabled:cursor-not-allowed"
-                          type="button"
-                          disabled={bulkDeleting}
-                        >
-                          <div className="flex items-center gap-3 text-left">
-                            <Trash2 className="w-4 h-4 text-red-400 flex-shrink-0" />
-                            <span className="text-red-400 text-left flex-1">Excluir</span>
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-          )
-        })}
-      </div>
-      )}
-
-      {!loading && filteredTests.length === 0 && (
-        <EmptyState
-          icon={<FileCheck className="w-12 h-12 flex-shrink-0" />}
-          title={t('tests.noTests')}
-          description={t('tests.noTestsDescription')}
-          action={{
-            label: t('tests.createFirstTest'),
-            onClick: () => setShowModal(true),
-            variant: 'primary'
-          }}
-        />
-      )}
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                <tr>
+                  <td colSpan={9} className="py-12 text-center">
+                    <FileCheck className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
+                    <p className="text-gold-300">
+                      {searchTerm ? 'Nenhum teste encontrado com os critérios de busca' : t('tests.noTests')}
+                    </p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
 
       {/* Modal de Criação/Edição */}
       <Modal
