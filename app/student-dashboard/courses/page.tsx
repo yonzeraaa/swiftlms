@@ -1,7 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useState, useEffect } from 'react'
 import { Search, Filter, BookOpen, Clock, Users, Star, DollarSign, Tag, TrendingUp, X, Check, AlertCircle, User, Sparkles, Eye, Lock, BookMarked } from 'lucide-react'
 import Spinner from '../../components/ui/Spinner'

@@ -1,7 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useState, useEffect } from 'react'
 import { Calendar as CalendarIcon, Clock, BookOpen, FileText, Award, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react'
 import Spinner from '../../components/ui/Spinner'

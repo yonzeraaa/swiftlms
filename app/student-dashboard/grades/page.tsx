@@ -1,6 +1,4 @@
 import { getGradesUserInfo } from '@/lib/actions/student-grades'
-import StudentGradesReport from '@/app/components/StudentGradesReport'
-import { FileText } from 'lucide-react'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Card from '@/app/components/Card'
 import GradesPageClient from './GradesPageClient'

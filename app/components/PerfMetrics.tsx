@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 
 export default function PerfMetrics() {
   useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return
     if (typeof window === 'undefined' || !('PerformanceObserver' in window)) return
     try {
       const po = new PerformanceObserver((list) => {
@@ -25,4 +26,3 @@ export default function PerfMetrics() {
   }, [])
   return null
 }
-

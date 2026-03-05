@@ -3,26 +3,34 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+function readPackageVersion() {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'));
+  return packageJson.version || '1.0.0';
+}
+
+function tryExec(command) {
+  try {
+    return execSync(command, { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Gera arquivo version.json com informações do Git
  */
 function generateVersion() {
+  const baseVersion = readPackageVersion();
+
   try {
-    // Obter hash curto do commit
-    const gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+    const gitHash = tryExec('git rev-parse --short HEAD');
+    const gitBranch = tryExec('git rev-parse --abbrev-ref HEAD');
+    const gitDate = tryExec('git log -1 --format=%cd --date=iso');
+    const gitMessage = tryExec('git log -1 --format=%s');
 
-    // Obter branch atual
-    const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
-
-    // Obter data do último commit
-    const gitDate = execSync('git log -1 --format=%cd --date=iso', { encoding: 'utf-8' }).trim();
-
-    // Obter mensagem do último commit
-    const gitMessage = execSync('git log -1 --format=%s', { encoding: 'utf-8' }).trim();
-
-    // Ler versão do package.json
-    const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8'));
-    const baseVersion = packageJson.version || '1.0.0';
+    if (!gitHash || !gitBranch || !gitDate || !gitMessage) {
+      throw new Error('Git metadata unavailable');
+    }
 
     // Criar objeto de versão
     const versionInfo = {
@@ -46,12 +54,10 @@ function generateVersion() {
     console.log(`📝 Commit: ${versionInfo.gitMessage}`);
 
   } catch (error) {
-    console.error('❌ Error generating version:', error.message);
-
     // Criar versão fallback se houver erro (ex: não é um repositório Git)
     const fallbackVersion = {
-      version: '1.0.0-dev',
-      baseVersion: '1.0.0',
+      version: `${baseVersion}-dev`,
+      baseVersion,
       gitHash: 'unknown',
       gitBranch: 'unknown',
       gitDate: new Date().toISOString(),
@@ -62,7 +68,7 @@ function generateVersion() {
 
     const outputPath = path.join(__dirname, '../public/version.json');
     fs.writeFileSync(outputPath, JSON.stringify(fallbackVersion, null, 2));
-    console.log('⚠️ Created fallback version file');
+    console.log(`⚠️ Git metadata unavailable, created fallback version file (${fallbackVersion.version})`);
   }
 }
 

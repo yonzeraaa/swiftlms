@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import ErrorBoundary from '../components/ErrorBoundary'
-import { useAuth } from '../providers/AuthProvider'
 import {
   LayoutDashboard,
   BookOpen,
@@ -15,18 +14,14 @@ import {
   FileCheck,
   Settings,
   LogOut,
-  Menu,
-  X,
   User,
   Search,
   ChevronLeft,
   ChevronRight,
-  Shield,
   ArrowLeft
 } from 'lucide-react'
 import Logo from '../components/Logo'
 import { getStudentProfile } from '@/lib/actions/student-layout'
-import { useTranslation } from '../contexts/LanguageContext'
 import PageTransition from '../components/ui/PageTransition'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -43,8 +38,6 @@ export default function StudentDashboardLayout({
   const [isAdmin, setIsAdmin] = useState(false)
   const [isAdminViewMode, setIsAdminViewMode] = useState(false)
   const pathname = usePathname()
-  const router = useRouter()
-  const { t } = useTranslation()
 
   // Auth is handled by AuthProvider automatically
 

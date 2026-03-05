@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import ErrorBoundary from '../components/ErrorBoundary'
-import { useAuth } from '../providers/AuthProvider'
 import {
   LayoutDashboard,
   Users,
@@ -12,14 +11,10 @@ import {
   Settings,
   LogOut,
   Menu,
-  X,
-  Ship,
-  Anchor,
   BarChart3,
   GraduationCap,
   PlayCircle,
   FileCheck,
-  Database,
   ChevronLeft,
   ChevronRight,
   Layers,
@@ -29,7 +24,6 @@ import {
   FileSpreadsheet
 } from 'lucide-react'
 import Logo from '../components/Logo'
-import LogoSwiftEDU from '../components/LogoSwiftEDU'
 import { getPendingCertificatesCount } from '@/lib/actions/dashboard-layout'
 import { useTranslation } from '../contexts/LanguageContext'
 import PageTransition from '../components/ui/PageTransition'
@@ -49,7 +43,6 @@ export default function DashboardLayout({
   const [loggingOut, setLoggingOut] = useState(false)
   const [pendingCertificates, setPendingCertificates] = useState(0)
   const pathname = usePathname()
-  const router = useRouter()
   const { t } = useTranslation()
 
   // Auth is handled by AuthProvider automatically

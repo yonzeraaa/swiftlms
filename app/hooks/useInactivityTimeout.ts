@@ -8,6 +8,17 @@ const INACTIVITY_TIMEOUT = 15 * 60 * 1000 // 15 minutos em ms
 const STORAGE_KEY = 'last_activity_timestamp'
 const BROADCAST_CHANNEL_NAME = 'inactivity_sync'
 const IMPORT_ACTIVE_KEY = 'swiftlms_import_active'
+const isDevelopment = process.env.NODE_ENV === 'development'
+
+function debugLog(message: string, ...args: unknown[]) {
+  if (!isDevelopment) return
+  console.log(message, ...args)
+}
+
+function debugWarn(message: string, ...args: unknown[]) {
+  if (!isDevelopment) return
+  console.warn(message, ...args)
+}
 
 /**
  * Hook para logout automático por inatividade
@@ -18,21 +29,23 @@ const IMPORT_ACTIVE_KEY = 'swiftlms_import_active'
  * - Sincronização entre múltiplas abas via BroadcastChannel
  * - Tratamento especial para tabs escondidas (visibilitychange)
  */
-export function useInactivityTimeout() {
+export function useInactivityTimeout(enabled = true) {
   const router = useRouter()
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastActivityRef = useRef<number>(Date.now())
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null)
 
   const performLogout = useCallback(async () => {
+    if (!enabled) return
+
     // Don't log out while a Drive import is running — reschedule and check again later
     if (sessionStorage.getItem(IMPORT_ACTIVE_KEY)) {
-      console.log('[INACTIVITY] Import active, skipping logout and rescheduling check')
+      debugLog('[INACTIVITY] Import active, skipping logout and rescheduling check')
       timeoutRef.current = setTimeout(performLogout, INACTIVITY_TIMEOUT)
       return
     }
 
-    console.log('[INACTIVITY] Performing logout due to inactivity')
+    debugLog('[INACTIVITY] Performing logout due to inactivity')
 
     // Limpar timer
     if (timeoutRef.current) {
@@ -44,7 +57,7 @@ export function useInactivityTimeout() {
     try {
       broadcastChannelRef.current?.postMessage({ type: 'logout' })
     } catch (error) {
-      console.warn('[INACTIVITY] BroadcastChannel error:', error)
+      debugWarn('[INACTIVITY] BroadcastChannel error:', error)
     }
 
     // Fazer logout no servidor
@@ -59,7 +72,7 @@ export function useInactivityTimeout() {
     } else {
       console.error('[INACTIVITY] Logout failed:', result.error)
     }
-  }, [router])
+  }, [enabled, router])
 
   const resetTimer = useCallback(() => {
     const now = Date.now()
@@ -69,7 +82,7 @@ export function useInactivityTimeout() {
     try {
       localStorage.setItem(STORAGE_KEY, now.toString())
     } catch (error) {
-      console.warn('[INACTIVITY] localStorage error:', error)
+      debugWarn('[INACTIVITY] localStorage error:', error)
     }
 
     // Limpar timeout anterior
@@ -96,7 +109,7 @@ export function useInactivityTimeout() {
 
       if (timeSinceLastActivity > INACTIVITY_TIMEOUT && !sessionStorage.getItem(IMPORT_ACTIVE_KEY)) {
         // Mais de 15min desde a última atividade e sem importação ativa - fazer logout
-        console.log('[INACTIVITY] Tab became visible after timeout period - logging out')
+        debugLog('[INACTIVITY] Tab became visible after timeout period - logging out')
         performLogout()
       } else {
         // Resetar timer normalmente
@@ -119,7 +132,7 @@ export function useInactivityTimeout() {
   const handleBroadcastMessage = useCallback((event: MessageEvent) => {
     // Receber comandos de outras abas
     if (event.data?.type === 'logout') {
-      console.log('[INACTIVITY] Logout command received from another tab')
+      debugLog('[INACTIVITY] Logout command received from another tab')
       router.push('/')
     } else if (event.data?.type === 'activity') {
       // Outra aba teve atividade - resetar timer local
@@ -129,13 +142,28 @@ export function useInactivityTimeout() {
   }, [router, resetTimer])
 
   useEffect(() => {
+    if (!enabled) {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+        timeoutRef.current = null
+      }
+
+      if (broadcastChannelRef.current) {
+        broadcastChannelRef.current.removeEventListener('message', handleBroadcastMessage)
+        broadcastChannelRef.current.close()
+        broadcastChannelRef.current = null
+      }
+
+      return
+    }
+
     // Inicializar BroadcastChannel (se suportado)
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         broadcastChannelRef.current = new BroadcastChannel(BROADCAST_CHANNEL_NAME)
         broadcastChannelRef.current.addEventListener('message', handleBroadcastMessage)
       } catch (error) {
-        console.warn('[INACTIVITY] BroadcastChannel not available:', error)
+        debugWarn('[INACTIVITY] BroadcastChannel not available:', error)
       }
     }
 
@@ -190,7 +218,7 @@ export function useInactivityTimeout() {
         broadcastChannelRef.current.close()
       }
     }
-  }, [handleActivity, handleVisibilityChange, handleStorageChange, handleBroadcastMessage, resetTimer, performLogout])
+  }, [enabled, handleActivity, handleVisibilityChange, handleStorageChange, handleBroadcastMessage, resetTimer, performLogout])
 
   // Retornar função para resetar manualmente (útil para vídeos, etc)
   return { resetTimer }

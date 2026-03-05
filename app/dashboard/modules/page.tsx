@@ -1,7 +1,5 @@
 'use client'
 
-export const dynamic = 'force-dynamic'
-
 import { useState, useEffect, useMemo } from 'react'
 import { Folder, Plus, Edit, Trash2, Search, X, AlertCircle, BookOpen, GripVertical, CheckSquare, Square, Trash, Clock } from 'lucide-react'
 import Button from '../../components/Button'

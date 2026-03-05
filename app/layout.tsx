@@ -60,8 +60,7 @@ export default function RootLayout({
                 <main id="main-content">
                   {children}
                 </main>
-                {/* Performance metrics (LCP/CLS) in dev tools */}
-                <PerfMetrics />
+                {process.env.NODE_ENV === 'development' ? <PerfMetrics /> : null}
               </ToastProvider>
             </LanguageProvider>
           </ThemeProvider>
