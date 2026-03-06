@@ -11,6 +11,7 @@ import {
   listDriveChildren,
 } from "./drive-client";
 import type {
+  BackupSummary,
   BackupChecksumsFile,
   BackupManifest,
   BackupStorageArtifact,
@@ -98,6 +99,44 @@ export async function restoreBackup(options: RestoreOptions = {}): Promise<Resto
 
 export async function validateLatestBackup(): Promise<RestoreResult> {
   return restoreBackup({ apply: false });
+}
+
+export async function listAvailableBackups(limit: number = 10): Promise<BackupSummary[]> {
+  const config = await getBackupConfig();
+  const drive = createDriveClient(config.driveAuth);
+  const children = await listDriveChildren(drive, config.parentFolderId);
+
+  const folders = children
+    .filter(
+      (child) =>
+        child.mimeType === "application/vnd.google-apps.folder" &&
+        child.name.startsWith(BACKUP_FOLDER_PREFIX)
+    )
+    .sort((left, right) => right.name.localeCompare(left.name));
+
+  const results: BackupSummary[] = [];
+
+  for (const folder of folders) {
+    const manifest = await loadBackupManifest(folder.id, drive);
+    if (!manifest) {
+      continue;
+    }
+
+    results.push({
+      backupId: manifest.backupId,
+      status: manifest.status,
+      completedAt: manifest.completedAt ?? null,
+      driveFolderUrl: manifest.driveFolderUrl,
+      tablesExported: manifest.totals.tablesExported,
+      filesExported: manifest.totals.filesExported,
+    });
+
+    if (results.length >= limit) {
+      break;
+    }
+  }
+
+  return results;
 }
 
 async function resolveBackupFolder(

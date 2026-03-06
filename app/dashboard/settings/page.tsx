@@ -10,6 +10,7 @@ import { Database } from '@/lib/database.types'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useLanguage, useTranslation } from '../../contexts/LanguageContext'
 import { getUserProfileData, updateUserProfile } from '@/lib/actions/admin-settings'
+import type { BackupSummary } from '@/lib/backup/types'
 import type { SetupWizardState } from '@/lib/setup/types'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -91,6 +92,32 @@ export default function SettingsPage() {
     } | null
     error: string | null
   }>({ status: 'idle', lastResult: null, error: null })
+  const [availableBackups, setAvailableBackups] = useState<BackupSummary[]>([])
+  const [backupListState, setBackupListState] = useState<{
+    status: 'idle' | 'running' | 'success' | 'error'
+    error: string | null
+  }>({ status: 'idle', error: null })
+  const [selectedBackupId, setSelectedBackupId] = useState<string>('')
+  const [restoreOptions, setRestoreOptions] = useState({
+    restoreDatabase: true,
+    restoreStorage: true
+  })
+  const [restoreState, setRestoreState] = useState<{
+    status: 'idle' | 'running' | 'success' | 'error'
+    lastResult: {
+      backupId: string
+      mode: 'dry-run' | 'apply'
+      validatedArtifacts: number
+      restoredTables: number
+      restoredFiles: number
+    } | null
+    error: string | null
+  }>({ status: 'idle', lastResult: null, error: null })
+  const [restoreModal, setRestoreModal] = useState<{
+    open: boolean
+    status: 'idle' | 'running' | 'success' | 'error'
+    error: string | null
+  }>({ open: false, status: 'idle', error: null })
   const [clearModal, setClearModal] = useState<{
     open: boolean
     password: string
@@ -107,7 +134,14 @@ export default function SettingsPage() {
     fetchUserData()
     fetchVersion()
     fetchInstallationState()
+    fetchBackups()
   }, [])
+
+  useEffect(() => {
+    if (!selectedBackupId && availableBackups.length > 0) {
+      setSelectedBackupId(availableBackups[0].backupId)
+    }
+  }, [availableBackups, selectedBackupId])
 
   const fetchVersion = async () => {
     try {
@@ -159,6 +193,19 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error('Error fetching installation state:', error)
+    }
+  }
+
+  const fetchBackups = async () => {
+    setBackupListState({ status: 'running', error: null })
+    try {
+      const response = await fetch('/api/admin/backup/restore', { credentials: 'include' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Falha ao carregar backups')
+      setAvailableBackups(data.backups || [])
+      setBackupListState({ status: 'success', error: null })
+    } catch (error: any) {
+      setBackupListState({ status: 'error', error: error.message })
     }
   }
 
@@ -292,8 +339,59 @@ export default function SettingsPage() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Falha ao executar backup')
       setBackupState({ status: 'success', lastResult: data, error: null })
+      await fetchBackups()
     } catch (error: any) {
       setBackupState({ status: 'error', lastResult: null, error: error.message })
+    }
+  }
+
+  const handleBackupValidation = async () => {
+    if (!selectedBackupId) return
+
+    setRestoreState({ status: 'running', lastResult: null, error: null })
+    try {
+      const response = await fetch('/api/admin/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          backupId: selectedBackupId,
+          apply: false,
+          restoreDatabase: restoreOptions.restoreDatabase,
+          restoreStorage: restoreOptions.restoreStorage,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Falha ao validar backup')
+      setRestoreState({ status: 'success', lastResult: data, error: null })
+    } catch (error: any) {
+      setRestoreState({ status: 'error', lastResult: null, error: error.message })
+    }
+  }
+
+  const handleBackupRestore = async () => {
+    if (!selectedBackupId) return
+
+    setRestoreModal(prev => ({ ...prev, status: 'running', error: null }))
+    try {
+      const response = await fetch('/api/admin/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          backupId: selectedBackupId,
+          apply: true,
+          restoreDatabase: restoreOptions.restoreDatabase,
+          restoreStorage: restoreOptions.restoreStorage,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Falha ao restaurar backup')
+      setRestoreState({ status: 'success', lastResult: data, error: null })
+      setRestoreModal({ open: false, status: 'success', error: null })
+    } catch (error: any) {
+      setRestoreModal({ open: true, status: 'error', error: error.message })
+      setRestoreState({ status: 'error', lastResult: null, error: error.message })
     }
   }
 
@@ -735,7 +833,7 @@ export default function SettingsPage() {
           <div className="space-y-6">
             <p className="text-gold-300 text-sm">
               Exporta todos os dados dos alunos (matrículas, progresso, notas, certificados, etc.)
-              como JSON para uma pasta datada no Google Drive.
+              em artefatos criptografados para uma pasta datada no Google Drive.
             </p>
 
             {/* Status feedback */}
@@ -782,6 +880,151 @@ export default function SettingsPage() {
               >
                 {backupState.status === 'running' ? 'Executando backup...' : 'Executar Backup Agora'}
               </Button>
+            </div>
+
+            <div className="rounded-lg border border-navy-600 p-4 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-gold-200 font-medium">Restauração pela interface</p>
+                  <p className="text-gold-400 text-sm">
+                    Primeiro valide o backup. Depois aplique a restauração real.
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={fetchBackups}
+                  disabled={backupListState.status === 'running'}
+                  icon={backupListState.status === 'running'
+                    ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
+                    : <ExternalLink className="w-4 h-4 flex-shrink-0" />
+                  }
+                >
+                  {backupListState.status === 'running' ? 'Atualizando...' : 'Atualizar Lista'}
+                </Button>
+              </div>
+
+              {backupListState.status === 'error' && backupListState.error && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                  {backupListState.error}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gold-200 mb-2">
+                  Backup disponível
+                </label>
+                <select
+                  value={selectedBackupId}
+                  onChange={(e) => setSelectedBackupId(e.target.value)}
+                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                >
+                  {availableBackups.length === 0 && (
+                    <option value="">Nenhum backup encontrado</option>
+                  )}
+                  {availableBackups.map(backup => (
+                    <option key={backup.backupId} value={backup.backupId}>
+                      {backup.backupId} • {backup.status} • {backup.completedAt ? new Date(backup.completedAt).toLocaleString('pt-BR') : 'sem conclusão'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedBackupId && (
+                <div className="rounded-lg bg-navy-900/30 p-4 text-sm text-gold-300 space-y-1">
+                  {availableBackups
+                    .filter(backup => backup.backupId === selectedBackupId)
+                    .map(backup => (
+                      <div key={backup.backupId}>
+                        <p>Status: <span className="text-gold-100">{backup.status}</span></p>
+                        <p>Tabelas: <span className="text-gold-100">{backup.tablesExported}</span></p>
+                        <p>Arquivos: <span className="text-gold-100">{backup.filesExported}</span></p>
+                        <a
+                          href={backup.driveFolderUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-gold hover:underline mt-1"
+                        >
+                          Abrir pasta no Drive <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="flex items-center justify-between p-4 bg-navy-900/30 rounded-lg cursor-pointer hover:bg-navy-700/30">
+                  <div>
+                    <p className="text-gold-200 font-medium">Restaurar banco</p>
+                    <p className="text-gold-400 text-sm">Tabelas acadêmicas e perfis.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={restoreOptions.restoreDatabase}
+                    onChange={(e) => setRestoreOptions(prev => ({ ...prev, restoreDatabase: e.target.checked }))}
+                    className="w-4 h-4 text-gold-500 bg-navy-900 border-navy-600 rounded focus:ring-gold-500"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-4 bg-navy-900/30 rounded-lg cursor-pointer hover:bg-navy-700/30">
+                  <div>
+                    <p className="text-gold-200 font-medium">Restaurar arquivos</p>
+                    <p className="text-gold-400 text-sm">Buckets `certificados` e `avatars`.</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={restoreOptions.restoreStorage}
+                    onChange={(e) => setRestoreOptions(prev => ({ ...prev, restoreStorage: e.target.checked }))}
+                    className="w-4 h-4 text-gold-500 bg-navy-900 border-navy-600 rounded focus:ring-gold-500"
+                  />
+                </label>
+              </div>
+
+              {restoreState.status === 'success' && restoreState.lastResult && (
+                <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-300 space-y-1">
+                  <p>Backup: {restoreState.lastResult.backupId}</p>
+                  <p>Modo: {restoreState.lastResult.mode === 'dry-run' ? 'validação' : 'restauração real'}</p>
+                  <p>Artefatos validados: {restoreState.lastResult.validatedArtifacts}</p>
+                  <p>Tabelas restauradas: {restoreState.lastResult.restoredTables}</p>
+                  <p>Arquivos restaurados: {restoreState.lastResult.restoredFiles}</p>
+                </div>
+              )}
+
+              {restoreState.status === 'error' && restoreState.error && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                  {restoreState.error}
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={handleBackupValidation}
+                  disabled={
+                    !selectedBackupId ||
+                    restoreState.status === 'running' ||
+                    (!restoreOptions.restoreDatabase && !restoreOptions.restoreStorage)
+                  }
+                  icon={restoreState.status === 'running'
+                    ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
+                    : <Check className="w-4 h-4 flex-shrink-0" />
+                  }
+                >
+                  {restoreState.status === 'running' ? 'Validando...' : 'Validar Backup'}
+                </Button>
+
+                <Button
+                  variant="danger"
+                  onClick={() => setRestoreModal({ open: true, status: 'idle', error: null })}
+                  disabled={
+                    !selectedBackupId ||
+                    !(restoreState.lastResult?.backupId === selectedBackupId && restoreState.lastResult.mode === 'dry-run') ||
+                    (!restoreOptions.restoreDatabase && !restoreOptions.restoreStorage)
+                  }
+                  icon={<AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+                >
+                  Restaurar Backup
+                </Button>
+              </div>
             </div>
 
             <div className="p-4 bg-navy-900/30 rounded-lg space-y-1 text-sm text-gold-400">
@@ -888,6 +1131,58 @@ export default function SettingsPage() {
             </div>
           </div>
         </Card>
+      )}
+
+      {/* Restore confirmation modal */}
+      {restoreModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-navy-800 border border-red-500/30 rounded-xl p-6 w-full max-w-lg mx-4 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-red-400">
+              <AlertTriangle className="w-6 h-6 flex-shrink-0" />
+              <h2 className="text-lg font-semibold">Confirmar restauração</h2>
+            </div>
+
+            <div className="text-sm text-gold-300 space-y-2">
+              <p>
+                Você vai aplicar o backup <span className="text-gold-100 font-medium">{selectedBackupId}</span>.
+              </p>
+              <p>Use isso apenas em ambiente isolado ou após validar impacto no banco atual.</p>
+            </div>
+
+            <div className="rounded-lg bg-navy-900/40 p-4 text-sm text-gold-300 space-y-1">
+              <p>Banco: <span className="text-gold-100">{restoreOptions.restoreDatabase ? 'sim' : 'não'}</span></p>
+              <p>Arquivos: <span className="text-gold-100">{restoreOptions.restoreStorage ? 'sim' : 'não'}</span></p>
+            </div>
+
+            {restoreModal.error && (
+              <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                <X className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>{restoreModal.error}</span>
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end pt-1">
+              <button
+                onClick={() => setRestoreModal({ open: false, status: 'idle', error: null })}
+                disabled={restoreModal.status === 'running'}
+                className="px-4 py-2 text-gold-300 hover:text-gold-100 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <Button
+                variant="danger"
+                onClick={handleBackupRestore}
+                disabled={restoreModal.status === 'running'}
+                icon={restoreModal.status === 'running'
+                  ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
+                  : <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                }
+              >
+                {restoreModal.status === 'running' ? 'Restaurando...' : 'Confirmar Restauração'}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Clear data confirmation modal */}

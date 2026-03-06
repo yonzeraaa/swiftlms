@@ -120,3 +120,12 @@ export interface RestoreResult {
   restoredTables: number;
   restoredFiles: number;
 }
+
+export interface BackupSummary {
+  backupId: string;
+  status: BackupStatus;
+  completedAt: string | null;
+  driveFolderUrl: string;
+  tablesExported: number;
+  filesExported: number;
+}
