@@ -19,13 +19,40 @@ export interface DriveUploadResult {
   webViewLink: string;
 }
 
-export function createDriveClient(credentialsJson?: string): drive_v3.Drive {
-  const credentials = JSON.parse(credentialsJson || requireEnv("GOOGLE_SERVICE_ACCOUNT_KEY"));
+export type DriveAuthConfig =
+  | {
+      type: "oauth";
+      clientId: string;
+      clientSecret: string;
+      refreshToken: string;
+    }
+  | {
+      type: "service_account";
+      credentialsJson: string;
+    };
+
+export function createDriveClient(authConfig?: DriveAuthConfig): drive_v3.Drive {
+  if (!authConfig) {
+    const credentials = JSON.parse(requireEnv("GOOGLE_SERVICE_ACCOUNT_KEY"));
+    const auth = new google.auth.GoogleAuth({
+      credentials,
+      scopes: ["https://www.googleapis.com/auth/drive"],
+    });
+
+    return google.drive({ version: "v3", auth });
+  }
+
+  if (authConfig.type === "oauth") {
+    const auth = new google.auth.OAuth2(authConfig.clientId, authConfig.clientSecret);
+    auth.setCredentials({ refresh_token: authConfig.refreshToken });
+    return google.drive({ version: "v3", auth });
+  }
+
+  const credentials = JSON.parse(authConfig.credentialsJson);
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ["https://www.googleapis.com/auth/drive"],
   });
-
   return google.drive({ version: "v3", auth });
 }
 

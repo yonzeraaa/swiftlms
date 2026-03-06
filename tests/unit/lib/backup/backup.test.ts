@@ -10,8 +10,8 @@ function makeSupabase(listImpl: (folder: string) => any) {
   return {
     from: () => ({ select: async () => ({ data: [], error: null }) }),
     storage: {
-      from: (_bucket: string) => ({
-        list: (folder: string, _opts?: any) => listImpl(folder),
+      from: () => ({
+        list: (folder: string) => listImpl(folder),
       }),
     },
   } as any;
@@ -118,6 +118,8 @@ describe("createDriveClient", () => {
     delete process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
     const { createDriveClient } = await import("../../../../lib/backup/drive-client");
     expect(() => createDriveClient()).toThrow("GOOGLE_SERVICE_ACCOUNT_KEY");
-    process.env.GOOGLE_SERVICE_ACCOUNT_KEY = original;
+    if (original) {
+      process.env.GOOGLE_SERVICE_ACCOUNT_KEY = original;
+    }
   });
 });

@@ -26,7 +26,7 @@ import {
 
 export async function restoreBackup(options: RestoreOptions = {}): Promise<RestoreResult> {
   const config = await getBackupConfig();
-  const drive = createDriveClient(config.googleServiceAccountKey);
+  const drive = createDriveClient(config.driveAuth);
   const supabase = createAdminClient();
   const folder = await resolveBackupFolder(drive, config.parentFolderId, options.backupId);
 

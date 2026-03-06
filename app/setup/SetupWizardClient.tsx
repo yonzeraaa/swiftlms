@@ -38,9 +38,10 @@ export default function SetupWizardClient({ currentUserEmail }: Props) {
   const [integrationsForm, setIntegrationsForm] = useState({
     googleClientId: '',
     googleApiKey: '',
-    googleServiceAccountKey: '',
+    googleClientSecret: '',
     googleDriveBackupFolderId: '',
   })
+  const [isConnectingBackupDrive, setIsConnectingBackupDrive] = useState(false)
   const [activeStep, setActiveStep] = useState<StepId>('branding')
   const [validationChecks, setValidationChecks] = useState<SetupWizardState['validation'] | null>(null)
 
@@ -64,7 +65,7 @@ export default function SetupWizardClient({ currentUserEmail }: Props) {
       ...prev,
       googleClientId: state.publicSettings.googleClientId || '',
       googleApiKey: state.publicSettings.googleApiKey || '',
-      googleServiceAccountKey: '',
+      googleClientSecret: '',
       googleDriveBackupFolderId: '',
     }))
     setValidationChecks(state.validation)
@@ -72,6 +73,26 @@ export default function SetupWizardClient({ currentUserEmail }: Props) {
       setActiveStep('summary')
     }
   }, [state])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const backupDrive = params.get('backupDrive')
+    const callbackMessage = params.get('message')
+
+    if (backupDrive === 'connected') {
+      setMessage('Google Drive do backup conectado com sucesso.')
+      loadState()
+    }
+
+    if (backupDrive === 'error') {
+      setError(callbackMessage || 'Falha ao conectar o Google Drive do backup.')
+    }
+
+    if (backupDrive) {
+      const cleanUrl = `${window.location.pathname}`
+      window.history.replaceState({}, '', cleanUrl)
+    }
+  }, [])
 
   const secretConfigMap = useMemo(() => {
     const map = new Map<string, { isConfigured: boolean; maskedValue: string | null }>()
@@ -184,11 +205,18 @@ export default function SetupWizardClient({ currentUserEmail }: Props) {
     }
   }
 
+  async function connectBackupDrive() {
+    setIsConnectingBackupDrive(true)
+    setError(null)
+    setMessage(null)
+    window.location.href = '/api/setup/backup-drive/connect'
+  }
+
   function integrationsPayload() {
     return {
       googleClientId: integrationsForm.googleClientId,
       googleApiKey: integrationsForm.googleApiKey,
-      googleServiceAccountKey: integrationsForm.googleServiceAccountKey,
+      googleClientSecret: integrationsForm.googleClientSecret,
       googleDriveBackupFolderId: integrationsForm.googleDriveBackupFolderId,
     }
   }
@@ -326,15 +354,15 @@ export default function SetupWizardClient({ currentUserEmail }: Props) {
               <p className="mb-3 text-sm font-medium text-gold-200">Backup / Google Drive</p>
               <div className="grid gap-4">
                 <Field
-                  label="Google Service Account JSON"
-                  hint={secretConfigMap.get('backup.google_service_account_key')?.isConfigured ? 'Ja configurado. Preencha apenas se quiser substituir.' : undefined}
+                  label="Google Client Secret"
+                  hint={secretConfigMap.get('backup.google_client_secret')?.isConfigured ? 'Ja configurado. Preencha apenas se quiser substituir.' : undefined}
                 >
-                  <textarea
-                    rows={6}
-                    value={integrationsForm.googleServiceAccountKey}
-                    onChange={e => setIntegrationsForm(prev => ({ ...prev, googleServiceAccountKey: e.target.value }))}
+                  <input
+                    type="password"
+                    value={integrationsForm.googleClientSecret}
+                    onChange={e => setIntegrationsForm(prev => ({ ...prev, googleClientSecret: e.target.value }))}
                     className="w-full rounded-lg border border-navy-600 bg-navy-900/50 px-4 py-2 text-gold-100"
-                    placeholder={secretConfigMap.get('backup.google_service_account_key')?.maskedValue || ''}
+                    placeholder={secretConfigMap.get('backup.google_client_secret')?.maskedValue || ''}
                   />
                 </Field>
                 <Field
@@ -348,6 +376,40 @@ export default function SetupWizardClient({ currentUserEmail }: Props) {
                     placeholder={secretConfigMap.get('backup.google_drive_backup_folder_id')?.maskedValue || ''}
                   />
                 </Field>
+
+                <div className="rounded-lg border border-navy-600 bg-navy-900/40 p-4 space-y-3">
+                  <p className="text-sm font-medium text-gold-200">Conexao do backup</p>
+                  <p className="text-sm text-gold-300">
+                    O backup usa OAuth do seu usuario Google para gravar no seu Drive pessoal.
+                  </p>
+                  <p className="text-sm text-gold-300">
+                    Status: <span className="text-gold-100">
+                      {secretConfigMap.get('backup.google_refresh_token')?.isConfigured ? 'Conectado' : 'Nao conectado'}
+                    </span>
+                  </p>
+                  <Button
+                    variant="secondary"
+                    onClick={connectBackupDrive}
+                    disabled={
+                      isConnectingBackupDrive ||
+                      !state?.publicSettings.googleClientId ||
+                      !secretConfigMap.get('backup.google_client_secret')?.isConfigured ||
+                      !secretConfigMap.get('backup.google_drive_backup_folder_id')?.isConfigured
+                    }
+                    icon={isConnectingBackupDrive
+                      ? <Loader2 className="h-5 w-5 animate-spin" />
+                      : <ExternalLink className="h-5 w-5" />
+                    }
+                  >
+                    {secretConfigMap.get('backup.google_refresh_token')?.isConfigured ? 'Reconectar Google Drive' : 'Conectar Google Drive'}
+                  </Button>
+                  {(!secretConfigMap.get('backup.google_client_secret')?.isConfigured ||
+                    !secretConfigMap.get('backup.google_drive_backup_folder_id')?.isConfigured) && (
+                    <p className="text-xs text-gold-400">
+                      Salve Client Secret e pasta de backup antes de conectar.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

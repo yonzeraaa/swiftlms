@@ -50,7 +50,7 @@ interface UploadedArtifact {
 export async function runBackup(): Promise<BackupResult> {
   const config = await getBackupConfig();
   const supabase = createAdminClient();
-  const drive = createDriveClient(config.googleServiceAccountKey);
+  const drive = createDriveClient(config.driveAuth);
   const backupId = buildBackupId();
   const startedAt = new Date().toISOString();
 

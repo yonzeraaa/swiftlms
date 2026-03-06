@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
 import packageJson from "@/package.json";
-import { getSecret } from "@/lib/setup/service";
+import { getPublicSettings, getSecret } from "@/lib/setup/service";
+import type { DriveAuthConfig } from "./drive-client";
 import {
   BACKUP_MANIFEST_VERSION,
   STUDENT_STORAGE_BUCKETS,
@@ -12,7 +13,7 @@ export interface BackupConfig {
   appVersion: string;
   schemaVersion: string;
   manifestVersion: number;
-  googleServiceAccountKey: string;
+  driveAuth: DriveAuthConfig;
   parentFolderId: string;
   retentionDays: number;
   retentionMonths: number;
@@ -23,18 +24,31 @@ export interface BackupConfig {
 }
 
 export async function getBackupConfig(): Promise<BackupConfig> {
-  const googleServiceAccountKey =
-    (await getSecret("backup.google_service_account_key")) ||
-    requireEnv("GOOGLE_SERVICE_ACCOUNT_KEY");
+  const publicSettings = await getPublicSettings();
+  const googleClientSecret =
+    (await getSecret("backup.google_client_secret")) ||
+    process.env.GOOGLE_CLIENT_SECRET ||
+    null;
+  const googleRefreshToken =
+    (await getSecret("backup.google_refresh_token")) ||
+    process.env.GOOGLE_DRIVE_BACKUP_REFRESH_TOKEN ||
+    null;
+  const googleServiceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY || null;
   const parentFolderId =
     (await getSecret("backup.google_drive_backup_folder_id")) ||
     requireEnv("GOOGLE_DRIVE_BACKUP_FOLDER_ID");
+  const driveAuth = resolveDriveAuth({
+    googleClientId: publicSettings.googleClientId,
+    googleClientSecret,
+    googleRefreshToken,
+    googleServiceAccountKey,
+  });
 
   return {
     appVersion: packageJson.version ?? "0.0.0",
     schemaVersion: getSchemaVersion(),
     manifestVersion: BACKUP_MANIFEST_VERSION,
-    googleServiceAccountKey,
+    driveAuth,
     parentFolderId,
     retentionDays: getOptionalNumberEnv("BACKUP_RETENTION_DAYS", 35),
     retentionMonths: getOptionalNumberEnv("BACKUP_RETENTION_MONTHS", 12),
@@ -62,6 +76,38 @@ export function getBackupMasterKey(): Buffer {
   }
 
   return key;
+}
+
+function resolveDriveAuth({
+  googleClientId,
+  googleClientSecret,
+  googleRefreshToken,
+  googleServiceAccountKey,
+}: {
+  googleClientId: string;
+  googleClientSecret: string | null;
+  googleRefreshToken: string | null;
+  googleServiceAccountKey: string | null;
+}): DriveAuthConfig {
+  if (googleClientId && googleClientSecret && googleRefreshToken) {
+    return {
+      type: "oauth",
+      clientId: googleClientId,
+      clientSecret: googleClientSecret,
+      refreshToken: googleRefreshToken,
+    };
+  }
+
+  if (googleServiceAccountKey) {
+    return {
+      type: "service_account",
+      credentialsJson: googleServiceAccountKey,
+    };
+  }
+
+  throw new Error(
+    "Missing Google Drive backup auth. Configure OAuth no setup ou GOOGLE_SERVICE_ACCOUNT_KEY."
+  );
 }
 
 function getOptionalNumberEnv(name: string, fallback: number): number {

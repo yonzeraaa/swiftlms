@@ -25,7 +25,7 @@ const brandingSchema = z.object({
 const integrationsSchema = z.object({
   googleClientId: z.string().trim().min(10),
   googleApiKey: z.string().trim().min(10),
-  googleServiceAccountKey: z.string().trim(),
+  googleClientSecret: z.string().trim(),
   googleDriveBackupFolderId: z.string().trim(),
 });
 
@@ -40,7 +40,8 @@ const PUBLIC_SETTING_KEYS = {
 } as const;
 
 const SECRET_ENV_FALLBACK: Record<SecretKeyName, string> = {
-  "backup.google_service_account_key": "GOOGLE_SERVICE_ACCOUNT_KEY",
+  "backup.google_client_secret": "GOOGLE_CLIENT_SECRET",
+  "backup.google_refresh_token": "GOOGLE_DRIVE_BACKUP_REFRESH_TOKEN",
   "backup.google_drive_backup_folder_id": "GOOGLE_DRIVE_BACKUP_FOLDER_ID",
 };
 
@@ -124,13 +125,13 @@ export async function saveSetupStep(
 
   if (step === "integrations") {
     const data = integrationsSchema.parse(payload);
-    const existingServiceAccountKey = await getSecret("backup.google_service_account_key");
+    const existingClientSecret = await getSecret("backup.google_client_secret");
     const existingDriveFolderId = await getSecret("backup.google_drive_backup_folder_id");
-    const googleServiceAccountKey = data.googleServiceAccountKey || existingServiceAccountKey || "";
+    const googleClientSecret = data.googleClientSecret || existingClientSecret || "";
     const googleDriveBackupFolderId = data.googleDriveBackupFolderId || existingDriveFolderId || "";
 
-    if (!googleServiceAccountKey) {
-      throw new Error("Google Service Account JSON é obrigatório.");
+    if (!googleClientSecret) {
+      throw new Error("Google Client Secret é obrigatório.");
     }
     if (!googleDriveBackupFolderId) {
       throw new Error("Pasta de backup do Google Drive é obrigatória.");
@@ -138,8 +139,8 @@ export async function saveSetupStep(
 
     await setPublicSetting("googleClientId", data.googleClientId, userId);
     await setPublicSetting("googleApiKey", data.googleApiKey, userId);
-    if (data.googleServiceAccountKey) {
-      await setSecret("backup.google_service_account_key", googleServiceAccountKey, userId);
+    if (data.googleClientSecret) {
+      await setSecret("backup.google_client_secret", googleClientSecret, userId);
     }
     if (data.googleDriveBackupFolderId) {
       await setSecret("backup.google_drive_backup_folder_id", googleDriveBackupFolderId, userId);
@@ -251,7 +252,8 @@ export async function getSetupWizardState(): Promise<SetupWizardState> {
   }
 
   const secretStatus = ([
-    "backup.google_service_account_key",
+    "backup.google_client_secret",
+    "backup.google_refresh_token",
     "backup.google_drive_backup_folder_id",
   ] as SecretKeyName[]).map((secretKey) => {
     const row = (secrets || []).find(
@@ -278,7 +280,8 @@ export async function getSetupWizardState(): Promise<SetupWizardState> {
 
 export async function validateCurrentSetup(): Promise<SetupValidationResult> {
   const publicSettings = await getPublicSettings();
-  const serviceAccountKey = await getSecret("backup.google_service_account_key");
+  const googleClientSecret = await getSecret("backup.google_client_secret");
+  const googleRefreshToken = await getSecret("backup.google_refresh_token");
   const driveFolderId = await getSecret("backup.google_drive_backup_folder_id");
 
   const issues: string[] = [];
@@ -296,8 +299,11 @@ export async function validateCurrentSetup(): Promise<SetupValidationResult> {
   if (!publicSettings.googleApiKey) {
     issues.push("Google API Key é obrigatória.");
   }
-  if (!serviceAccountKey) {
-    issues.push("Credencial de Service Account do Google Drive é obrigatória.");
+  if (!googleClientSecret) {
+    issues.push("Google Client Secret é obrigatório para o backup.");
+  }
+  if (!googleRefreshToken) {
+    issues.push("Conexão OAuth do backup com Google Drive é obrigatória.");
   }
   if (!driveFolderId) {
     issues.push("Pasta de backup do Google Drive é obrigatória.");
@@ -316,15 +322,16 @@ export async function validateCurrentSetup(): Promise<SetupValidationResult> {
       : "Google Client ID/API Key pendentes.",
   });
 
-  if (serviceAccountKey && driveFolderId) {
+  if (publicSettings.googleClientId && googleClientSecret && googleRefreshToken && driveFolderId) {
     try {
-      await testDriveAccess(serviceAccountKey, driveFolderId);
-      await touchSecretValidation("backup.google_service_account_key");
+      await testDriveAccess(publicSettings.googleClientId, googleClientSecret, googleRefreshToken, driveFolderId);
+      await touchSecretValidation("backup.google_client_secret");
+      await touchSecretValidation("backup.google_refresh_token");
       await touchSecretValidation("backup.google_drive_backup_folder_id");
       checks.push({
         key: "google_drive_backup",
         status: "ok",
-        message: "Acesso ao Google Drive validado.",
+        message: "OAuth do backup e acesso ao Google Drive validados.",
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Falha ao validar Google Drive.";
@@ -339,7 +346,7 @@ export async function validateCurrentSetup(): Promise<SetupValidationResult> {
     checks.push({
       key: "google_drive_backup",
       status: "error",
-      message: "Configuração de backup no Drive pendente.",
+      message: "Configuração OAuth do backup no Drive pendente.",
     });
   }
 
@@ -353,6 +360,39 @@ export async function validateCurrentSetup(): Promise<SetupValidationResult> {
 export async function getInstitutionName(): Promise<string> {
   const settings = await getPublicSettings();
   return settings.institutionName || DEFAULT_PUBLIC_SETTINGS.institutionName;
+}
+
+export async function getBackupOAuthConnectConfig(userId: string, origin: string) {
+  await assertInstallerCanEdit(userId);
+  const settings = await getPublicSettings();
+  const clientSecret = await getSecret("backup.google_client_secret");
+  const folderId = await getSecret("backup.google_drive_backup_folder_id");
+
+  if (!settings.googleClientId) {
+    throw new Error("Google Client ID não configurado.");
+  }
+
+  if (!clientSecret) {
+    throw new Error("Google Client Secret não configurado.");
+  }
+
+  if (!folderId) {
+    throw new Error("Pasta de backup do Google Drive não configurada.");
+  }
+
+  return {
+    clientId: settings.googleClientId,
+    clientSecret,
+    redirectUri: `${origin}/api/setup/backup-drive/callback`,
+  };
+}
+
+export async function saveBackupRefreshToken(userId: string, refreshToken: string) {
+  await assertInstallerCanEdit(userId);
+  await setSecret("backup.google_refresh_token", refreshToken, userId);
+  await writeSetupAudit("backup_drive_connected", userId, {
+    connectedAt: new Date().toISOString(),
+  });
 }
 
 async function assertInstallerCanEdit(userId: string) {
@@ -506,12 +546,14 @@ function getSecretKey(name: SecretKeyName) {
   return name.split(".")[1];
 }
 
-async function testDriveAccess(credentialsJson: string, folderId: string) {
-  const credentials = JSON.parse(credentialsJson);
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/drive"],
-  });
+async function testDriveAccess(
+  clientId: string,
+  clientSecret: string,
+  refreshToken: string,
+  folderId: string
+) {
+  const auth = new google.auth.OAuth2(clientId, clientSecret);
+  auth.setCredentials({ refresh_token: refreshToken });
   const drive = google.drive({ version: "v3", auth });
 
   const response = await drive.files.get({

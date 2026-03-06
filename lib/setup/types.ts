@@ -8,7 +8,8 @@ export type SetupStepId =
   | "completed";
 
 export type SecretKeyName =
-  | "backup.google_service_account_key"
+  | "backup.google_client_secret"
+  | "backup.google_refresh_token"
   | "backup.google_drive_backup_folder_id";
 
 export interface PublicAppSettings {
@@ -59,7 +60,7 @@ export interface BrandingSetupPayload {
 export interface IntegrationsSetupPayload {
   googleClientId: string;
   googleApiKey: string;
-  googleServiceAccountKey: string;
+  googleClientSecret: string;
   googleDriveBackupFolderId: string;
 }
 
