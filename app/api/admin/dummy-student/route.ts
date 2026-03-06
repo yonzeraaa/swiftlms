@@ -44,25 +44,16 @@ export async function POST() {
     // 1. Criar ou reutilizar usuário dummy
     let dummyUserId: string
 
-    // Verificar se já existe
-    const { data: existingUser } = await adminClient.auth.admin.listUsers()
-    const dummyAuth = existingUser?.users?.find(u => u.email === DUMMY_EMAIL)
+    const { data: existingAuthUser } = await (adminClient as any)
+      .schema('auth')
+      .from('users')
+      .select('id, email')
+      .eq('email', DUMMY_EMAIL)
+      .maybeSingle()
 
-    if (dummyAuth) {
-      dummyUserId = dummyAuth.id
-      // Atualizar perfil existente
-      await adminClient
-        .from('profiles')
-        .upsert({
-          id: dummyUserId,
-          email: DUMMY_EMAIL,
-          full_name: DUMMY_NAME,
-          role: 'student',
-          status: 'active',
-          updated_at: now
-        })
+    if (existingAuthUser?.id) {
+      dummyUserId = existingAuthUser.id
     } else {
-      // Criar novo usuário
       const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
         email: DUMMY_EMAIL,
         password: DUMMY_PASSWORD,
@@ -71,23 +62,53 @@ export async function POST() {
       })
 
       if (createError || !newUser.user) {
-        throw new Error(createError?.message || 'Erro ao criar usuário dummy')
+        const { data: fallbackAuthUser } = await (adminClient as any)
+          .schema('auth')
+          .from('users')
+          .select('id, email')
+          .eq('email', DUMMY_EMAIL)
+          .maybeSingle()
+
+        if (fallbackAuthUser?.id) {
+          dummyUserId = fallbackAuthUser.id
+        } else {
+          throw new Error(createError?.message || 'Erro ao criar usuário dummy')
+        }
+      } else {
+        dummyUserId = newUser.user.id
       }
+    }
 
-      dummyUserId = newUser.user.id
-
-      // Criar perfil
-      await adminClient
-        .from('profiles')
-        .insert({
+    const { error: ensureAuthError } = await (adminClient as any).rpc('ensure_restore_auth_users', {
+      profiles_payload: [
+        {
           id: dummyUserId,
           email: DUMMY_EMAIL,
           full_name: DUMMY_NAME,
           role: 'student',
-          status: 'active',
-          created_at: now,
-          updated_at: now
-        })
+          phone: null
+        }
+      ]
+    })
+
+    if (ensureAuthError) {
+      throw new Error(ensureAuthError.message || 'Erro ao preparar auth do usuário dummy')
+    }
+
+    const { error: profileError } = await adminClient
+      .from('profiles')
+      .upsert({
+        id: dummyUserId,
+        email: DUMMY_EMAIL,
+        full_name: DUMMY_NAME,
+        role: 'student',
+        status: 'active',
+        created_at: now,
+        updated_at: now
+      })
+
+    if (profileError) {
+      throw new Error(profileError.message || 'Erro ao criar perfil do usuário dummy')
     }
 
     // 2. Buscar todos os cursos
@@ -117,7 +138,7 @@ export async function POST() {
 
     for (const course of courses) {
       // 3. Criar/atualizar enrollment
-      const { data: enrollment, error: enrollError } = await adminClient
+      const { error: enrollError } = await adminClient
         .from('enrollments')
         .upsert({
           user_id: dummyUserId,
