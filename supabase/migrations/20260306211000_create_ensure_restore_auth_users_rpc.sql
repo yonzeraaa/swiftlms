@@ -13,6 +13,7 @@ DECLARE
   profile_name text;
   profile_role text;
   profile_phone text;
+  conflicting_user_id uuid;
   created_users integer := 0;
   created_identities integer := 0;
   now_ts timestamptz := now();
@@ -36,6 +37,19 @@ BEGIN
     END IF;
 
     IF profile_email IS NULL THEN
+      profile_email := profile_id::text || '@restored.local';
+    END IF;
+
+    profile_email := lower(profile_email);
+
+    SELECT id
+    INTO conflicting_user_id
+    FROM auth.users
+    WHERE email = profile_email
+      AND id <> profile_id
+    LIMIT 1;
+
+    IF conflicting_user_id IS NOT NULL THEN
       profile_email := profile_id::text || '@restored.local';
     END IF;
 
@@ -93,8 +107,7 @@ BEGIN
         provider,
         created_at,
         updated_at,
-        last_sign_in_at,
-        email
+        last_sign_in_at
       )
       VALUES (
         profile_email,
@@ -111,9 +124,14 @@ BEGIN
         'email',
         now_ts,
         now_ts,
-        now_ts,
-        profile_email
-      );
+        now_ts
+      )
+      ON CONFLICT (provider_id, provider) DO UPDATE
+      SET
+        user_id = EXCLUDED.user_id,
+        identity_data = EXCLUDED.identity_data,
+        last_sign_in_at = EXCLUDED.last_sign_in_at,
+        updated_at = EXCLUDED.updated_at;
 
       created_identities := created_identities + 1;
     END IF;
