@@ -62,6 +62,10 @@ export async function restoreBackup(options: RestoreOptions = {}): Promise<Resto
         continue;
       }
 
+      if (table.tableName === "profiles") {
+        await ensureAuthUsersForProfiles(supabase, rows);
+      }
+
       await upsertRows(supabase, table.tableName, rows);
       restoredTables += 1;
     }
@@ -342,6 +346,36 @@ async function upsertRows(
     if (error) {
       throw new Error(`Failed to restore ${tableName}: ${error.message}`);
     }
+  }
+}
+
+async function ensureAuthUsersForProfiles(
+  supabase: SupabaseClient<any, any, any>,
+  rows: Record<string, unknown>[]
+) {
+  const profiles = rows
+    .map((row) => ({
+      id: typeof row.id === "string" ? row.id : null,
+      email: typeof row.email === "string" && row.email.trim().length > 0 ? row.email.trim() : null,
+      full_name:
+        typeof row.full_name === "string" && row.full_name.trim().length > 0
+          ? row.full_name.trim()
+          : null,
+      role: typeof row.role === "string" && row.role.trim().length > 0 ? row.role.trim() : null,
+      phone: typeof row.phone === "string" && row.phone.trim().length > 0 ? row.phone.trim() : null,
+    }))
+    .filter((profile): profile is { id: string; email: string | null; full_name: string | null; role: string | null; phone: string | null } => Boolean(profile.id));
+
+  if (profiles.length === 0) {
+    return;
+  }
+
+  const { error } = await (supabase as any).rpc("ensure_restore_auth_users", {
+    profiles_payload: profiles,
+  });
+
+  if (error) {
+    throw new Error(`Failed to prepare auth users for profiles: ${error.message}`);
   }
 }
 
