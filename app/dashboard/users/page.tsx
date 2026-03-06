@@ -6,7 +6,6 @@ import { Search, Filter, Plus, MoreVertical, Mail, UserPlus, Snowflake, Play, Ed
 import Card from '../../components/Card'
 import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
-import { Tables } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
 import UserCard from '../../components/UserCard'
 import ViewToggle from '../../components/ViewToggle'
@@ -40,9 +39,6 @@ type CourseModuleBasic = {
   order_index: number
   total_hours: number | null
 }
-
-type Course = Tables<'courses'>
-type CourseModule = Tables<'course_modules'>
 
 interface NewUserForm {
   email: string
@@ -1560,7 +1556,7 @@ export default function UsersPage() {
             {dummyResult ? (
               <div className="space-y-4">
                 <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-                  <p className="text-green-400 font-medium mb-2">Aluno criado/atualizado com sucesso!</p>
+                  <p className="text-green-400 font-medium mb-2">Aluno criado com sucesso!</p>
                   <p className="text-gold-300 text-sm">Use as credenciais abaixo para fazer login como o aluno demonstração.</p>
                 </div>
 
@@ -1652,7 +1648,7 @@ export default function UsersPage() {
             ) : (
               <div className="space-y-4">
                 <div className="bg-navy-900/50 rounded-lg p-4">
-                  <p className="text-gold-200 mb-3">Esta ação irá criar ou atualizar um aluno demonstração com:</p>
+                  <p className="text-gold-200 mb-3">Esta ação irá recriar um aluno demonstração do zero com:</p>
                   <ul className="text-gold-300 text-sm space-y-1 list-disc list-inside">
                     <li>Matrícula em todos os cursos com 100% de progresso</li>
                     <li>Todas as aulas marcadas como completas</li>
