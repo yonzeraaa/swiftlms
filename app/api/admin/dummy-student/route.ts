@@ -44,12 +44,7 @@ export async function POST() {
     // 1. Criar ou reutilizar usuário dummy
     let dummyUserId: string
 
-    const { data: existingAuthUser } = await (adminClient as any)
-      .schema('auth')
-      .from('users')
-      .select('id, email')
-      .eq('email', DUMMY_EMAIL)
-      .maybeSingle()
+    const existingAuthUser = await findAuthUserByEmail(adminClient, DUMMY_EMAIL)
 
     if (existingAuthUser?.id) {
       dummyUserId = existingAuthUser.id
@@ -62,12 +57,7 @@ export async function POST() {
       })
 
       if (createError || !newUser.user) {
-        const { data: fallbackAuthUser } = await (adminClient as any)
-          .schema('auth')
-          .from('users')
-          .select('id, email')
-          .eq('email', DUMMY_EMAIL)
-          .maybeSingle()
+        const fallbackAuthUser = await findAuthUserByEmail(adminClient, DUMMY_EMAIL)
 
         if (fallbackAuthUser?.id) {
           dummyUserId = fallbackAuthUser.id
@@ -448,5 +438,33 @@ export async function POST() {
     return NextResponse.json({
       error: error instanceof Error ? error.message : 'Erro desconhecido'
     }, { status: 500 })
+  }
+}
+
+async function findAuthUserByEmail(adminClient: ReturnType<typeof createAdminClient>, email: string) {
+  const normalizedEmail = email.trim().toLowerCase()
+  let page = 1
+
+  while (true) {
+    const { data, error } = await adminClient.auth.admin.listUsers({
+      page,
+      perPage: 1000
+    })
+
+    if (error) {
+      throw new Error(error.message || 'Erro ao listar usuários do auth')
+    }
+
+    const users = data?.users || []
+    const match = users.find(user => user.email?.trim().toLowerCase() === normalizedEmail)
+    if (match) {
+      return match
+    }
+
+    if (users.length < 1000) {
+      return null
+    }
+
+    page += 1
   }
 }
