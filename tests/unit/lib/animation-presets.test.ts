@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import type { TargetAndTransition, Variant } from 'framer-motion'
 import {
   transitions,
   fadeIn,
@@ -24,6 +25,14 @@ import {
   entranceWithDelay,
   parallaxSlow,
 } from '@/lib/animation-presets'
+
+function asTarget(variant: Variant | undefined): TargetAndTransition {
+  if (!variant || typeof variant === 'function') {
+    throw new Error('Expected a concrete Framer Motion target')
+  }
+
+  return variant
+}
 
 describe('animation-presets', () => {
   describe('transitions', () => {
@@ -80,7 +89,7 @@ describe('animation-presets', () => {
     })
 
     it('should use spring transition for scaleIn', () => {
-      expect(scaleIn.visible?.transition).toEqual(transitions.spring)
+      expect(asTarget(scaleIn.visible).transition).toEqual(transitions.spring)
     })
 
     it('should have scaleInBounce starting from scale 0', () => {
@@ -89,7 +98,7 @@ describe('animation-presets', () => {
     })
 
     it('should use bounce transition for scaleInBounce', () => {
-      expect(scaleInBounce.visible?.transition).toEqual(transitions.bounce)
+      expect(asTarget(scaleInBounce.visible).transition).toEqual(transitions.bounce)
     })
   })
 
@@ -108,8 +117,8 @@ describe('animation-presets', () => {
   describe('stagger animations', () => {
     it('should have staggerContainer with stagger config', () => {
       expect(staggerContainer.visible).toHaveProperty('transition')
-      expect(staggerContainer.visible?.transition).toHaveProperty('staggerChildren', 0.1)
-      expect(staggerContainer.visible?.transition).toHaveProperty('delayChildren', 0.1)
+      expect(asTarget(staggerContainer.visible).transition).toHaveProperty('staggerChildren', 0.1)
+      expect(asTarget(staggerContainer.visible).transition).toHaveProperty('delayChildren', 0.1)
     })
 
     it('should have staggerItem animation', () => {
@@ -143,9 +152,10 @@ describe('animation-presets', () => {
 
   describe('special animations', () => {
     it('should have shake with x movement array', () => {
-      expect(shake.shake).toHaveProperty('x')
-      expect(Array.isArray(shake.shake?.x)).toBe(true)
-      expect(shake.shake?.x).toHaveLength(6)
+      const shakeVariant = asTarget(shake.shake)
+      expect(shakeVariant).toHaveProperty('x')
+      expect(Array.isArray(shakeVariant.x)).toBe(true)
+      expect(shakeVariant.x).toHaveLength(6)
     })
 
     it('should have successCheck with pathLength', () => {
@@ -155,12 +165,12 @@ describe('animation-presets', () => {
 
     it('should have pulse with infinite repeat', () => {
       expect(pulse.pulse).toHaveProperty('scale')
-      expect(pulse.pulse?.transition).toHaveProperty('repeat', Infinity)
+      expect(asTarget(pulse.pulse).transition).toHaveProperty('repeat', Infinity)
     })
 
     it('should have rotate360 with infinite rotation', () => {
       expect(rotate360.rotate).toHaveProperty('rotate', 360)
-      expect(rotate360.rotate?.transition).toHaveProperty('repeat', Infinity)
+      expect(asTarget(rotate360.rotate).transition).toHaveProperty('repeat', Infinity)
     })
   })
 
@@ -195,7 +205,7 @@ describe('animation-presets', () => {
     })
 
     it('should use spring transition for modalContent', () => {
-      expect(modalContent.visible?.transition).toEqual(transitions.spring)
+      expect(asTarget(modalContent.visible).transition).toEqual(transitions.spring)
     })
   })
 
@@ -217,13 +227,13 @@ describe('animation-presets', () => {
 
       expect(delayed.hidden).toEqual({ opacity: 0, y: 20 })
       expect(delayed.visible).toHaveProperty('opacity', 1)
-      expect(delayed.visible?.transition).toHaveProperty('delay', 0.5)
+      expect(asTarget(delayed.visible).transition).toHaveProperty('delay', 0.5)
     })
 
     it('should maintain smooth transition properties in delayed entrance', () => {
       const delayed = entranceWithDelay(0.3)
 
-      expect(delayed.visible?.transition).toMatchObject({
+      expect(asTarget(delayed.visible).transition).toMatchObject({
         ...transitions.smooth,
         delay: 0.3,
       })
@@ -255,7 +265,7 @@ describe('animation-presets', () => {
       const slideAnimations = [slideInUp, slideInLeft]
 
       slideAnimations.forEach(anim => {
-        expect(anim.visible?.transition).toEqual(transitions.smooth)
+        expect(asTarget(anim.visible).transition).toEqual(transitions.smooth)
       })
     })
   })

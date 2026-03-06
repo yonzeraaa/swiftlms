@@ -5,6 +5,7 @@ import {
   backupAllBuckets,
 } from "../../../scripts/backup-storage";
 import * as fs from "fs";
+import * as path from "path";
 
 vi.mock("fs");
 
@@ -101,7 +102,7 @@ describe("downloadFile", () => {
     await downloadFile(supabase, "avatars", "user/avatar.jpg", "/tmp/backup");
 
     expect(fs.mkdirSync).toHaveBeenCalledWith(
-      expect.stringContaining("avatars/user"),
+      path.join("/tmp/backup", "storage", "avatars", "user"),
       { recursive: true }
     );
     expect(fs.writeFileSync).toHaveBeenCalledWith(

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/lib/database.types'
+import { randomUUID } from 'crypto'
+import type { Database, Json } from '@/lib/database.types'
 
 // Create admin client for testing
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -20,20 +21,46 @@ const supabase = hasSupabaseConfig
     })
   : null
 
+type JsonRecord = { [key: string]: Json | undefined }
+
+interface DeleteRpcResult extends JsonRecord {
+  success?: boolean
+  message?: string
+  error?: string
+}
+
+const runId = randomUUID().slice(0, 8)
+
+function expectJsonRecord(value: Json | null): JsonRecord {
+  expect(value).not.toBeNull()
+  expect(Array.isArray(value)).toBe(false)
+  expect(typeof value).toBe('object')
+
+  if (!value || Array.isArray(value) || typeof value !== 'object') {
+    throw new Error('Expected RPC to return a JSON object')
+  }
+
+  return value as JsonRecord
+}
+
 describeOrSkip('User Deletion RPCs', () => {
   let testUserId: string
   let testCourseId: string
   let testEnrollmentId: string
   let testLessonId: string
+  let testSubjectId: string
 
   beforeAll(async () => {
     if (!supabase) return
+    testUserId = randomUUID()
+
     // Create test user in profiles (without auth.users for simplicity)
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .insert({
+        id: testUserId,
         full_name: 'Test User for Deletion',
-        email: 'test-deletion@example.com',
+        email: `test-deletion-${runId}@example.com`,
         role: 'student',
         status: 'active'
       })
@@ -48,9 +75,13 @@ describeOrSkip('User Deletion RPCs', () => {
       .from('courses')
       .insert({
         title: 'Test Course for Deletion',
-        slug: 'test-deletion-course',
+        slug: `test-deletion-course-${runId}`,
         description: 'Test',
-        status: 'published',
+        summary: 'Test summary',
+        category: 'Test',
+        difficulty: 'beginner',
+        duration_hours: 1,
+        is_published: true,
         instructor_id: testUserId // User as instructor
       })
       .select()
@@ -64,6 +95,7 @@ describeOrSkip('User Deletion RPCs', () => {
       .from('course_modules')
       .insert({
         course_id: testCourseId,
+        code: `MOD${runId}`.toUpperCase(),
         title: 'Test Module',
         order_index: 1
       })
@@ -77,6 +109,7 @@ describeOrSkip('User Deletion RPCs', () => {
       .from('lessons')
       .insert({
         module_id: module.id,
+        content_type: 'text',
         title: 'Test Lesson',
         order_index: 1
       })
@@ -110,8 +143,9 @@ describeOrSkip('User Deletion RPCs', () => {
 
     await supabase.from('activity_logs').insert({
       user_id: testUserId,
-      activity_type: 'test',
-      description: 'Test activity'
+      action: 'test_activity',
+      entity_type: 'user',
+      entity_name: 'Test activity'
     })
 
     await supabase.from('course_reviews').insert({
@@ -126,12 +160,24 @@ describeOrSkip('User Deletion RPCs', () => {
       .from('subjects')
       .insert({
         name: 'Test Subject',
-        code: 'TST001'
+        code: `TST${runId}`.toUpperCase()
       })
       .select()
       .single()
 
     if (subjectError) throw subjectError
+    testSubjectId = subject.id
+
+    await supabase.from('module_subjects').insert({
+      module_id: module.id,
+      subject_id: subject.id,
+      order_index: 1
+    })
+
+    await supabase.from('subject_lessons').insert({
+      subject_id: subject.id,
+      lesson_id: testLessonId
+    })
 
     // Create test
     const { data: test, error: testError } = await supabase
@@ -141,6 +187,7 @@ describeOrSkip('User Deletion RPCs', () => {
         module_id: module.id,
         subject_id: subject.id,
         title: 'Test Exam',
+        google_drive_url: `https://docs.google.com/document/d/${randomUUID().replace(/-/g, '')}/edit`,
         max_attempts: 3,
         is_active: true
       })
@@ -154,15 +201,19 @@ describeOrSkip('User Deletion RPCs', () => {
       user_id: testUserId,
       enrollment_id: testEnrollmentId,
       test_id: test.id,
-      score: 85
+      attempt_number: 1,
+      score: 85,
+      submitted_at: new Date().toISOString()
     })
 
     // Create test grade
     await supabase.from('test_grades').insert({
       user_id: testUserId,
-      enrollment_id: testEnrollmentId,
       test_id: test.id,
-      grade: 85
+      course_id: testCourseId,
+      subject_id: subject.id,
+      best_score: 85,
+      total_attempts: 1
     })
   })
 
@@ -171,6 +222,9 @@ describeOrSkip('User Deletion RPCs', () => {
     // Cleanup: delete test data
     if (testCourseId) {
       await supabase.from('courses').delete().eq('id', testCourseId)
+    }
+    if (testSubjectId) {
+      await supabase.from('subjects').delete().eq('id', testSubjectId)
     }
   })
 
@@ -181,23 +235,23 @@ describeOrSkip('User Deletion RPCs', () => {
     })
 
     expect(error).toBeNull()
-    expect(data).toBeDefined()
-    expect(data).toHaveProperty('user_id', testUserId)
-    expect(data).toHaveProperty('total_records_to_delete')
-    expect(data).toHaveProperty('breakdown')
+    const preview = expectJsonRecord(data)
+    expect(preview).toHaveProperty('user_id', testUserId)
+    expect(preview).toHaveProperty('total_records_to_delete')
+    expect(preview).toHaveProperty('breakdown')
 
     // Verify counts
-    const breakdown = data.breakdown
-    expect(breakdown.lesson_progress).toBeGreaterThan(0)
-    expect(breakdown.test_attempts).toBeGreaterThan(0)
-    expect(breakdown.test_grades).toBeGreaterThan(0)
-    expect(breakdown.enrollments).toBeGreaterThan(0)
-    expect(breakdown.course_reviews).toBeGreaterThan(0)
-    expect(breakdown.activity_logs).toBeGreaterThan(0)
+    const breakdown = expectJsonRecord(preview.breakdown ?? null)
+    expect(Number(breakdown.lesson_progress ?? 0)).toBeGreaterThan(0)
+    expect(Number(breakdown.test_attempts ?? 0)).toBeGreaterThan(0)
+    expect(Number(breakdown.test_grades ?? 0)).toBeGreaterThan(0)
+    expect(Number(breakdown.enrollments ?? 0)).toBeGreaterThan(0)
+    expect(Number(breakdown.course_reviews ?? 0)).toBeGreaterThan(0)
+    expect(Number(breakdown.activity_logs ?? 0)).toBeGreaterThan(0)
 
     // Verify updates (user is instructor of course)
-    const updates = data.updates
-    expect(updates.courses_instructor_id_to_null).toBe(1)
+    const updates = expectJsonRecord(preview.updates ?? null)
+    expect(Number(updates.courses_instructor_id_to_null ?? 0)).toBe(1)
   })
 
   it('should return error for non-existent user in preview', async () => {
@@ -208,8 +262,8 @@ describeOrSkip('User Deletion RPCs', () => {
     })
 
     expect(error).toBeNull()
-    expect(data).toBeDefined()
-    expect(data).toHaveProperty('error', 'User not found')
+    const preview = expectJsonRecord(data)
+    expect(preview).toHaveProperty('error', 'User not found')
   })
 
   it('should delete user completely and all related data', async () => {
@@ -219,9 +273,9 @@ describeOrSkip('User Deletion RPCs', () => {
     })
 
     expect(error).toBeNull()
-    expect(data).toBeDefined()
-    expect(data.success).toBe(true)
-    expect(data.message).toBe('User and all related data deleted successfully')
+    const result = expectJsonRecord(data) as DeleteRpcResult
+    expect(result.success).toBe(true)
+    expect(result.message).toBe('User and all related data deleted successfully')
 
     // Verify user is deleted from profiles
     const { data: profile } = await supabase
@@ -275,6 +329,10 @@ describeOrSkip('User Deletion RPCs', () => {
       .eq('id', testCourseId)
       .single()
     expect(course).toBeDefined()
+    expect(course).not.toBeNull()
+    if (!course) {
+      throw new Error('Expected test course to remain after user deletion')
+    }
     expect(course.instructor_id).toBeNull()
   })
 
@@ -286,8 +344,8 @@ describeOrSkip('User Deletion RPCs', () => {
     })
 
     expect(error).toBeNull()
-    expect(data).toBeDefined()
-    expect(data.success).toBe(false)
-    expect(data.error).toBe('User not found')
+    const result = expectJsonRecord(data) as DeleteRpcResult
+    expect(result.success).toBe(false)
+    expect(result.error).toBe('User not found')
   })
 })

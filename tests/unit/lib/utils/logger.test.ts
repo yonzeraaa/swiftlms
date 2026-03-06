@@ -6,24 +6,22 @@ describe('SecureLogger', () => {
   let consoleInfoSpy: any
   let consoleWarnSpy: any
   let consoleErrorSpy: any
-  let originalEnv: string | undefined
 
   beforeEach(() => {
     consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {})
     consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {})
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    originalEnv = process.env.NODE_ENV
   })
 
   afterEach(() => {
     vi.restoreAllMocks()
-    process.env.NODE_ENV = originalEnv
+    vi.unstubAllEnvs()
   })
 
   describe('sanitization', () => {
     it('should redact password fields', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       logger.info('User data', { username: 'john', password: 'secret123' })
 
@@ -34,7 +32,7 @@ describe('SecureLogger', () => {
     })
 
     it('should mask email addresses', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       logger.info('User data', { email: 'john.doe@example.com' })
 
@@ -44,7 +42,7 @@ describe('SecureLogger', () => {
     })
 
     it('should mask tokens partially', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       logger.info('Auth data', { access_token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' })
 
@@ -56,7 +54,7 @@ describe('SecureLogger', () => {
     })
 
     it('should redact short tokens completely', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       logger.info('Auth data', { token: 'short' })
 
@@ -66,7 +64,7 @@ describe('SecureLogger', () => {
     })
 
     it('should redact all sensitive fields', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       const sensitiveData = {
         username: 'john',
@@ -92,7 +90,7 @@ describe('SecureLogger', () => {
     })
 
     it('should sanitize nested objects', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       logger.info('Nested data', {
         user: {
@@ -110,7 +108,7 @@ describe('SecureLogger', () => {
     })
 
     it('should sanitize arrays', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       logger.info('Array data', {
         users: [
@@ -130,7 +128,7 @@ describe('SecureLogger', () => {
 
   describe('log levels', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
     })
 
     it('should log debug messages in development', () => {
@@ -159,7 +157,7 @@ describe('SecureLogger', () => {
     })
 
     it('should always log error messages', () => {
-      process.env.NODE_ENV = 'production'
+      vi.stubEnv('NODE_ENV', 'production')
 
       const error = new Error('Test error')
       logger.error('Error occurred', error)
@@ -173,7 +171,7 @@ describe('SecureLogger', () => {
 
   describe('environment handling', () => {
     it('should log in development mode', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       logger.debug('Debug message')
       logger.info('Info message')
@@ -185,7 +183,7 @@ describe('SecureLogger', () => {
     })
 
     it('should allow forcing logs with forceProduction flag', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       logger.info('Forced message', null, { forceProduction: true })
 
@@ -195,7 +193,7 @@ describe('SecureLogger', () => {
 
   describe('context handling', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
     })
 
     it('should include context in log message', () => {
@@ -227,7 +225,7 @@ describe('SecureLogger', () => {
     })
 
     it('should sanitize non-Error error objects', () => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
 
       logger.error('Error message', { password: 'secret', message: 'Failed' })
 
@@ -240,7 +238,7 @@ describe('SecureLogger', () => {
 
   describe('data formatting', () => {
     beforeEach(() => {
-      process.env.NODE_ENV = 'development'
+      vi.stubEnv('NODE_ENV', 'development')
     })
 
     it('should format data as JSON', () => {

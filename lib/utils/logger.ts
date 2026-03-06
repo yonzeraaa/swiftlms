@@ -76,14 +76,12 @@ function sanitizeData(data: any): any {
  * Secure logger class
  */
 class SecureLogger {
-  private isDevelopment: boolean
-
-  constructor() {
-    this.isDevelopment = process.env.NODE_ENV !== 'production'
+  private isDevelopment(): boolean {
+    return process.env.NODE_ENV !== 'production'
   }
 
   private shouldLog(forceProduction?: boolean): boolean {
-    return this.isDevelopment || forceProduction === true
+    return this.isDevelopment() || forceProduction === true
   }
 
   private formatMessage(context: string | undefined, message: string, data?: any): string {
@@ -114,7 +112,7 @@ class SecureLogger {
       ? {
           message: error.message,
           name: error.name,
-          stack: this.isDevelopment ? error.stack : '[REDACTED]',
+          stack: this.isDevelopment() ? error.stack : '[REDACTED]',
         }
       : sanitizeData(error)
 
