@@ -79,7 +79,15 @@ export default function SettingsPage() {
   const [userId, setUserId] = useState<string>('')
   const [backupState, setBackupState] = useState<{
     status: 'idle' | 'running' | 'success' | 'error'
-    lastResult: { backupId: string; driveFolderUrl: string; tablesExported: number } | null
+    lastResult: {
+      backupId: string
+      status: string
+      driveFolderUrl: string
+      tablesExported: number
+      filesExported: number
+      bytesUploaded: number
+      completedAt: string
+    } | null
     error: string | null
   }>({ status: 'idle', lastResult: null, error: null })
   const [clearModal, setClearModal] = useState<{
@@ -234,7 +242,7 @@ export default function SettingsPage() {
       await new Promise(resolve => setTimeout(resolve, 1000))
       
       setMessage({ type: 'success', text: t('settings.title') + ' ' + t('settings.success') })
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: t('settings.error') + ' ' + t('settings.title').toLowerCase() })
     } finally {
       setSaving(false)
@@ -705,7 +713,11 @@ export default function SettingsPage() {
                   Backup concluído: {backupState.lastResult.backupId}
                 </div>
                 <div className="text-gold-300 text-sm">
+                  <p>Status: <span className="text-gold-100">{backupState.lastResult.status}</span></p>
                   <p>Tabelas exportadas: <span className="text-gold-100">{backupState.lastResult.tablesExported}</span></p>
+                  <p>Arquivos exportados: <span className="text-gold-100">{backupState.lastResult.filesExported}</span></p>
+                  <p>Bytes enviados: <span className="text-gold-100">{backupState.lastResult.bytesUploaded}</span></p>
+                  <p>Concluído em: <span className="text-gold-100">{new Date(backupState.lastResult.completedAt).toLocaleString('pt-BR')}</span></p>
                 </div>
                 <a
                   href={backupState.lastResult.driveFolderUrl}
@@ -741,11 +753,14 @@ export default function SettingsPage() {
 
             <div className="p-4 bg-navy-900/30 rounded-lg space-y-1 text-sm text-gold-400">
               <p className="font-medium text-gold-200">Sobre o backup automático (cron)</p>
-              <p>Configure o cron diário no servidor para rodar automaticamente às 02h:</p>
+              <p>O deploy agora usa Vercel Cron para backup diário e validação semanal do último backup.</p>
               <code className="block mt-2 text-xs bg-navy-900/60 p-2 rounded text-gold-300 font-mono">
-                0 2 * * * cd /home/y0n/swiftlms &amp;&amp; bash scripts/backup.sh
+                0 5 * * * → /api/admin/backup
               </code>
-              <p className="mt-2">O backup via cron executa o mesmo export de dados dos alunos.</p>
+              <code className="block mt-2 text-xs bg-navy-900/60 p-2 rounded text-gold-300 font-mono">
+                0 6 * * 0 → /api/admin/backup/validate
+              </code>
+              <p className="mt-2">As rotinas usam segredo dedicado via header Authorization.</p>
             </div>
 
             {/* Danger zone */}

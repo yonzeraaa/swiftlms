@@ -18,6 +18,16 @@
       "destination": "https://docs.google.com/:path*"
     }
   ],
+  "crons": [
+    {
+      "path": "/api/admin/backup",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/admin/backup/validate",
+      "schedule": "0 6 * * 0"
+    }
+  ],
   "git": {
     "deploymentEnabled": {
       "main": true,

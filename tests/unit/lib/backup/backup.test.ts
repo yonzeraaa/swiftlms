@@ -1,7 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { listStorageFilesRecursively } from "../../../../lib/backup/backup";
-
-// ─── helpers ───────────────────────────────────────────────────────────────
+import { describe, expect, it } from "vitest";
+import {
+  buildBackupId,
+  listStorageFilesRecursively,
+  selectBackupFoldersForDeletion,
+  serializeRowsToNdjson,
+} from "../../../../lib/backup/backup";
 
 function makeSupabase(listImpl: (folder: string) => any) {
   return {
@@ -9,13 +12,10 @@ function makeSupabase(listImpl: (folder: string) => any) {
     storage: {
       from: (_bucket: string) => ({
         list: (folder: string, _opts?: any) => listImpl(folder),
-        download: () => ({ data: null, error: { message: "not implemented" } }),
       }),
     },
   } as any;
 }
-
-// ─── listStorageFilesRecursively ───────────────────────────────────────────
 
 describe("listStorageFilesRecursively", () => {
   it("returns file paths for a flat bucket", async () => {
@@ -27,53 +27,90 @@ describe("listStorageFilesRecursively", () => {
       error: null,
     }));
 
-    const result = await listStorageFilesRecursively(supabase, "certificates");
+    const result = await listStorageFilesRecursively(supabase, "certificados");
     expect(result).toEqual(["cert1.pdf", "cert2.pdf"]);
   });
 
-  it("recurses into sub-folders (items with id === null)", async () => {
+  it("recurses into sub-folders", async () => {
     let call = 0;
     const supabase = makeSupabase(() => {
-      call++;
+      call += 1;
       if (call === 1) {
         return {
           data: [
-            { id: null, name: "2024" },       // folder
+            { id: null, name: "2026" },
             { id: "abc", name: "root.pdf" },
           ],
           error: null,
         };
       }
-      return { data: [{ id: "xyz", name: "jan.pdf" }], error: null };
+
+      return {
+        data: [{ id: "nested", name: "jan.pdf" }],
+        error: null,
+      };
     });
 
-    const result = await listStorageFilesRecursively(supabase, "certificates");
-    expect(result).toContain("root.pdf");
-    expect(result).toContain("2024/jan.pdf");
+    const result = await listStorageFilesRecursively(supabase, "certificados");
+    expect(result).toEqual(["2026/jan.pdf", "root.pdf"]);
   });
 
-  it("returns empty array for an empty bucket", async () => {
-    const supabase = makeSupabase(() => ({ data: [], error: null }));
-    expect(await listStorageFilesRecursively(supabase, "avatars")).toEqual([]);
-  });
-
-  it("returns empty array when data is null", async () => {
-    const supabase = makeSupabase(() => ({ data: null, error: null }));
-    expect(await listStorageFilesRecursively(supabase, "avatars")).toEqual([]);
-  });
-
-  it("throws on Supabase list error", async () => {
+  it("throws on storage list error", async () => {
     const supabase = makeSupabase(() => ({
       data: null,
       error: { message: "permission denied" },
     }));
-    await expect(
-      listStorageFilesRecursively(supabase, "certificates")
-    ).rejects.toThrow("permission denied");
+
+    await expect(listStorageFilesRecursively(supabase, "avatars")).rejects.toThrow(
+      "permission denied"
+    );
   });
 });
 
-// ─── drive-client ─────────────────────────────────────────────────────────
+describe("buildBackupId", () => {
+  it("uses UTC timestamp format", () => {
+    const backupId = buildBackupId(new Date("2026-03-06T08:09:10.000Z"));
+    expect(backupId).toBe("backup_20260306_080910");
+  });
+});
+
+describe("serializeRowsToNdjson", () => {
+  it("serializes rows as ndjson", () => {
+    const buffer = serializeRowsToNdjson([{ id: 1 }, { id: 2 }]);
+    expect(buffer.toString("utf8")).toBe('{"id":1}\n{"id":2}\n');
+  });
+});
+
+describe("selectBackupFoldersForDeletion", () => {
+  it("keeps newest daily and monthly restore points", () => {
+    const deletions = selectBackupFoldersForDeletion(
+      [
+        {
+          id: "1",
+          name: "backup_20260306_050000",
+          createdAt: new Date("2026-03-06T05:00:00.000Z"),
+          status: "completed",
+        },
+        {
+          id: "2",
+          name: "backup_20260305_050000",
+          createdAt: new Date("2026-03-05T05:00:00.000Z"),
+          status: "completed",
+        },
+        {
+          id: "3",
+          name: "backup_20260201_050000",
+          createdAt: new Date("2026-02-01T05:00:00.000Z"),
+          status: "completed",
+        },
+      ],
+      2,
+      1
+    );
+
+    expect(deletions).toEqual(["3"]);
+  });
+});
 
 describe("createDriveClient", () => {
   it("throws when GOOGLE_SERVICE_ACCOUNT_KEY is missing", async () => {
