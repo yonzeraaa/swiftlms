@@ -46,7 +46,6 @@ BEGIN
       email,
       encrypted_password,
       email_confirmed_at,
-      confirmed_at,
       raw_app_meta_data,
       raw_user_meta_data,
       created_at,
@@ -58,7 +57,6 @@ BEGIN
       'authenticated',
       profile_email,
       '$2a$10$4rsYx57AK8M8oZ7sA2fYgOyD0sNehJIKBNB1LsYpe3K5PAh8x6n4W',
-      now_ts,
       now_ts,
       jsonb_build_object(
         'provider', 'email',
