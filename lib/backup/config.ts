@@ -5,8 +5,8 @@ import { getPublicSettings, getSecret } from "@/lib/setup/service";
 import type { DriveAuthConfig } from "./drive-client";
 import {
   BACKUP_MANIFEST_VERSION,
-  STUDENT_STORAGE_BUCKETS,
-  STUDENT_TABLES,
+  BACKUP_STORAGE_BUCKETS,
+  BACKUP_TABLES,
 } from "./types";
 
 export interface BackupConfig {
@@ -54,8 +54,8 @@ export async function getBackupConfig(): Promise<BackupConfig> {
     retentionMonths: getOptionalNumberEnv("BACKUP_RETENTION_MONTHS", 12),
     masterKey: getBackupMasterKey(),
     cronSecret: process.env.BACKUP_CRON_SECRET || process.env.CRON_SECRET || null,
-    tables: STUDENT_TABLES,
-    storageBuckets: STUDENT_STORAGE_BUCKETS,
+    tables: BACKUP_TABLES,
+    storageBuckets: BACKUP_STORAGE_BUCKETS,
   };
 }
 

@@ -40,6 +40,7 @@ export async function restoreBackup(options: RestoreOptions = {}): Promise<Resto
   }
 
   const checksums = await loadChecksums(drive, folder.id);
+  assertManifestSupportsRestore(manifest, config.tables);
   const validation = await validateBackupArtifacts(drive, folder.id, manifest, checksums, config.masterKey);
 
   const shouldApply = options.apply === true;
@@ -393,4 +394,20 @@ export function parseRestoreArgs(argv: string[]) {
     restoreDatabase: !args.has("--skip-db"),
     restoreStorage: !args.has("--skip-storage"),
   } satisfies RestoreOptions;
+}
+
+function assertManifestSupportsRestore(
+  manifest: BackupManifest,
+  requiredTables: readonly string[]
+) {
+  const availableTables = new Set<string>(
+    manifest.database.tables.map((table) => table.tableName)
+  );
+  const missingTables = requiredTables.filter((table) => !availableTables.has(table));
+
+  if (missingTables.length > 0) {
+    throw new Error(
+      `Backup ${manifest.backupId} is incomplete for full restore. Missing tables: ${missingTables.join(", ")}`
+    );
+  }
 }

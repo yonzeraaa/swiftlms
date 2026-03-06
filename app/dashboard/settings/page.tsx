@@ -832,8 +832,8 @@ export default function SettingsPage() {
         <Card title="Backup para Google Drive">
           <div className="space-y-6">
             <p className="text-gold-300 text-sm">
-              Exporta todos os dados dos alunos (matrículas, progresso, notas, certificados, etc.)
-              em artefatos criptografados para uma pasta datada no Google Drive.
+              Exporta dados dos alunos, estrutura acadêmica, provas e templates em artefatos
+              criptografados para uma pasta datada no Google Drive.
             </p>
 
             {/* Status feedback */}

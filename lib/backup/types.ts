@@ -1,19 +1,41 @@
-export const STUDENT_TABLES = [
+export const BACKUP_TABLES = [
   "profiles",
+  "courses",
+  "subjects",
+  "course_modules",
+  "lessons",
+  "course_subjects",
+  "module_subjects",
+  "subject_lessons",
+  "tests",
+  "test_answer_keys",
   "enrollments",
   "enrollment_modules",
   "lesson_progress",
+  "course_reviews",
   "test_attempts",
   "test_grades",
+  "certificate_requirements",
+  "tcc_submissions",
   "certificates",
   "certificate_requests",
-  "tcc_submissions",
   "student_grade_overrides",
   "student_schedules",
+  "excel_templates",
+  "certificate_templates",
   "activity_logs",
 ] as const;
 
-export const STUDENT_STORAGE_BUCKETS = ["certificados", "avatars"] as const;
+export const BACKUP_STORAGE_BUCKETS = [
+  "avatars",
+  "certificados",
+  "certificate-templates",
+  "excel-templates",
+  "drive-imports",
+] as const;
+
+export const STUDENT_TABLES = BACKUP_TABLES;
+export const STUDENT_STORAGE_BUCKETS = BACKUP_STORAGE_BUCKETS;
 
 export const BACKUP_FOLDER_PREFIX = "backup_";
 export const BACKUP_DATABASE_DIR = "database";
@@ -22,8 +44,10 @@ export const BACKUP_MANIFEST_FILE = "manifest.json";
 export const BACKUP_CHECKSUMS_FILE = "checksums.json";
 export const BACKUP_MANIFEST_VERSION = 1;
 
-export type StudentTable = (typeof STUDENT_TABLES)[number];
-export type StudentStorageBucket = (typeof STUDENT_STORAGE_BUCKETS)[number];
+export type BackupTable = (typeof BACKUP_TABLES)[number];
+export type BackupStorageBucket = (typeof BACKUP_STORAGE_BUCKETS)[number];
+export type StudentTable = BackupTable;
+export type StudentStorageBucket = BackupStorageBucket;
 export type BackupStatus = "started" | "completed" | "failed";
 
 export interface BackupEncryptionMetadata {
@@ -32,7 +56,7 @@ export interface BackupEncryptionMetadata {
 }
 
 export interface BackupTableArtifact {
-  tableName: StudentTable;
+  tableName: BackupTable;
   artifactPath: string;
   rowCount: number;
   encryptedSizeBytes: number;
@@ -40,7 +64,7 @@ export interface BackupTableArtifact {
 }
 
 export interface BackupStorageArtifact {
-  bucketName: StudentStorageBucket;
+  bucketName: BackupStorageBucket;
   originalPath: string;
   artifactPath: string;
   contentType: string;
@@ -49,7 +73,7 @@ export interface BackupStorageArtifact {
 }
 
 export interface BackupStorageBucketManifest {
-  bucketName: StudentStorageBucket;
+  bucketName: BackupStorageBucket;
   fileCount: number;
   files: BackupStorageArtifact[];
 }
