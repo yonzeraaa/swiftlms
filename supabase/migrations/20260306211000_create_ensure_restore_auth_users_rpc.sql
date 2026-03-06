@@ -57,7 +57,7 @@ BEGIN
       'authenticated',
       'authenticated',
       profile_email,
-      crypt(gen_random_uuid()::text, gen_salt('bf')),
+      '$2a$10$4rsYx57AK8M8oZ7sA2fYgOyD0sNehJIKBNB1LsYpe3K5PAh8x6n4W',
       now_ts,
       now_ts,
       jsonb_build_object(
