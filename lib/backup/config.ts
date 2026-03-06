@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import packageJson from "@/package.json";
+import { getSecret } from "@/lib/setup/service";
 import {
   BACKUP_MANIFEST_VERSION,
   STUDENT_STORAGE_BUCKETS,
@@ -11,6 +12,7 @@ export interface BackupConfig {
   appVersion: string;
   schemaVersion: string;
   manifestVersion: number;
+  googleServiceAccountKey: string;
   parentFolderId: string;
   retentionDays: number;
   retentionMonths: number;
@@ -20,12 +22,20 @@ export interface BackupConfig {
   storageBuckets: readonly string[];
 }
 
-export function getBackupConfig(): BackupConfig {
+export async function getBackupConfig(): Promise<BackupConfig> {
+  const googleServiceAccountKey =
+    (await getSecret("backup.google_service_account_key")) ||
+    requireEnv("GOOGLE_SERVICE_ACCOUNT_KEY");
+  const parentFolderId =
+    (await getSecret("backup.google_drive_backup_folder_id")) ||
+    requireEnv("GOOGLE_DRIVE_BACKUP_FOLDER_ID");
+
   return {
     appVersion: packageJson.version ?? "0.0.0",
     schemaVersion: getSchemaVersion(),
     manifestVersion: BACKUP_MANIFEST_VERSION,
-    parentFolderId: requireEnv("GOOGLE_DRIVE_BACKUP_FOLDER_ID"),
+    googleServiceAccountKey,
+    parentFolderId,
     retentionDays: getOptionalNumberEnv("BACKUP_RETENTION_DAYS", 35),
     retentionMonths: getOptionalNumberEnv("BACKUP_RETENTION_MONTHS", 12),
     masterKey: getBackupMasterKey(),

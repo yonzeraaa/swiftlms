@@ -19,8 +19,8 @@ export interface DriveUploadResult {
   webViewLink: string;
 }
 
-export function createDriveClient(): drive_v3.Drive {
-  const credentials = JSON.parse(requireEnv("GOOGLE_SERVICE_ACCOUNT_KEY"));
+export function createDriveClient(credentialsJson?: string): drive_v3.Drive {
+  const credentials = JSON.parse(credentialsJson || requireEnv("GOOGLE_SERVICE_ACCOUNT_KEY"));
   const auth = new google.auth.GoogleAuth({
     credentials,
     scopes: ["https://www.googleapis.com/auth/drive"],

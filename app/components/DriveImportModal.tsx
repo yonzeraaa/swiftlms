@@ -76,6 +76,7 @@ export default function DriveImportModal({ isOpen, isMinimized = false, onClose,
   const [error, setError] = useState<string | null>(null)
   const [isCheckingToken, setIsCheckingToken] = useState(true)
   const [step, setStep] = useState<ImportStep>('link')
+  const [googleConfig, setGoogleConfig] = useState({ apiKey: '', clientId: '' })
 
   // Subject-only import mode states
   const [importMode, setImportMode] = useState<ImportMode>('full')
@@ -95,6 +96,28 @@ export default function DriveImportModal({ isOpen, isMinimized = false, onClose,
 
 useEffect(() => {
     if (!isOpen) return
+
+    const loadConfig = async () => {
+      try {
+        const response = await fetch('/api/public/app-config', { credentials: 'include' })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.error || 'Falha ao carregar configuracao publica')
+
+        setGoogleConfig({
+          apiKey: data.settings?.googleApiKey || '',
+          clientId: data.settings?.googleClientId || '',
+        })
+      } catch {
+        setGoogleConfig({ apiKey: '', clientId: '' })
+      }
+    }
+
+    loadConfig()
+  }, [isOpen])
+
+useEffect(() => {
+    if (!isOpen) return
+    if (!googleConfig.apiKey) return
 
     // Resetar flags de cancelamento ao reabrir o modal
     cancelledRef.current = false
@@ -116,7 +139,7 @@ useEffect(() => {
       script2.onload = () => {
         window.gapi?.load('client', () => {
           window.gapi.client.init({
-            apiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
+            apiKey: googleConfig.apiKey,
             discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
           })
         })
@@ -130,7 +153,7 @@ useEffect(() => {
 
     const cleanup = loadGoogleAPIs()
     return cleanup
-  }, [isOpen])
+  }, [googleConfig.apiKey, isOpen])
 
   useEffect(() => {
     if (!isOpen) return
@@ -433,7 +456,7 @@ useEffect(() => {
       return
     }
 
-    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
+    const clientId = googleConfig.clientId
 
     if (!clientId) {
       setError('CLIENT_ID não configurado')

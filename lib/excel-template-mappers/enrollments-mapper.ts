@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
+import { getInstitutionName } from '@/lib/setup/service'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
 export interface EnrollmentsReportData {
@@ -110,7 +111,7 @@ export async function fetchEnrollmentsData(dateRange?: {
     }
 
     return {
-      institution: process.env.NEXT_PUBLIC_INSTITUTION_NAME || 'IPETEC / UCP',
+      institution: await getInstitutionName(),
       period_start: format(new Date(start), 'dd/MM/yyyy'),
       period_end: format(new Date(end), 'dd/MM/yyyy'),
       enrollments: enrollmentsData,

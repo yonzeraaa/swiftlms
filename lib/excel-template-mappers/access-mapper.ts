@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { format } from 'date-fns'
+import { getInstitutionName } from '@/lib/setup/service'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
 export interface AccessReportData {
@@ -151,7 +152,7 @@ export async function fetchAccessData(): Promise<AccessReportData> {
     }
 
     return {
-      institution: process.env.NEXT_PUBLIC_INSTITUTION_NAME || 'IPETEC / UCP',
+      institution: await getInstitutionName(),
       report_date: format(new Date(), 'dd/MM/yyyy'),
       access_stats: accessStatsData,
     }

@@ -126,59 +126,6 @@ export async function middleware(request: NextRequest) {
   response.headers.delete('Server')
   response.headers.delete('Date')
 
-  // SECURITY FIX: Helper to reapply security headers after cookie operations
-  const reapplySecurityHeaders = (res: NextResponse) => {
-    // Security headers
-    res.headers.set('X-Content-Type-Options', 'nosniff')
-    res.headers.set('X-Frame-Options', 'DENY')
-    res.headers.set('X-XSS-Protection', '1; mode=block')
-    res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-    res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()')
-    res.headers.set('X-DNS-Prefetch-Control', 'off')
-    res.headers.set('X-Download-Options', 'noopen')
-    res.headers.set('X-Permitted-Cross-Domain-Policies', 'none')
-
-    // CSP
-    let cspToApply: string
-    if (isAPI) {
-      cspToApply = formatCSP(apiCSP)
-    } else if (isDevelopment) {
-      cspToApply = formatCSP(developmentCSP)
-    } else {
-      cspToApply = formatCSP(productionCSP)
-    }
-    res.headers.set('Content-Security-Policy', cspToApply)
-
-    // HSTS
-    res.headers.set(
-      'Strict-Transport-Security',
-      'max-age=63072000; includeSubDomains; preload'
-    )
-
-    // CORS for API routes
-    if (isAPI) {
-      const origin = request.headers.get('origin')
-      const allowedOrigins = isDevelopment
-        ? ['http://localhost:3000']
-        : process.env.NEXT_PUBLIC_APP_URL
-          ? [process.env.NEXT_PUBLIC_APP_URL]
-          : []
-
-      if (origin && allowedOrigins.includes(origin)) {
-        res.headers.set('Access-Control-Allow-Origin', origin)
-        res.headers.set('Access-Control-Allow-Credentials', 'true')
-        res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE')
-        res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-        res.headers.set('Access-Control-Max-Age', '3600')
-      }
-    }
-
-    // Remove fingerprinting headers
-    res.headers.delete('X-Powered-By')
-    res.headers.delete('Server')
-    res.headers.delete('Date')
-  }
-
   // Create Supabase server client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -318,7 +265,8 @@ export async function middleware(request: NextRequest) {
   // Redirect unauthenticated users from protected routes
   if (!session) {
     if (request.nextUrl.pathname.startsWith('/dashboard') || 
-        request.nextUrl.pathname.startsWith('/student-dashboard')) {
+        request.nextUrl.pathname.startsWith('/student-dashboard') ||
+        request.nextUrl.pathname.startsWith('/setup')) {
       const redirectUrl = request.nextUrl.clone()
       redirectUrl.pathname = '/'
       redirectUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
@@ -326,9 +274,50 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  if (session) {
+    const pathname = request.nextUrl.pathname
+    const { data: installation } = await (supabase as any)
+      .from('app_installations')
+      .select('is_setup_complete')
+      .eq('singleton', true)
+      .maybeSingle()
+
+    const isSetupComplete = installation?.is_setup_complete === true
+    const isSetupRoute = pathname.startsWith('/setup')
+    const isSetupApi = pathname.startsWith('/api/setup/')
+    const isAllowedApiDuringSetup =
+      pathname.startsWith('/api/auth/') ||
+      pathname.startsWith('/api/public/app-config') ||
+      isSetupApi
+
+    if (!isSetupComplete && !isSetupRoute && !(isAPI && isAllowedApiDuringSetup)) {
+      if (isAPI) {
+        return NextResponse.json(
+          { error: 'Setup inicial pendente' },
+          { status: 423 }
+        )
+      }
+
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = '/setup'
+      return NextResponse.redirect(redirectUrl)
+    }
+  }
+
   // Redirect authenticated users from login page to appropriate dashboard
   if (session && request.nextUrl.pathname === '/') {
     const redirectUrl = request.nextUrl.clone()
+
+    const { data: installation } = await (supabase as any)
+      .from('app_installations')
+      .select('is_setup_complete')
+      .eq('singleton', true)
+      .maybeSingle()
+
+    if (installation?.is_setup_complete !== true) {
+      redirectUrl.pathname = '/setup'
+      return NextResponse.redirect(redirectUrl)
+    }
     
     // Get user role from profiles table
     const { data: profile } = await supabase

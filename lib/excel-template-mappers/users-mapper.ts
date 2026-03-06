@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { Translators, Calculators, Formatters, Helpers } from './shared-utils'
+import { getInstitutionName } from '@/lib/setup/service'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
 export interface UserReportData {
@@ -101,7 +102,7 @@ export async function fetchUsersData(): Promise<UserReportData> {
     }
 
     return {
-      institution: Formatters.institution(),
+      institution: await getInstitutionName(),
       users: usersData,
     }
   } catch (error) {

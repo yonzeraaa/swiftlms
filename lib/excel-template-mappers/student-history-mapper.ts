@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { differenceInDays } from 'date-fns'
 import { Calculators, Formatters, Helpers } from './shared-utils'
+import { getInstitutionName } from '@/lib/setup/service'
 import type { ArrayMapping, TemplateMetadata } from '../excel-template-engine'
 
 export interface StudentHistoryData {
@@ -314,7 +315,7 @@ export async function fetchStudentHistoryData(userId: string, courseId?: string)
   return {
     course_name: Helpers.defaultValue(enrollment?.course?.title, 'Curso não especificado'),
     category: enrollment?.course?.category || 'PÓS-GRADUAÇÃO LATO SENSU',
-    institution: Formatters.institution(),
+    institution: await getInstitutionName(),
     enrollment_date: Formatters.date(enrollment?.enrolled_at) || '-',
     coordination: process.env.NEXT_PUBLIC_COORDINATION || 'A definir',
     student_name: Helpers.defaultValue(enrollment?.user?.full_name, 'Aluno'),

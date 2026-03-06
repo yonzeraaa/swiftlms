@@ -48,9 +48,9 @@ interface UploadedArtifact {
 }
 
 export async function runBackup(): Promise<BackupResult> {
-  const config = getBackupConfig();
+  const config = await getBackupConfig();
   const supabase = createAdminClient();
-  const drive = createDriveClient();
+  const drive = createDriveClient(config.googleServiceAccountKey);
   const backupId = buildBackupId();
   const startedAt = new Date().toISOString();
 
@@ -270,9 +270,10 @@ export function selectBackupFoldersForDeletion(
 }
 
 export async function loadBackupManifest(
-  folderId: string
+  folderId: string,
+  driveClient?: ReturnType<typeof createDriveClient>
 ): Promise<BackupManifest | null> {
-  const drive = createDriveClient();
+  const drive = driveClient || createDriveClient();
   const manifestFile = await findDriveChild(drive, folderId, BACKUP_MANIFEST_FILE);
   if (!manifestFile?.id) {
     return null;

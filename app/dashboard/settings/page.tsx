@@ -10,6 +10,7 @@ import { Database } from '@/lib/database.types'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useLanguage, useTranslation } from '../../contexts/LanguageContext'
 import { getUserProfileData, updateUserProfile } from '@/lib/actions/admin-settings'
+import type { SetupWizardState } from '@/lib/setup/types'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -96,10 +97,16 @@ export default function SettingsPage() {
     status: 'idle' | 'running' | 'success' | 'error'
     error: string | null
   }>({ open: false, password: '', status: 'idle', error: null })
+  const [installationState, setInstallationState] = useState<SetupWizardState | null>(null)
+  const [installationValidationState, setInstallationValidationState] = useState<{
+    status: 'idle' | 'running' | 'success' | 'error'
+    error: string | null
+  }>({ status: 'idle', error: null })
 
   useEffect(() => {
     fetchUserData()
     fetchVersion()
+    fetchInstallationState()
   }, [])
 
   const fetchVersion = async () => {
@@ -140,6 +147,18 @@ export default function SettingsPage() {
       console.error('Error fetching user data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchInstallationState = async () => {
+    try {
+      const response = await fetch('/api/setup/status', { credentials: 'include' })
+      const data = await response.json()
+      if (response.ok) {
+        setInstallationState(data.state)
+      }
+    } catch (error) {
+      console.error('Error fetching installation state:', error)
     }
   }
 
@@ -278,13 +297,27 @@ export default function SettingsPage() {
     }
   }
 
+  const handleInstallationValidation = async () => {
+    setInstallationValidationState({ status: 'running', error: null })
+    try {
+      const response = await fetch('/api/setup/validate', { credentials: 'include' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || 'Falha ao validar instalação')
+      await fetchInstallationState()
+      setInstallationValidationState({ status: 'success', error: null })
+    } catch (error: any) {
+      setInstallationValidationState({ status: 'error', error: error.message })
+    }
+  }
+
   const tabs = [
     { id: 'profile', label: t('settings.profile'), icon: User },
     { id: 'password', label: t('settings.password'), icon: Key },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
     { id: 'appearance', label: t('settings.appearance'), icon: Palette },
     { id: 'privacy', label: t('settings.privacy'), icon: Shield },
-    { id: 'backup', label: 'Backup', icon: HardDriveDownload }
+    { id: 'backup', label: 'Backup', icon: HardDriveDownload },
+    { id: 'installation', label: 'Instalação', icon: DatabaseIcon }
   ]
 
   if (loading) {
@@ -780,6 +813,78 @@ export default function SettingsPage() {
               >
                 Limpar Todos os Dados
               </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'installation' && (
+        <Card title="Configuração da Instalação">
+          <div className="space-y-6">
+            <div className="rounded-lg border border-navy-600 bg-navy-900/30 p-4 text-sm text-gold-300 space-y-2">
+              <p>Status: <span className="text-gold-100">{installationState?.installation.status || 'indisponível'}</span></p>
+              <p>Setup completo: <span className="text-gold-100">{installationState?.installation.isSetupComplete ? 'Sim' : 'Não'}</span></p>
+              <p>Etapa atual: <span className="text-gold-100">{installationState?.installation.currentStep || '-'}</span></p>
+              <p>Pendências: <span className="text-gold-100">{installationState?.validation.issues.length || 0}</span></p>
+            </div>
+
+            {installationState?.validation.checks?.length ? (
+              <div className="space-y-2">
+                {installationState.validation.checks.map(check => (
+                  <div
+                    key={check.key}
+                    className={`rounded-lg border p-3 text-sm ${
+                      check.status === 'ok'
+                        ? 'border-green-500/30 bg-green-500/10 text-green-300'
+                        : 'border-red-500/30 bg-red-500/10 text-red-300'
+                    }`}
+                  >
+                    {check.message}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {installationState?.validation.issues && installationState.validation.issues.length > 0 && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300 space-y-1">
+                {installationState.validation.issues.map(issue => (
+                  <p key={issue}>{issue}</p>
+                ))}
+              </div>
+            )}
+
+            {installationValidationState.status === 'error' && installationValidationState.error && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                {installationValidationState.error}
+              </div>
+            )}
+
+            {installationValidationState.status === 'success' && (
+              <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">
+                Integrações revalidadas.
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="secondary"
+                onClick={handleInstallationValidation}
+                disabled={installationValidationState.status === 'running'}
+                icon={installationValidationState.status === 'running'
+                  ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
+                  : <Check className="w-4 h-4 flex-shrink-0" />
+                }
+              >
+                {installationValidationState.status === 'running' ? 'Validando...' : 'Revalidar Integrações'}
+              </Button>
+
+              <a
+                href="/setup"
+                className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-navy-950 font-medium hover:bg-gold-300 transition-colors"
+              >
+                Abrir Setup
+                <ExternalLink className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </Card>

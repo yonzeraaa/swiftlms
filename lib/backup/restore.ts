@@ -25,12 +25,12 @@ import {
 } from "./types";
 
 export async function restoreBackup(options: RestoreOptions = {}): Promise<RestoreResult> {
-  const config = getBackupConfig();
-  const drive = createDriveClient();
+  const config = await getBackupConfig();
+  const drive = createDriveClient(config.googleServiceAccountKey);
   const supabase = createAdminClient();
-  const folder = await resolveBackupFolder(drive, options.backupId);
+  const folder = await resolveBackupFolder(drive, config.parentFolderId, options.backupId);
 
-  const manifest = await loadBackupManifest(folder.id);
+  const manifest = await loadBackupManifest(folder.id, drive);
   if (!manifest) {
     throw new Error(`manifest.json not found for ${folder.name}`);
   }
@@ -102,10 +102,10 @@ export async function validateLatestBackup(): Promise<RestoreResult> {
 
 async function resolveBackupFolder(
   drive: ReturnType<typeof createDriveClient>,
+  parentFolderId: string,
   requestedBackupId?: string
 ) {
-  const config = getBackupConfig();
-  const children = await listDriveChildren(drive, config.parentFolderId);
+  const children = await listDriveChildren(drive, parentFolderId);
   const folders = children
     .filter(
       (child) =>
@@ -123,7 +123,7 @@ async function resolveBackupFolder(
   }
 
   for (const folder of folders) {
-    const manifest = await loadBackupManifest(folder.id);
+    const manifest = await loadBackupManifest(folder.id, drive);
     if (manifest?.status === "completed") {
       return folder;
     }

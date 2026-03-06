@@ -143,7 +143,8 @@ export const Formatters = {
   },
 
   /**
-   * Formata nome de instituição (usa env var ou fallback)
+   * Fallback síncrono para legado.
+   * Use getInstitutionName() nos fluxos assíncronos novos.
    */
   institution: (): string => {
     return process.env.NEXT_PUBLIC_INSTITUTION_NAME || 'IPETEC / UCP'
