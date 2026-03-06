@@ -1046,8 +1046,8 @@ export default function SettingsPage() {
                 Zona de Perigo
               </div>
               <p className="text-gold-400 text-sm">
-                Remove permanentemente todos os dados dos alunos (matrículas, progresso, notas,
-                certificados, etc.). Esta ação não pode ser desfeita.
+                Remove banco operacional, arquivos e perfis não-admin. A instalação e os acessos
+                de administrador são preservados. Esta ação não pode ser desfeita.
               </p>
               <Button
                 variant="danger"
@@ -1195,14 +1195,14 @@ export default function SettingsPage() {
             </div>
 
             <p className="text-gold-300 text-sm">
-              Todos os dados dos alunos serão apagados permanentemente. Digite sua senha de
-              administrador para confirmar.
+              O sistema vai remover banco operacional, storage e usuários não-admin. Digite sua
+              senha de administrador para confirmar.
             </p>
 
             {clearModal.status === 'success' ? (
               <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400">
                 <Check className="w-5 h-5" />
-                Dados removidos com sucesso.
+                Limpeza completa concluída.
               </div>
             ) : (
               <>
