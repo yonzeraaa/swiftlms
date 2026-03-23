@@ -216,7 +216,7 @@ export default function CoursesPage() {
           onClick={() => setShowNewCourseModal(true)}
           style={{ padding: '1rem 3rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
         >
-          Novo Registro
+          Novo Curso
         </button>
       </div>
 
@@ -390,58 +390,72 @@ export default function CoursesPage() {
 
       {/* Modais (Mantendo a lógica mas garantindo alinhamento interno) */}
       {(showNewCourseModal || (showEditModal && selectedCourse)) && (
-        <div className="fixed inset-0 bg-[#1e130c]/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
-          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c] shadow-2xl p-10 md:p-16 max-h-[90vh] overflow-y-auto">
-            <div className="absolute top-6 left-6 w-12 h-12 text-[#1e130c]/10"><CornerBracket size={48} /></div>
-            <div className="absolute top-6 right-6 w-12 h-12 text-[#1e130c]/10 rotate-90"><CornerBracket size={48} /></div>
-            
-            <div className="flex justify-between items-center mb-10">
-              <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.5rem', color: INK, fontWeight: 700 }}>
-                {showNewCourseModal ? 'Novo Título' : 'Editar Registro'}
+        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
+          <div className="relative bg-[#faf6ee] w-full max-w-2xl p-8 md:p-10 shadow-2xl border border-[#1e130c]/20 my-8">
+            <div className="flex items-center justify-between mb-8 relative z-10">
+              <h2 className="font-[family-name:var(--font-playfair)] text-2xl md:text-3xl font-bold text-[#1e130c] border-b-2 border-[#8b6d22] pb-2 pr-8">
+                {showNewCourseModal ? 'Novo Curso' : 'Editar Curso'}
               </h2>
-              <button onClick={() => { setShowNewCourseModal(false); setShowEditModal(false); }} className="text-[#1e130c]/40 hover:text-[#1e130c] transition-colors"><X size={32} /></button>
+              <button
+                onClick={() => { setShowNewCourseModal(false); setShowEditModal(false); }}
+                className="text-[#8b6d22] hover:text-[#1e130c] transition-colors"
+                aria-label="Fechar"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); showNewCourseModal ? createCourse() : updateCourse(); }} className="space-y-8 font-[family-name:var(--font-lora)]">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <form onSubmit={(e) => { e.preventDefault(); showNewCourseModal ? createCourse() : updateCourse(); }} className="space-y-6 relative z-10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2">
-                  <label className="text-[0.7rem] font-bold uppercase text-muted tracking-[0.2em] block mb-2">Título Oficial</label>
+                  <label className="block font-[family-name:var(--font-playfair)] text-lg text-[#1e130c] mb-2">
+                    Título Oficial <span className="text-[#8b6d22]">*</span>
+                  </label>
                   <input
                     type="text"
+                    required
                     value={showNewCourseModal ? newCourseForm.title : editForm.title}
                     onChange={(e) => showNewCourseModal ? setNewCourseForm({...newCourseForm, title: e.target.value}) : setEditForm({...editForm, title: e.target.value})}
-                    style={{ width: '100%', padding: '1rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontSize: '1.1rem' }}
-                    required
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none"
+                    placeholder="Ex: Introdução à Engenharia"
                   />
                 </div>
                 <div>
-                  <label className="text-[0.7rem] font-bold uppercase text-muted tracking-[0.2em] block mb-2">Código</label>
+                  <label className="block font-[family-name:var(--font-playfair)] text-lg text-[#1e130c] mb-2">
+                    Código <span className="text-[#8b6d22]">*</span>
+                  </label>
                   <input
                     type="text"
+                    required
                     value={showNewCourseModal ? newCourseForm.code : editForm.code}
                     onChange={(e) => { const val = e.target.value.toUpperCase(); showNewCourseModal ? setNewCourseForm({...newCourseForm, code: val}) : setEditForm({...editForm, code: val}) }}
-                    style={{ width: '100%', padding: '1rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'monospace', fontSize: '1.1rem' }}
-                    required
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none font-mono"
+                    placeholder="Ex: ENG101"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[0.7rem] font-bold uppercase text-muted tracking-[0.2em] block mb-2">Resumo da Ementa</label>
+                <label className="block font-[family-name:var(--font-playfair)] text-lg text-[#1e130c] mb-2">
+                  Resumo da Ementa
+                </label>
                 <textarea
                   value={showNewCourseModal ? newCourseForm.summary : editForm.summary}
                   onChange={(e) => showNewCourseModal ? setNewCourseForm({...newCourseForm, summary: e.target.value}) : setEditForm({...editForm, summary: e.target.value})}
-                  style={{ width: '100%', padding: '1rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, minHeight: '100px', fontSize: '1rem' }}
+                  className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none min-h-[100px] resize-y"
+                  placeholder="Breve descrição do curso"
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-[0.7rem] font-bold uppercase text-muted tracking-[0.2em] block mb-2">Categoria</label>
+                  <label className="block font-[family-name:var(--font-playfair)] text-lg text-[#1e130c] mb-2">
+                    Categoria
+                  </label>
                   <select
                     value={showNewCourseModal ? newCourseForm.category : editForm.category}
                     onChange={(e) => showNewCourseModal ? setNewCourseForm({...newCourseForm, category: e.target.value}) : setEditForm({...editForm, category: e.target.value})}
-                    style={{ width: '100%', padding: '1rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontSize: '1rem' }}
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none"
                   >
                     <option value="engineering">Engenharia</option>
                     <option value="safety">Segurança</option>
@@ -450,31 +464,39 @@ export default function CoursesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[0.7rem] font-bold uppercase text-muted tracking-[0.2em] block mb-2">Carga Horária (h)</label>
+                  <label className="block font-[family-name:var(--font-playfair)] text-lg text-[#1e130c] mb-2">
+                    Carga Horária (h) <span className="text-[#8b6d22]">*</span>
+                  </label>
                   <input
                     type="number"
-                    value={showNewCourseModal ? newCourseForm.duration_hours : editForm.duration_hours}
-                    onChange={(e) => { const val = parseInt(e.target.value); showNewCourseModal ? setNewCourseForm({...newCourseForm, duration_hours: val}) : setEditForm({...editForm, duration_hours: val}) }}
-                    style={{ width: '100%', padding: '1rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontSize: '1rem' }}
                     required
+                    min="1"
+                    value={showNewCourseModal ? newCourseForm.duration_hours : editForm.duration_hours}
+                    onChange={(e) => { const val = parseInt(e.target.value) || 0; showNewCourseModal ? setNewCourseForm({...newCourseForm, duration_hours: val}) : setEditForm({...editForm, duration_hours: val}) }}
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-6 pt-10 border-t border-[#1e130c]/10">
+              <div className="flex gap-4 pt-8 border-t border-[#1e130c]/15">
                 <button
                   type="button"
                   onClick={() => { setShowNewCourseModal(false); setShowEditModal(false); }}
-                  style={{ padding: '1rem 2.5rem', background: 'none', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                  disabled={creating || updating}
+                  className="flex-1 py-3 px-4 border border-[#1e130c]/20 text-[#1e130c] hover:bg-[#1e130c]/5 transition-colors font-medium text-center"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={creating || updating}
-                  style={{ padding: '1rem 4rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                  className="flex-1 py-3 px-4 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-medium text-center flex items-center justify-center gap-2"
                 >
-                  {creating || updating ? 'Gravando...' : 'Confirmar Registro'}
+                  {(creating || updating) ? (
+                    <><Spinner size="sm" /> Gravando...</>
+                  ) : (
+                    'Salvar Curso'
+                  )}
                 </button>
               </div>
             </form>

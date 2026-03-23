@@ -1238,37 +1238,6 @@ export default function ReportsPage() {
       }
     })
 
-    // Aba de cursos por categoria
-    exporter.addDataSheet('Cursos por Categoria', {
-      title: t('reports.coursesByCategory'),
-      headers: [t('courses.category'), t('reports.quantity'), 'Percentual (%)'],
-      data: reportData.coursesPerCategory.map(item => [
-        item.category,
-        item.count,
-        `${Math.round((item.count / reportData.totalCourses) * 100)}%`
-      ]),
-      metadata: {
-        date: formatDate(new Date()),
-        user: 'Sistema SwiftEDU'
-      }
-    })
-
-    // Aba de top cursos
-    exporter.addDataSheet('Top 5 Cursos', {
-      title: t('reports.top5Courses'),
-      headers: ['Posição', t('courses.courseTitle'), t('reports.enrollments')],
-      data: reportData.topCourses.map((course, index) => [
-        `#${index + 1}`,
-        course.title,
-        course.enrollments
-      ]),
-      metadata: {
-        date: formatDate(new Date()),
-        period: `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`,
-        user: 'Sistema SwiftEDU'
-      }
-    })
-
     // Aba de matrículas por mês
     if (reportData.enrollmentsByMonth.length > 0) {
       exporter.addDataSheet('Matrículas por Mês', {
@@ -1974,111 +1943,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <ClassicRule style={{ width: '100%', marginBottom: '4rem', color: INK, opacity: 0.3 }} />
 
-      {/* ── Resumo de Dados ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
-
-        {/* Top Courses */}
-        <div className="flex flex-col">
-          <h2
-            style={{
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '2rem',
-              fontWeight: 600,
-              color: INK,
-              marginBottom: '2rem',
-              borderLeft: `4px solid ${ACCENT}`,
-              paddingLeft: '1.5rem'
-            }}
-          >
-            {t('reports.top5Courses')}
-          </h2>
-          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: MUTED, marginBottom: '2.5rem', paddingLeft: '2rem' }}>
-            {t('reports.byEnrollments')}
-          </p>
-
-          <div className="space-y-0">
-            {reportData?.topCourses.length ? reportData.topCourses.map((course, idx) => (
-              <div
-                key={idx}
-                className="py-5 transition-colors hover:bg-[#1e130c]/[0.02] px-2 flex justify-between items-center"
-                style={{ borderBottom: `1px dashed ${BORDER}` }}
-              >
-                <div className="flex items-center gap-4">
-                  <span style={{ fontFamily: 'var(--font-lora)', fontSize: '1.05rem', color: INK, fontWeight: 700 }}>{idx + 1}.</span>
-                  <span style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.25rem', color: INK, fontWeight: 600 }}>{course.title}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Users size={16} color={MUTED} />
-                  <span style={{ fontFamily: 'var(--font-lora)', fontSize: '1rem', color: INK, fontWeight: 600 }}>
-                    {formatCompactNumber(course.enrollments)}
-                  </span>
-                </div>
-              </div>
-            )) : (
-              <div className="py-20 text-center border border-dashed border-[#1e130c]/10">
-                <p style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>
-                  {t('reports.noCoursesInPeriod')}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Courses by Category */}
-        <div className="flex flex-col">
-          <h2
-            style={{
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '2rem',
-              fontWeight: 600,
-              color: INK,
-              marginBottom: '2rem',
-              borderLeft: `4px solid ${ACCENT}`,
-              paddingLeft: '1.5rem'
-            }}
-          >
-            {t('reports.coursesByCategory')}
-          </h2>
-
-          <div className="space-y-6 mt-2">
-            {reportData?.coursesPerCategory.length ? reportData.coursesPerCategory.map((cat, idx) => {
-              const percentage = Math.round((cat.count / (reportData?.totalCourses || 1)) * 100)
-              return (
-                <div key={idx} className="relative group">
-                  <div className="flex justify-between items-baseline mb-3">
-                    <span style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', color: INK, fontWeight: 600 }}>
-                      {cat.category}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.9rem', color: MUTED, fontStyle: 'italic', flexShrink: 0 }}>
-                      {cat.count} / {percentage}%
-                    </span>
-                  </div>
-
-                  {/* Régua de Graduação */}
-                  <div className="relative w-full h-[4px]" style={{ backgroundColor: 'rgba(30,19,12,0.05)' }}>
-                    <div
-                      className="absolute top-0 left-0 h-full transition-all duration-1000 ease-out"
-                      style={{
-                        width: `${percentage}%`,
-                        backgroundColor: ACCENT,
-                        boxShadow: '0 0 10px rgba(139,109,34,0.2)'
-                      }}
-                    />
-                  </div>
-                </div>
-              )
-            }) : (
-              <div className="py-20 text-center border border-dashed border-[#1e130c]/10">
-                <p style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>
-                  {t('reports.noCategoriesFound')}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* ── Modal de Seleção de Aluno e Curso para Histórico ── */}
       {showStudentHistoryModal && (
