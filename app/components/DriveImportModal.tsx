@@ -1130,15 +1130,15 @@ useEffect(() => {
         {/* Checking Token */}
         {isCheckingToken && (
           <div className="text-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-gold-400 mx-auto mb-3" />
-            <p className="text-gold-300 text-sm">Verificando autenticação...</p>
+            <Loader2 className="w-8 h-8 animate-spin text-[#8b6d22] mx-auto mb-3" />
+            <p className="text-[#7a6350] text-sm">Verificando autenticação...</p>
           </div>
         )}
 
         {/* Authentication */}
         {!isCheckingToken && !accessToken && (
           <div className="text-center py-8">
-            <p className="text-gold-300 mb-4">
+            <p className="text-[#1e130c] mb-4">
               Primeiro, autentique-se com sua conta Google
             </p>
             <Button
@@ -1235,7 +1235,7 @@ useEffect(() => {
             )}
 
             <div>
-              <label className="block text-gold-300 mb-2 text-sm font-medium">
+              <label className="block text-[#1e130c] mb-2 text-sm font-medium">
                 URL da pasta do Google Drive
               </label>
 
@@ -1261,45 +1261,45 @@ useEffect(() => {
 
               {/* Estrutura esperada - conditional based on mode */}
               {importMode === 'full' ? (
-                <div className="mb-3 p-3 bg-navy-700/50 border border-gold-500/20 rounded-lg">
-                  <p className="text-gold-300 text-xs font-medium mb-2">Estrutura esperada (Curso):</p>
-                  <div className="text-gold-400 text-xs space-y-1 font-mono">
+                <div className="mb-3 p-3 bg-[#faf6ee] border border-[#1e130c]/10 rounded-none">
+                  <p className="text-[#1e130c] text-xs font-medium mb-2 italic">Estrutura esperada (Curso):</p>
+                  <div className="text-[#7a6350] text-xs space-y-1 font-mono pl-2 border-l-2 border-[#1e130c]/10">
                     <div className="flex items-center gap-2">
-                      <Folder className="w-3 h-3 text-blue-400" />
+                      <Folder className="w-3 h-3 text-[#8b6d22]" />
                       <span>Módulos (pastas raiz)</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      <BookOpen className="w-3 h-3 text-purple-400" />
+                      <BookOpen className="w-3 h-3 text-[#1e130c]" />
                       <span>Disciplinas (subpastas)</span>
                     </div>
                     <div className="flex items-center gap-2 ml-8">
-                      <FileText className="w-3 h-3 text-[#1e130c] font-bold" />
+                      <FileText className="w-3 h-3 text-[#1e130c]" />
                       <span>Aulas (arquivos)</span>
                     </div>
                     <div className="flex items-center gap-2 ml-8">
-                      <GraduationCap className="w-3 h-3 text-orange-400" />
+                      <GraduationCap className="w-3 h-3 text-[#8b6d22]" />
                       <span>Testes (arquivos)</span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="mb-3 p-3 bg-navy-700/50 border border-gold-500/20 rounded-lg">
-                  <p className="text-gold-300 text-xs font-medium mb-2">Estrutura esperada (Disciplina):</p>
-                  <div className="text-gold-400 text-xs space-y-1 font-mono">
+                <div className="mb-3 p-3 bg-[#faf6ee] border border-[#1e130c]/10 rounded-none">
+                  <p className="text-[#1e130c] text-xs font-medium mb-2 italic">Estrutura esperada (Disciplina):</p>
+                  <div className="text-[#7a6350] text-xs space-y-1 font-mono pl-2 border-l-2 border-[#1e130c]/10">
                     <div className="flex items-center gap-2">
-                      <BookOpen className="w-3 h-3 text-purple-400" />
+                      <BookOpen className="w-3 h-3 text-[#1e130c]" />
                       <span>Pasta raiz = Disciplina</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      <FileText className="w-3 h-3 text-[#1e130c] font-bold" />
+                      <FileText className="w-3 h-3 text-[#1e130c]" />
                       <span>Aulas (arquivos)</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      <GraduationCap className="w-3 h-3 text-orange-400" />
+                      <GraduationCap className="w-3 h-3 text-[#8b6d22]" />
                       <span>Testes (arquivos)</span>
                     </div>
                   </div>
-                  <p className="text-gold-400/70 text-xs mt-2">
+                  <p className="text-[#7a6350] text-xs mt-2 italic">
                     A pasta será importada como disciplina no módulo selecionado
                   </p>
                 </div>
@@ -1309,8 +1309,8 @@ useEffect(() => {
                 type="text"
                 value={driveUrl}
                 onChange={(e) => setDriveUrl(e.target.value)}
-                placeholder="https://drive.google.com/drive/folders/..."
-                className="w-full px-4 py-2 bg-navy-700 border border-gold-500/30 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
+                placeholder="Ex: https://drive.google.com/drive/folders/..."
+                className="w-full px-3 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:border-[#8b6d22] transition-colors"
               />
             </div>
             <Button
@@ -1323,7 +1323,7 @@ useEffect(() => {
               {isListing ? 'Explorando pastas...' : 'Listar Itens'}
             </Button>
             {importMode === 'subject' && !selectedTargetModuleId && driveUrl && (
-              <p className="text-yellow-400 text-xs flex items-center gap-1">
+              <p className="text-[#7a6350] italic text-xs flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 Selecione um módulo de destino para continuar
               </p>
@@ -1365,33 +1365,33 @@ useEffect(() => {
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-navy-700/50 border border-gold-500/30 rounded-lg"
+                className="p-4 bg-[#faf6ee] border border-[#1e130c]/10 rounded-none shadow-sm"
               >
                 <div className="flex items-start gap-3">
-                  <BarChart3 className="w-5 h-5 text-gold-400 flex-shrink-0 mt-0.5" />
+                  <BarChart3 className="w-5 h-5 text-[#8b6d22] flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-gold-300 font-medium mb-3">Resumo da Importação</p>
+                    <p className="text-[#1e130c] font-medium mb-3">Resumo da Importação</p>
                     <div className="grid grid-cols-2 gap-3">
                       {importMode === 'full' && getSelectedItemStats().modules.total > 0 && (
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                          <span className="text-gold-200 text-sm">
+                          <div className="w-2 h-2 rounded-full bg-[#1e130c]/20"></div>
+                          <span className="text-[#1e130c] text-sm">
                             {getSelectedItemStats().modules.total} {getSelectedItemStats().modules.total === 1 ? 'Módulo' : 'Módulos'}
                           </span>
                         </div>
                       )}
                       {getSelectedItemStats().subjects.total > 0 && (
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-purple-400"></div>
-                          <span className="text-gold-200 text-sm">
+                          <div className="w-2 h-2 rounded-full bg-[#8b6d22]"></div>
+                          <span className="text-[#1e130c] text-sm">
                             {getSelectedItemStats().subjects.total} {getSelectedItemStats().subjects.total === 1 ? 'Disciplina' : 'Disciplinas'}
                           </span>
                         </div>
                       )}
                       {getSelectedItemStats().lessons.total > 0 && (
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#1e130c]/5"></div>
-                          <span className="text-gold-200 text-sm">
+                          <div className="w-2 h-2 rounded-full bg-[#7a6350]"></div>
+                          <span className="text-[#1e130c] text-sm">
                             {getSelectedItemStats().lessons.total} {getSelectedItemStats().lessons.total === 1 ? 'Aula' : 'Aulas'}
                           </span>
                         </div>
@@ -1480,7 +1480,7 @@ useEffect(() => {
                   />
                 </div>
                 {isPaused && (
-                  <p className="text-yellow-400 text-xs flex items-center gap-1">
+                  <p className="text-[#7a6350] italic text-xs flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
                     Importação pausada
                   </p>

@@ -3,6 +3,12 @@
 import { useEffect, useState } from 'react'
 import { TrendingUp, TrendingDown, Minus, Info, ArrowUp, ArrowDown } from 'lucide-react'
 
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.12)'
+
 interface MetricCardProps {
   title: string
   value: number | string
@@ -31,7 +37,6 @@ export default function MetricCard({
   trend,
   format = 'number',
   animate = true,
-  color = 'gold',
   size = 'md',
   loading = false,
   tooltip,
@@ -41,11 +46,14 @@ export default function MetricCard({
   const [displayValue, setDisplayValue] = useState(animate && typeof value === 'number' ? 0 : value)
   const [isHovered, setIsHovered] = useState(false)
 
-  // Animação de contagem para números
+  // Animação de contagem
   useEffect(() => {
-    if (!animate || typeof value !== 'number' || loading) return
+    if (!animate || typeof value !== 'number' || loading) {
+      setDisplayValue(value)
+      return
+    }
 
-    const duration = 1000 // 1 segundo
+    const duration = 1000
     const steps = 30
     const stepDuration = duration / steps
     const increment = value / steps
@@ -53,7 +61,7 @@ export default function MetricCard({
 
     const timer = setInterval(() => {
       currentStep++
-      if (currentStep === steps) {
+      if (currentStep >= steps) {
         setDisplayValue(value)
         clearInterval(timer)
       } else {
@@ -64,18 +72,11 @@ export default function MetricCard({
     return () => clearInterval(timer)
   }, [value, animate, loading])
 
-  // Formatar valor baseado no tipo
   const formatValue = (val: number | string) => {
     if (typeof val === 'string') return val
-
     switch (format) {
       case 'currency':
-        return new Intl.NumberFormat('pt-BR', {
-          style: 'currency',
-          currency: 'BRL',
-          minimumFractionDigits: 0,
-          maximumFractionDigits: 0
-        }).format(val)
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val)
       case 'percentage':
         return `${val}%`
       default:
@@ -83,106 +84,30 @@ export default function MetricCard({
     }
   }
 
-  // Classes de tamanho
   const sizeClasses = {
-    sm: {
-      card: 'p-4',
-      title: 'text-xs',
-      value: 'text-2xl',
-      subtitle: 'text-xs',
-      icon: 'w-8 h-8'
-    },
-    md: {
-      card: 'p-6',
-      title: 'text-sm',
-      value: 'text-3xl',
-      subtitle: 'text-sm',
-      icon: 'w-10 h-10'
-    },
-    lg: {
-      card: 'p-8',
-      title: 'text-base',
-      value: 'text-4xl',
-      subtitle: 'text-base',
-      icon: 'w-12 h-12'
-    }
+    sm: { padding: '1rem', titleSize: '0.75rem', valueSize: '2rem', subtitleSize: '0.75rem', iconSize: 32 },
+    md: { padding: '1.5rem', titleSize: '0.85rem', valueSize: '2.5rem', subtitleSize: '0.85rem', iconSize: 40 },
+    lg: { padding: '2rem', titleSize: '0.95rem', valueSize: '3.2rem', subtitleSize: '0.95rem', iconSize: 48 }
   }
-
-  // Classes de cor
-  const colorClasses = {
-    gold: {
-      bg: 'bg-gradient-to-br from-gold-500/10 to-gold-600/10',
-      border: 'border-gold-500/20',
-      icon: 'text-gold-400',
-      value: 'text-gold-100',
-      trend: {
-        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
-        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
-        neutral: 'text-gold-400 bg-gold-500/20'
-      }
-    },
-    green: {
-      bg: 'bg-gradient-to-br from-green-500/10 to-green-600/10',
-      border: 'border-green-500/20',
-      icon: 'text-[#1e130c] font-bold',
-      value: 'text-[#1e130c] font-bold',
-      trend: {
-        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
-        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
-        neutral: 'text-gray-400 bg-gray-500/20'
-      }
-    },
-    red: {
-      bg: 'bg-gradient-to-br from-red-500/10 to-red-600/10',
-      border: 'border-red-500/20',
-      icon: 'text-[#7a6350] italic',
-      value: 'text-[#7a6350] italic',
-      trend: {
-        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
-        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
-        neutral: 'text-gray-400 bg-gray-500/20'
-      }
-    },
-    blue: {
-      bg: 'bg-gradient-to-br from-blue-500/10 to-blue-600/10',
-      border: 'border-blue-500/20',
-      icon: 'text-blue-400',
-      value: 'text-blue-100',
-      trend: {
-        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
-        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
-        neutral: 'text-gray-400 bg-gray-500/20'
-      }
-    },
-    purple: {
-      bg: 'bg-gradient-to-br from-purple-500/10 to-purple-600/10',
-      border: 'border-purple-500/20',
-      icon: 'text-purple-400',
-      value: 'text-purple-100',
-      trend: {
-        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
-        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
-        neutral: 'text-gray-400 bg-gray-500/20'
-      }
-    }
-  }
-
-  const currentSize = sizeClasses[size]
-  const currentColor = colorClasses[color]
+  const currentSize = sizeClasses[size || 'md'] || sizeClasses.md
 
   if (loading) {
     return (
-      <div className={`
-        ${currentSize.card}
-        ${currentColor.bg}
-        border ${currentColor.border}
-        rounded-xl
-        ${className}
-      `}>
-        <div className="animate-pulse space-y-3">
-          <div className="h-4 bg-gold-500/20 rounded w-24"></div>
-          <div className="h-8 bg-gold-500/20 rounded w-32"></div>
-          <div className="h-3 bg-gold-500/20 rounded w-20"></div>
+      <div 
+        className={className} 
+        style={{ 
+          backgroundColor: PARCH, 
+          border: `1px solid ${BORDER}`, 
+          borderRadius: '8px', 
+          padding: currentSize.padding,
+          boxShadow: '0 1px 12px rgba(30,19,12,0.06)'
+        }}
+        data-testid="metric-card-loading"
+      >
+        <div className="animate-pulse flex flex-col gap-3">
+          <div style={{ height: '1rem', backgroundColor: BORDER, borderRadius: '4px', width: '40%' }}></div>
+          <div style={{ height: '2.5rem', backgroundColor: BORDER, borderRadius: '4px', width: '60%' }}></div>
+          <div style={{ height: '0.75rem', backgroundColor: BORDER, borderRadius: '4px', width: '30%' }}></div>
         </div>
       </div>
     )
@@ -193,98 +118,140 @@ export default function MetricCard({
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`
-        relative
-        ${currentSize.card}
-        ${currentColor.bg}
-        border ${currentColor.border}
-        rounded-xl
-        transition-all duration-300
-        ${onClick ? 'cursor-pointer' : ''}
-        ${isHovered ? 'transform -translate-y-1 shadow-lg shadow-gold-500/10' : ''}
-        ${className}
-      `}
+      className={className}
+      data-testid="metric-card"
+      style={{
+        backgroundColor: PARCH,
+        border: `1px solid ${isHovered ? 'rgba(30,19,12,0.22)' : BORDER}`,
+        boxShadow: isHovered ? '0 3px 18px rgba(30,19,12,0.1)' : '0 1px 12px rgba(30,19,12,0.06)',
+        borderRadius: '8px',
+        padding: currentSize.padding,
+        position: 'relative',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'all 0.3s ease',
+        transform: isHovered ? 'translateY(-2px)' : 'none',
+        overflow: 'hidden'
+      }}
     >
-      {/* Tooltip */}
       {tooltip && (
-        <div className="absolute top-2 right-2 group">
-          <Info className="w-4 h-4 text-gold-400/50 cursor-help" />
-          <div className="absolute right-0 top-6 w-48 p-2 bg-navy-800 border border-gold-500/20 rounded-lg text-xs text-gold-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+        <div className="absolute top-3 right-3 group z-20" data-testid="metric-card-tooltip-icon">
+          <Info size={16} style={{ color: MUTED, opacity: 0.6, cursor: 'help' }} />
+          <div className="absolute right-0 top-6 w-48 p-3 rounded"
+            data-testid="metric-card-tooltip-content"
+            style={{ 
+              backgroundColor: INK, 
+              color: PARCH, 
+              boxShadow: '0 4px 12px rgba(30,19,12,0.2)',
+              fontSize: '0.75rem',
+              fontFamily: 'var(--font-lora, serif)',
+              opacity: 0,
+              visibility: 'hidden',
+              transition: 'all 0.2s ease',
+              zIndex: 30
+            }}
+            className="group-hover:opacity-100 group-hover:visible"
+          >
             {tooltip}
           </div>
         </div>
       )}
 
-      <div className="flex items-start justify-between">
-        <div className="flex-1 space-y-2">
-          {/* Título */}
-          <h3 className={`${currentSize.title} font-medium text-gold-300 uppercase tracking-wider`}>
+      <div className="flex items-start justify-between relative z-10 w-full">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <h3 style={{ 
+            fontFamily: 'var(--font-lora, serif)', 
+            fontSize: currentSize.titleSize, 
+            color: MUTED, 
+            textTransform: 'uppercase', 
+            letterSpacing: '0.1em',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
+            overflow: 'hidden'
+          }}>
             {title}
           </h3>
 
-          {/* Valor */}
-          <div className={`${currentSize.value} font-bold ${currentColor.value} tracking-tight`}>
+          <div 
+            data-testid="metric-card-value"
+            style={{ 
+              fontFamily: 'var(--font-playfair, serif)', 
+              fontSize: currentSize.valueSize, 
+              fontWeight: 700, 
+              color: INK, 
+              lineHeight: 1.1,
+              marginTop: '0.75rem',
+              marginBottom: '0.5rem'
+            }}
+          >
             {formatValue(displayValue)}
           </div>
 
-          {/* Trend */}
-          {trend && (
-            <div className="flex items-center gap-2">
-              <span className={`
-                inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium
-                ${currentColor.trend[trend.direction]}
-              `}>
-                {trend.direction === 'up' ? (
-                  <ArrowUp className="w-3 h-3" />
-                ) : trend.direction === 'down' ? (
-                  <ArrowDown className="w-3 h-3" />
-                ) : (
-                  <Minus className="w-3 h-3" />
-                )}
-                {Math.abs(trend.value)}%
-              </span>
-              {trend.label && (
-                <span className="text-gold-400 text-xs">{trend.label}</span>
+          {(trend || subtitle) && (
+            <div className="flex flex-col gap-1.5 mt-auto">
+              {trend && (
+                <div className="flex items-center gap-2 flex-wrap" data-testid="metric-card-trend">
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '3px 8px',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem',
+                    fontFamily: 'var(--font-ui, sans-serif)',
+                    fontWeight: 600,
+                    backgroundColor: trend.direction === 'up' ? 'rgba(46, 125, 50, 0.08)' : trend.direction === 'down' ? 'rgba(198, 40, 40, 0.08)' : 'rgba(30,19,12,0.05)',
+                    color: trend.direction === 'up' ? '#2e7d32' : trend.direction === 'down' ? '#c62828' : MUTED
+                  }}>
+                    {trend.direction === 'up' ? <ArrowUp size={12} data-testid="trend-up" /> : trend.direction === 'down' ? <ArrowDown size={12} data-testid="trend-down" /> : <Minus size={12} data-testid="trend-neutral" />}
+                    {Math.abs(trend.value)}%
+                  </span>
+                  {trend.label && (
+                    <span style={{ fontSize: '0.75rem', color: MUTED, fontFamily: 'var(--font-lora, serif)' }}>{trend.label}</span>
+                  )}
+                </div>
+              )}
+              {subtitle && (
+                <p 
+                  data-testid="metric-card-subtitle"
+                  style={{ 
+                    fontFamily: 'var(--font-lora, serif)', 
+                    fontSize: currentSize.subtitleSize, 
+                    fontStyle: 'italic', 
+                    color: ACCENT,
+                    whiteSpace: 'nowrap',
+                    textOverflow: 'ellipsis',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {subtitle}
+                </p>
               )}
             </div>
           )}
-
-          {/* Subtitle */}
-          {subtitle && (
-            <p className={`${currentSize.subtitle} text-gold-400 mt-1`}>
-              {subtitle}
-            </p>
-          )}
         </div>
-
-        {/* Ícone */}
-        {icon && (
-          <div className={`
-            ${currentSize.icon}
-            ${currentColor.icon}
-            opacity-30
-            transform rotate-12
-            ${isHovered ? 'scale-110 rotate-0' : ''}
-            transition-all duration-300
-          `}>
-            {icon}
-          </div>
-        )}
       </div>
 
-      {/* Mini gráfico de barras (simulado) */}
-      {trend && (
-        <div className="mt-4 flex items-end gap-1 h-8">
-          {[40, 65, 45, 80, 55, 70, 85].map((height, i) => (
-            <div
-              key={i}
-              className="flex-1 bg-gold-500/20 rounded-t transition-all duration-500"
-              style={{
-                height: `${isHovered ? height : height * 0.7}%`,
-                transitionDelay: `${i * 50}ms`
-              }}
-            />
-          ))}
+      {icon && (
+        <div 
+          data-testid="metric-card-icon"
+          style={{ 
+            color: ACCENT, 
+            opacity: isHovered ? 0.08 : 0.04, 
+            transform: isHovered ? 'scale(1.2)' : 'scale(1)', 
+            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            position: 'absolute',
+            right: '-10%',
+            bottom: '-10%',
+            zIndex: 0,
+            pointerEvents: 'none'
+          }}
+        >
+          <div style={{ width: currentSize.iconSize * 3, height: currentSize.iconSize * 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ transform: 'scale(2.5)' }}>
+              {icon}
+            </div>
+          </div>
         </div>
       )}
     </div>
