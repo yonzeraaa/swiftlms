@@ -229,7 +229,7 @@ export default function CertificateTemplatesTab() {
                       <div>
                         <p style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.15rem', fontWeight: 600, color: INK, display: 'block' }}>{template.name}</p>
                         {template.description && (
-                          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '0.85rem', fontStyle: 'italic', color: ACCENT, mt: '0.25rem' }}>{template.description}</p>
+                          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '0.85rem', fontStyle: 'italic', color: ACCENT, marginTop: '0.25rem' }}>{template.description}</p>
                         )}
                       </div>
                     </td>
