@@ -11,6 +11,7 @@ import DataTable, { Column } from '../../components/reports/DataTable'
 import StatusBadge from '../../components/reports/StatusBadge'
 import SkeletonLoader from '../../components/reports/SkeletonLoader'
 import { Database } from '@/lib/database.types'
+import { ClassicRule, CornerBracket } from '../../components/ui/RenaissanceSvgs'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { ExcelExporter, exportReportToExcel, PivotTableConfig, CellFormatting } from '@/lib/excel-export'
 import { formatNumber, formatPercentage, formatDate, formatCompactNumber } from '@/lib/reports/formatters'
@@ -47,6 +48,13 @@ interface ReportData {
 }
 
 type ExcelTemplate = Database['public']['Tables']['excel_templates']['Row']
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
+
 
 export default function ReportsPage() {
   const [loading, setLoading] = useState(true)
@@ -1675,100 +1683,55 @@ export default function ReportsPage() {
     }
   ]
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="h-9 w-48 bg-[#8b6d22]/20 rounded-lg animate-pulse mb-2"></div>
-            <div className="h-5 w-64 bg-[#8b6d22]/10 rounded animate-pulse"></div>
-          </div>
-          <SkeletonLoader type="button" className="w-48" />
-        </div>
-
-        {/* Date Filter Skeleton */}
-        <div className="p-6 bg-[#faf6ee] border border-[#1e130c]/15 rounded-xl">
-          <div className="flex items-center gap-4">
-            <div className="w-5 h-5 bg-[#8b6d22]/20 rounded animate-pulse"></div>
-            <div className="flex items-center gap-2 flex-1">
-              <div className="h-5 w-24 bg-[#8b6d22]/10 rounded animate-pulse"></div>
-              <div className="h-9 w-32 bg-[#8b6d22]/20 rounded-lg animate-pulse"></div>
-              <div className="h-5 w-8 bg-[#8b6d22]/10 rounded animate-pulse"></div>
-              <div className="h-9 w-32 bg-[#8b6d22]/20 rounded-lg animate-pulse"></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Metrics Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <SkeletonLoader type="metric" count={4} />
-        </div>
-
-        {/* Reports Cards Skeleton */}
-        <div className="p-6 bg-[#faf6ee] border border-[#1e130c]/15 rounded-xl">
-          <div className="mb-6">
-            <div className="h-6 w-48 bg-[#8b6d22]/20 rounded animate-pulse mb-2"></div>
-            <div className="h-4 w-64 bg-[#8b6d22]/10 rounded animate-pulse"></div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <SkeletonLoader type="card" count={3} />
-          </div>
-        </div>
-
-        {/* Data Tables Skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <SkeletonLoader type="table" />
-          <SkeletonLoader type="table" />
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <Spinner fullPage size="xl" />
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e130c] flex items-center gap-2">
-            <BarChart3 className="w-8 h-8 text-[#8b6d22]" />
+    <div className="flex flex-col w-full">
+
+      {/* ── Cabeçalho Principal Alinhado ── */}
+      <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-end gap-6 w-full border-b border-[#1e130c]/10 pb-8">
+        <div className="flex-1">
+          <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', fontWeight: 700, color: INK, lineHeight: 1 }}>
             {t('reports.title')}
           </h1>
-          <p className="text-[#7a6350] mt-1">{t('reports.subtitle')}</p>
+          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: MUTED, marginTop: '0.5rem' }}>
+            {t('reports.subtitle')}
+          </p>
+          <div className="mt-6 w-full max-w-md">
+            <ClassicRule color={INK} />
+          </div>
         </div>
         <div className="flex flex-col gap-2 items-end">
           <div className="flex gap-2 items-center">
-            <Button
-              variant="secondary"
+            <button
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
               title="Mostrar/ocultar opções avançadas"
-              icon={<Filter className="w-5 h-5" />}
+              style={{ padding: '1rem 1.5rem', background: 'none', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}
             >
+              <Filter className="w-5 h-5 inline-block mr-2" />
               Opções Avançadas
-            </Button>
-            <Button
-              variant="primary"
-              icon={<Table className="w-5 h-5" />}
+            </button>
+            <button
               onClick={exportToExcel}
               title="Exportar para Excel com tabelas dinâmicas"
+              style={{ padding: '1rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
             >
+              <Table className="w-5 h-5 inline-block mr-2" />
               {t('reports.export')} Excel
-            </Button>
+            </button>
           </div>
 
           {showAdvancedOptions && (
-            <div className="bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg p-4 space-y-2">
-              <p className="text-[#7a6350] text-sm mb-2">
-                ℹ️ Por padrão, o sistema usa automaticamente o template ativo mais recente para cada tipo de relatório.
-                Use esta opção apenas se quiser forçar um template específico.
+            <div className="mt-4 p-4 border border-[#1e130c]/15 bg-[#faf6ee] shadow-md relative w-full font-[family-name:var(--font-lora)]">
+              <p className="text-[#7a6350] text-sm mb-3 italic">
+                ℹ️ Por padrão, o sistema usa automaticamente o template ativo mais recente para cada tipo de relatório. Use esta opção apenas se quiser forçar um template específico.
               </p>
-              <div className="flex gap-2 items-center">
-                <label className="text-[#1e130c] text-sm font-medium">Template Excel:</label>
+              <div className="flex gap-4 items-center">
+                <label className="text-[#1e130c] text-sm font-bold uppercase tracking-widest">Template Excel:</label>
                 <select
                   value={selectedTemplate || ''}
                   onChange={(e) => setSelectedTemplate(e.target.value || null)}
-                  className="px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] flex-1"
-                  title="Deixe em 'Automático' para usar o template ativo da categoria, ou selecione um template específico"
+                  style={{ flex: 1, padding: '0.75rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontSize: '1rem', cursor: 'pointer' }}
                 >
                   <option value="">🔄 Automático (usa template ativo)</option>
                   <option disabled>─────────────</option>
@@ -1805,131 +1768,146 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Date Filter */}
-      <Card>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-4 flex-wrap">
-            <Filter className="w-5 h-5 text-[#8b6d22]" />
-            <div className="flex items-center gap-2 flex-1 flex-wrap">
-              <label className="text-[#7a6350]">{t('reports.dateRange')}:</label>
-              <input
-                type="date"
-                value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className={`px-3 py-1 bg-[#faf6ee] border rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 ${
-                  dateError ? 'border-red-500 focus:ring-red-500' : 'border-[#1e130c]/15 focus:ring-[color:var(--color-focus)]'
-                }`}
-              />
-              <span className="text-[#7a6350]">{t('reports.to')}</span>
-              <input
-                type="date"
-                value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className={`px-3 py-1 bg-[#faf6ee] border rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 ${
-                  dateError ? 'border-red-500 focus:ring-red-500' : 'border-[#1e130c]/15 focus:ring-[color:var(--color-focus)]'
-                }`}
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const today = new Date().toISOString().split('T')[0]
-                  setDateRange({ start: today, end: today })
-                }}
-              >
-                Hoje
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const end = new Date().toISOString().split('T')[0]
-                  const start = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0]
-                  setDateRange({ start, end })
-                }}
-              >
-                7 dias
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  const end = new Date().toISOString().split('T')[0]
-                  const start = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0]
-                  setDateRange({ start, end })
-                }}
-              >
-                30 dias
-              </Button>
-            </div>
+      {/* ── Filtros de Data Alinhados ── */}
+      <div className="flex flex-col lg:flex-row gap-8 mb-12 items-stretch">
+        <div className="flex-1 flex flex-col md:flex-row gap-4 items-center w-full">
+          <div className="flex-1 relative flex items-center">
+            <Filter size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7a6350]" />
+            <span style={{ position: 'absolute', left: '2.5rem', fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED, letterSpacing: '0.1em' }}>{t('reports.dateRange')}:</span>
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+              style={{ padding: '1rem 1rem 1rem 10rem', backgroundColor: 'transparent', border: `1px solid ${dateError ? 'red' : BORDER}`, color: INK, fontFamily: 'var(--font-lora)', fontSize: '1rem', flex: 1 }}
+            />
           </div>
-          {dateError && (
-            <div className="flex items-center gap-2 text-[#7a6350] italic text-sm">
-              <span>⚠️</span>
-              <span>{dateError}</span>
-            </div>
-          )}
+          <span style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>{t('reports.to')}</span>
+          <div className="flex-1 relative">
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+              style={{ width: '100%', padding: '1rem', backgroundColor: 'transparent', border: `1px solid ${dateError ? 'red' : BORDER}`, color: INK, fontFamily: 'var(--font-lora)', fontSize: '1rem' }}
+            />
+          </div>
         </div>
-      </Card>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard
-          title={t('reports.enrollments')}
-          value={reportData?.totalEnrollments || 0}
-          subtitle={t('reports.inPeriod')}
-          icon={<Users className="w-full h-full" />}
-          format="number"
-          color="blue"
-          animate
-          trend={reportData && reportData.totalEnrollments > 0 ? {
-            value: 12.5,
-            direction: 'up',
-            label: 'vs mês anterior'
-          } : undefined}
-        />
-        <MetricCard
-          title={t('reports.completionRate')}
-          value={reportData?.averageCompletionRate || 0}
-          subtitle={t('reports.overallAverage')}
-          icon={<TrendingUp className="w-full h-full" />}
-          format="percentage"
-          color="green"
-          animate
-          trend={reportData && reportData.averageCompletionRate > 0 ? {
-            value: 5.2,
-            direction: 'up'
-          } : undefined}
-        />
-        <MetricCard
-          title={t('reports.activeStudents')}
-          value={reportData?.activeStudents || 0}
-          subtitle={t('dashboard.total')}
-          icon={<Activity className="w-full h-full" />}
-          format="number"
-          color="purple"
-          animate
-          trend={reportData && reportData.activeStudents > 0 ? {
-            value: 8.3,
-            direction: 'up'
-          } : undefined}
-        />
-        <MetricCard
-          title={t('courses.title')}
-          value={reportData?.totalCourses || 0}
-          subtitle={t('reports.available')}
-          icon={<BookOpen className="w-full h-full" />}
-          format="number"
-          color="gold"
-          animate
-        />
+        <div className="w-full lg:w-auto flex gap-2">
+          <button
+            onClick={() => {
+              const today = new Date().toISOString().split('T')[0]
+              setDateRange({ start: today, end: today })
+            }}
+            style={{ padding: '1rem 1.5rem', background: 'none', border: `1px solid ${BORDER}`, color: INK, cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', transition: 'background-color 0.2s' }}
+            className="hover:bg-[#1e130c]/5"
+          >
+            Hoje
+          </button>
+          <button
+            onClick={() => {
+              const end = new Date().toISOString().split('T')[0]
+              const start = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0]
+              setDateRange({ start, end })
+            }}
+            style={{ padding: '1rem 1.5rem', background: 'none', border: `1px solid ${BORDER}`, color: INK, cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', transition: 'background-color 0.2s' }}
+            className="hover:bg-[#1e130c]/5"
+          >
+            7 dias
+          </button>
+          <button
+            onClick={() => {
+              const end = new Date().toISOString().split('T')[0]
+              const start = new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0]
+              setDateRange({ start, end })
+            }}
+            style={{ padding: '1rem 1.5rem', background: 'none', border: `1px solid ${BORDER}`, color: INK, cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', transition: 'background-color 0.2s' }}
+            className="hover:bg-[#1e130c]/5"
+          >
+            30 dias
+          </button>
+        </div>
+      </div>
+      {dateError && (
+        <div className="flex items-center gap-2 mb-12 text-[#7a6350] italic text-sm" style={{ fontFamily: 'var(--font-lora)' }}>
+          <span>⚠️</span>
+          <span>{dateError}</span>
+        </div>
+      )}
+
+      {/* ── Métricas de Registro ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-12 mb-20 px-4">
+        {[
+          { label: t('reports.enrollments'), value: reportData?.totalEnrollments || 0, sub: t('reports.inPeriod') },
+          { label: t('reports.completionRate'), value: `${reportData?.averageCompletionRate || 0}%`, sub: t('reports.overallAverage') },
+          { label: t('reports.activeStudents'), value: reportData?.activeStudents || 0, sub: t('dashboard.total') },
+          { label: t('courses.title'), value: reportData?.totalCourses || 0, sub: t('reports.available') },
+        ].map((stat, idx) => (
+          <div key={idx} className="flex flex-col items-center text-center relative">
+            <span
+              style={{
+                fontFamily: 'var(--font-lora)',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                color: MUTED,
+                textTransform: 'uppercase',
+                letterSpacing: '0.15em',
+                marginBottom: '1.25rem'
+              }}
+            >
+              {stat.label}
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-playfair)',
+                fontSize: '3.5rem',
+                fontWeight: 700,
+                color: INK,
+                lineHeight: 1,
+                marginBottom: '1rem'
+              }}
+            >
+              {stat.value}
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-lora)',
+                fontSize: '0.9rem',
+                fontStyle: 'italic',
+                color: ACCENT,
+              }}
+            >
+              {stat.sub}
+            </span>
+
+            {idx !== 3 && (
+              <div className="hidden md:block absolute right-[-2rem] top-[15%] bottom-[15%] w-px opacity-20" style={{ backgroundColor: INK }} />
+            )}
+          </div>
+        ))}
       </div>
 
-      {/* Available Reports */}
-      <Card title={t('reports.availableReports')} subtitle={t('reports.selectReport')}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+      <ClassicRule style={{ width: '100%', marginBottom: '4rem', color: INK, opacity: 0.3 }} />
+
+      {/* ── Relatórios Disponíveis ── */}
+      <div className="flex flex-col mb-20">
+        <h2
+          style={{
+            fontFamily: 'var(--font-playfair)',
+            fontSize: '2rem',
+            fontWeight: 600,
+            color: INK,
+            marginBottom: '0.5rem',
+            borderLeft: `4px solid ${ACCENT}`,
+            paddingLeft: '1.5rem'
+          }}
+        >
+          {t('reports.availableReports')}
+        </h2>
+        <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: MUTED, marginBottom: '2.5rem', paddingLeft: '2rem' }}>
+          {t('reports.selectReport')}
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-2">
           {reports.map((report, index) => {
             const Icon = report.icon
             const isGenerating = generatingReport === report.type
@@ -1937,207 +1915,372 @@ export default function ReportsPage() {
             return (
               <div 
                 key={index} 
-                className="group relative border border-[#1e130c]/15 rounded-xl overflow-hidden hover:border-[#8b6d22]/40 transition-all duration-300 hover:shadow-lg hover:shadow-gold-500/10"
+                className="group relative flex flex-col justify-between py-6 px-8 transition-colors hover:bg-[#1e130c]/[0.02] border border-[#1e130c]/10"
+                style={{ backgroundColor: 'rgba(255, 255, 255, 0.4)' }}
               >
-                {/* Background Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#8b6d22]/5 via-transparent to-navy-800/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                
-                {/* Content */}
-                <div className="relative p-6">
-                  {/* Icon Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`p-4 ${report.bgColor} rounded-xl ${report.color} group-hover:scale-110 transition-transform duration-300`}>
-                      <Icon className="w-8 h-8" />
+                <div>
+                  <div className="flex items-start justify-between mb-6">
+                    <div style={{ color: ACCENT }}>
+                      <Icon size={32} strokeWidth={1.5} />
                     </div>
                     {isGenerating && (
-                      <StatusBadge 
-                        status="processing" 
-                        label="Gerando" 
-                        size="xs" 
-                        pulse 
-                      />
+                      <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: INK, backgroundColor: 'rgba(30,19,12,0.05)', padding: '0.35rem 0.75rem', border: `1px solid ${INK}` }}>
+                        Gerando
+                      </span>
                     )}
                   </div>
                   
-                  {/* Title and Description */}
-                  <h4 className="font-bold text-lg text-[#1e130c] mb-2 group-hover:text-[#1e130c] transition-colors">
+                  <h4 style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', fontWeight: 600, color: INK, marginBottom: '0.75rem', lineHeight: 1.2 }}>
                     {report.title}
                   </h4>
-                  <p className="text-[#8b6d22] text-sm leading-relaxed mb-6 min-h-[3rem]">
+                  <p style={{ fontFamily: 'var(--font-lora)', fontSize: '0.95rem', color: MUTED, lineHeight: 1.6, marginBottom: '2rem' }}>
                     {report.description}
                   </p>
-                  
-                  {/* Action Button */}
-                  <Button 
-                    variant="primary" 
-                    size="sm"
-                    className="w-full group-hover:bg-gold-600 group-hover:shadow-lg transition-all duration-300"
+                </div>
+
+                <div className="mt-auto">
+                  <button
                     onClick={() => generateReport(report.type)}
                     disabled={isGenerating}
-                    icon={isGenerating ? undefined : <Download className="w-4 h-4" />}
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      background: 'none',
+                      border: `1px solid ${INK}`,
+                      color: INK,
+                      cursor: isGenerating ? 'not-allowed' : 'pointer',
+                      fontFamily: 'var(--font-lora)',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.1em',
+                      transition: 'background-color 0.2s',
+                      opacity: isGenerating ? 0.5 : 1
+                    }}
+                    className="hover:bg-[#1e130c] hover:text-[#faf6ee]"
                   >
-                    {isGenerating ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Spinner size="sm" colorClass="border-white" />
-                        <span>{t('reports.generating')}</span>
-                      </div>
-                    ) : (
-                      t('reports.generateReport')
-                    )}
-                  </Button>
+                    {isGenerating ? 'Processando...' : t('reports.generateReport')}
+                  </button>
                   
-                  {/* Formats Available */}
-                  <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-[#1e130c]/15">
-                    <div className="flex items-center gap-1 text-xs text-[#8b6d22]">
-                      <FileSpreadsheet className="w-3 h-3" />
-                      <span>Excel</span>
-                    </div>
-                    <span className="text-[#1e130c]-700">•</span>
-                    <div className="flex items-center gap-1 text-xs text-[#8b6d22]">
-                      <FileText className="w-3 h-3" />
-                      <span>CSV</span>
-                    </div>
-                    <span className="text-[#1e130c]-700">•</span>
-                    <div className="flex items-center gap-1 text-xs text-[#8b6d22]">
-                      <Table className="w-3 h-3" />
-                      <span>Dinâmico</span>
-                    </div>
+                  <div className="flex items-center justify-center gap-4 mt-4 text-[#7a6350] opacity-70">
+                    <FileSpreadsheet size={14} />
+                    <span style={{ fontSize: '0.75rem' }}>•</span>
+                    <FileText size={14} />
+                    <span style={{ fontSize: '0.75rem' }}>•</span>
+                    <Table size={14} />
                   </div>
                 </div>
               </div>
             )
           })}
         </div>
-      </Card>
-
-      {/* Data Summary */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Courses */}
-        <Card title={t('reports.top5Courses')} subtitle={t('reports.byEnrollments')}>
-          <DataTable
-            data={reportData?.topCourses.map((course, index) => ({
-              ...course,
-              position: index + 1
-            })) || []}
-            columns={[
-              {
-                key: 'position',
-                header: '#',
-                width: '60px',
-                align: 'center',
-                format: (value) => (
-                  <div className="flex items-center justify-center">
-                    <span className={`
-                      px-2 py-1 rounded-lg font-bold text-sm
-                      ${value === 1 ? 'bg-yellow-500/20 text-yellow-400' : 
-                        value === 2 ? 'bg-gray-300/20 text-gray-300' :
-                        value === 3 ? 'bg-orange-500/20 text-orange-400' :
-                        'bg-[#faf6ee] text-[#8b6d22]'}
-                    `}>
-                      {value}º
-                    </span>
-                  </div>
-                )
-              },
-              {
-                key: 'title',
-                header: 'Curso',
-                format: (value) => (
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-[#8b6d22]/50" />
-                    <span className="font-medium text-[#1e130c]">{value}</span>
-                  </div>
-                )
-              },
-              {
-                key: 'enrollments',
-                header: 'Matrículas',
-                align: 'right',
-                sortable: true,
-                format: (value) => (
-                  <div className="flex items-center justify-end gap-2">
-                    <Users className="w-4 h-4 text-[#8b6d22]/50" />
-                    <span className="text-[#1e130c] font-semibold">
-                      {formatCompactNumber(value)}
-                    </span>
-                  </div>
-                )
-              }
-            ]}
-            showPagination={false}
-            searchable={false}
-            showHeader={false}
-            density="compact"
-            stickyHeader
-            maxHeight="300px"
-            hoverable
-            borderless
-            emptyMessage={t('reports.noCoursesInPeriod')}
-            zebra={false}
-          />
-        </Card>
-
-        {/* Courses by Category */}
-        <Card title={t('reports.coursesByCategory')}>
-          <DataTable
-            data={reportData?.coursesPerCategory || []}
-            columns={[
-              {
-                key: 'category',
-                header: 'Categoria',
-                sortable: true,
-                format: (value) => (
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-gold-400"></div>
-                    <span className="font-medium">{value}</span>
-                  </div>
-                )
-              },
-              {
-                key: 'count',
-                header: 'Quantidade',
-                sortable: true,
-                align: 'center',
-                format: (value) => (
-                  <span className="px-3 py-1 bg-[#8b6d22]/20 text-[#1e130c] rounded-full text-sm font-medium">
-                    {value}
-                  </span>
-                )
-              },
-              {
-                key: 'percentage',
-                header: 'Percentual',
-                align: 'right',
-                format: (value, row) => {
-                  const percentage = Math.round((row.count / (reportData?.totalCourses || 1)) * 100)
-                  return (
-                    <div className="flex items-center justify-end gap-2">
-                      <span className="text-[#7a6350] font-medium">{percentage}%</span>
-                      <div className="w-24 bg-[#faf6ee] rounded-full h-2">
-                        <div 
-                          className="bg-gradient-to-r from-[#8b6d22] to-[#8b6d22] h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                    </div>
-                  )
-                }
-              }
-            ]}
-            showPagination={false}
-            searchable={false}
-            showHeader={false}
-            density="compact"
-            stickyHeader
-            maxHeight="300px"
-            hoverable
-            borderless
-            emptyMessage={t('reports.noCategoriesFound')}
-          />
-        </Card>
       </div>
 
-      {/* Modal de Seleção de Aluno e Curso para Histórico */}
+      <ClassicRule style={{ width: '100%', marginBottom: '4rem', color: INK, opacity: 0.3 }} />
+
+      {/* ── Resumo de Dados ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
+
+        {/* Top Courses */}
+        <div className="flex flex-col">
+          <h2
+            style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '2rem',
+              fontWeight: 600,
+              color: INK,
+              marginBottom: '2rem',
+              borderLeft: `4px solid ${ACCENT}`,
+              paddingLeft: '1.5rem'
+            }}
+          >
+            {t('reports.top5Courses')}
+          </h2>
+          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: MUTED, marginBottom: '2.5rem', paddingLeft: '2rem' }}>
+            {t('reports.byEnrollments')}
+          </p>
+
+          <div className="space-y-0">
+            {reportData?.topCourses.length ? reportData.topCourses.map((course, idx) => (
+              <div
+                key={idx}
+                className="py-5 transition-colors hover:bg-[#1e130c]/[0.02] px-2 flex justify-between items-center"
+                style={{ borderBottom: `1px dashed ${BORDER}` }}
+              >
+                <div className="flex items-center gap-4">
+                  <span style={{ fontFamily: 'var(--font-lora)', fontSize: '1.05rem', color: INK, fontWeight: 700 }}>{idx + 1}.</span>
+                  <span style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.25rem', color: INK, fontWeight: 600 }}>{course.title}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users size={16} color={MUTED} />
+                  <span style={{ fontFamily: 'var(--font-lora)', fontSize: '1rem', color: INK, fontWeight: 600 }}>
+                    {formatCompactNumber(course.enrollments)}
+                  </span>
+                </div>
+              </div>
+            )) : (
+              <div className="py-20 text-center border border-dashed border-[#1e130c]/10">
+                <p style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>
+                  {t('reports.noCoursesInPeriod')}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Courses by Category */}
+        <div className="flex flex-col">
+          <h2
+            style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '2rem',
+              fontWeight: 600,
+              color: INK,
+              marginBottom: '2rem',
+              borderLeft: `4px solid ${ACCENT}`,
+              paddingLeft: '1.5rem'
+            }}
+          >
+            {t('reports.coursesByCategory')}
+          </h2>
+
+          <div className="space-y-6 mt-2">
+            {reportData?.coursesPerCategory.length ? reportData.coursesPerCategory.map((cat, idx) => {
+              const percentage = Math.round((cat.count / (reportData?.totalCourses || 1)) * 100)
+              return (
+                <div key={idx} className="relative group">
+                  <div className="flex justify-between items-baseline mb-3">
+                    <span style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', color: INK, fontWeight: 600 }}>
+                      {cat.category}
+                    </span>
+                    <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.9rem', color: MUTED, fontStyle: 'italic', flexShrink: 0 }}>
+                      {cat.count} / {percentage}%
+                    </span>
+                  </div>
+
+                  {/* Régua de Graduação */}
+                  <div className="relative w-full h-[4px]" style={{ backgroundColor: 'rgba(30,19,12,0.05)' }}>
+                    <div
+                      className="absolute top-0 left-0 h-full transition-all duration-1000 ease-out"
+                      style={{
+                        width: `${percentage}%`,
+                        backgroundColor: ACCENT,
+                        boxShadow: '0 0 10px rgba(139,109,34,0.2)'
+                      }}
+                    />
+                  </div>
+                </div>
+              )
+            }) : (
+              <div className="py-20 text-center border border-dashed border-[#1e130c]/10">
+                <p style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>
+                  {t('reports.noCategoriesFound')}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Modal de Seleção de Aluno e Curso para Histórico ── */}
+      {showStudentHistoryModal && (
+        <div className="fixed inset-0 bg-[#1e130c]/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
+          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c] shadow-2xl p-10 md:p-16 max-h-[90vh] overflow-y-auto">
+            <div className="absolute top-6 left-6 w-12 h-12 text-[#1e130c]/10"><CornerBracket size={48} /></div>
+            <div className="absolute top-6 right-6 w-12 h-12 text-[#1e130c]/10 rotate-90"><CornerBracket size={48} /></div>
+
+            <div className="flex justify-between items-center mb-10">
+              <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.5rem', color: INK, fontWeight: 700 }}>
+                {modalStep === 'student' ? 'Selecionar Aluno' : 'Selecionar Curso'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowStudentHistoryModal(false)
+                  setSelectedStudent(null)
+                  setSelectedCourse(null)
+                  setSearchQuery('')
+                  setModalStep('student')
+                  setStudentCourses([])
+                }}
+                className="text-[#1e130c]/40 hover:text-[#1e130c] transition-colors"
+              >
+                <X size={32} />
+              </button>
+            </div>
+
+            <div className="space-y-8 font-[family-name:var(--font-lora)]">
+              {modalStep === 'student' ? (
+                <>
+                  <p className="text-[#7a6350] text-sm italic">
+                    Selecione um aluno para gerar o histórico acadêmico
+                  </p>
+
+                  <div className="relative">
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7a6350]" />
+                    <input
+                      type="text"
+                      placeholder="Buscar aluno por nome ou email..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontSize: '1rem' }}
+                    />
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto space-y-2 border border-[#1e130c]/10 p-2 custom-scrollbar">
+                    {students
+                      .filter(
+                        (student) =>
+                          student.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          student.email?.toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map((student) => (
+                        <button
+                          key={student.id}
+                          onClick={() => setSelectedStudent(student)}
+                          className={`w-full p-4 border text-left transition-colors ${
+                            selectedStudent?.id === student.id
+                              ? `bg-[${INK}]/5 border-[${INK}]`
+                              : `bg-transparent border-transparent hover:bg-[${INK}]/5 hover:border-[${INK}]/20`
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontWeight: 600, color: INK }}>
+                                {student.full_name || 'Usuário desconhecido'}
+                              </p>
+                              <p style={{ fontSize: '0.85rem', color: MUTED }}>
+                                {student.email}
+                              </p>
+                            </div>
+                            {selectedStudent?.id === student.id && (
+                              <div className="ml-3 flex-shrink-0 text-[#8b6d22]">
+                                <CheckCircle size={24} />
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+
+                    {students.filter(
+                      (student) =>
+                        student.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        student.email?.toLowerCase().includes(searchQuery.toLowerCase())
+                    ).length === 0 && (
+                      <p className="text-center text-[#7a6350] italic py-8 border border-dashed border-[#1e130c]/10">
+                        Nenhum aluno localizado
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-6 pt-10 border-t border-[#1e130c]/10">
+                    <button
+                      onClick={() => {
+                        setShowStudentHistoryModal(false)
+                        setSelectedStudent(null)
+                        setSearchQuery('')
+                        setModalStep('student')
+                      }}
+                      style={{ padding: '1rem 2.5rem', background: 'none', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (selectedStudent) {
+                          await fetchStudentCoursesWrapper(selectedStudent.id)
+                          setModalStep('course')
+                        }
+                      }}
+                      disabled={!selectedStudent}
+                      style={{ padding: '1rem 4rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: selectedStudent ? 'pointer' : 'not-allowed', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: selectedStudent ? 1 : 0.5 }}
+                    >
+                      Próximo
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-[#7a6350] text-sm italic">
+                    Selecione o curso para gerar o relatório de <span style={{ fontWeight: 700, color: INK }}>{selectedStudent?.full_name}</span>
+                  </p>
+
+                  <div className="max-h-96 overflow-y-auto space-y-2 border border-[#1e130c]/10 p-2 custom-scrollbar">
+                    {studentCourses.length === 0 ? (
+                      <p className="text-center text-[#7a6350] italic py-8 border border-dashed border-[#1e130c]/10">
+                        Este aluno não possui matrículas ativas
+                      </p>
+                    ) : (
+                      studentCourses.map((course) => (
+                        <button
+                          key={course.enrollment_id}
+                          onClick={() => setSelectedCourse(course.course_id)}
+                          className={`w-full p-4 border text-left transition-colors ${
+                            selectedCourse === course.course_id
+                              ? `bg-[${INK}]/5 border-[${INK}]`
+                              : `bg-transparent border-transparent hover:bg-[${INK}]/5 hover:border-[${INK}]/20`
+                          }`}
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontWeight: 600, color: INK }}>
+                                {course.course_title}
+                              </p>
+                            </div>
+                            {selectedCourse === course.course_id && (
+                              <div className="ml-3 flex-shrink-0 text-[#8b6d22]">
+                                <CheckCircle size={24} />
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-6 pt-10 border-t border-[#1e130c]/10">
+                    <button
+                      onClick={() => {
+                        setModalStep('student')
+                        setSelectedCourse(null)
+                        setStudentCourses([])
+                      }}
+                      style={{ padding: '1rem 2.5rem', background: 'none', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                    >
+                      Voltar
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (selectedStudent && selectedCourse) {
+                          setShowStudentHistoryModal(false)
+                          setGeneratingReport('student-history')
+                          await generateStudentHistoryReport(
+                            selectedStudent.id,
+                            selectedStudent.full_name || 'Aluno',
+                            selectedCourse
+                          )
+                          setGeneratingReport(null)
+                          setSelectedStudent(null)
+                          setSelectedCourse(null)
+                          setSearchQuery('')
+                          setModalStep('student')
+                          setStudentCourses([])
+                        }
+                      }}
+                      disabled={!selectedCourse}
+                      style={{ padding: '1rem 4rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: selectedCourse ? 'pointer' : 'not-allowed', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: selectedCourse ? 1 : 0.5 }}
+                    >
+                      Gerar Relatório
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
       <Modal
         isOpen={showStudentHistoryModal}
         onClose={() => {
