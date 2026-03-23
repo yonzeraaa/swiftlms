@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, FileCheck, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare, PlayCircle } from 'lucide-react'
+import { Plus, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, FileCheck, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare, PlayCircle, MoreVertical } from 'lucide-react'
 import { ClassicRule } from '../../components/ui/RenaissanceSvgs'
 import { Tables } from '@/lib/database.types'
 import Card from '../../components/Card'
@@ -29,11 +29,18 @@ type Module = Tables<'course_modules'>
 export default function TestsManagementPage() {
   const [tests, setTests] = useState<Test[]>([])
   const [courses, setCourses] = useState<Course[]>([])
+  const [dropdownPosition, setDropdownPosition] = useState<{ top?: number, bottom?: number, left: number, isUp?: boolean } | null>(null)
+  const [dropdownTest, setDropdownTest] = useState<Test | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [subjects, setSubjects] = useState<Subject[]>([])
   const [modules, setModules] = useState<Module[]>([])
   const [lessonsCount, setLessonsCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
   const [editingTest, setEditingTest] = useState<Test | null>(null)
   const [extractingGabarito, setExtractingGabarito] = useState(false)
   const [gabaritoData, setGabaritoData] = useState<Array<{ questionNumber: number; correctAnswer: string; points?: number; justification?: string }>>([])
@@ -156,6 +163,9 @@ export default function TestsManagementPage() {
 
     return list.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' }))
   }, [filteredTests, testSortMode])
+
+  const totalPages = Math.ceil(sortedTests.length / itemsPerPage)
+  const paginatedTests = sortedTests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const anySelection = selectedTests.length > 0
   const allFilteredSelected = filteredTests.length > 0 && filteredTests.every(test => selectedTests.includes(test.id))
@@ -493,7 +503,7 @@ export default function TestsManagementPage() {
                 type="text"
                 placeholder="Código (Ex: XXXX123)"
                 value={codeFilter}
-                onChange={(e) => setCodeFilter(e.target.value)}
+                onChange={(e) => { setCodeFilter(e.target.value); setCurrentPage(1); }}
                 className="w-full pl-6 pr-0 py-2 bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:border-[color:var(--color-focus)] font-mono text-sm transition-colors"
               />
             </div>
@@ -503,7 +513,7 @@ export default function TestsManagementPage() {
                 type="text"
                 placeholder="Buscar por título ou descrição..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                 className="w-full pl-6 pr-0 py-2 bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:border-[color:var(--color-focus)] font-[family-name:var(--font-lora)] text-sm transition-colors"
               />
             </div>
@@ -514,7 +524,7 @@ export default function TestsManagementPage() {
               <Filter className="w-4 h-4 text-[#8b6d22] flex-shrink-0" />
               <select
                 value={filterCourse}
-                onChange={(e) => setFilterCourse(e.target.value)}
+                onChange={(e) => { setFilterCourse(e.target.value); setCurrentPage(1); }}
                 className="bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] focus:outline-none focus:border-[color:var(--color-focus)] py-1 cursor-pointer"
               >
                 <option value="all">Todos os cursos</option>
@@ -527,7 +537,7 @@ export default function TestsManagementPage() {
               <Filter className="w-4 h-4 text-[#8b6d22] flex-shrink-0" />
               <select
                 value={filterSubject}
-                onChange={(e) => setFilterSubject(e.target.value)}
+                onChange={(e) => { setFilterSubject(e.target.value); setCurrentPage(1); }}
                 className="bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] focus:outline-none focus:border-[color:var(--color-focus)] py-1 cursor-pointer"
               >
                 <option value="all">Todas as disciplinas</option>
@@ -540,7 +550,7 @@ export default function TestsManagementPage() {
               <Filter className="w-4 h-4 text-[#8b6d22] flex-shrink-0" />
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => { setFilterStatus(e.target.value); setCurrentPage(1); }}
                 className="bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] focus:outline-none focus:border-[color:var(--color-focus)] py-1 cursor-pointer"
               >
                 <option value="all">Todos os status</option>
@@ -606,95 +616,90 @@ export default function TestsManagementPage() {
           </div>
         </div>
 
-        {sortedTests.length > 0 ? (
-          <div className="space-y-0">
-            {sortedTests.map((test) => {
-              const subject = subjects.find(s => s.id === test.subject_id)
-              const isSelected = selectedTests.includes(test.id)
+        {paginatedTests.length > 0 ? (
+          <div className="w-full overflow-x-auto custom-scrollbar mt-4">
+            <table className="w-full border-collapse min-w-[1000px]">
+              <thead>
+                <tr style={{ borderBottom: `2px solid #1e130c` }}>
+                  <th className="px-4 py-4 text-center w-12" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#7a6350' }}></th>
+                  <th className="px-4 py-4 text-left" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#7a6350' }}>Título / Código</th>
+                  <th className="px-4 py-4 text-left w-64" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#7a6350' }}>Disciplina</th>
+                  <th className="px-4 py-4 text-right w-32" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#7a6350' }}>Duração</th>
+                  <th className="px-4 py-4 text-right w-32" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#7a6350' }}>Aprovação</th>
+                  <th className="px-4 py-4 text-center w-32" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#7a6350' }}>Gabarito</th>
+                  <th className="px-4 py-4 text-center w-20" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#7a6350' }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedTests.map((test) => {
+                  const subject = subjects.find(s => s.id === test.subject_id)
+                  const isSelected = selectedTests.includes(test.id)
 
-              return (
-                <div key={test.id} className="flex flex-col md:flex-row md:items-center justify-between py-4 border-b border-dashed border-[#1e130c]/20 hover:bg-[#1e130c]/5 px-2 -mx-2 transition-colors group">
-                  <div className="flex items-start gap-4 mb-3 md:mb-0">
-                    <button
-                      onClick={() => toggleTestSelection(test.id)}
-                      className="text-[#8b6d22] hover:text-[#1e130c] transition-colors mt-1"
-                    >
-                      {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                    </button>
-                    <div>
-                      <div className="flex items-center gap-3 mb-1">
-                        <span className="font-[family-name:var(--font-playfair)] text-lg font-bold text-[#1e130c]">{test.title}</span>
-                        <span className="text-[#8b6d22] font-mono text-xs border border-[#8b6d22]/30 px-1">{test.code || 'S/C'}</span>
-                        <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full ${test.is_active ? 'bg-[#1e130c]/5 text-[#1e130c] font-bold' : 'bg-orange-100 text-orange-700'}`}>
-                          {test.is_active ? t('tests.active') : t('tests.inactive')}
-                        </span>
-                      </div>
-                      <div className="font-[family-name:var(--font-lora)] text-sm text-[#7a6350] flex items-center gap-4 opacity-90 flex-wrap">
-                        <span><strong className="font-semibold text-[#1e130c]">Disciplina:</strong> {subject ? subject.name : '-'}</span>
-                        <span className="w-1 h-1 rounded-full bg-[#1e130c]/20"></span>
-                        <span><strong className="font-semibold text-[#1e130c]">Duração:</strong> {test.duration_minutes ? `${test.duration_minutes}m` : '-'}</span>
-                        <span className="w-1 h-1 rounded-full bg-[#1e130c]/20"></span>
-                        <span><strong className="font-semibold text-[#1e130c]">Aprovação:</strong> {test.passing_score != null ? `${test.passing_score}%` : '-'}</span>
-                        <span className="w-1 h-1 rounded-full bg-[#1e130c]/20"></span>
-                        <span>
-                          <strong className="font-semibold text-[#1e130c]">Gabarito: </strong> 
-                          {test.answer_key_count !== undefined ? (
-                            test.answer_key_count > 0 ? (
-                              <span className="text-[#1e130c] font-bold font-bold">{test.answer_key_count} questões</span>
-                            ) : (
-                              <span className="text-[#7a6350] italic font-bold">Sem gabarito</span>
-                            )
-                          ) : '-'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity pl-9 md:pl-0">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => window.open(test.google_drive_url, '_blank')}
-                      title="Ver Documento"
-                      className="!bg-transparent border-[#1e130c]/20 hover:border-[#8b6d22] text-[#1e130c]"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => viewAnswerKey(test)}
-                      title="Ver Gabarito"
-                      className="!bg-transparent border-[#1e130c]/20 hover:border-[#8b6d22] text-[#1e130c]"
-                    >
-                      <FileCheck className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => editTest(test)}
-                      title="Editar"
-                      className="!bg-transparent border-[#1e130c]/20 hover:border-[#8b6d22] text-[#1e130c]"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={async () => {
-                        if (!confirm(`Excluir o teste "${test.title}"?`)) return
-                        await deleteTest(test.id)
-                      }}
-                      title="Excluir"
-                      disabled={bulkDeleting}
-                      className="!bg-transparent border-[#1e130c]/20 hover:border-red-500 text-[#7a6350] italic"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              )
-            })}
+                  return (
+                    <tr key={test.id} style={{ borderBottom: `1px dashed rgba(30,19,12,0.2)` }} className="hover:bg-[#1e130c]/[0.05] transition-colors group">
+                      <td className="px-4 py-6 text-center align-top">
+                        <button
+                          onClick={() => toggleTestSelection(test.id)}
+                          className="text-[#8b6d22] hover:text-[#1e130c] transition-colors mt-1"
+                        >
+                          {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                        </button>
+                      </td>
+                      <td className="px-4 py-6 align-top">
+                        <div className="flex flex-col gap-1">
+                          <span style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.1rem', fontWeight: 600, color: '#1e130c' }}>{test.title}</span>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[#8b6d22] font-mono text-xs border border-[#8b6d22]/30 px-1">{test.code || 'S/C'}</span>
+                            <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full ${test.is_active ? 'bg-[#1e130c]/5 text-[#1e130c]' : 'bg-orange-100 text-orange-700'}`}>
+                              {test.is_active ? t('tests.active') : t('tests.inactive')}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-6 align-top">
+                        <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.95rem', color: '#1e130c' }}>{subject ? subject.name : '-'}</span>
+                      </td>
+                      <td className="px-4 py-6 text-right align-top">
+                        <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.95rem', color: '#1e130c' }}>{test.duration_minutes ? `${test.duration_minutes}m` : '-'}</span>
+                      </td>
+                      <td className="px-4 py-6 text-right align-top">
+                        <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.95rem', color: '#1e130c' }}>{test.passing_score != null ? `${test.passing_score}%` : '-'}</span>
+                      </td>
+                      <td className="px-4 py-6 text-center align-top">
+                        {test.answer_key_count !== undefined ? (
+                          test.answer_key_count > 0 ? (
+                            <span className="text-[#1e130c] font-bold font-[family-name:var(--font-lora)] text-sm">{test.answer_key_count} q.</span>
+                          ) : (
+                            <span className="text-[#7a6350] italic font-[family-name:var(--font-lora)] text-sm">Sem gab.</span>
+                          )
+                        ) : '-'}
+                      </td>
+                      <td className="px-4 py-6 text-center align-top">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const rect = e.currentTarget.getBoundingClientRect()
+                            const isUp = window.innerHeight - rect.bottom < 250
+                            setDropdownPosition({ 
+                              top: isUp ? undefined : rect.bottom, 
+                              bottom: isUp ? window.innerHeight - rect.top : undefined,
+                              left: rect.right - 240,
+                              isUp
+                            })
+                            setDropdownTest(test)
+                            setOpenDropdown(test.id)
+                          }}
+                          className="text-[#8b6d22] hover:text-[#1e130c] p-2 transition-transform active:scale-90"
+                          title="Ações"
+                        >
+                          <MoreVertical size={20} />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="py-16 text-center border border-dashed border-[#1e130c]/20 bg-[#faf6ee]/30">
@@ -702,6 +707,30 @@ export default function TestsManagementPage() {
             <p className="text-[#7a6350] font-[family-name:var(--font-lora)] italic text-lg">
               {searchTerm ? 'Nenhum teste encontrado com os critérios de busca' : t('tests.noTests')}
             </p>
+          </div>
+        )}
+        
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center py-4 px-4 mt-2 border-t border-[#1e130c]/10 bg-transparent">
+            <span className="text-sm text-[#7a6350] italic">
+              Página {currentPage} de {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Próximo
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -1065,6 +1094,46 @@ export default function TestsManagementPage() {
           )}
         </div>
       </Modal>
+
+      {/* ── Dropdown Portal ── */}
+      {openDropdown && dropdownTest && dropdownPosition && (
+        <>
+          <div className="fixed inset-0 z-[11000] bg-transparent" onClick={() => { setOpenDropdown(null); setDropdownTest(null); }} />
+          <div
+            className="fixed w-60 bg-[#faf6ee] border border-[#1e130c]/20 shadow-2xl z-[11001] py-3 font-[family-name:var(--font-lora)]"
+            style={{ top: dropdownPosition.top ? `${dropdownPosition.top + 8}px` : undefined, bottom: dropdownPosition.bottom ? `${dropdownPosition.bottom + 8}px` : undefined, left: `${dropdownPosition.left}px` }}
+          >
+            <div className={`absolute ${dropdownPosition.isUp ? "-bottom-2 border-b border-r" : "-top-2 border-l border-t"} right-4 w-4 h-4 bg-[#faf6ee] border-[#1e130c]/20 rotate-45`} />
+            <button onClick={() => { window.open(dropdownTest.google_drive_url, '_blank'); setOpenDropdown(null); }} className="w-full px-5 py-3 text-left hover:bg-[#1e130c]/5 flex items-center justify-start gap-4 transition-colors">
+              <ExternalLink size={16} style={{ color: '#8b6d22' }} />
+              <span style={{ fontSize: '0.95rem', color: '#1e130c', fontWeight: 500 }}>Ver Documento</span>
+            </button>
+            <button onClick={() => { viewAnswerKey(dropdownTest); setOpenDropdown(null); }} className="w-full px-5 py-3 text-left hover:bg-[#1e130c]/5 flex items-center justify-start gap-4 transition-colors">
+              <FileCheck size={16} style={{ color: '#8b6d22' }} />
+              <span style={{ fontSize: '0.95rem', color: '#1e130c', fontWeight: 500 }}>Ver Gabarito</span>
+            </button>
+            <button onClick={() => { editTest(dropdownTest); setOpenDropdown(null); }} className="w-full px-5 py-3 text-left hover:bg-[#1e130c]/5 flex items-center justify-start gap-4 transition-colors">
+              <Edit size={16} style={{ color: '#8b6d22' }} />
+              <span style={{ fontSize: '0.95rem', color: '#1e130c', fontWeight: 500 }}>Editar</span>
+            </button>
+            <div className="border-t border-[#1e130c]/10 mt-3 pt-3">
+              <button 
+                onClick={async () => {
+                  if (confirm(`Excluir o teste "${dropdownTest.title}"?`)) {
+                    await deleteTest(dropdownTest.id);
+                  }
+                  setOpenDropdown(null);
+                }}
+                disabled={bulkDeleting}
+                className="w-full px-5 py-3 text-left hover:bg-[#7a6350]/10 flex items-center justify-start gap-4 transition-colors"
+              >
+                <Trash2 size={16} className="text-[#7a6350] italic" />
+                <span style={{ fontSize: '0.95rem', color: '#7a6350', fontWeight: 600 }}>Excluir</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -2,20 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import {
-  BookOpen,
+  Library,
   ChevronRight,
   ChevronDown,
   Edit,
   Trash2,
   GraduationCap,
-  FileText,
-  ClipboardCheck,
+  ScrollText,
+  ClipboardSignature,
   Layers,
   Search,
   X,
   Link2,
-  FolderOpen,
-  Folder,
+  BookMarked,
   AlertCircle,
   Check
 } from 'lucide-react'
@@ -147,34 +146,34 @@ export default function StructurePage() {
   const getNodeIcon = (type: string, expanded?: boolean) => {
     switch (type) {
       case 'course':
-        return <BookOpen className="w-4 h-4 text-[#8b6d22]" />
+        return <Library className="w-4 h-4 text-[#1e130c]" />
       case 'module':
-        return expanded ? <FolderOpen className="w-4 h-4 text-blue-400" /> : <Folder className="w-4 h-4 text-blue-400" />
+        return <BookMarked className="w-4 h-4 text-[#8b6d22]" />
       case 'subject':
-        return <GraduationCap className="w-4 h-4 text-[#1e130c] font-bold" />
+        return <GraduationCap className="w-4 h-4 text-[#7a6350]" />
       case 'lesson':
-        return <FileText className="w-4 h-4 text-purple-400" />
+        return <ScrollText className="w-4 h-4 text-[#4a3b32]" />
       case 'test':
-        return <ClipboardCheck className="w-4 h-4 text-[#7a6350] italic" />
+        return <ClipboardSignature className="w-4 h-4 text-[#9e3b3b]" />
       default:
-        return <Layers className="w-4 h-4 text-[#7a6350]" />
+        return <Library className="w-4 h-4 text-[#7a6350]" />
     }
   }
 
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'course':
-        return 'bg-[#8b6d22]/20 text-[#8b6d22] border-[#8b6d22]/30'
+        return 'bg-[#1e130c]/5 text-[#1e130c] border-[#1e130c]/20'
       case 'module':
-        return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+        return 'bg-[#8b6d22]/10 text-[#8b6d22] border-[#8b6d22]/30'
       case 'subject':
-        return 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border-green-500/30'
+        return 'bg-[#7a6350]/10 text-[#7a6350] border-[#7a6350]/30'
       case 'lesson':
-        return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
+        return 'bg-[#4a3b32]/10 text-[#4a3b32] border-[#4a3b32]/30'
       case 'test':
-        return 'bg-[#7a6350]/10/20 text-[#7a6350] italic border-red-500/30'
+        return 'bg-[#9e3b3b]/10 text-[#9e3b3b] border-[#9e3b3b]/30'
       default:
-        return 'bg-[#8b6d22]/20 text-[#8b6d22] border-[#8b6d22]/30'
+        return 'bg-[#1e130c]/5 text-[#1e130c] border-[#1e130c]/20'
     }
   }
 
@@ -312,7 +311,7 @@ export default function StructurePage() {
                   className="p-1 hover:bg-[#1e130c]/5 rounded"
                   title="Gerenciar Módulos"
                 >
-                  <Link2 className="w-3 h-3 text-blue-400" />
+                  <Link2 className="w-3 h-3 text-[#8b6d22]" />
                 </button>
               )}
               
@@ -341,7 +340,7 @@ export default function StructurePage() {
                     className="p-1 hover:bg-[#1e130c]/5 rounded"
                     title="Associar Aulas"
                   >
-                    <Link2 className="w-3 h-3 text-purple-400" />
+                    <Link2 className="w-3 h-3 text-[#4a3b32]" />
                   </button>
                   <button
                     onClick={(e) => {
@@ -420,16 +419,64 @@ export default function StructurePage() {
           <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: '#1e130c', lineHeight: 1.1, fontWeight: 700 }}>
             Estrutura Hierárquica
           </h1>
-          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: '#7a6350', marginTop: '0.5rem' }}>
-            Visão geral e ordenação: Curso → Módulos → Disciplinas → Aulas/Avaliações
-          </p>
+          
+          <div className="mt-6 p-4 bg-[#1e130c]/[0.02] border border-[#1e130c]/10 rounded-sm inline-block">
+            <span className="text-xs font-bold text-[#7a6350] uppercase tracking-wider mb-3 block">Legenda da Estrutura</span>
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Library className="w-4 h-4 text-[#1e130c]" />
+                <span className="text-sm font-medium text-[#1e130c]">Curso</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-[#1e130c]/20" />
+              <div className="flex items-center gap-2">
+                <BookMarked className="w-4 h-4 text-[#8b6d22]" />
+                <span className="text-sm font-medium text-[#1e130c]">Módulos</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-[#1e130c]/20" />
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-[#7a6350]" />
+                <span className="text-sm font-medium text-[#1e130c]">Disciplinas</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-[#1e130c]/20" />
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <ScrollText className="w-4 h-4 text-[#4a3b32]" />
+                  <span className="text-sm font-medium text-[#1e130c]">Aulas</span>
+                </div>
+                <span className="text-[#1e130c]/20">/</span>
+                <div className="flex items-center gap-2">
+                  <ClipboardSignature className="w-4 h-4 text-[#9e3b3b]" />
+                  <span className="text-sm font-medium text-[#1e130c]">Avaliações</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-6 w-full max-w-md">
             <ClassicRule color="#1e130c" />
           </div>
         </div>
-        <div className="flex gap-4 bg-[#faf6ee] p-1 border border-[#1e130c]/20 rounded-sm">
-           <button onClick={() => setViewMode('tree')} className={`px-4 py-2 text-sm font-medium transition-colors \${viewMode === 'tree' ? 'bg-[#1e130c] text-[#faf6ee]' : 'text-[#1e130c] hover:bg-[#1e130c]/5'}`}>Em Árvore</button>
-           <button onClick={() => setViewMode('manage')} className={`px-4 py-2 text-sm font-medium transition-colors \${viewMode === 'manage' ? 'bg-[#1e130c] text-[#faf6ee]' : 'text-[#1e130c] hover:bg-[#1e130c]/5'}`}>Gerenciar</button>
+        <div className="flex bg-transparent border-b-2 border-[#1e130c]/10">
+           <button 
+             onClick={() => setViewMode('tree')} 
+             className={`px-6 py-3 text-base font-medium transition-colors font-[family-name:var(--font-playfair)] border-b-2 -mb-[2px] ${
+               viewMode === 'tree' 
+                 ? 'border-[#8b6d22] text-[#8b6d22] bg-[#8b6d22]/5' 
+                 : 'border-transparent text-[#7a6350] hover:text-[#1e130c] hover:bg-[#1e130c]/5'
+             }`}
+           >
+             Em Árvore
+           </button>
+           <button 
+             onClick={() => setViewMode('manage')} 
+             className={`px-6 py-3 text-base font-medium transition-colors font-[family-name:var(--font-playfair)] border-b-2 -mb-[2px] ${
+               viewMode === 'manage' 
+                 ? 'border-[#8b6d22] text-[#8b6d22] bg-[#8b6d22]/5' 
+                 : 'border-transparent text-[#7a6350] hover:text-[#1e130c] hover:bg-[#1e130c]/5'
+             }`}
+           >
+             Gerenciar Estrutura
+           </button>
         </div>
       </div>
 

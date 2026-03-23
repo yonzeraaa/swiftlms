@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Folder, Plus, Edit, Trash2, Search, X, AlertCircle, BookOpen, GripVertical, CheckSquare, Square, Trash, Clock } from 'lucide-react'
+import { Folder, Plus, Edit, Trash2, Search, X, AlertCircle, BookOpen, GripVertical, CheckSquare, Square, Trash, Clock, MoreVertical } from 'lucide-react'
 import { ClassicRule } from '../../components/ui/RenaissanceSvgs'
 import Button from '../../components/Button'
 import Spinner from '../../components/ui/Spinner'
@@ -54,8 +54,7 @@ interface ModuleRowProps {
   module: CourseModule
   course?: Course
   stats: { subjects: number }
-  onEdit: (module: CourseModule) => void
-  onDelete: (module: CourseModule) => void
+  onOpenMenu: (e: React.MouseEvent, module: CourseModule) => void
   isSelected: boolean
   onToggleSelect: (moduleId: string) => void
 }
@@ -64,8 +63,7 @@ function ModuleRowCells({
   module,
   course,
   stats,
-  onEdit,
-  onDelete,
+  onOpenMenu,
   isSelected,
   onToggleSelect,
   showGrip
@@ -132,23 +130,17 @@ function ModuleRowCells({
       <td className="py-4 px-4 text-right text-[#8b6d22] text-sm">
         {(module.order_index || 0) + 1}
       </td>
-      <td className="py-4 px-4">
-        <div className="flex items-center justify-center gap-1">
-          <button
-            onClick={(e) => { e.stopPropagation(); onEdit(module) }}
-            className="p-2 text-[#8b6d22] hover:text-[#1e130c] hover:bg-[#1e130c]/5 rounded-lg transition-colors"
-            title="Editar módulo"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(module) }}
-            className="p-2 text-[#7a6350] italic hover:text-[#7a6350] italic hover:bg-[#1e130c]/5 rounded-lg transition-colors"
-            title="Excluir módulo"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+      <td className="py-4 px-4 text-right">
+        <button
+          onClick={(e) => {
+             e.stopPropagation()
+             onOpenMenu(e, module)
+          }}
+          className="text-[#8b6d22] hover:text-[#1e130c] p-2 transition-transform active:scale-90"
+          title="Ações"
+        >
+          <MoreVertical size={20} />
+        </button>
       </td>
     </>
   )
@@ -199,6 +191,16 @@ export default function ModulesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingModule, setEditingModule] = useState<CourseModule | null>(null)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
+  
+  // Dropdown state
+  const [dropdownPosition, setDropdownPosition] = useState<{ top?: number, bottom?: number, left: number, isUp?: boolean } | null>(null)
+  const [dropdownModule, setDropdownModule] = useState<CourseModule | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+  
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -289,6 +291,19 @@ export default function ModulesPage() {
       is_required: module.is_required ?? true
     })
     setShowModal(true)
+  }
+
+  const handleOpenMenu = (e: React.MouseEvent, module: CourseModule) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+                        const isUp = window.innerHeight - rect.bottom < 250
+                        setDropdownPosition({ 
+                          top: isUp ? undefined : rect.bottom, 
+                          bottom: isUp ? window.innerHeight - rect.top : undefined,
+                          left: rect.right - 240,
+                          isUp
+                        })
+    setDropdownModule(module)
+    setOpenDropdown(module.id)
   }
 
   const handleDelete = async (module: CourseModule) => {
@@ -420,6 +435,9 @@ export default function ModulesPage() {
     })
   }, [filteredModules, sortMode, coursesById])
 
+  const totalPages = Math.ceil(sortedModules.length / itemsPerPage)
+  const paginatedModules = sortedModules.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
   const activeModule = activeId ? modules.find(m => m.id === activeId) : null
 
   const tableHeader = (showGrip: boolean) => (
@@ -466,7 +484,7 @@ return (
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
         <div className="flex-1">
           <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: '#1e130c', lineHeight: 1.1, fontWeight: 700 }}>
-            Livro de Módulos
+            Gestão de Módulos
           </h1>
           <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: '#7a6350', marginTop: '0.5rem' }}>
             Registros e ordenação estrutural dos módulos acadêmicos.
@@ -479,9 +497,8 @@ return (
           onClick={openCreateModal}
           style={{ padding: '1rem 3rem', backgroundColor: '#1e130c', color: '#faf6ee', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
         >
-          Novo Registro
-        </button>
-      </div>
+          Novo Módulo
+        </button>      </div>
 
       {/* Message */}
       {message && (
@@ -540,13 +557,13 @@ return (
               type="text"
               placeholder="Pesquisar nos registros..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full pl-8 pr-4 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:ring-0 focus:border-[color:var(--color-focus)] transition-colors rounded-none"
             />
           </div>
           <select
             value={selectedCourse}
-            onChange={(e) => setSelectedCourse(e.target.value)}
+            onChange={(e) => { setSelectedCourse(e.target.value); setCurrentPage(1); }}
             className="w-full sm:w-auto px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[color:var(--color-focus)] transition-colors rounded-none cursor-pointer"
           >
             <option value="all">Todos os Cursos</option>
@@ -606,21 +623,20 @@ return (
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={sortedModules.map(m => m.id)}
+                items={paginatedModules.map(m => m.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <table className="w-full text-sm sm:text-base border-collapse">
                   {tableHeader(true)}
                   <tbody>
-                    {sortedModules.length > 0 ? (
-                      sortedModules.map((module) => (
+                    {paginatedModules.length > 0 ? (
+                      paginatedModules.map((module) => (
                         <SortableModuleRow
                           key={module.id}
                           module={module}
                           course={coursesById.get(module.course_id)}
                           stats={moduleStats[module.id] || { subjects: 0 }}
-                          onEdit={handleEdit}
-                          onDelete={handleDelete}
+                          onOpenMenu={handleOpenMenu}
                           isSelected={selectedModules.has(module.id)}
                           onToggleSelect={toggleSelectModule}
                         />
@@ -648,15 +664,14 @@ return (
             <table className="w-full text-sm sm:text-base border-collapse">
               {tableHeader(false)}
               <tbody>
-                {sortedModules.length > 0 ? (
-                  sortedModules.map((module) => (
+                {paginatedModules.length > 0 ? (
+                  paginatedModules.map((module) => (
                     <ModuleRow
                       key={module.id}
                       module={module}
                       course={coursesById.get(module.course_id)}
                       stats={moduleStats[module.id] || { subjects: 0 }}
-                      onEdit={handleEdit}
-                      onDelete={handleDelete}
+                      onOpenMenu={handleOpenMenu}
                       isSelected={selectedModules.has(module.id)}
                       onToggleSelect={toggleSelectModule}
                     />
@@ -666,6 +681,30 @@ return (
                 )}
               </tbody>
             </table>
+          )}
+          
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center py-4 px-4 mt-2 border-t border-[#1e130c]/10 bg-transparent">
+              <span className="text-sm text-[#7a6350] italic">
+                Página {currentPage} de {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Próximo
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -819,6 +858,32 @@ return (
             </form>
           </div>
         </div>
+      )}
+
+      {/* ── Dropdown Portal ── */}
+      {openDropdown && dropdownModule && dropdownPosition && (
+        <>
+          <div className="fixed inset-0 z-[11000] bg-transparent" onClick={() => { setOpenDropdown(null); setDropdownModule(null); }} />
+          <div
+            className="fixed w-60 bg-[#faf6ee] border border-[#1e130c]/20 shadow-2xl z-[11001] py-3 font-[family-name:var(--font-lora)]"
+            style={{ top: dropdownPosition.top ? `${dropdownPosition.top + 8}px` : undefined, bottom: dropdownPosition.bottom ? `${dropdownPosition.bottom + 8}px` : undefined, left: `${dropdownPosition.left}px` }}
+          >
+            <div className={`absolute ${dropdownPosition.isUp ? "-bottom-2 border-b border-r" : "-top-2 border-l border-t"} right-4 w-4 h-4 bg-[#faf6ee] border-[#1e130c]/20 rotate-45`} />
+            <button onClick={() => { handleEdit(dropdownModule); setOpenDropdown(null); }} className="w-full px-5 py-3 text-left hover:bg-[#1e130c]/5 flex items-center justify-start gap-4 transition-colors">
+              <Edit size={16} style={{ color: '#8b6d22' }} />
+              <span style={{ fontSize: '0.95rem', color: '#1e130c', fontWeight: 500 }}>Inscrever Alterações</span>
+            </button>
+            <div className="border-t border-[#1e130c]/10 mt-3 pt-3">
+              <button 
+                onClick={() => { handleDelete(dropdownModule); setOpenDropdown(null); }}
+                className="w-full px-5 py-3 text-left hover:bg-[#7a6350]/10 flex items-center justify-start gap-4 transition-colors"
+              >
+                <Trash2 size={16} className="text-[#7a6350] italic" />
+                <span style={{ fontSize: '0.95rem', color: '#7a6350', fontWeight: 600 }}>Expurgar Registro</span>
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

@@ -1168,23 +1168,23 @@ useEffect(() => {
             </div>
 
             {/* Import Mode Toggle */}
-            <div className="flex gap-1 p-1 bg-navy-800 rounded-lg">
+            <div className="flex gap-1 p-1 bg-[#1e130c]/5 border border-[#1e130c]/10">
               <button
                 onClick={() => setImportMode('full')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
                   importMode === 'full'
-                    ? 'bg-gold-500 text-navy-900'
-                    : 'text-gold-300 hover:bg-navy-700'
+                    ? 'bg-[#1e130c] text-[#faf6ee]'
+                    : 'text-[#1e130c]/70 hover:bg-[#1e130c]/10'
                 }`}
               >
                 Curso Completo
               </button>
               <button
                 onClick={() => setImportMode('subject')}
-                className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
                   importMode === 'subject'
-                    ? 'bg-gold-500 text-navy-900'
-                    : 'text-gold-300 hover:bg-navy-700'
+                    ? 'bg-[#1e130c] text-[#faf6ee]'
+                    : 'text-[#1e130c]/70 hover:bg-[#1e130c]/10'
                 }`}
               >
                 Apenas Disciplina
@@ -1193,21 +1193,21 @@ useEffect(() => {
 
             {/* Course/Module Selectors (subject mode only) */}
             {importMode === 'subject' && (
-              <div className="space-y-3 p-4 bg-navy-700/50 rounded-lg border border-gold-500/20">
-                <p className="text-gold-300 text-xs font-medium mb-2">Selecione o destino da disciplina:</p>
+              <div className="space-y-3 p-4 bg-[#faf6ee] border border-[#1e130c]/10">
+                <p className="text-[#1e130c] text-xs font-medium mb-2 italic">Selecione o destino da disciplina:</p>
                 {loadingTargets ? (
-                  <div className="flex items-center gap-2 text-gold-400 text-sm">
+                  <div className="flex items-center gap-2 text-[#7a6350] text-sm">
                     <Loader2 className="w-4 h-4 animate-spin" />
                     Carregando cursos e módulos...
                   </div>
                 ) : (
                   <>
                     <div>
-                      <label className="block text-gold-400 text-xs mb-1">Curso de Destino</label>
+                      <label className="block text-[#1e130c]/70 text-xs mb-1 italic">Curso de Destino</label>
                       <select
                         value={selectedTargetCourseId || ''}
                         onChange={(e) => handleCourseSelect(e.target.value)}
-                        className="w-full px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
+                        className="w-full px-3 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm focus:outline-none focus:border-[#8b6d22]"
                       >
                         <option value="">Selecione um curso...</option>
                         {availableCourses.map(c => (
@@ -1216,12 +1216,12 @@ useEffect(() => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-gold-400 text-xs mb-1">Módulo de Destino</label>
+                      <label className="block text-[#1e130c]/70 text-xs mb-1 italic">Módulo de Destino</label>
                       <select
                         value={selectedTargetModuleId || ''}
                         onChange={(e) => setSelectedTargetModuleId(e.target.value || null)}
                         disabled={!selectedTargetCourseId}
-                        className="w-full px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm focus:outline-none focus:border-[#8b6d22] disabled:opacity-50"
                       >
                         <option value="">Selecione um módulo...</option>
                         {filteredModules.map(m => (

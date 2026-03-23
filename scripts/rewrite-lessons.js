@@ -14,12 +14,12 @@ const newReturn = `return (
           <div>
             <h1 className="font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl md:text-5xl font-bold text-[#1e130c] flex items-center justify-center sm:justify-start gap-3">
               <PlayCircle className="w-8 h-8 text-[#8b6d22]" />
-              Livro de Preleções
+              Gestão de Aulas
             </h1>
             <p className="text-[#7a6350] mt-2 italic">Gerencie as lições e conteúdos das academias.</p>
           </div>
           <Button onClick={openCreateModal} icon={<Plus className="w-4 h-4 flex-shrink-0" />}>
-            Nova Preleção
+            Nova Aula
           </Button>
         </div>
         <ClassicRule className="mt-6 w-full" />

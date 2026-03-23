@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, AlertCircle, Link2, CheckSquare, Square, Trash, Check } from 'lucide-react'
+import { BookOpen, Plus, Edit, Trash2, Search, Filter, GraduationCap, X, AlertCircle, Link2, CheckSquare, Square, Trash, Check, MoreVertical } from 'lucide-react'
 import { ClassicRule } from '../../components/ui/RenaissanceSvgs'
 import Button from '../../components/Button'
 import Spinner from '../../components/ui/Spinner'
@@ -56,8 +56,15 @@ export default function SubjectsPage() {
   const [subjects, setSubjects] = useState<SubjectWithModules[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [dropdownPosition, setDropdownPosition] = useState<{ top?: number, bottom?: number, left: number, isUp?: boolean } | null>(null)
+  const [dropdownSubject, setDropdownSubject] = useState<SubjectWithModules | null>(null)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [selectedCourseId, setSelectedCourseId] = useState<string>('todos')
   const [selectedModuleId, setSelectedModuleId] = useState<string>('todos')
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
   const [showModal, setShowModal] = useState(false)
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null)
   const [formData, setFormData] = useState({
@@ -518,6 +525,9 @@ export default function SubjectsPage() {
     return list.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }))
   }, [filteredSubjects, subjectSortMode])
 
+  const totalPages = Math.ceil(sortedSubjects.length / itemsPerPage)
+  const paginatedSubjects = sortedSubjects.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
   const totalCourses = Object.values(courseCount).reduce((sum, count) => sum + count, 0)
   const averageCoursesPerSubject = subjects.length > 0 
     ? (totalCourses / subjects.length).toFixed(1) 
@@ -539,7 +549,7 @@ export default function SubjectsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
         <div className="flex-1">
           <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: '#1e130c', lineHeight: 1.1, fontWeight: 700 }}>
-            Livro de Disciplinas
+            Gestão de Disciplinas
           </h1>
           <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: '#7a6350', marginTop: '0.5rem' }}>
             Gerencie as disciplinas disponíveis na academia.
@@ -607,7 +617,7 @@ export default function SubjectsPage() {
               type="text"
               placeholder="Buscar por nome, código ou descrição..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full pl-8 pr-4 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:ring-0 focus:border-[color:var(--color-focus)] transition-colors rounded-none"
             />
           </div>
@@ -625,7 +635,7 @@ export default function SubjectsPage() {
             <Filter className="w-4 h-4 text-[#8b6d22] flex-shrink-0" />
             <select
               value={selectedCourseId}
-              onChange={(e) => setSelectedCourseId(e.target.value)}
+              onChange={(e) => { setSelectedCourseId(e.target.value); setCurrentPage(1); }}
               className="px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[color:var(--color-focus)] transition-colors rounded-none cursor-pointer min-w-[180px]"
             >
               <option value="todos">Todos os cursos</option>
@@ -635,7 +645,7 @@ export default function SubjectsPage() {
             </select>
             <select
               value={selectedModuleId}
-              onChange={(e) => setSelectedModuleId(e.target.value)}
+              onChange={(e) => { setSelectedModuleId(e.target.value); setCurrentPage(1); }}
               className="px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[color:var(--color-focus)] transition-colors rounded-none cursor-pointer min-w-[180px]"
             >
               <option value="todos">Todos os módulos</option>
@@ -734,8 +744,8 @@ export default function SubjectsPage() {
             </tr>
           </thead>
           <tbody>
-            {sortedSubjects.length > 0 ? (
-              sortedSubjects.map((subject) => (
+            {paginatedSubjects.length > 0 ? (
+              paginatedSubjects.map((subject) => (
                 <tr key={subject.id} className="border-b border-dashed border-[#1e130c]/20 hover:bg-[#1e130c]/5 transition-colors">
                   <td className="py-4 px-4 text-center">
                     <button
@@ -752,7 +762,9 @@ export default function SubjectsPage() {
                     <span className="text-[#8b6d22] font-mono text-sm">{subject.code || '-'}</span>
                   </td>
                   <td className="py-4 px-4">
-                    <span className="text-[#1e130c] font-medium">{subject.name}</span>
+                    <span className="text-[#1e130c] font-medium" title={subject.name}>
+                      {subject.name.length > 30 ? `${subject.name.substring(0, 30)}...` : subject.name}
+                    </span>
                   </td>
                   <td className="py-4 px-4">
                     <span className="text-[#7a6350] italic text-sm">{subject.description || '-'}</span>
@@ -771,30 +783,26 @@ export default function SubjectsPage() {
                       {new Date(subject.created_at || '').toLocaleDateString('pt-BR')}
                     </span>
                   </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <Button 
-                        variant="secondary" 
-                        size="sm"
-                        onClick={() => openLessonsModal(subject)}
-                        title="Vincular Aulas"
-                        icon={<Link2 className="w-4 h-4 flex-shrink-0" />}
-                      />
-                      <Button 
-                        variant="secondary" 
-                        size="sm"
-                        onClick={() => handleEdit(subject)}
-                        title="Inscrever Alterações"
-                        icon={<Edit className="w-4 h-4 flex-shrink-0" />}
-                      />
-                      <Button 
-                        variant="secondary" 
-                        size="sm"
-                        onClick={() => handleDelete(subject)}
-                        title="Expurgar Registro"
-                        icon={<Trash2 className="w-4 h-4 flex-shrink-0" />}
-                      />
-                    </div>
+                  <td className="py-4 px-4 text-center">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        const isUp = window.innerHeight - rect.bottom < 250
+                        setDropdownPosition({ 
+                          top: isUp ? undefined : rect.bottom, 
+                          bottom: isUp ? window.innerHeight - rect.top : undefined,
+                          left: rect.right - 240,
+                          isUp
+                        })
+                        setDropdownSubject(subject)
+                        setOpenDropdown(subject.id)
+                      }}
+                      className="text-[#8b6d22] hover:text-[#1e130c] p-2 transition-transform active:scale-90"
+                      title="Ações"
+                    >
+                      <MoreVertical size={20} />
+                    </button>
                   </td>
                 </tr>
               ))
@@ -810,6 +818,30 @@ export default function SubjectsPage() {
             )}
           </tbody>
         </table>
+        
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center py-4 px-4 mt-2 border-t border-[#1e130c]/10 bg-transparent">
+            <span className="text-sm text-[#7a6350] italic">
+              Página {currentPage} de {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       )}
 
@@ -920,9 +952,9 @@ export default function SubjectsPage() {
                   className="flex-1 py-3 px-4 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-medium text-center flex items-center justify-center gap-2"
                 >
                   {submitting ? (
-                    <><Spinner size="sm" /> Lavrando...</>
+                    <><Spinner size="sm" /> Gravando...</>
                   ) : (
-                    editingSubject ? 'Inscrever Alterações' : 'Lavrar Registro'
+                    editingSubject ? 'Salvar Alterações' : 'Criar'
                   )}
                 </button>
               </div>
@@ -1083,6 +1115,36 @@ export default function SubjectsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Dropdown Portal ── */}
+      {openDropdown && dropdownSubject && dropdownPosition && (
+        <>
+          <div className="fixed inset-0 z-[11000] bg-transparent" onClick={() => { setOpenDropdown(null); setDropdownSubject(null); }} />
+          <div
+            className="fixed w-60 bg-[#faf6ee] border border-[#1e130c]/20 shadow-2xl z-[11001] py-3 font-[family-name:var(--font-lora)]"
+            style={{ top: dropdownPosition.top ? `${dropdownPosition.top + 8}px` : undefined, bottom: dropdownPosition.bottom ? `${dropdownPosition.bottom + 8}px` : undefined, left: `${dropdownPosition.left}px` }}
+          >
+            <div className={`absolute ${dropdownPosition.isUp ? "-bottom-2 border-b border-r" : "-top-2 border-l border-t"} right-4 w-4 h-4 bg-[#faf6ee] border-[#1e130c]/20 rotate-45`} />
+            <button onClick={() => { openLessonsModal(dropdownSubject); setOpenDropdown(null); }} className="w-full px-5 py-3 text-left hover:bg-[#1e130c]/5 flex items-center justify-start gap-4 transition-colors">
+              <Link2 size={16} style={{ color: '#8b6d22' }} />
+              <span style={{ fontSize: '0.95rem', color: '#1e130c', fontWeight: 500 }}>Vincular Aulas</span>
+            </button>
+            <button onClick={() => { handleEdit(dropdownSubject); setOpenDropdown(null); }} className="w-full px-5 py-3 text-left hover:bg-[#1e130c]/5 flex items-center justify-start gap-4 transition-colors">
+              <Edit size={16} style={{ color: '#8b6d22' }} />
+              <span style={{ fontSize: '0.95rem', color: '#1e130c', fontWeight: 500 }}>Inscrever Alterações</span>
+            </button>
+            <div className="border-t border-[#1e130c]/10 mt-3 pt-3">
+              <button 
+                onClick={() => { handleDelete(dropdownSubject); setOpenDropdown(null); }}
+                className="w-full px-5 py-3 text-left hover:bg-[#7a6350]/10 flex items-center justify-start gap-4 transition-colors"
+              >
+                <Trash2 size={16} className="text-[#7a6350] italic" />
+                <span style={{ fontSize: '0.95rem', color: '#7a6350', fontWeight: 600 }}>Expurgar Registro</span>
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

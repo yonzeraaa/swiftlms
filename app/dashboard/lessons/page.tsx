@@ -47,9 +47,16 @@ export default function LessonsPage() {
   const router = useRouter()
   const [codeFilter, setCodeFilter] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [dropdownPosition, setDropdownPosition] = useState<{ top?: number, bottom?: number, left: number, isUp?: boolean } | null>(null)
+  const [dropdownLesson, setDropdownLesson] = useState<any>(null)
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [selectedCourseId, setSelectedCourseId] = useState<string>('todos')
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('todas')
   const [loading, setLoading] = useState(true)
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
   const [lessons, setLessons] = useState<LessonWithRelations[]>([])
   const [modules, setModules] = useState<(CourseModule & { courses: Course })[]>([])
   const [showModal, setShowModal] = useState(false)
@@ -294,6 +301,9 @@ export default function LessonsPage() {
     return list.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' }))
   }, [filteredLessons, lessonSortMode])
 
+  const totalPages = Math.ceil(sortedLessons.length / itemsPerPage)
+  const paginatedLessons = sortedLessons.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
   useEffect(() => {
     setSelectedLessonIds(prev => {
       const filtered = prev.filter(id => sortedLessons.some(lesson => lesson.id === id))
@@ -405,10 +415,10 @@ export default function LessonsPage() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
         <div className="flex-1">
           <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: '#1e130c', lineHeight: 1.1, fontWeight: 700 }}>
-            Livro de Preleções
+            Gestão de Aulas
           </h1>
           <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: '#7a6350', marginTop: '0.5rem' }}>
-            Gerencie as lições e conteúdos das academias.
+            Gerencie as aulas e conteúdos dos cursos.
           </p>
           <div className="mt-6 w-full max-w-md">
             <ClassicRule color="#1e130c" />
@@ -418,7 +428,7 @@ export default function LessonsPage() {
           onClick={openCreateModal}
           style={{ padding: '1rem 3rem', backgroundColor: '#1e130c', color: '#faf6ee', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
         >
-          Nova Preleção
+          Nova Aula
         </button>
       </div>
 
@@ -514,7 +524,7 @@ export default function LessonsPage() {
               type="text"
               placeholder="Pesquisar por título ou sumário..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full pl-8 pr-4 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:ring-0 focus:border-[color:var(--color-focus)] transition-colors rounded-none"
             />
           </div>
@@ -522,7 +532,7 @@ export default function LessonsPage() {
             <Filter className="w-4 h-4 text-[#8b6d22] flex-shrink-0" />
             <select
               value={selectedCourseId}
-              onChange={(e) => setSelectedCourseId(e.target.value)}
+              onChange={(e) => { setSelectedCourseId(e.target.value); setCurrentPage(1); }}
               className="px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[color:var(--color-focus)] transition-colors rounded-none cursor-pointer"
             >
               <option value="todos">Todos os cursos</option>
@@ -532,7 +542,7 @@ export default function LessonsPage() {
             </select>
             <select
               value={selectedSubjectId}
-              onChange={(e) => setSelectedSubjectId(e.target.value)}
+              onChange={(e) => { setSelectedSubjectId(e.target.value); setCurrentPage(1); }}
               className="px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[color:var(--color-focus)] transition-colors rounded-none cursor-pointer"
             >
               <option value="todas">Todas as disciplinas</option>
@@ -648,8 +658,8 @@ export default function LessonsPage() {
             </tr>
           </thead>
           <tbody>
-            {sortedLessons.length > 0 ? (
-              sortedLessons.map((lesson) => {
+            {paginatedLessons.length > 0 ? (
+              paginatedLessons.map((lesson) => {
                 const progress = lessonProgress[lesson.id] || { completed: 0, total: 0 }
                 return (
                   <tr key={lesson.id} className="border-b border-dashed border-[#1e130c]/20 hover:bg-[#1e130c]/5 transition-colors">
@@ -737,36 +747,26 @@ export default function LessonsPage() {
                         )}
                       </button>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <Button 
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => {
-                            if (lesson.course_modules?.courses?.id) {
-                              router.push(`/student-dashboard/course/${lesson.course_modules.courses.id}?lesson=${lesson.id}`)
-                            } else {
-                              alert('Esta aula não está associada a um curso')
-                            }
-                          }}
-                          title="Visualizar como Discente"
-                          icon={<Eye className="w-4 h-4" />}
-                        />
-                        <Button 
-                          variant="secondary" 
-                          size="sm"
-                          onClick={() => handleEdit(lesson)}
-                          title="Inscrever Alterações"
-                          icon={<Edit className="w-4 h-4" />}
-                        />
-                        <Button 
-                          variant="secondary" 
-                          size="sm"
-                          onClick={() => handleDelete(lesson)}
-                          title="Expurgar Registro"
-                          icon={<Trash2 className="w-4 h-4" />}
-                        />
-                      </div>
+                    <td className="py-4 px-4 text-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const rect = e.currentTarget.getBoundingClientRect()
+                        const isUp = window.innerHeight - rect.bottom < 250
+                        setDropdownPosition({ 
+                          top: isUp ? undefined : rect.bottom, 
+                          bottom: isUp ? window.innerHeight - rect.top : undefined,
+                          left: rect.right - 240,
+                          isUp
+                        })
+                          setDropdownLesson(lesson)
+                          setOpenDropdown(lesson.id)
+                        }}
+                        className="text-[#8b6d22] hover:text-[#1e130c] p-2 transition-transform active:scale-90"
+                        title="Ações"
+                      >
+                        <MoreVertical size={20} />
+                      </button>
                     </td>
                   </tr>
                 )
@@ -783,17 +783,41 @@ export default function LessonsPage() {
             )}
           </tbody>
         </table>
+        
+        {totalPages > 1 && (
+          <div className="flex justify-between items-center py-4 px-4 mt-2 border-t border-[#1e130c]/10 bg-transparent">
+            <span className="text-sm text-[#7a6350] italic">
+              Página {currentPage} de {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       )}
 
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
-          <div className="relative bg-[#faf6ee] w-full max-w-2xl p-8 md:p-10 shadow-2xl border border-[#1e130c]/20 my-8">
+          <div className="relative bg-[#faf6ee] w-full max-w-xl p-8 shadow-xl border border-[#1e130c]/10 my-8">
 
-            <div className="flex items-center justify-between mb-8 relative z-10">
-              <h2 className="font-[family-name:var(--font-playfair)] text-2xl md:text-3xl font-bold text-[#1e130c] border-b-2 border-[#8b6d22] pb-2 pr-8">
-                {editingLesson ? 'Editar Registro de Preleção' : 'Novo Registro de Preleção'}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c]">
+                {editingLesson ? 'Editar Aula' : 'Nova Aula'}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
@@ -803,17 +827,17 @@ export default function LessonsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block font-[family-name:var(--font-playfair)] text-lg text-[#1e130c] mb-2">
-                  Título da Preleção <span className="text-[#8b6d22]">*</span>
+                <label className="block text-sm font-medium text-[#1e130c] mb-1">
+                  Título <span className="text-[#8b6d22]">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:ring-0 focus:border-[color:var(--color-focus)] transition-colors rounded-none"
+                  className="w-full px-3 py-2 border border-[#1e130c]/20 bg-transparent focus:border-[#8b6d22] outline-none transition-colors"
                   placeholder="Ex: Introdução ao Módulo"
                 />
               </div>
@@ -918,33 +942,33 @@ export default function LessonsPage() {
                       </div>
                     </div>
                     <div className="ml-3">
-                      <span className="block text-[#1e130c] font-medium group-hover:text-[#8b6d22] transition-colors">Exposição Pública (Preview)</span>
+                      <span className="block text-[#1e130c] font-medium group-hover:text-[#8b6d22] transition-colors">Exibição pública (Preview)</span>
                       <span className="block text-xs text-[#7a6350] mt-0.5 italic">
-                        Visível como demonstração aos não-iniciados
+                        Visível como demonstração para não inscritos
                       </span>
                     </div>
                   </label>
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-8 border-t border-[#1e130c]/15">
+              <div className="flex gap-4 pt-6 border-t border-[#1e130c]/10">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
                   disabled={submitting}
-                  className="flex-1 py-3 px-4 border border-[#1e130c]/20 text-[#1e130c] hover:bg-[#1e130c]/5 transition-colors font-medium text-center"
+                  className="flex-1 py-2 px-4 border border-[#1e130c]/20 text-[#1e130c] hover:bg-[#1e130c]/5 transition-colors font-medium text-center text-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 py-3 px-4 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-medium text-center flex items-center justify-center gap-2"
+                  className="flex-1 py-2 px-4 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-medium text-center text-sm flex items-center justify-center gap-2"
                 >
                   {submitting ? (
-                    <><Spinner size="sm" /> Lavrando...</>
+                    <><Spinner size="sm" /> Gravando...</>
                   ) : (
-                    editingLesson ? 'Inscrever Alterações' : 'Lavrar Registro'
+                    editingLesson ? 'Salvar Alterações' : 'Criar Aula'
                   )}
                 </button>
               </div>
@@ -1070,6 +1094,46 @@ export default function LessonsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Dropdown Portal ── */}
+      {openDropdown && dropdownLesson && dropdownPosition && (
+        <>
+          <div className="fixed inset-0 z-[11000] bg-transparent" onClick={() => { setOpenDropdown(null); setDropdownLesson(null); }} />
+          <div
+            className="fixed w-60 bg-[#faf6ee] border border-[#1e130c]/20 shadow-2xl z-[11001] py-3 font-[family-name:var(--font-lora)]"
+            style={{ top: dropdownPosition.top ? `${dropdownPosition.top + 8}px` : undefined, bottom: dropdownPosition.bottom ? `${dropdownPosition.bottom + 8}px` : undefined, left: `${dropdownPosition.left}px` }}
+          >
+            <div className={`absolute ${dropdownPosition.isUp ? "-bottom-2 border-b border-r" : "-top-2 border-l border-t"} right-4 w-4 h-4 bg-[#faf6ee] border-[#1e130c]/20 rotate-45`} />
+            <button 
+              onClick={() => {
+                if (dropdownLesson.course_modules?.courses?.id) {
+                  router.push(`/student-dashboard/course/${dropdownLesson.course_modules.courses.id}?lesson=${dropdownLesson.id}`)
+                } else {
+                  alert('Esta aula não está associada a um curso')
+                }
+                setOpenDropdown(null);
+              }}
+              className="w-full px-5 py-3 text-left hover:bg-[#1e130c]/5 flex items-center justify-start gap-4 transition-colors"
+            >
+              <Eye size={16} style={{ color: '#8b6d22' }} />
+              <span style={{ fontSize: '0.95rem', color: '#1e130c', fontWeight: 500 }}>Visualizar como Discente</span>
+            </button>
+            <button onClick={() => { handleEdit(dropdownLesson); setOpenDropdown(null); }} className="w-full px-5 py-3 text-left hover:bg-[#1e130c]/5 flex items-center justify-start gap-4 transition-colors">
+              <Edit size={16} style={{ color: '#8b6d22' }} />
+              <span style={{ fontSize: '0.95rem', color: '#1e130c', fontWeight: 500 }}>Inscrever Alterações</span>
+            </button>
+            <div className="border-t border-[#1e130c]/10 mt-3 pt-3">
+              <button 
+                onClick={() => { handleDelete(dropdownLesson); setOpenDropdown(null); }}
+                className="w-full px-5 py-3 text-left hover:bg-[#7a6350]/10 flex items-center justify-start gap-4 transition-colors"
+              >
+                <Trash2 size={16} className="text-[#7a6350] italic" />
+                <span style={{ fontSize: '0.95rem', color: '#7a6350', fontWeight: 600 }}>Expurgar Registro</span>
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

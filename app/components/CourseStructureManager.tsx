@@ -8,10 +8,10 @@ import {
   reorderLessons
 } from '@/lib/actions/course-structure';
 import { 
-  BookOpen, 
-  Layers, 
+  Library, 
+  BookMarked, 
   GraduationCap, 
-  Video,
+  ScrollText,
   Plus,
   ChevronRight,
   ChevronDown,
@@ -25,6 +25,7 @@ import {
 import Card from './Card';
 import Button from './Button';
 import OrderableList from './OrderableList';
+import Spinner from './ui/Spinner';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -93,24 +94,24 @@ function SortableSubject({ subject, index }: SortableSubjectProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 p-2 bg-navy-800/30 rounded-lg ${
-        isDragging ? 'ring-2 ring-gold-500/50' : ''
+      className={`flex items-center gap-2 p-2 bg-[#1e130c]/5 rounded-lg ${
+        isDragging ? 'ring-2 ring-[#8b6d22]/50' : ''
       } transition-all`}
     >
       <div
         {...attributes}
         {...listeners}
-        className="cursor-grab hover:cursor-grabbing text-gold-400/50 hover:text-gold-400"
+        className="cursor-grab hover:cursor-grabbing text-[#7a6350]/60 hover:text-[#1e130c]"
       >
         <GripVertical className="w-4 h-4" />
       </div>
-      <span className="text-xs text-gold-400/50 w-6">{index + 1}.</span>
+      <span className="text-xs text-[#7a6350]/60 w-6">{index + 1}.</span>
       <div className="flex-1">
-        <span className="text-sm text-gold-200">
+        <span className="text-sm text-[#1e130c]">
           {subject.subjects?.name}
         </span>
         {subject.subjects?.code && (
-          <span className="text-xs text-gold-400/70 ml-2">
+          <span className="text-xs text-[#7a6350]/80 ml-2">
             ({subject.subjects.code})
           </span>
         )}
@@ -254,8 +255,8 @@ export default function CourseStructureManager({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+      <div className="flex items-center justify-center p-16">
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -263,47 +264,49 @@ export default function CourseStructureManager({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <BookOpen className="w-6 h-6 text-gold-500" />
-          <div>
-            <h2 className="text-xl font-bold text-gold">{courseName}</h2>
-            <p className="text-sm text-gold-400/70">Estrutura Hierárquica do Curso</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
+        <div className="flex items-start gap-4">
+          <Library className="w-6 h-6 text-[#8b6d22] mt-2 flex-shrink-0" />
+          <div className="flex-1">
+            <h2 className="text-2xl sm:text-3xl font-bold font-[family-name:var(--font-playfair)] text-[#1e130c] leading-tight uppercase">
+              {courseName}
+            </h2>
+            <p className="text-sm font-[family-name:var(--font-lora)] text-[#7a6350] mt-1 italic">
+              Estrutura Hierárquica do Curso
+            </p>
           </div>
         </div>
         
         {canManage && editMode === null && (
-          <Button
-            variant="secondary"
-            size="sm"
+          <button
             onClick={() => setEditMode('modules')}
-            icon={<Settings className="w-4 h-4" />}
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-transparent border border-[#1e130c]/20 hover:bg-[#1e130c]/5 hover:border-[#1e130c]/30 text-[#1e130c] font-[family-name:var(--font-lora)] text-sm transition-all shadow-sm rounded-sm"
           >
+            <Settings className="w-4 h-4" />
             Gerenciar Estrutura
-          </Button>
+          </button>
         )}
 
         {editMode && (
-          <Button
-            variant="ghost"
-            size="sm"
+          <button
             onClick={() => {
               setEditMode(null);
               setEditingModuleId(null);
             }}
-            icon={<X className="w-4 h-4" />}
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-[#1e130c] border border-[#1e130c] hover:bg-[#8b6d22] hover:border-[#8b6d22] text-[#faf6ee] font-[family-name:var(--font-lora)] text-sm transition-all shadow-sm rounded-sm"
           >
+            <X className="w-4 h-4" />
             Fechar Edição
-          </Button>
+          </button>
         )}
       </div>
 
       {/* Modo de Edição - Reordenar Módulos */}
       {editMode === 'modules' && (
-        <Card className="bg-navy-800/50 border-gold-500/30">
+        <Card className="bg-[#faf6ee] border-[#1e130c]/15">
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-gold mb-4">
-              <Layers className="w-5 h-5" />
+            <div className="flex items-center gap-2 text-[#1e130c] mb-4">
+              <BookMarked className="w-5 h-5" />
               <h3 className="font-semibold">Reordenar Módulos do Curso</h3>
             </div>
             <OrderableList
@@ -321,9 +324,9 @@ export default function CourseStructureManager({
 
       {/* Modo de Edição - Reordenar Disciplinas de um Módulo */}
       {editMode === 'subjects' && editingModuleId && (
-        <Card className="bg-navy-800/50 border-gold-500/30">
+        <Card className="bg-[#faf6ee] border-[#1e130c]/15">
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-gold mb-4">
+            <div className="flex items-center gap-2 text-[#1e130c] mb-4">
               <GraduationCap className="w-5 h-5" />
               <h3 className="font-semibold">
                 Reordenar Disciplinas - {modules.find(m => m.id === editingModuleId)?.title}
@@ -345,10 +348,10 @@ export default function CourseStructureManager({
 
       {/* Modo de Edição - Reordenar Aulas de um Módulo */}
       {editMode === 'lessons' && editingModuleId && (
-        <Card className="bg-navy-800/50 border-gold-500/30">
+        <Card className="bg-[#faf6ee] border-[#1e130c]/15">
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-gold mb-4">
-              <Video className="w-5 h-5" />
+            <div className="flex items-center gap-2 text-[#1e130c] mb-4">
+              <ScrollText className="w-5 h-5" />
               <h3 className="font-semibold">
                 Reordenar Aulas - {modules.find(m => m.id === editingModuleId)?.title}
               </h3>
@@ -381,24 +384,24 @@ export default function CourseStructureManager({
             <Card key={module.id} className="overflow-hidden">
               {/* Header do Módulo */}
               <div
-                className="flex items-center gap-3 cursor-pointer hover:bg-navy-800/30 -m-4 p-4 transition-colors"
+                className="flex items-center gap-3 cursor-pointer hover:bg-[#1e130c]/5 -m-4 p-4 transition-colors"
                 onClick={() => toggleModule(module.id)}
               >
-                <button className="text-gold-400 hover:text-gold-300 transition-colors">
+                <button className="text-[#7a6350] hover:text-[#8b6d22] transition-colors">
                   {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
                 </button>
                 
                 <div className="flex items-center gap-2 flex-1">
-                  <Layers className="w-5 h-5 text-gold-500" />
+                  <BookMarked className="w-5 h-5 text-[#8b6d22]" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gold">
+                    <h3 className="font-semibold text-[#1e130c]">
                       Módulo {moduleIndex + 1}: {module.title}
                     </h3>
                     {module.description && (
-                      <p className="text-sm text-gold-400/70">{module.description}</p>
+                      <p className="text-sm text-[#7a6350]/80">{module.description}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gold-400">
+                  <div className="flex items-center gap-2 text-sm text-[#7a6350]">
                     <span>{moduleSubjectsList.length} disciplinas</span>
                     <span>•</span>
                     <span>{moduleLessonsList.length} aulas</span>
@@ -413,29 +416,28 @@ export default function CourseStructureManager({
 
                 {canManage && editMode === null && (
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
+                    <button
                       onClick={() => {
                         setEditMode('lessons');
                         setEditingModuleId(module.id);
                       }}
-                      icon={<Video className="w-4 h-4" />}
+                      className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 bg-transparent text-[#8b6d22] font-[family-name:var(--font-lora)] text-sm transition-all rounded-sm hover:underline"
                     >
+                      <ScrollText className="w-4 h-4" />
                       Ordenar Aulas
-                    </Button>
+                    </button>
                   </div>
                 )}
               </div>
 
               {/* Conteúdo Expandido do Módulo */}
               {isExpanded && (
-                <div className="mt-4 pt-4 border-t border-navy-700 space-y-4">
+                <div className="mt-4 pt-4 border-t border-[#1e130c]/15 space-y-4">
                   {/* Disciplinas do Módulo */}
                   {moduleSubjectsList.length > 0 && (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-sm font-medium text-gold-300 flex items-center gap-2">
+                        <h4 className="text-sm font-medium text-[#1e130c] flex items-center gap-2">
                           <GraduationCap className="w-4 h-4" />
                           Disciplinas
                         </h4>
@@ -513,15 +515,15 @@ export default function CourseStructureManager({
                           moduleSubjectsList.map((ms, index) => (
                             <div
                               key={ms.id}
-                              className="flex items-center gap-2 p-2 bg-navy-800/30 rounded-lg"
+                              className="flex items-center gap-2 p-2 bg-[#1e130c]/5 rounded-lg"
                             >
-                              <span className="text-xs text-gold-400/50 w-6">{index + 1}.</span>
+                              <span className="text-xs text-[#7a6350]/60 w-6">{index + 1}.</span>
                               <div className="flex-1">
-                                <span className="text-sm text-gold-200">
+                                <span className="text-sm text-[#1e130c]">
                                   {ms.subjects?.name}
                                 </span>
                                 {ms.subjects?.code && (
-                                  <span className="text-xs text-gold-400/70 ml-2">
+                                  <span className="text-xs text-[#7a6350]/80 ml-2">
                                     ({ms.subjects.code})
                                   </span>
                                 )}
@@ -536,23 +538,23 @@ export default function CourseStructureManager({
                   {/* Aulas do Módulo */}
                   {moduleLessonsList.length > 0 && (
                     <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gold-300 flex items-center gap-2">
-                        <Video className="w-4 h-4" />
+                      <h4 className="text-sm font-medium text-[#1e130c] flex items-center gap-2">
+                        <ScrollText className="w-4 h-4" />
                         Aulas
                       </h4>
                       <div className="grid gap-2 ml-6">
                         {moduleLessonsList.map((lesson, index) => (
                           <div
                             key={lesson.id}
-                            className="flex items-center gap-2 p-2 bg-navy-800/30 rounded-lg"
+                            className="flex items-center gap-2 p-2 bg-[#1e130c]/5 rounded-lg"
                           >
-                            <span className="text-xs text-gold-400/50 w-6">{index + 1}.</span>
+                            <span className="text-xs text-[#7a6350]/60 w-6">{index + 1}.</span>
                             <div className="flex-1">
-                              <span className="text-sm text-gold-200">
+                              <span className="text-sm text-[#1e130c]">
                                 {lesson.title}
                               </span>
                               {lesson.description && (
-                                <p className="text-xs text-gold-400/70 mt-1">
+                                <p className="text-xs text-[#7a6350]/80 mt-1">
                                   {lesson.description}
                                 </p>
                               )}
@@ -564,7 +566,7 @@ export default function CourseStructureManager({
                   )}
 
                   {moduleSubjectsList.length === 0 && moduleLessonsList.length === 0 && (
-                    <p className="text-center text-gold-400/50 py-4">
+                    <p className="text-center text-[#7a6350]/60 py-4">
                       Este módulo ainda não possui conteúdo
                     </p>
                   )}
@@ -577,8 +579,8 @@ export default function CourseStructureManager({
 
       {modules.length === 0 && (
         <Card className="text-center py-12">
-          <BookOpen className="w-12 h-12 text-gold-400/30 mx-auto mb-4" />
-          <p className="text-gold-300/70">Este curso ainda não possui módulos cadastrados</p>
+          <Library className="w-12 h-12 text-[#7a6350]/30 mx-auto mb-4" />
+          <p className="text-[#7a6350]/80">Este curso ainda não possui módulos cadastrados</p>
         </Card>
       )}
     </div>

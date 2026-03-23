@@ -74,10 +74,13 @@ export default function CoursesPage() {
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [dropdownCourse, setDropdownCourse] = useState<Course | null>(null)
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null)
+  const [dropdownPosition, setDropdownPosition] = useState<{ top?: number, bottom?: number, left: number, isUp?: boolean } | null>(null)
   const [creating, setCreating] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 5
   const [showSubjectsModal, setShowSubjectsModal] = useState(false)
   const [showManageStudentsModal, setShowManageStudentsModal] = useState(false)
   const [enrolledStudents, setEnrolledStudents] = useState<any[]>([])
@@ -174,6 +177,9 @@ export default function CoursesPage() {
     return mSearch && mCat
   })
 
+  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage)
+  const paginatedCourses = filteredCourses.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+
   const openEditModal = (course: Course) => {
     setSelectedCourse(course)
     setEditForm({
@@ -223,14 +229,14 @@ export default function CoursesPage() {
               type="text"
               placeholder="Buscar título ou código..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)', fontSize: '1rem' }}
             />
           </div>
           <div className="flex-1 relative">
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={(e) => { setSelectedCategory(e.target.value); setCurrentPage(1); }}
               style={{ width: '100%', padding: '1rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)', cursor: 'pointer', appearance: 'none' }}
             >
               <option value="all">Todas Categorias</option>
@@ -265,7 +271,7 @@ export default function CoursesPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredCourses.map((c) => (
+              {paginatedCourses.map((c) => (
                 <tr key={c.id} style={{ borderBottom: `1px dashed ${BORDER}` }} className="hover:bg-[#1e130c]/[0.02] transition-colors group">
                   <td className="px-4 py-6 align-top" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.9rem', color: ACCENT, fontWeight: 600 }}>{c.code || '—'}</td>
                   <td className="px-4 py-6 align-top">
@@ -300,7 +306,13 @@ export default function CoursesPage() {
                     <button
                       onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect()
-                        setDropdownPosition({ top: rect.bottom, left: rect.right - 240 })
+                        const isUp = window.innerHeight - rect.bottom < 250
+                        setDropdownPosition({ 
+                          top: isUp ? undefined : rect.bottom, 
+                          bottom: isUp ? window.innerHeight - rect.top : undefined,
+                          left: rect.right - 240,
+                          isUp
+                        })
                         setDropdownCourse(c); setOpenDropdown(c.id);
                       }}
                       className="text-[#8b6d22] hover:text-[#1e130c] p-2 transition-transform active:scale-90"
@@ -315,6 +327,30 @@ export default function CoursesPage() {
           {!loading && filteredCourses.length === 0 && (
             <div className="py-24 text-center italic text-[#7a6350] border border-dashed border-[#1e130c]/10 mt-4">Nenhum registro acadêmico localizado para os filtros informados.</div>
           )}
+
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center py-4 mt-4 border-t border-[#1e130c]/10">
+              <span className="text-sm text-[#7a6350] italic">
+                Página {currentPage} de {totalPages}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Anterior
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm hover:bg-[#1e130c]/5 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Próximo
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -324,9 +360,9 @@ export default function CoursesPage() {
           <div className="fixed inset-0 z-[11000] bg-transparent" onClick={() => { setOpenDropdown(null); setDropdownCourse(null); }} />
           <div
             className="fixed w-60 bg-[#faf6ee] border border-[#1e130c]/20 shadow-2xl z-[11001] py-3 font-[family-name:var(--font-lora)]"
-            style={{ top: `${dropdownPosition.top + 8}px`, left: `${dropdownPosition.left}px` }}
+            style={{ top: dropdownPosition.top ? `${dropdownPosition.top + 8}px` : undefined, bottom: dropdownPosition.bottom ? `${dropdownPosition.bottom + 8}px` : undefined, left: `${dropdownPosition.left}px` }}
           >
-            <div className="absolute -top-2 right-4 w-4 h-4 bg-[#faf6ee] border-l border-t border-[#1e130c]/20 rotate-45" />
+            <div className={`absolute ${dropdownPosition.isUp ? "-bottom-2 border-b border-r" : "-top-2 border-l border-t"} right-4 w-4 h-4 bg-[#faf6ee] border-[#1e130c]/20 rotate-45`} />
             {[
               { label: 'Editar Dados', icon: Edit, action: () => openEditModal(dropdownCourse) },
               { label: dropdownCourse.is_published ? 'Retirar de Pauta' : 'Publicar Título', icon: dropdownCourse.is_published ? XCircle : CheckCircle, action: () => togglePublishStatus(dropdownCourse) },
