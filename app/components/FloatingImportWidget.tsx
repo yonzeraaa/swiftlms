@@ -45,7 +45,7 @@ export default function FloatingImportWidget() {
           {canClose && (
             <button
               onClick={closeImport}
-              className="p-1.5 rounded-lg text-gold-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              className="p-1.5 rounded-lg text-gold-400 hover:text-[#7a6350] italic hover:bg-[#7a6350]/10/10 transition-colors"
               title="Fechar"
             >
               <X className="w-4 h-4" />
@@ -59,7 +59,7 @@ export default function FloatingImportWidget() {
         <motion.div
           animate={{ width: `${percent}%` }}
           transition={{ duration: 0.3 }}
-          className={`h-full rounded-full ${isFinished ? 'bg-green-500' : 'bg-blue-500'}`}
+          className={`h-full rounded-full ${isFinished ? 'bg-[#1e130c]/5' : 'bg-blue-500'}`}
         />
       </div>
 

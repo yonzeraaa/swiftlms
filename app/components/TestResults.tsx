@@ -144,7 +144,7 @@ export default function TestResults({
               className="text-center p-4 bg-navy-800 rounded-lg border border-gold-500/20"
             >
               <div className="flex justify-center mb-2">
-                <CheckCircle className="w-8 h-8 text-green-500" />
+                <CheckCircle className="w-8 h-8 text-[#1e130c] font-bold" />
               </div>
               <p className="text-2xl font-bold text-gold">{correctCount}</p>
               <p className="text-sm text-gold-300">Acertos</p>
@@ -157,7 +157,7 @@ export default function TestResults({
               className="text-center p-4 bg-navy-800 rounded-lg border border-gold-500/20"
             >
               <div className="flex justify-center mb-2">
-                <XCircle className="w-8 h-8 text-red-500" />
+                <XCircle className="w-8 h-8 text-[#7a6350] italic" />
               </div>
               <p className="text-2xl font-bold text-gold">{incorrectCount}</p>
               <p className="text-sm text-gold-300">Erros</p>
@@ -188,7 +188,7 @@ export default function TestResults({
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.min(100, score)}%` }}
                 transition={{ duration: 1, delay: 0.7 }}
-                className={`h-full ${passed ? 'bg-green-500' : 'bg-red-500'}`}
+                className={`h-full ${passed ? 'bg-[#1e130c]/5' : 'bg-[#7a6350]/10'}`}
               />
               <div
                 className="absolute top-0 h-full w-0.5 bg-gold-500"
@@ -235,8 +235,8 @@ export default function TestResults({
                     key={question.questionNumber}
                     className={`p-3 rounded-lg border ${
                       question.isCorrect 
-                        ? 'bg-green-900/20 border-green-500/30' 
-                        : 'bg-red-900/20 border-red-500/30'
+                        ? 'bg-[#1e130c]/5/20 border-green-500/30' 
+                        : 'bg-[#7a6350]/10/20 border-red-500/30'
                     }`}
                   >
                     <div className="flex items-center gap-3 mb-2">
@@ -244,9 +244,9 @@ export default function TestResults({
                         Questão {question.questionNumber}
                       </span>
                       {question.isCorrect ? (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <CheckCircle className="w-5 h-5 text-[#1e130c] font-bold" />
                       ) : (
-                        <XCircle className="w-5 h-5 text-red-500" />
+                        <XCircle className="w-5 h-5 text-[#7a6350] italic" />
                       )}
                     </div>
                     
@@ -254,7 +254,7 @@ export default function TestResults({
                       <div>
                         <span className="text-gold-300/70">Sua resposta: </span>
                         <span className={`font-semibold ${
-                          question.isCorrect ? 'text-green-400' : 'text-red-400'
+                          question.isCorrect ? 'text-[#1e130c] font-bold' : 'text-[#7a6350] italic'
                         }`}>
                           {question.studentAnswer || '-'}
                         </span>
@@ -262,7 +262,7 @@ export default function TestResults({
                       {!question.isCorrect && (
                         <div>
                           <span className="text-gold-300/70">Resposta correta: </span>
-                          <span className="font-semibold text-green-400">
+                          <span className="font-semibold text-[#1e130c] font-bold">
                             {question.correctAnswer}
                           </span>
                         </div>

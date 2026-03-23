@@ -1,144 +1,159 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { hoverLift, tapScale } from '../lib/animations'
+import { ReactNode, CSSProperties } from 'react'
+import { motion } from 'framer-motion'
+import { ClassicRule } from './ui/RenaissanceSvgs'
+
+const INK = '#1e130c'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.12)'
+
+type Padding = 'none' | 'sm' | 'md' | 'lg' | 'xl'
 
 interface CardProps {
   children: ReactNode
   title?: string
   subtitle?: string
+  style?: CSSProperties
   className?: string
-  padding?: 'sm' | 'md' | 'lg' | 'xl' | 'none'
+  padding?: Padding
   action?: ReactNode
   hoverable?: boolean
   onClick?: () => void
-  variant?: 'default' | 'gradient' | 'outlined' | 'elevated' | 'glass'
   animate?: boolean
   delay?: number
-  depth?: 1 | 2 | 3 | 4 | 5
+  // legacy props kept for API compatibility — ignored visually
+  variant?: string
+  depth?: number
+}
+
+const paddingMap: Record<Padding, string> = {
+  none: '0',
+  sm: '1rem',
+  md: '1.5rem',
+  lg: '2rem',
+  xl: '2.5rem',
 }
 
 export default function Card({
   children,
   title,
   subtitle,
+  style,
   className = '',
   padding = 'md',
   action,
   hoverable = false,
   onClick,
-  variant = 'default',
   animate = false,
   delay = 0,
-  depth = 2
 }: CardProps) {
+  const hasHeader = !!(title || action)
 
-  const paddingSizes = {
-    none: '',
-    sm: 'p-4',
-    md: 'p-6',
-    lg: 'p-8',
-    xl: 'p-10'
+  const baseStyle: CSSProperties = {
+    backgroundColor: PARCH,
+    border: `1px solid ${BORDER}`,
+    boxShadow: '0 1px 12px rgba(30,19,12,0.06)',
+    padding: paddingMap[padding],
+    position: 'relative',
+    cursor: onClick ? 'pointer' : undefined,
+    transition: hoverable ? 'border-color 0.2s, box-shadow 0.2s' : undefined,
+    ...style,
   }
 
-  const glowColors = {
-    gold: 'rgba(255,215,0,0.15)',
-    blue: 'rgba(59,130,246,0.15)',
-    green: 'rgba(34,197,94,0.15)',
-    purple: 'rgba(168,85,247,0.15)',
-    red: 'rgba(239,68,68,0.15)'
-  }
-
-  const depthStyles = {
-    1: 'card-depth-1',
-    2: 'card-depth-2',
-    3: 'card-depth-3',
-    4: 'card-depth-4',
-    5: 'card-depth-5'
-  }
-
-  const variants = {
-    default: `
-      bg-navy-800/95 backdrop-blur-sm
-      border border-gold-500/10
-      shadow-lg
-      ${hoverable ? 'hover:border-gold-500/20 hover:shadow-xl transition-all duration-200' : ''}
-    `,
-    gradient: `
-      bg-navy-800/95
-      border border-gold-500/25
-      ${hoverable ? 'hover:border-gold-500/40 hover:shadow-md transition-all duration-200' : ''}
-    `,
-    outlined: `
-      bg-navy-900/80 border border-gold-500/25
-      ${hoverable ? 'hover:bg-navy-800/80 hover:border-gold-500/40 transition-all duration-200' : ''}
-    `,
-    elevated: `
-      bg-navy-800
-      border border-gold-500/10
-      shadow-md
-      ${hoverable ? 'hover:shadow-lg transition-shadow duration-200' : ''}
-    `,
-    glass: `
-      bg-navy-800/80 backdrop-blur-sm border border-gold-500/20
-      ${hoverable ? 'hover:bg-navy-800/90 hover:border-gold-500/30 transition-all duration-200' : ''}
-    `
-  }
-
-  const cardContent = (
+  const content = (
     <>
-      {/* Card Header */}
-      {(title || action) && (
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            {title && (
-              <h3 className="text-xl font-bold text-gold">
-                {title}
-              </h3>
-            )}
-            {subtitle && (
-              <p className="text-sm text-gold-300 mt-1">
-                {subtitle}
-              </p>
-            )}
+      {hasHeader && (
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              marginBottom: '0.75rem',
+            }}
+          >
+            <div>
+              {title && (
+                <h3
+                  style={{
+                    fontFamily: 'var(--font-playfair, serif)',
+                    fontSize: '1.15rem',
+                    fontWeight: 600,
+                    color: INK,
+                    margin: 0,
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {title}
+                </h3>
+              )}
+              {subtitle && (
+                <p
+                  style={{
+                    fontFamily: 'var(--font-lora, serif)',
+                    fontSize: '0.875rem',
+                    fontStyle: 'italic',
+                    color: MUTED,
+                    margin: '0.25rem 0 0',
+                  }}
+                >
+                  {subtitle}
+                </p>
+              )}
+            </div>
+            {action && <div style={{ flexShrink: 0, marginLeft: '1rem' }}>{action}</div>}
           </div>
-          {action && <div>{action}</div>}
+          <div style={{ marginBottom: '1rem' }}>
+            <ClassicRule />
+          </div>
         </div>
       )}
-
-      {/* Card Content */}
-      <div className="relative z-10">
-        {children}
-      </div>
+      {children}
     </>
   )
 
+  if (animate) {
+    return (
+      <motion.div
+        className={className}
+        style={baseStyle}
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay, duration: 0.5, ease: 'easeOut' }}
+        onClick={onClick}
+        whileHover={hoverable ? { borderColor: 'rgba(30,19,12,0.22)' } : undefined}
+      >
+        {content}
+      </motion.div>
+    )
+  }
+
   return (
-    <motion.div
-      className={`
-        ${variants[variant]}
-        ${paddingSizes[padding]}
-        ${depthStyles[depth]}
-        rounded-2xl relative
-        ${onClick ? 'cursor-pointer' : ''}
-        transition-all duration-200 ease-out
-        ${className}
-      `}
+    <div
+      className={className}
+      style={baseStyle}
       onClick={onClick}
-      initial={animate ? { opacity: 0, y: 20 } : false}
-      animate={animate ? { opacity: 1, y: 0 } : false}
-      transition={{ delay, duration: 0.5, ease: 'easeOut' }}
+      onMouseEnter={hoverable ? (e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.borderColor = 'rgba(30,19,12,0.22)'
+        el.style.boxShadow = '0 3px 18px rgba(30,19,12,0.1)'
+      } : undefined}
+      onMouseLeave={hoverable ? (e) => {
+        const el = e.currentTarget as HTMLElement
+        el.style.borderColor = BORDER
+        el.style.boxShadow = '0 1px 12px rgba(30,19,12,0.06)'
+      } : undefined}
     >
-      {cardContent}
-    </motion.div>
+      {content}
+    </div>
   )
 }
 
-// Glass Card variant for specific use case
 export function GlassCard({ children, className = '', ...props }: CardProps) {
   return (
-    <Card variant="glass" className={className} {...props}>
+    <Card className={className} {...props}>
       {children}
     </Card>
   )

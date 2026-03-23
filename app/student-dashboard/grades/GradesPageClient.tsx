@@ -41,14 +41,14 @@ export default function GradesPageClient({ userId, userName }: GradesPageClientP
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className="px-3 py-1 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="px-3 py-1 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
               />
               <span className="text-gold-400">até</span>
               <input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className="px-3 py-1 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="px-3 py-1 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
               />
             </div>
           </div>

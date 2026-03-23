@@ -506,12 +506,12 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gold">
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c]">
               {isEditMode ? 'Editar Template' : 'Novo Template Excel'}
             </h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-navy-700 rounded-lg transition-colors text-gold-400 hover:text-gold-300"
+              className="p-2 hover:bg-[#1e130c]/5 rounded-lg transition-colors text-[#8b6d22] hover:text-[#1e130c]-300"
             >
               <X className="h-5 w-5" />
             </button>
@@ -519,13 +519,13 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
 
           {/* Tabs - Apenas no modo edição */}
           {isEditMode && (
-            <div className="flex gap-2 mb-6 border-b border-gold-500/20">
+            <div className="flex gap-2 mb-6 border-b border-[#1e130c]/15">
               <button
                 onClick={() => setActiveTab('info')}
                 className={`flex items-center gap-2 px-4 py-3 font-medium transition-all ${
                   activeTab === 'info'
-                    ? 'text-gold-400 border-b-2 border-gold-500'
-                    : 'text-gold-300/60 hover:text-gold-300'
+                    ? 'text-[#8b6d22] border-b-2 border-[#8b6d22]'
+                    : 'text-[#7a6350]/70 hover:text-[#1e130c]-300'
                 }`}
               >
                 <FileText className="h-4 w-4" />
@@ -535,14 +535,14 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 onClick={() => setActiveTab('mapping')}
                 className={`flex items-center gap-2 px-4 py-3 font-medium transition-all ${
                   activeTab === 'mapping'
-                    ? 'text-gold-400 border-b-2 border-gold-500'
-                    : 'text-gold-300/60 hover:text-gold-300'
+                    ? 'text-[#8b6d22] border-b-2 border-[#8b6d22]'
+                    : 'text-[#7a6350]/70 hover:text-[#1e130c]-300'
                 }`}
               >
                 <Settings className="h-4 w-4" />
                 Mapeamento de Campos
                 {analysis && (
-                  <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded-full">
+                  <span className="px-2 py-0.5 text-xs bg-[#1e130c]/5/20 text-[#1e130c] font-bold rounded-full">
                     ✓
                   </span>
                 )}
@@ -577,8 +577,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 <div
                 className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-all duration-300 ${
                   dragActive
-                    ? 'border-gold-500 bg-gold-500/10 scale-[1.02]'
-                    : 'border-gold-500/30 bg-navy-800/50'
+                    ? 'border-[#8b6d22] bg-[#8b6d22]/10 scale-[1.02]'
+                    : 'border-[#8b6d22]/30 bg-[#faf6ee]'
                 }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -587,10 +587,10 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               >
             {file ? (
               <div className="flex items-center justify-center gap-3">
-                <FileSpreadsheet className="h-8 w-8 text-green-400" />
+                <FileSpreadsheet className="h-8 w-8 text-[#1e130c] font-bold" />
                 <div className="text-left">
-                  <p className="font-medium text-gold-100">{file.name}</p>
-                  <p className="text-sm text-gold-300/70">
+                  <p className="font-medium text-[#1e130c]">{file.name}</p>
+                  <p className="text-sm text-[#7a6350]/70">
                     {(file.size / 1024).toFixed(2)} KB
                   </p>
                 </div>
@@ -605,8 +605,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               </div>
             ) : (
               <>
-                <Upload className="h-12 w-12 mx-auto text-gold-400 mb-4" />
-                <p className="text-gold-100 mb-2">
+                <Upload className="h-12 w-12 mx-auto text-[#8b6d22] mb-4" />
+                <p className="text-[#1e130c] mb-2">
                   Arraste o arquivo Excel aqui ou
                 </p>
                 <Button
@@ -616,7 +616,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 >
                   Selecionar Arquivo
                 </Button>
-                <p className="text-xs text-gold-300/70 mt-2">Apenas arquivos .xlsx (máx 10MB)</p>
+                <p className="text-xs text-[#7a6350]/70 mt-2">Apenas arquivos .xlsx (máx 10MB)</p>
               </>
             )}
             <input
@@ -624,7 +624,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
               type="file"
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               onChange={handleFileChange}
-              className="hidden"
+              className="font-[family-name:var(--font-lora)] text-[#1e130c] hidden"
             />
           </div>
           )}
@@ -632,42 +632,42 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           {/* Form Fields */}
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
+              <label className="block text-sm font-medium text-[#1e130c] mb-2">
                 Nome do Template *
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all"
+                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all"
                 placeholder="Ex: Relatório de Usuários IPETEC"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
+              <label className="block text-sm font-medium text-[#1e130c] mb-2">
                 Descrição
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all resize-none"
+                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all resize-none"
                 placeholder="Descreva o propósito deste template..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
+              <label className="block text-sm font-medium text-[#1e130c] mb-2">
                 Categoria *
               </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all cursor-pointer"
+                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all cursor-pointer"
               >
                 {categories.map((cat) => (
-                  <option key={cat.value} value={cat.value} className="bg-navy-800 text-gold-100">
+                  <option key={cat.value} value={cat.value} className="bg-[#faf6ee] text-[#1e130c]">
                     {cat.label}
                   </option>
                 ))}
@@ -681,22 +681,22 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           {isEditMode && activeTab === 'mapping' && (
             <>
               {/* Toggle Substituir Arquivo */}
-              <div className="mb-6 p-4 bg-navy-800/50 border border-navy-600 rounded-lg">
+              <div className="mb-6 p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={replaceFile}
                     onChange={(e) => setReplaceFile(e.target.checked)}
-                    className="w-4 h-4 text-gold-500 bg-navy-900 border-navy-600 rounded focus:ring-gold-500 focus:ring-2"
+                    className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)] focus:ring-2"
                   />
                   <div className="flex items-center gap-2 flex-1">
-                    <RotateCw className="h-4 w-4 text-gold-400" />
-                    <span className="text-gold-200 font-medium">
+                    <RotateCw className="h-4 w-4 text-[#8b6d22]" />
+                    <span className="text-[#1e130c] font-medium">
                       Substituir arquivo Excel
                     </span>
                   </div>
                 </label>
-                <p className="text-xs text-gold-300/70 mt-2 ml-7">
+                <p className="text-xs text-[#7a6350]/70 mt-2 ml-7">
                   Marque para fazer upload de um novo arquivo e re-analisar a estrutura
                 </p>
               </div>
@@ -706,8 +706,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 <div
                   className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-all duration-300 ${
                     dragActive
-                      ? 'border-gold-500 bg-gold-500/10 scale-[1.02]'
-                      : 'border-gold-500/30 bg-navy-800/50'
+                      ? 'border-[#8b6d22] bg-[#8b6d22]/10 scale-[1.02]'
+                      : 'border-[#8b6d22]/30 bg-[#faf6ee]'
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -716,10 +716,10 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 >
                   {file ? (
                     <div className="flex items-center justify-center gap-3">
-                      <FileSpreadsheet className="h-8 w-8 text-green-400" />
+                      <FileSpreadsheet className="h-8 w-8 text-[#1e130c] font-bold" />
                       <div className="text-left">
-                        <p className="font-medium text-gold-100">{file.name}</p>
-                        <p className="text-sm text-gold-300/70">
+                        <p className="font-medium text-[#1e130c]">{file.name}</p>
+                        <p className="text-sm text-[#7a6350]/70">
                           {(file.size / 1024).toFixed(2)} KB
                         </p>
                       </div>
@@ -734,8 +734,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                     </div>
                   ) : (
                     <>
-                      <Upload className="h-12 w-12 mx-auto text-gold-400 mb-4" />
-                      <p className="text-gold-100 mb-2">
+                      <Upload className="h-12 w-12 mx-auto text-[#8b6d22] mb-4" />
+                      <p className="text-[#1e130c] mb-2">
                         Arraste o novo arquivo Excel aqui ou
                       </p>
                       <Button
@@ -745,7 +745,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                       >
                         Selecionar Arquivo
                       </Button>
-                      <p className="text-xs text-gold-300/70 mt-2">Apenas arquivos .xlsx (máx 10MB)</p>
+                      <p className="text-xs text-[#7a6350]/70 mt-2">Apenas arquivos .xlsx (máx 10MB)</p>
                     </>
                   )}
                 </div>
@@ -765,12 +765,12 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
 
           {(!isEditMode || (isEditMode && activeTab === 'mapping')) && analysis && !analyzing && (
             <>
-              <div className="mt-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg space-y-3">
-                <div className="flex items-center gap-2 text-green-300">
+              <div className="mt-6 p-4 bg-[#1e130c]/5/10 border border-green-500/30 rounded-lg space-y-3">
+                <div className="flex items-center gap-2 text-[#1e130c] font-bold">
                   <CheckCircle className="h-5 w-5" />
                   <span className="font-semibold">Template analisado com sucesso!</span>
                 </div>
-                <div className="text-sm text-gold-200 space-y-2">
+                <div className="text-sm text-[#1e130c] space-y-2">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <span>• Planilha:</span>
                     {analysis.availableSheets.length > 1 ? (
@@ -778,7 +778,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                         value={selectedSheet || analysis.sheetName}
                         onChange={(e) => handleSheetChange(e.target.value)}
                         disabled={!file}
-                        className="px-3 py-2 bg-navy-900/60 border border-gold-500/20 rounded-lg text-sm text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-sm text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] disabled:opacity-50 disabled:cursor-not-allowed"
                         title={!file ? 'Faça upload de um novo arquivo para reanalisar outras planilhas' : 'Selecione a aba que deseja mapear'}
                       >
                         {analysis.availableSheets.map(sheet => (
@@ -788,18 +788,18 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                         ))}
                       </select>
                     ) : (
-                      <span className="text-gold-100 font-medium">{analysis.sheetName}</span>
+                      <span className="text-[#1e130c] font-medium">{analysis.sheetName}</span>
                     )}
                     {!file && analysis.availableSheets.length > 1 && (
-                      <span className="text-xs text-gold-300/60">
+                      <span className="text-xs text-[#7a6350]/70">
                         Faça upload do arquivo para reprocessar outras planilhas.
                       </span>
                     )}
                   </div>
-                  <p>• Linha de dados: <span className="text-gold-100 font-medium">{analysis.dataStartRow}</span></p>
-                  <p>• Colunas encontradas: <span className="text-gold-100 font-medium">{analysis.headers.length}</span></p>
+                  <p>• Linha de dados: <span className="text-[#1e130c] font-medium">{analysis.dataStartRow}</span></p>
+                  <p>• Colunas encontradas: <span className="text-[#1e130c] font-medium">{analysis.headers.length}</span></p>
                 </div>
-                <div className="text-xs text-gold-300/70">
+                <div className="text-xs text-[#7a6350]/70">
                   Configure os mapeamentos abaixo ou use os sugeridos automaticamente
                 </div>
               </div>
@@ -820,8 +820,8 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           )}
 
           {(!isEditMode || (isEditMode && activeTab === 'mapping')) && analysisError && !analyzing && !analysis && (
-            <div className="mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg space-y-4">
-              <div className="flex items-center gap-2 text-red-300">
+            <div className="mt-6 p-4 bg-[#7a6350]/10/10 border border-red-500/30 rounded-lg space-y-4">
+              <div className="flex items-center gap-2 text-[#7a6350] italic">
                 <AlertCircle className="h-5 w-5" />
                 <div className="flex-1">
                   <p className="font-semibold">Erro ao analisar template automaticamente</p>
@@ -837,7 +837,7 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                 >
                   Configurar Manualmente
                 </Button>
-                <p className="text-xs text-red-300/70 flex-1">
+                <p className="text-xs text-[#7a6350] italic/70 flex-1">
                   Configure os mapeamentos do zero ou tente novamente o upload
                 </p>
               </div>
@@ -848,33 +848,33 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
           {uploadStatus !== 'idle' && (
             <div className="mt-6 space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gold-300">
+                <span className="text-[#7a6350]">
                   {uploadStatus === 'uploading' && 'Enviando template...'}
                   {uploadStatus === 'success' && 'Upload concluído!'}
                   {uploadStatus === 'error' && 'Erro no upload'}
                 </span>
-                <span className="text-gold-400 font-medium">{uploadProgress}%</span>
+                <span className="text-[#8b6d22] font-medium">{uploadProgress}%</span>
               </div>
-              <div className="h-2 bg-navy-800 rounded-full overflow-hidden">
+              <div className="h-2 bg-[#faf6ee] rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all duration-300 ${
                     uploadStatus === 'success'
                       ? 'bg-gradient-to-r from-green-500 to-green-400'
                       : uploadStatus === 'error'
                       ? 'bg-gradient-to-r from-red-500 to-red-400'
-                      : 'bg-gradient-to-r from-gold-500 to-gold-400'
+                      : 'bg-gradient-to-r from-[#8b6d22] to-gold-400'
                   }`}
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
               {uploadStatus === 'success' && (
-                <div className="flex items-center gap-2 text-green-400 text-sm">
+                <div className="flex items-center gap-2 text-[#1e130c] font-bold text-sm">
                   <CheckCircle className="h-4 w-4" />
                   Template enviado com sucesso!
                 </div>
               )}
               {uploadStatus === 'error' && errorMessage && (
-                <div className="flex items-center gap-2 text-red-400 text-sm">
+                <div className="flex items-center gap-2 text-[#7a6350] italic text-sm">
                   <AlertCircle className="h-4 w-4" />
                   {errorMessage}
                 </div>

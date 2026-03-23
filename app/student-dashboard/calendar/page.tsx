@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Calendar as CalendarIcon, Clock, BookOpen, FileText, Award, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react'
 import Spinner from '../../components/ui/Spinner'
 import Card from '../../components/Card'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
 import { Database } from '@/lib/database.types'
 import { useRouter } from 'next/navigation'
@@ -157,7 +156,6 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
@@ -409,7 +407,7 @@ export default function CalendarPage() {
                 <span className="text-gold-300 text-sm">Aulas ao Vivo</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 bg-red-500 rounded"></div>
+                <div className="w-4 h-4 bg-[#7a6350]/10 rounded"></div>
                 <span className="text-gold-300 text-sm">Testes</span>
               </div>
               <div className="flex items-center gap-2">

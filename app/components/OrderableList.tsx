@@ -191,8 +191,8 @@ export default function OrderableList({
       )}
 
       {error && (
-        <Card className="bg-red-500/10 border-red-500/30">
-          <div className="flex items-center gap-2 text-red-400">
+        <Card className="bg-[#7a6350]/10/10 border-red-500/30">
+          <div className="flex items-center gap-2 text-[#7a6350] italic">
             <AlertCircle className="w-5 h-5" />
             <span>{error}</span>
           </div>

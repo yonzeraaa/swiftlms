@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Send, CheckCircle, Circle, FileText } from 'lucide-react'
+import { X, Check, CheckCircle, Circle, FileText } from 'lucide-react'
 import QuestionGrid from './QuestionGrid'
 import Button from './Button'
 import { useTranslation } from '@/app/contexts/LanguageContext'
@@ -103,7 +103,7 @@ export default function TestAnswerPanel({
                   onClick={onSubmit}
                   disabled={submitting || answeredCount === 0}
                   className="w-full mt-6"
-                  icon={!submitting ? <Send className="w-5 h-5" /> : undefined}
+                  icon={!submitting ? <Check className="w-5 h-5" /> : undefined}
                   iconPosition="left"
                 >
                   {submitting ? 'Enviando...' : 'Enviar Respostas'}
@@ -180,7 +180,7 @@ export default function TestAnswerPanel({
                 disabled={submitting || answeredCount === 0}
                 className="w-full"
                 size="lg"
-                icon={!submitting ? <Send className="w-5 h-5" /> : undefined}
+                icon={!submitting ? <Check className="w-5 h-5" /> : undefined}
                 iconPosition="left"
               >
                 {submitting ? 'Enviando...' : 'Enviar Respostas'}

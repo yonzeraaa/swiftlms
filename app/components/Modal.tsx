@@ -1,8 +1,20 @@
 'use client'
 
 import { ReactNode, useEffect, useRef } from 'react'
-import { X, Minimize2 } from 'lucide-react'
-import Button from './Button'
+import { X } from 'lucide-react'
+import { ClassicRule, CornerBracket } from './ui/RenaissanceSvgs'
+
+const INK = '#1e130c'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.12)'
+
+const sizeMaxWidths = {
+  sm: 420,
+  md: 560,
+  lg: 720,
+  xl: 960,
+  full: undefined,
+}
 
 interface ModalProps {
   isOpen: boolean
@@ -27,190 +39,183 @@ export default function Modal({
   showCloseButton = true,
   closeOnBackdrop = true,
   closeOnEscape = true,
-  className = '',
   footer,
-  onMinimize,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
 
-  // Handle escape key
   useEffect(() => {
     if (!closeOnEscape || !isOpen) return
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-
+    const handleEscape = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
   }, [closeOnEscape, isOpen, onClose])
 
-  // Prevent body scroll when modal is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
+    document.body.style.overflow = isOpen ? 'hidden' : 'unset'
+    return () => { document.body.style.overflow = 'unset' }
   }, [isOpen])
 
-  // Focus trap
   useEffect(() => {
     if (!isOpen) return
-
-    const handleTabKey = (e: KeyboardEvent) => {
+    const handleTab = (e: KeyboardEvent) => {
       if (e.key !== 'Tab' || !modalRef.current) return
-
-      const focusableElements = modalRef.current.querySelectorAll(
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(
         'a[href], button, textarea, input[type="text"], input[type="radio"], input[type="checkbox"], select'
       )
-      const firstElement = focusableElements[0] as HTMLElement
-      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
-
-      if (e.shiftKey && document.activeElement === firstElement) {
-        lastElement.focus()
-        e.preventDefault()
-      } else if (!e.shiftKey && document.activeElement === lastElement) {
-        firstElement.focus()
-        e.preventDefault()
-      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault() }
+      else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault() }
     }
-
-    document.addEventListener('keydown', handleTabKey)
-    return () => document.removeEventListener('keydown', handleTabKey)
+    document.addEventListener('keydown', handleTab)
+    return () => document.removeEventListener('keydown', handleTab)
   }, [isOpen])
-
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (closeOnBackdrop && e.target === e.currentTarget) {
-      onClose()
-    }
-  }
-
-  const sizeClasses = {
-    sm: 'max-w-sm sm:max-w-md mx-4 sm:mx-auto',
-    md: 'max-w-full sm:max-w-lg mx-4 sm:mx-auto',
-    lg: 'max-w-full sm:max-w-xl md:max-w-2xl mx-4 sm:mx-auto',
-    xl: 'max-w-full sm:max-w-2xl md:max-w-4xl mx-4 sm:mx-auto',
-    full: 'max-w-full mx-4'
-  }
 
   if (!isOpen) return null
 
+  const hasHeader = !!(title || showCloseButton)
+  const maxW = sizeMaxWidths[size]
+
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto"
-      aria-labelledby="modal-title"
       role="dialog"
       aria-modal="true"
+      aria-labelledby={title ? 'modal-title' : undefined}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 50,
+        overflowY: 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem',
+      }}
     >
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-out"
-        onClick={handleBackdropClick}
         aria-hidden="true"
+        onClick={closeOnBackdrop ? onClose : undefined}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(30,19,12,0.45)',
+        }}
       />
 
-      {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div
-          ref={modalRef}
-          className={`
-            relative w-full ${sizeClasses[size]} 
-            transform transition-all duration-300 ease-out
-            animate-in fade-in zoom-in-95
-            ${className}
-          `}
-        >
-          <div className="relative bg-navy-800 rounded-2xl shadow-2xl border border-gold-500/20 overflow-hidden">
-            {/* Header */}
-            {(title || showCloseButton) && (
-              <div className="flex items-center justify-center p-4 sm:p-6 border-b border-gold-500/20 relative">
-                {title && (
-                  <h2 id="modal-title" className="text-lg sm:text-xl md:text-2xl font-bold text-gold text-center">
-                    {title}
-                  </h2>
-                )}
-                {showCloseButton && (
-                  <div className="absolute right-4 sm:right-6 flex items-center gap-1">
-                    {onMinimize && (
-                      <button
-                        onClick={onMinimize}
-                        className="text-gold-400 hover:text-gold-200 transition-colors p-1 rounded-lg hover:bg-gold-500/10"
-                        aria-label="Minimizar"
-                        title="Minimizar"
-                      >
-                        <Minimize2 className="w-5 h-5 sm:w-5 sm:h-5" />
-                      </button>
-                    )}
-                    <button
-                      onClick={onClose}
-                      className="text-gold-400 hover:text-gold-200 transition-colors p-1 rounded-lg hover:bg-gold-500/10"
-                      aria-label="Fechar"
-                    >
-                      <X className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Body */}
-            <div className="p-4 sm:p-6 max-h-[calc(100vh-100px)] sm:max-h-[calc(100vh-200px)] overflow-y-auto">
-              {children}
-            </div>
-
-            {/* Footer */}
-            {footer && (
-              <div className="p-4 sm:p-6 border-t border-gold-500/20 bg-navy-900/50">
-                {footer}
-              </div>
-            )}
-          </div>
+      {/* Panel */}
+      <div
+        ref={modalRef}
+        style={{
+          position: 'relative',
+          backgroundColor: PARCH,
+          border: `1px solid ${BORDER}`,
+          boxShadow: '0 8px 40px rgba(30,19,12,0.18)',
+          width: '100%',
+          maxWidth: maxW,
+          maxHeight: 'calc(100vh - 2rem)',
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'modal-in 0.22s ease-out',
+        }}
+      >
+        {/* Corner brackets */}
+        <div style={{ position: 'absolute', top: 0, left: 0 }}>
+          <CornerBracket size={28} />
         </div>
+        <div style={{ position: 'absolute', top: 0, right: 0, transform: 'scaleX(-1)' }}>
+          <CornerBracket size={28} />
+        </div>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, transform: 'scaleY(-1)' }}>
+          <CornerBracket size={28} />
+        </div>
+        <div style={{ position: 'absolute', bottom: 0, right: 0, transform: 'scale(-1)' }}>
+          <CornerBracket size={28} />
+        </div>
+
+        {/* Header */}
+        {hasHeader && (
+          <div style={{ padding: '1.25rem 1.5rem 0', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', minHeight: 32 }}>
+              {title && (
+                <h2
+                  id="modal-title"
+                  style={{
+                    fontFamily: 'var(--font-playfair, serif)',
+                    fontSize: '1.25rem',
+                    fontWeight: 600,
+                    color: INK,
+                    margin: 0,
+                    textAlign: 'center',
+                    flex: 1,
+                  }}
+                >
+                  {title}
+                </h2>
+              )}
+              {showCloseButton && (
+                <button
+                  onClick={onClose}
+                  aria-label="Fechar"
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    color: 'rgba(30,19,12,0.45)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0.25rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'color 0.15s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = INK }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(30,19,12,0.45)' }}
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
+            <div style={{ marginTop: '0.875rem' }}>
+              <ClassicRule />
+            </div>
+          </div>
+        )}
+
+        {/* Body */}
+        <div
+          style={{
+            padding: hasHeader ? '1rem 1.5rem 1.25rem' : '1.5rem',
+            overflowY: 'auto',
+            flex: 1,
+          }}
+        >
+          {children}
+        </div>
+
+        {/* Footer */}
+        {footer && (
+          <div
+            style={{
+              padding: '1rem 1.5rem',
+              borderTop: `1px solid ${BORDER}`,
+              flexShrink: 0,
+            }}
+          >
+            {footer}
+          </div>
+        )}
       </div>
+
+      <style>{`
+        @keyframes modal-in {
+          from { opacity: 0; transform: scale(0.97) translateY(8px); }
+          to   { opacity: 1; transform: scale(1)    translateY(0);   }
+        }
+      `}</style>
     </div>
   )
 }
 
-// Animation keyframes for Tailwind
-const animationStyles = `
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes zoom-in-95 {
-  from {
-    transform: scale(0.95);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-
-.animate-in {
-  animation-duration: 200ms;
-  animation-fill-mode: both;
-}
-
-.fade-in {
-  animation-name: fade-in;
-}
-
-.zoom-in-95 {
-  animation-name: zoom-in-95;
-}
-`
-
-// Export animation styles to be included in global CSS
-export { animationStyles }
+// Kept for backwards-compatibility with any import of animationStyles
+export const animationStyles = ''

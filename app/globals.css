@@ -37,6 +37,7 @@
 @import './styles/design-system.css';
 
 :root {
+  --color-focus: #60A5FA; /* Soft Blue for dark mode readability */
   --foreground-rgb: 255, 215, 0;
   --background-start-rgb: 0, 51, 102;
   --background-end-rgb: 0, 26, 51;
@@ -81,6 +82,7 @@
 
 .light {
   /* Light theme overrides */
+  --color-focus: #003366; /* Navy for light mode */
   --foreground-rgb: 0, 51, 102;
   --background-start-rgb: 255, 255, 255;
   --background-end-rgb: 245, 245, 245;
@@ -685,8 +687,8 @@ nav a, nav button {
   .light input:focus,
   .light textarea:focus,
   .light select:focus {
-    border-color: var(--color-border-primary);
-    outline-color: var(--color-border-primary);
+    border-color: var(--color-focus);
+    outline-color: var(--color-focus);
   }
 
   /* Button styles - using data attributes for cleaner targeting */
@@ -853,7 +855,7 @@ nav a, nav button {
 
   /* Focus rings */
   .light .focus\:ring-2:focus {
-    --tw-ring-color: var(--color-accent);
+    --tw-ring-color: var(--color-focus);
   }
 
   /* Text colors */
@@ -1006,7 +1008,7 @@ nav a, nav button {
 
   /* Focus visible styles for better keyboard navigation */
   *:focus-visible {
-    outline: 3px solid var(--gold-500);
+    outline: 3px solid var(--color-focus);
     outline-offset: 2px;
     border-radius: 4px;
   }

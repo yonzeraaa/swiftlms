@@ -19,9 +19,8 @@ import {
   AlertCircle,
   Check
 } from 'lucide-react'
-import Card from '../../components/Card'
+import { ClassicRule } from '../../components/ui/RenaissanceSvgs'
 import Spinner from '../../components/ui/Spinner'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Button from '../../components/Button'
 import { motion, AnimatePresence } from 'framer-motion'
 import CourseStructureManager from '../../components/CourseStructureManager'
@@ -148,34 +147,34 @@ export default function StructurePage() {
   const getNodeIcon = (type: string, expanded?: boolean) => {
     switch (type) {
       case 'course':
-        return <BookOpen className="w-4 h-4 text-gold-400" />
+        return <BookOpen className="w-4 h-4 text-[#8b6d22]" />
       case 'module':
         return expanded ? <FolderOpen className="w-4 h-4 text-blue-400" /> : <Folder className="w-4 h-4 text-blue-400" />
       case 'subject':
-        return <GraduationCap className="w-4 h-4 text-green-400" />
+        return <GraduationCap className="w-4 h-4 text-[#1e130c] font-bold" />
       case 'lesson':
         return <FileText className="w-4 h-4 text-purple-400" />
       case 'test':
-        return <ClipboardCheck className="w-4 h-4 text-red-400" />
+        return <ClipboardCheck className="w-4 h-4 text-[#7a6350] italic" />
       default:
-        return <Layers className="w-4 h-4 text-gold-300" />
+        return <Layers className="w-4 h-4 text-[#7a6350]" />
     }
   }
 
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'course':
-        return 'bg-gold-500/20 text-gold-400 border-gold-500/30'
+        return 'bg-[#8b6d22]/20 text-[#8b6d22] border-[#8b6d22]/30'
       case 'module':
         return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
       case 'subject':
-        return 'bg-green-500/20 text-green-400 border-green-500/30'
+        return 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border-green-500/30'
       case 'lesson':
         return 'bg-purple-500/20 text-purple-400 border-purple-500/30'
       case 'test':
-        return 'bg-red-500/20 text-red-400 border-red-500/30'
+        return 'bg-[#7a6350]/10/20 text-[#7a6350] italic border-red-500/30'
       default:
-        return 'bg-gold-500/20 text-gold-400 border-gold-500/30'
+        return 'bg-[#8b6d22]/20 text-[#8b6d22] border-[#8b6d22]/30'
     }
   }
 
@@ -260,9 +259,9 @@ export default function StructurePage() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className={`
-              flex items-center gap-2 py-2 px-3 rounded-lg cursor-pointer
-              hover:bg-navy-800/50 transition-all group
-              ${isSelected ? 'bg-navy-800/70 ring-2 ring-gold-500/50' : ''}
+              flex items-center gap-3 py-3 px-3 border-b border-dashed border-[#1e130c]/20 cursor-pointer font-[family-name:var(--font-lora)]
+              hover:bg-[#8b6d22]/5 transition-all group
+              ${isSelected ? 'bg-[#8b6d22]/10' : ''}
             `}
             style={{ paddingLeft: `${level * 24 + 12}px` }}
             onClick={() => {
@@ -276,12 +275,12 @@ export default function StructurePage() {
                   e.stopPropagation()
                   toggleNode(node.id)
                 }}
-                className="p-0.5 hover:bg-navy-700 rounded"
+                className="p-0.5 hover:bg-[#1e130c]/5 rounded"
               >
                 {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-gold-400" />
+                  <ChevronDown className="w-4 h-4 text-[#8b6d22]" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-gold-400" />
+                  <ChevronRight className="w-4 h-4 text-[#8b6d22]" />
                 )}
               </button>
             )}
@@ -290,7 +289,7 @@ export default function StructurePage() {
             
             {getNodeIcon(node.type, isExpanded)}
             
-            <span className="flex-1 text-gold-200">{node.title}</span>
+            <span className="flex-1 text-[#1e130c]">{node.title}</span>
             
             <span className={`
               px-2 py-0.5 rounded-full text-xs font-medium border
@@ -310,7 +309,7 @@ export default function StructurePage() {
                     e.stopPropagation()
                     handleAssociate(node, 'module')
                   }}
-                  className="p-1 hover:bg-navy-700 rounded"
+                  className="p-1 hover:bg-[#1e130c]/5 rounded"
                   title="Gerenciar Módulos"
                 >
                   <Link2 className="w-3 h-3 text-blue-400" />
@@ -324,10 +323,10 @@ export default function StructurePage() {
                     e.stopPropagation()
                     handleAssociate(node, 'subject')
                   }}
-                  className="p-1 hover:bg-navy-700 rounded"
+                  className="p-1 hover:bg-[#1e130c]/5 rounded"
                   title="Associar Disciplinas"
                 >
-                  <Link2 className="w-3 h-3 text-green-400" />
+                  <Link2 className="w-3 h-3 text-[#1e130c] font-bold" />
                 </button>
               )}
               
@@ -339,7 +338,7 @@ export default function StructurePage() {
                       e.stopPropagation()
                       handleAssociate(node, 'lesson')
                     }}
-                    className="p-1 hover:bg-navy-700 rounded"
+                    className="p-1 hover:bg-[#1e130c]/5 rounded"
                     title="Associar Aulas"
                   >
                     <Link2 className="w-3 h-3 text-purple-400" />
@@ -349,10 +348,10 @@ export default function StructurePage() {
                       e.stopPropagation()
                       handleAssociate(node, 'test')
                     }}
-                    className="p-1 hover:bg-navy-700 rounded"
+                    className="p-1 hover:bg-[#1e130c]/5 rounded"
                     title="Associar Testes"
                   >
-                    <Link2 className="w-3 h-3 text-red-400" />
+                    <Link2 className="w-3 h-3 text-[#7a6350] italic" />
                   </button>
                 </>
               )}
@@ -364,10 +363,10 @@ export default function StructurePage() {
                     e.stopPropagation()
                     handleDeleteNode(node)
                   }}
-                  className="p-1 hover:bg-navy-700 rounded"
+                  className="p-1 hover:bg-[#1e130c]/5 rounded"
                   title={node.type === 'module' ? 'Excluir Módulo' : 'Remover da Estrutura'}
                 >
-                  <Trash2 className="w-3 h-3 text-red-400" />
+                  <Trash2 className="w-3 h-3 text-[#7a6350] italic" />
                 </button>
               )}
             </div>
@@ -412,118 +411,89 @@ export default function StructurePage() {
 
   const displayTree = searchTerm ? filterTree(treeData, searchTerm) : treeData
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Spinner size="lg" />
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-            <Layers className="w-8 h-8" />
+    <div className="max-w-[1400px] mx-auto p-6 md:p-10 space-y-8 bg-[#faf6ee] min-h-screen font-[family-name:var(--font-lora)] text-[#1e130c]">
+
+      {/* Header Clássico */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+        <div className="flex-1">
+          <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: '#1e130c', lineHeight: 1.1, fontWeight: 700 }}>
             Estrutura Hierárquica
           </h1>
-          <p className="text-gold-300 mt-1">
-            Visualize a estrutura: Curso → Módulos → Disciplinas → Aulas/Testes
+          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: '#7a6350', marginTop: '0.5rem' }}>
+            Visão geral e ordenação: Curso → Módulos → Disciplinas → Aulas/Avaliações
           </p>
-        </div>
-      </div>
-
-      {/* View Mode Tabs */}
-      <div className="flex gap-2">
-        <Button
-          variant={viewMode === 'tree' ? 'primary' : 'secondary'}
-          onClick={() => setViewMode('tree')}
-          icon={<Folder className="w-4 h-4" />}
-        >
-          Visualização em Árvore
-        </Button>
-        <Button
-          variant={viewMode === 'manage' ? 'primary' : 'secondary'}
-          onClick={() => setViewMode('manage')}
-          icon={<Edit className="w-4 h-4" />}
-        >
-          Gerenciar Ordenação
-        </Button>
-      </div>
-
-      {/* Info Box */}
-      <Card variant="gradient">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-gold-400 mt-0.5" />
-          <div className="text-sm text-gold-300">
-            <p className="font-semibold text-gold-200 mb-1">Como funciona:</p>
-            <ul className="space-y-1">
-              <li>• <span className="text-gold-400">Cursos</span>: Clique no ícone de link para gerenciar módulos</li>
-              <li>• <span className="text-blue-400">Módulos</span>: Crie na página de Módulos e associe aos cursos</li>
-              <li>• <span className="text-green-400">Disciplinas</span>: Associe disciplinas existentes aos módulos</li>
-              <li>• <span className="text-purple-400">Aulas</span> e <span className="text-red-400">Testes</span>: Associe às disciplinas</li>
-            </ul>
+          <div className="mt-6 w-full max-w-md">
+            <ClassicRule color="#1e130c" />
           </div>
         </div>
-      </Card>
-
-      {/* Search */}
-      <Card>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
-          <input
-            type="text"
-            placeholder="Buscar na estrutura..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
-          />
+        <div className="flex gap-4 bg-[#faf6ee] p-1 border border-[#1e130c]/20 rounded-sm">
+           <button onClick={() => setViewMode('tree')} className={`px-4 py-2 text-sm font-medium transition-colors \${viewMode === 'tree' ? 'bg-[#1e130c] text-[#faf6ee]' : 'text-[#1e130c] hover:bg-[#1e130c]/5'}`}>Em Árvore</button>
+           <button onClick={() => setViewMode('manage')} className={`px-4 py-2 text-sm font-medium transition-colors \${viewMode === 'manage' ? 'bg-[#1e130c] text-[#faf6ee]' : 'text-[#1e130c] hover:bg-[#1e130c]/5'}`}>Gerenciar</button>
         </div>
-      </Card>
+      </div>
+
+      {/* Filtros e Métricas Alinhados */}
+      <div className="flex flex-col lg:flex-row gap-8 mb-12 items-stretch">
+        <div className="flex-1 flex flex-col md:flex-row gap-4">
+          <div className="flex-[2] relative">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7a6350]" />
+            <input
+              type="text"
+              placeholder="Buscar nos registros da estrutura..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', backgroundColor: 'transparent', border: '1px solid rgba(30,19,12,0.14)', color: '#1e130c', fontFamily: 'var(--font-lora)', fontSize: '1rem' }}
+            />
+          </div>
+        </div>
+        
+        <div className="w-full lg:w-64 border border-[#1e130c]/10 bg-[#1e130c]/[0.02] flex items-center px-6 py-4 justify-between">
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#7a6350', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Itens Raiz</span>
+          <span style={{ fontFamily: 'var(--font-playfair)', fontSize: '2rem', fontWeight: 700, color: '#1e130c', lineHeight: 1 }}>{treeData.length}</span>
+        </div>
+      </div>
 
       {/* Conditional Rendering based on View Mode */}
-      {viewMode === 'tree' ? (
+      {loading ? (
+        <Spinner fullPage size="xl" />
+      ) : viewMode === 'tree' ? (
         /* Tree View */
-        <Card className="min-h-[500px]">
+        <div className="min-h-[500px] border-t-2 border-b-2 border-[#1e130c]/10 py-6 font-[family-name:var(--font-lora)]">
           <div className="space-y-1">
             {displayTree.length > 0 ? (
               renderTree(displayTree)
             ) : (
-              <div className="text-center py-12">
-                <Layers className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                <p className="text-gold-300">
-                  {searchTerm ? 'Nenhum item encontrado' : 'Nenhum curso cadastrado'}
+              <div className="text-center py-16">
+                <Layers className="w-12 h-12 text-[#8b6d22]/30 mx-auto mb-4" />
+                <p className="text-[#7a6350] italic text-lg">
+                  {searchTerm ? 'Nenhum registro encontrado nas páginas.' : 'O livro de registros de cursos encontra-se vazio.'}
                 </p>
               </div>
             )}
           </div>
-        </Card>
+        </div>
       ) : (
         /* Management View */
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 border-t-2 border-[#1e130c]/10 pt-8">
           {/* Course Selector */}
           <div className="lg:col-span-1">
-            <Card>
-              <h3 className="font-semibold text-gold mb-4">Selecione o Curso</h3>
-              <div className="space-y-2">
-                {courses.map((course: any) => (
-                  <button
-                    key={course.id}
-                    onClick={() => setSelectedCourseId(course.id)}
-                    className={`w-full text-left p-3 rounded-lg transition-all ${
-                      selectedCourseId === course.id
-                        ? 'bg-gold-500/20 border border-gold-500/50'
-                        : 'bg-navy-800/30 hover:bg-navy-800/50 border border-navy-700'
-                    }`}
-                  >
-                    <span className="text-sm font-medium text-gold-200">{course.title}</span>
-                  </button>
-                ))}
-              </div>
-            </Card>
+            <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold text-[#1e130c] mb-6 border-b border-[#1e130c]/20 pb-2">Selecione o Curso</h3>
+            <div className="flex flex-col gap-2 font-[family-name:var(--font-lora)]">
+              {courses.map((course: any) => (
+                <button
+                  key={course.id}
+                  onClick={() => setSelectedCourseId(course.id)}
+                  className={`w-full text-left py-3 px-4 transition-all border-b border-dashed border-[#1e130c]/20 last:border-0 ${
+                    selectedCourseId === course.id
+                      ? 'text-[#8b6d22] font-semibold bg-[#8b6d22]/5'
+                      : 'text-[#7a6350] hover:text-[#1e130c] hover:bg-[#1e130c]/5'
+                  }`}
+                >
+                  <span className="text-base">{course.title}</span>
+                </button>
+              ))}
+            </div>
           </div>
           
           {/* Course Structure Manager */}
@@ -535,12 +505,12 @@ export default function StructurePage() {
                 canManage={true}
               />
             ) : (
-              <Card className="text-center py-12">
-                <Layers className="w-12 h-12 text-gold-400/30 mx-auto mb-4" />
-                <p className="text-gold-300/70">
-                  Selecione um curso para gerenciar sua estrutura
+              <div className="text-center py-16 border border-[#1e130c]/10 bg-[#faf6ee]/30">
+                <Layers className="w-12 h-12 text-[#8b6d22]/40 mx-auto mb-4" />
+                <p className="text-[#7a6350]/70 font-[family-name:var(--font-lora)] italic">
+                  Selecione um curso ao lado para organizar sua estrutura
                 </p>
-              </Card>
+              </div>
             )}
           </div>
         </div>
@@ -548,65 +518,66 @@ export default function StructurePage() {
 
       {/* Associate Items Modal */}
       {showAssociateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <Card className="w-full max-w-2xl" padding="lg">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-gold flex items-center gap-2">
-                <Link2 className="w-6 h-6" />
+        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="relative w-full max-w-2xl bg-[#faf6ee] p-8 shadow-2xl border border-[#1e130c]/20 font-[family-name:var(--font-lora)]">
+
+            <div className="flex justify-between items-center mb-6 border-b border-[#1e130c]/20 pb-4">
+              <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] flex items-center gap-3">
+                <Link2 className="w-6 h-6 text-[#8b6d22]" />
                 {associateType === 'module' ? 'Gerenciar Módulos' :
                  `Associar ${associateType === 'subject' ? 'Disciplinas' : 
                            associateType === 'lesson' ? 'Aulas' : 'Testes'}`}
               </h2>
               <button
                 onClick={() => setShowAssociateModal(false)}
-                className="text-gold-400 hover:text-gold-200"
+                className="text-[#8b6d22] hover:text-[#1e130c] transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-              {associateType !== 'module' && associationOptions.length > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-gold-300">
-                  <p className="text-gold-200">
-                    {showOnlyAvailableOptions
-                      ? 'Exibindo apenas itens disponíveis para associação.'
-                      : 'Exibindo todos os itens, com destaque para os já utilizados.'}
-                  </p>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={toggleAssociationFilterMode}
-                  >
-                    {showOnlyAvailableOptions ? 'Ver todos os itens' : 'Ver somente disponíveis'}
-                  </Button>
-                </div>
-              )}
+            {associateType !== 'module' && associationOptions.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6 text-sm text-[#7a6350]">
+                <p className="italic">
+                  {showOnlyAvailableOptions
+                    ? 'Exibindo apenas os registros disponíveis.'
+                    : 'Exibindo todos os registros.'}
+                </p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={toggleAssociationFilterMode}
+                >
+                  {showOnlyAvailableOptions ? 'Ver todos os registros' : 'Ver somente disponíveis'}
+                </Button>
+              </div>
+            )}
 
             <div
-              className="overflow-y-auto pr-1"
+              className="overflow-y-auto pr-2 custom-scrollbar"
               style={{ maxHeight: '50vh' }}
             >
               {availableItems.length === 0 ? (
-                <div className="text-center py-8">
-                  <AlertCircle className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
-                  <p className="text-gold-300">
-                    {associateType === 'module' ? 'Nenhum módulo criado para este curso' :
-                     `Nenhum ${associateType === 'subject' ? 'disciplina disponível' : 
-                              associateType === 'lesson' ? 'aula disponível' : 'teste disponível'}`}
+                <div className="text-center py-12">
+                  <AlertCircle className="w-10 h-10 text-[#8b6d22]/40 mx-auto mb-4" />
+                  <p className="text-[#7a6350] text-lg mb-2">
+                    {associateType === 'module' ? 'Nenhum módulo lavrado para este curso' :
+                     `Nenhuma ${associateType === 'subject' ? 'disciplina registrada' : 
+                              associateType === 'lesson' ? 'aula registrada' : 'avaliação registrada'}`}
                   </p>
-                  <p className="text-gold-400 text-sm mt-2">
+                  <p className="text-[#8b6d22]/80 text-sm italic">
                     {associateType === 'module' ? 
-                     'Crie módulos na página de Módulos e eles aparecerão automaticamente aqui' :
-                     'Crie novos itens na página correspondente antes de associá-los'}
+                     'Registre módulos na respectiva página para que constem aqui.' :
+                     'Providencie novos registros antes de associá-los.'}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="flex flex-col">
                   {availableItems.map((item: any) => {
                     const isAssociationOption = typeof item.displayName === 'string' && 'availability' in item
                     const isDisabled = isAssociationOption && item.availability === 'current'
-                    const labelClasses = `flex items-center gap-3 p-3 bg-navy-900/50 rounded-lg ${
-                      isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:bg-navy-900/70 cursor-pointer'
+                    const wrapperClasses = `flex items-start gap-4 py-4 border-b border-dashed border-[#1e130c]/20 last:border-0 ${
+                      isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:bg-[#8b6d22]/5 cursor-pointer transition-colors'
                     }`
 
                     const handleChange = (checked: boolean) => {
@@ -621,33 +592,35 @@ export default function StructurePage() {
                     const description = isAssociationOption ? item.description : item.description
 
                     return (
-                      <label key={item.id} className={labelClasses}>
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.includes(item.id)}
-                          onChange={(e) => handleChange(e.target.checked)}
-                          disabled={isDisabled}
-                          className="w-4 h-4 bg-navy-900/50 border-navy-600 rounded text-gold-500 focus:ring-gold-500 disabled:opacity-50"
-                        />
+                      <label key={item.id} className={wrapperClasses}>
+                        <div className="pt-1">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.includes(item.id)}
+                            onChange={(e) => handleChange(e.target.checked)}
+                            disabled={isDisabled}
+                            className="w-5 h-5 bg-transparent border-2 border-[#8b6d22]/50 rounded-sm text-[#8b6d22] focus:ring-0 focus:ring-offset-0 disabled:opacity-50 transition-all checked:bg-[#8b6d22] checked:border-[#8b6d22]"
+                          />
+                        </div>
                         <div className="flex-1">
-                          <p className="text-gold-200 font-medium">
+                          <p className="text-[#1e130c] font-medium text-lg">
                             {isAssociationOption
                               ? item.displayName
                               : item.title}
                           </p>
                           {description && (
-                            <p className="text-gold-400 text-sm">
+                            <p className="text-[#7a6350] text-sm mt-1 italic">
                               {description}
                             </p>
                           )}
                           {isAssociationOption && item.statusText && (
-                            <p className={`text-xs mt-1 ${item.statusColorClass}`}>
+                            <p className={`text-xs mt-2 font-medium uppercase tracking-wider ${item.statusColorClass}`}>
                               {item.statusText}
                             </p>
                           )}
                         </div>
                         {selectedItems.includes(item.id) && !isDisabled && (
-                          <Check className="w-5 h-5 text-green-400" />
+                          <Check className="w-6 h-6 text-[#8b6d22] flex-shrink-0 mt-1" />
                         )}
                       </label>
                     )
@@ -656,11 +629,11 @@ export default function StructurePage() {
               )}
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-gold-500/20 mt-6">
-              <p className="text-gold-300 text-sm">
-                {selectedItems.length} {selectedItems.length === 1 ? 'item selecionado' : 'itens selecionados'}
+            <div className="flex justify-between items-center pt-6 border-t border-[#1e130c]/20 mt-6">
+              <p className="text-[#7a6350] font-medium">
+                {selectedItems.length} {selectedItems.length === 1 ? 'item marcado' : 'itens marcados'}
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <Button
                   variant="secondary"
                   onClick={() => setShowAssociateModal(false)}
@@ -672,11 +645,11 @@ export default function StructurePage() {
                   onClick={handleSaveAssociations}
                   disabled={selectedItems.length === 0 || associating}
                 >
-                  {associating ? 'Confirmando...' : 'Confirmar'}
+                  {associating ? 'Averbar...' : 'Averbar Registro'}
                 </Button>
               </div>
             </div>
-          </Card>
+          </div>
         </div>
       )}
     </div>

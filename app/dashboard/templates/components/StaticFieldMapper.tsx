@@ -33,10 +33,10 @@ export default function StaticFieldMapper({
   const selectedField = fields.find((f: FieldDefinition) => f.key === mappedField)
 
   return (
-    <div className="flex items-center gap-3 p-3 bg-navy-800/30 border border-gold-500/10 rounded-lg hover:border-gold-500/30 transition-colors">
+    <div className="flex items-center gap-3 p-3 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg hover:border-[#8b6d22]/40 transition-colors">
       {/* Endereço da célula */}
       <div className="flex-shrink-0 w-16">
-        <span className="text-xs font-mono text-gold-400 bg-gold-500/10 px-2 py-1 rounded">
+        <span className="text-xs font-mono text-[#8b6d22] bg-[#8b6d22]/10 px-2 py-1 rounded">
           {cell.address}
         </span>
       </div>
@@ -49,19 +49,19 @@ export default function StaticFieldMapper({
               type="text"
               value={cell.label}
               onChange={(e) => onLabelChange(cell.address, e.target.value)}
-              className="w-full px-3 py-1.5 bg-navy-900/60 border border-gold-500/20 rounded-lg text-sm text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="w-full px-3 py-1.5 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-sm text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
             />
             {cell.value && (
-              <p className="text-xs text-gold-300/50 truncate">
+              <p className="text-xs text-[#7a6350]/70 truncate">
                 Valor atual: {cell.value}
               </p>
             )}
           </div>
         ) : (
           <>
-            <p className="text-sm text-gold-300/90 font-medium">{cell.label}</p>
+            <p className="text-sm text-[#7a6350]/70 font-medium">{cell.label}</p>
             {cell.value && (
-              <p className="text-xs text-gold-300/50 mt-0.5 truncate">
+              <p className="text-xs text-[#7a6350]/70 mt-0.5 truncate">
                 Valor atual: {cell.value}
               </p>
             )}
@@ -70,28 +70,28 @@ export default function StaticFieldMapper({
       </div>
 
       {/* Arrow */}
-      <div className="flex-shrink-0 text-gold-500/30">→</div>
+      <div className="flex-shrink-0 text-[#8b6d22]/50">→</div>
 
       {/* Field Selector */}
       <div className="flex-1 relative">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-left flex items-center justify-between hover:border-gold-500/40 transition-colors"
+          className="w-full px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-left flex items-center justify-between hover:border-[#8b6d22]/40 transition-colors"
         >
-          <span className={selectedField ? 'text-gold-300' : 'text-gold-300/50'}>
+          <span className={selectedField ? 'text-[#7a6350]' : 'text-[#7a6350]/70'}>
             {selectedField ? selectedField.label : 'Selecione um campo...'}
           </span>
-          <ChevronDown className={`w-4 h-4 text-gold-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`w-4 h-4 text-[#8b6d22] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
         {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-navy-900 border border-gold-500/20 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          <div className="absolute z-10 w-full mt-1 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg shadow-xl max-h-60 overflow-y-auto">
             <button
               onClick={() => {
                 onFieldChange(cell.address, null)
                 setIsOpen(false)
               }}
-              className="w-full px-3 py-2 text-left text-gold-300/50 hover:bg-gold-500/10 transition-colors text-sm"
+              className="w-full px-3 py-2 text-left text-[#7a6350]/70 hover:bg-[#8b6d22]/10 transition-colors text-sm"
             >
               (Não mapear)
             </button>
@@ -103,16 +103,16 @@ export default function StaticFieldMapper({
                   onFieldChange(cell.address, field.key)
                   setIsOpen(false)
                 }}
-                className={`w-full px-3 py-2 text-left hover:bg-gold-500/10 transition-colors ${
-                  mappedField === field.key ? 'bg-gold-500/20' : ''
+                className={`w-full px-3 py-2 text-left hover:bg-[#8b6d22]/10 transition-colors ${
+                  mappedField === field.key ? 'bg-[#8b6d22]/20' : ''
                 }`}
               >
-                <div className="text-sm text-gold-300">{field.label}</div>
+                <div className="text-sm text-[#7a6350]">{field.label}</div>
                 {field.description && (
-                  <div className="text-xs text-gold-300/50 mt-0.5">{field.description}</div>
+                  <div className="text-xs text-[#7a6350]/70 mt-0.5">{field.description}</div>
                 )}
                 {field.required && (
-                  <span className="text-xs text-red-400 ml-2">*</span>
+                  <span className="text-xs text-[#7a6350] italic ml-2">*</span>
                 )}
               </button>
             ))}
@@ -135,7 +135,7 @@ export default function StaticFieldMapper({
       {/* Remove Button */}
       <button
         onClick={() => onRemove(cell.address)}
-        className="flex-shrink-0 p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+        className="flex-shrink-0 p-2 text-[#7a6350] italic hover:bg-[#7a6350]/10/10 rounded-lg transition-colors"
         title="Remover célula"
       >
         <Trash2 className="w-4 h-4" />

@@ -85,8 +85,8 @@ export default class ErrorBoundary extends Component<Props, State> {
           <div className="max-w-md w-full">
             <div className="bg-navy-800/50 backdrop-blur-md border border-red-500/20 rounded-lg p-8 text-center">
               <div className="mb-6">
-                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <AlertTriangle className="w-10 h-10 text-red-500" />
+                <div className="w-20 h-20 bg-[#7a6350]/10/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertTriangle className="w-10 h-10 text-[#7a6350] italic" />
                 </div>
                 <h1 className="text-2xl font-bold text-gold mb-2">
                   Ops! Algo deu errado
@@ -99,7 +99,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               {/* Error details in development */}
               {process.env.NODE_ENV === 'development' && this.state.error && (
                 <div className="mb-6 p-4 bg-navy-900/50 rounded-lg text-left">
-                  <p className="text-red-400 font-mono text-sm mb-2">
+                  <p className="text-[#7a6350] italic font-mono text-sm mb-2">
                     {this.state.error.message}
                   </p>
                   {this.state.errorInfo && (

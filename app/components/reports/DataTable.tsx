@@ -213,7 +213,7 @@ export default function DataTable<T extends Record<string, any>>({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={searchPlaceholder}
-                className="pl-10 pr-10 py-2.5 w-full sm:w-80 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-transparent transition-all"
+                className="pl-10 pr-10 py-2.5 w-full sm:w-80 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent transition-all"
               />
               {searchTerm && (
                 <button
@@ -342,7 +342,7 @@ export default function DataTable<T extends Record<string, any>>({
                   setItemsPerPage(Number(e.target.value))
                   setCurrentPage(1)
                 }}
-                className="px-3 py-1.5 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-transparent transition-all"
+                className="px-3 py-1.5 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent transition-all"
               >
                 {itemsPerPageOptions.map(option => (
                   <option key={option} value={option}>{option}</option>

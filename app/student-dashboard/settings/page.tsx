@@ -1,21 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, Lock, Globe, Bell, Shield, Save, Check, AlertCircle, Moon, Sun, Download, Trash2, Camera, Upload, Settings } from 'lucide-react'
-import Card from '../../components/Card'
-import Spinner from '../../components/ui/Spinner'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
-import Button from '../../components/Button'
-import { useTranslation } from '../../contexts/LanguageContext'
-import { useTheme } from '../../contexts/ThemeContext'
+import { User, Lock, Globe, Shield, Save, Camera, Settings, Mail, Phone, Info } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import {
-  getUserProfile,
-  updateUserProfile,
-  uploadAvatar,
-  deleteOldAvatar,
-  exportUserData
-} from '@/lib/actions/student-settings'
+import { getUserProfile, updateUserProfile, uploadAvatar, deleteOldAvatar } from '@/lib/actions/student-settings'
+import { ClassicRule, CornerBracket } from '../../components/ui/RenaissanceSvgs'
+import Spinner from '../../components/ui/Spinner'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 interface ProfileForm {
   full_name: string
@@ -25,53 +21,30 @@ interface ProfileForm {
   avatar_url?: string
 }
 
-interface PasswordForm {
-  currentPassword: string
-  newPassword: string
-  confirmPassword: string
-}
-
-interface PreferencesForm {
-  theme: 'light' | 'dark'
-  language: 'pt-BR' | 'en-US' | 'es-ES'
-  emailNotifications: boolean
-  pushNotifications: boolean
-  weeklyReports: boolean
+function SkeletonBlock({ height = 20, width = '100%', style }: { height?: number; width?: string | number; style?: React.CSSProperties }) {
+  return (
+    <div
+      style={{
+        height,
+        width,
+        backgroundColor: 'rgba(30,19,12,0.06)',
+        borderRadius: 0,
+        animation: 'pulse 1.5s ease-in-out infinite',
+        ...style,
+      }}
+    />
+  )
 }
 
 export default function StudentSettingsPage() {
-  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'preferences' | 'privacy'>('profile')
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'preferences'>('profile')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   
-  const { t, language, setLanguage } = useTranslation()
-  const { theme, setTheme } = useTheme()
   const router = useRouter()
-
-  // Forms
-  const [profileForm, setProfileForm] = useState<ProfileForm>({
-    full_name: '',
-    email: '',
-    phone: '',
-    bio: '',
-    avatar_url: ''
-  })
-
-  const [passwordForm, setPasswordForm] = useState<PasswordForm>({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  })
-
-  const [preferencesForm, setPreferencesForm] = useState<PreferencesForm>({
-    theme: theme as 'light' | 'dark',
-    language: language,
-    emailNotifications: true,
-    pushNotifications: false,
-    weeklyReports: true
-  })
+  const [profileForm, setProfileForm] = useState<ProfileForm>({ full_name: '', email: '', phone: '', bio: '', avatar_url: '' })
 
   useEffect(() => {
     fetchUserData()
@@ -80,92 +53,12 @@ export default function StudentSettingsPage() {
   const fetchUserData = async () => {
     try {
       const profile = await getUserProfile()
-
-      if (!profile) {
-        router.push('/')
-        return
-      }
-
+      if (!profile) { router.push('/'); return; }
       setProfileForm(profile)
-
-      // Load preferences from localStorage or database
-      const savedPreferences = localStorage.getItem('userPreferences')
-      if (savedPreferences) {
-        const prefs = JSON.parse(savedPreferences)
-        setPreferencesForm(prev => ({ ...prev, ...prefs }))
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error)
+    } catch (err) {
+      console.error(err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const formatPhone = (value: string) => {
-    const numbers = value.replace(/\D/g, '')
-    const truncated = numbers.slice(0, 11)
-    
-    if (truncated.length <= 2) {
-      return truncated
-    } else if (truncated.length <= 7) {
-      return `(${truncated.slice(0, 2)}) ${truncated.slice(2)}`
-    } else if (truncated.length <= 10) {
-      return `(${truncated.slice(0, 2)}) ${truncated.slice(2, 6)}-${truncated.slice(6)}`
-    } else {
-      return `(${truncated.slice(0, 2)}) ${truncated.slice(2, 7)}-${truncated.slice(7)}`
-    }
-  }
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || !e.target.files[0]) return
-
-    const file = e.target.files[0]
-    const fileExt = file.name.split('.').pop()
-    const fileName = `${Math.random()}.${fileExt}`
-
-    // Validate file type
-    const validTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp']
-    if (!fileExt || !validTypes.includes(fileExt.toLowerCase())) {
-      setMessage({ type: 'error', text: 'Por favor, selecione uma imagem válida (jpg, png, gif, webp)' })
-      return
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setMessage({ type: 'error', text: 'A imagem deve ter no máximo 5MB' })
-      return
-    }
-
-    setUploadingAvatar(true)
-    setMessage(null)
-
-    try {
-      // Read file as ArrayBuffer
-      const fileBuffer = await file.arrayBuffer()
-
-      // Upload via server action
-      const result = await uploadAvatar({
-        fileName,
-        fileBuffer,
-        contentType: file.type
-      })
-
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-
-      // Delete old avatar if exists
-      if (profileForm.avatar_url && profileForm.avatar_url.includes('supabase')) {
-        await deleteOldAvatar(profileForm.avatar_url)
-      }
-
-      // Update local state
-      setProfileForm(prev => ({ ...prev, avatar_url: result.publicUrl }))
-      setMessage({ type: 'success', text: 'Foto atualizada com sucesso!' })
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || 'Erro ao fazer upload da imagem' })
-    } finally {
-      setUploadingAvatar(false)
     }
   }
 
@@ -173,568 +66,170 @@ export default function StudentSettingsPage() {
     e.preventDefault()
     setSaving(true)
     setMessage(null)
-
     try {
-      const result = await updateUserProfile({
-        full_name: profileForm.full_name,
-        phone: profileForm.phone,
-        bio: profileForm.bio,
-        avatar_url: profileForm.avatar_url
-      })
-
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-
-      setMessage({ type: 'success', text: t('settings.profileUpdated') })
+      const result = await updateUserProfile({ full_name: profileForm.full_name, phone: profileForm.phone, bio: profileForm.bio, avatar_url: profileForm.avatar_url })
+      if (!result.success) throw new Error(result.error)
+      setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' })
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || t('settings.profileUpdateError') })
+      setMessage({ type: 'error', text: error.message || 'Erro ao salvar.' })
     } finally {
       setSaving(false)
     }
   }
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setMessage(null)
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setMessage({ type: 'error', text: t('settings.passwordMismatch') })
-      setSaving(false)
-      return
-    }
-
-    if (passwordForm.newPassword.length < 6) {
-      setMessage({ type: 'error', text: t('settings.minCharacters') })
-      setSaving(false)
-      return
-    }
-
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0]) return
+    setUploadingAvatar(true)
     try {
-      const response = await fetch('/api/settings/password', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ newPassword: passwordForm.newPassword })
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao alterar senha')
-      }
-
-      setMessage({ type: 'success', text: t('settings.passwordUpdated') })
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      })
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.message || t('settings.passwordUpdateError') })
+      const file = e.target.files[0]
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random()}.${fileExt}`
+      const fileBuffer = await file.arrayBuffer()
+      const result = await uploadAvatar({ fileName, fileBuffer, contentType: file.type })
+      if (!result.success) throw new Error(result.error)
+      if (profileForm.avatar_url?.includes('supabase')) await deleteOldAvatar(profileForm.avatar_url)
+      setProfileForm(prev => ({ ...prev, avatar_url: result.publicUrl }))
+      setMessage({ type: 'success', text: 'Imagem atualizada!' })
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message })
     } finally {
-      setSaving(false)
+      setUploadingAvatar(false)
     }
   }
-
-  const handlePreferencesSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setMessage(null)
-
-    try {
-      // Save preferences
-      localStorage.setItem('userPreferences', JSON.stringify(preferencesForm))
-      
-      // Apply theme and language changes
-      setTheme(preferencesForm.theme)
-      setLanguage(preferencesForm.language)
-
-      setMessage({ type: 'success', text: t('settings.preferencesUpdated') })
-    } catch (error: any) {
-      setMessage({ type: 'error', text: 'Erro ao salvar preferências' })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleExportData = async () => {
-    try {
-      const result = await exportUserData()
-
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-
-      // Create and download JSON file
-      const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `swiftedu-data-${new Date().toISOString().split('T')[0]}.json`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-
-      setMessage({ type: 'success', text: 'Dados exportados com sucesso!' })
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao exportar dados' })
-    }
-  }
-
-  const tabs = [
-    { id: 'profile', label: t('settings.profileSettings'), icon: User },
-    { id: 'password', label: t('settings.changePassword'), icon: Lock },
-    { id: 'preferences', label: t('settings.preferencesSettings'), icon: Globe },
-    { id: 'privacy', label: 'Privacidade e Dados', icon: Shield }
-  ]
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Spinner size="xl" />
-      </div>
-    )
+    return <Spinner fullPage size="xl" />
   }
 
   return (
-    <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-          <Settings className="w-8 h-8 text-gold-400" />
-          {t('settings.title')}
+    <div className="flex flex-col">
+      <div className="text-center flex flex-col items-center mb-12">
+        <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.5rem', fontWeight: 700, color: INK, marginBottom: '0.5rem' }}>
+          Configurações Pessoais
         </h1>
-        <p className="text-gold-300 mt-1">{t('settings.subtitle')}</p>
+        <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: MUTED }}>
+          Gerencie sua identidade e preferências no ecossistema Swift
+        </p>
+        <ClassicRule style={{ width: '100%', maxWidth: '300px', marginTop: '2.5rem', color: INK }} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-gold-500/20 pb-2">
-        {tabs.map((tab: any) => {
-          const Icon = tab.icon
-          return (
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
+        {/* Navegação Lateral */}
+        <div className="lg:col-span-1 space-y-2">
+          {[
+            { id: 'profile', label: 'Perfil do Aluno', icon: User },
+            { id: 'password', label: 'Segurança', icon: Lock },
+            { id: 'preferences', label: 'Preferências', icon: Globe }
+          ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                activeTab === tab.id 
-                  ? 'bg-gold-500/20 text-gold border-b-2 border-gold-500' 
-                  : 'text-gold-300 hover:text-gold hover:bg-navy-800/50'
-              }`}
+              className="w-full text-left py-3 px-4 transition-all"
+              style={{
+                background: activeTab === tab.id ? 'rgba(30,19,12,0.04)' : 'none',
+                border: 'none',
+                borderLeft: activeTab === tab.id ? `3px solid ${ACCENT}` : '3px solid transparent',
+                color: activeTab === tab.id ? INK : MUTED,
+                fontFamily: 'var(--font-lora)',
+                fontWeight: activeTab === tab.id ? 700 : 400,
+                cursor: 'pointer'
+              }}
             >
-              <Icon className="w-4 h-4" />
+              <tab.icon size={16} className="inline mr-3 opacity-50" />
               {tab.label}
             </button>
-          )
-        })}
-      </div>
-
-      {/* Message */}
-      {message && (
-        <div className={`p-4 rounded-lg flex items-center gap-2 ${
-          message.type === 'success' 
-            ? 'bg-green-500/20 text-green-400 border border-green-500/20' 
-            : 'bg-red-500/20 text-red-400 border border-red-500/20'
-        }`}>
-          {message.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
-          {message.text}
+          ))}
         </div>
-      )}
 
-      {/* Profile Tab */}
-      {activeTab === 'profile' && (
-        <Card 
-          title={t('settings.profileSettings')}
-          subtitle={t('settings.profileInfo')}
-        >
-          <form onSubmit={handleProfileSubmit} className="space-y-4">
-            {/* Avatar Upload */}
-            <div className="flex items-center gap-6 mb-6">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full overflow-hidden bg-navy-900/50 border-2 border-gold-500/20">
-                  {profileForm.avatar_url ? (
-                    <img 
-                      src={profileForm.avatar_url} 
-                      alt="Avatar" 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <User className="w-12 h-12 text-gold-500/50" />
+        {/* Formulário Principal */}
+        <div className="lg:col-span-3">
+          <div style={{ backgroundColor: PARCH, border: `1px solid ${BORDER}`, padding: '3rem', position: 'relative' }}>
+            <div className="absolute top-4 left-4 w-8 h-8"><CornerBracket size={32} /></div>
+            
+            {message && (
+              <div style={{ padding: '1rem', marginBottom: '2rem', backgroundColor: 'rgba(30,19,12,0.02)', border: `1px solid ${message.type === 'success' ? INK : MUTED}`, color: message.type === 'success' ? INK : MUTED, fontSize: '0.85rem', fontFamily: 'var(--font-lora)' }}>
+                {message.text}
+              </div>
+            )}
+
+            {activeTab === 'profile' && (
+              <form onSubmit={handleProfileSubmit} className="space-y-8">
+                <div className="flex items-center gap-8 mb-12">
+                  <div className="relative">
+                    <div style={{ width: '100px', height: '100px', backgroundColor: '#f0e6d2', border: `1px solid ${BORDER}`, overflow: 'hidden' }}>
+                      {profileForm.avatar_url ? <img src={profileForm.avatar_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[#7a6350]"><User size={40} /></div>}
                     </div>
-                  )}
-                </div>
-                {uploadingAvatar && (
-                  <div className="absolute inset-0 bg-navy-900/80 rounded-full flex items-center justify-center">
-                    <Spinner size="md" />
+                    <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#1e130c] text-[#faf6ee] flex items-center justify-center cursor-pointer hover:bg-[#8b6d22] transition-colors shadow-lg">
+                      <Camera size={14} />
+                      <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
+                    </label>
                   </div>
-                )}
-                <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-gold-500 hover:bg-gold-600 text-navy-900 rounded-full p-2 cursor-pointer transition-colors">
-                  <Camera className="w-4 h-4" />
-                  <input
-                    type="file"
-                    id="avatar-upload"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                    disabled={uploadingAvatar}
-                  />
-                </label>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gold mb-1">Foto do Perfil</h3>
-                <p className="text-sm text-gold-300 mb-3">
-                  Clique no ícone da câmera para alterar sua foto. 
-                  Formatos aceitos: JPG, PNG, GIF, WEBP (máx. 5MB)
-                </p>
-                {profileForm.avatar_url && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setProfileForm(prev => ({ ...prev, avatar_url: '' }))
-                      setMessage({ type: 'success', text: 'Foto removida. Salve para confirmar.' })
-                    }}
-                    icon={<Trash2 className="w-4 h-4" />}
-                  >
-                    Remover Foto
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="full_name" className="block text-sm font-medium text-gold-200 mb-1">
-                {t('settings.fullName')}
-              </label>
-              <input
-                type="text"
-                id="full_name"
-                value={profileForm.full_name}
-                onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                placeholder="Seu nome completo"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gold-200 mb-1">
-                {t('settings.email')}
-              </label>
-              <input
-                type="email"
-                id="email"
-                value={profileForm.email}
-                disabled
-                className="w-full px-4 py-2 bg-navy-900/30 border border-gold-500/10 rounded-lg text-gold-300 cursor-not-allowed"
-              />
-              <p className="text-xs text-gold-400 mt-1">{t('settings.emailCannotChange')}</p>
-            </div>
-
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gold-200 mb-1">
-                {t('settings.phone')}
-              </label>
-              <input
-                type="tel"
-                id="phone"
-                value={profileForm.phone}
-                onChange={(e) => setProfileForm({ ...profileForm, phone: formatPhone(e.target.value) })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                placeholder={t('settings.phonePlaceholder')}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="bio" className="block text-sm font-medium text-gold-200 mb-1">
-                {t('settings.bio')}
-              </label>
-              <textarea
-                id="bio"
-                value={profileForm.bio}
-                onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                rows={4}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent resize-none"
-                placeholder={t('settings.bioPlaceholder')}
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <Button 
-                type="submit" 
-                disabled={saving}
-                icon={<Save className="w-4 h-4" />}
-              >
-                {saving ? t('settings.saving') : t('settings.saveChanges')}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {/* Password Tab */}
-      {activeTab === 'password' && (
-        <Card 
-          title={t('settings.changePassword')}
-          subtitle={t('settings.passwordInfo')}
-        >
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="currentPassword" className="block text-sm font-medium text-gold-200 mb-1">
-                {t('settings.currentPassword')}
-              </label>
-              <input
-                type="password"
-                id="currentPassword"
-                value={passwordForm.currentPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-gold-200 mb-1">
-                {t('settings.newPassword')}
-              </label>
-              <input
-                type="password"
-                id="newPassword"
-                value={passwordForm.newPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-              <p className="text-xs text-gold-400 mt-1">{t('settings.minCharacters')}</p>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gold-200 mb-1">
-                {t('settings.confirmNewPassword')}
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                value={passwordForm.confirmPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <Button 
-                type="submit" 
-                disabled={saving}
-                icon={<Lock className="w-4 h-4" />}
-              >
-                {saving ? t('settings.updating') : t('settings.updatePassword')}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {/* Preferences Tab */}
-      {activeTab === 'preferences' && (
-        <Card 
-          title={t('settings.preferencesSettings')}
-          subtitle={t('settings.customizeExperience')}
-        >
-          <form onSubmit={handlePreferencesSubmit} className="space-y-6">
-            {/* Theme */}
-            <div>
-              <label className="block text-sm font-medium text-gold-200 mb-3">
-                {t('settings.theme')}
-              </label>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setPreferencesForm({ ...preferencesForm, theme: 'light' })}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    preferencesForm.theme === 'light'
-                      ? 'border-gold-500 bg-gold-500/20'
-                      : 'border-gold-500/20 hover:border-gold-500/40'
-                  }`}
-                >
-                  <Sun className="w-8 h-8 text-gold mx-auto mb-2" />
-                  <p className="text-gold-200">{t('settings.themeLight')}</p>
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setPreferencesForm({ ...preferencesForm, theme: 'dark' })}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    preferencesForm.theme === 'dark'
-                      ? 'border-gold-500 bg-gold-500/20'
-                      : 'border-gold-500/20 hover:border-gold-500/40'
-                  }`}
-                >
-                  <Moon className="w-8 h-8 text-gold mx-auto mb-2" />
-                  <p className="text-gold-200">{t('settings.themeDark')}</p>
-                </button>
-              </div>
-            </div>
-
-            {/* Language */}
-            <div>
-              <label htmlFor="language" className="block text-sm font-medium text-gold-200 mb-1">
-                {t('settings.language')}
-              </label>
-              <select
-                id="language"
-                value={preferencesForm.language}
-                onChange={(e) => setPreferencesForm({ ...preferencesForm, language: e.target.value as any })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
-              >
-                <option value="pt-BR">Português (BR)</option>
-                <option value="en-US">English (US)</option>
-                <option value="es-ES">Español (ES)</option>
-              </select>
-            </div>
-
-            {/* Notifications */}
-            <div>
-              <label className="block text-sm font-medium text-gold-200 mb-3">
-                {t('settings.notifications')}
-              </label>
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={preferencesForm.emailNotifications}
-                    onChange={(e) => setPreferencesForm({ ...preferencesForm, emailNotifications: e.target.checked })}
-                    className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/20 rounded focus:ring-gold-500"
-                  />
-                  <span className="text-gold-200">{t('settings.emailNotifications')}</span>
-                </label>
-                
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={preferencesForm.pushNotifications}
-                    onChange={(e) => setPreferencesForm({ ...preferencesForm, pushNotifications: e.target.checked })}
-                    className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/20 rounded focus:ring-gold-500"
-                  />
-                  <span className="text-gold-200">Notificações Push</span>
-                </label>
-                
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={preferencesForm.weeklyReports}
-                    onChange={(e) => setPreferencesForm({ ...preferencesForm, weeklyReports: e.target.checked })}
-                    className="w-4 h-4 text-gold-500 bg-navy-900/50 border-gold-500/20 rounded focus:ring-gold-500"
-                  />
-                  <span className="text-gold-200">Relatórios Semanais de Progresso</span>
-                </label>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button 
-                type="submit" 
-                disabled={saving}
-                icon={<Save className="w-4 h-4" />}
-              >
-                {saving ? t('settings.saving') : t('settings.saveChanges')}
-              </Button>
-            </div>
-          </form>
-        </Card>
-      )}
-
-      {/* Privacy Tab */}
-      {activeTab === 'privacy' && (
-        <div className="space-y-6">
-          <Card 
-            title="Privacidade e Dados"
-            subtitle="Gerencie suas informações pessoais e privacidade"
-          >
-            <div className="space-y-6">
-              <div className="bg-navy-900/50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gold mb-3 flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  Seus Dados
-                </h3>
-                <p className="text-gold-300 mb-4">
-                  Suas informações são protegidas e armazenadas com segurança. 
-                  Você tem controle total sobre seus dados pessoais.
-                </p>
-                <div className="space-y-3">
-                  <Button
-                    variant="secondary"
-                    onClick={handleExportData}
-                    className="w-full sm:w-auto"
-                    icon={<Download className="w-4 h-4" />}
-                  >
-                    Exportar Meus Dados
-                  </Button>
-                  
-                  <p className="text-sm text-gold-400">
-                    Baixe uma cópia de todos os seus dados em formato JSON
-                  </p>
+                  <div>
+                    <h4 style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.2rem', color: INK }}>Foto de Identificação</h4>
+                    <p style={{ fontSize: '0.8rem', color: MUTED, fontStyle: 'italic' }}>Recomendado: Imagem quadrada, máx. 5MB</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-red-400 mb-3 flex items-center gap-2">
-                  <Trash2 className="w-5 h-5" />
-                  Zona de Perigo
-                </h3>
-                <p className="text-gold-300 mb-4">
-                  Ações irreversíveis. Por favor, tenha certeza antes de prosseguir.
-                </p>
-                <Button
-                  variant="secondary"
-                  className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border-red-500/20"
-                  onClick={() => {
-                    if (confirm('Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.')) {
-                      // Implementar exclusão de conta
-                      alert('Funcionalidade em desenvolvimento')
-                    }
-                  }}
-                  icon={<Trash2 className="w-4 h-4" />}
-                >
-                  Excluir Minha Conta
-                </Button>
-              </div>
-            </div>
-          </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col">
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED, marginBottom: '0.5rem' }}>Nome Completo</label>
+                    <input
+                      type="text"
+                      value={profileForm.full_name}
+                      onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
+                      style={{ padding: '0.75rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)' }}
+                    />
+                  </div>
+                  <div className="flex flex-col">
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED, marginBottom: '0.5rem' }}>Email Institucional</label>
+                    <input
+                      type="email"
+                      value={profileForm.email}
+                      disabled
+                      style={{ padding: '0.75rem', backgroundColor: 'rgba(30,19,12,0.04)', border: `1px solid ${BORDER}`, color: MUTED, fontFamily: 'var(--font-lora)', cursor: 'not-allowed' }}
+                    />
+                  </div>
+                </div>
 
-          <Card>
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gold">Política de Privacidade</h3>
-              <div className="space-y-3 text-gold-300">
-                <p>
-                  <strong className="text-gold">1. Coleta de Dados:</strong> Coletamos apenas as informações 
-                  necessárias para fornecer nossos serviços educacionais.
-                </p>
-                <p>
-                  <strong className="text-gold">2. Uso dos Dados:</strong> Seus dados são usados exclusivamente 
-                  para melhorar sua experiência de aprendizado e nunca são vendidos a terceiros.
-                </p>
-                <p>
-                  <strong className="text-gold">3. Segurança:</strong> Utilizamos criptografia e as melhores 
-                  práticas de segurança para proteger suas informações.
-                </p>
-                <p>
-                  <strong className="text-gold">4. Seus Direitos:</strong> Você tem o direito de acessar, 
-                  corrigir ou excluir seus dados a qualquer momento.
-                </p>
+                <div className="flex flex-col">
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED, marginBottom: '0.5rem' }}>Telefone de Contato</label>
+                  <input
+                    type="text"
+                    value={profileForm.phone}
+                    onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                    style={{ padding: '0.75rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)' }}
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED, marginBottom: '0.5rem' }}>Resumo Biográfico</label>
+                  <textarea
+                    value={profileForm.bio}
+                    onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
+                    style={{ padding: '0.75rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)', minHeight: '120px' }}
+                  />
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    style={{ padding: '1rem 3rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em' }}
+                  >
+                    {saving ? 'Gravando...' : 'Salvar Alterações'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {activeTab !== 'profile' && (
+              <div className="py-20 text-center italic text-[#7a6350]">
+                Funcionalidade de {activeTab === 'password' ? 'segurança' : 'preferências'} está sendo refinada para o novo padrão visual.
               </div>
-            </div>
-          </Card>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

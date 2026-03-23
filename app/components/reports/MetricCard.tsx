@@ -116,30 +116,30 @@ export default function MetricCard({
       icon: 'text-gold-400',
       value: 'text-gold-100',
       trend: {
-        up: 'text-green-400 bg-green-500/20',
-        down: 'text-red-400 bg-red-500/20',
+        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
+        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
         neutral: 'text-gold-400 bg-gold-500/20'
       }
     },
     green: {
       bg: 'bg-gradient-to-br from-green-500/10 to-green-600/10',
       border: 'border-green-500/20',
-      icon: 'text-green-400',
-      value: 'text-green-100',
+      icon: 'text-[#1e130c] font-bold',
+      value: 'text-[#1e130c] font-bold',
       trend: {
-        up: 'text-green-400 bg-green-500/20',
-        down: 'text-red-400 bg-red-500/20',
+        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
+        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
         neutral: 'text-gray-400 bg-gray-500/20'
       }
     },
     red: {
       bg: 'bg-gradient-to-br from-red-500/10 to-red-600/10',
       border: 'border-red-500/20',
-      icon: 'text-red-400',
-      value: 'text-red-100',
+      icon: 'text-[#7a6350] italic',
+      value: 'text-[#7a6350] italic',
       trend: {
-        up: 'text-green-400 bg-green-500/20',
-        down: 'text-red-400 bg-red-500/20',
+        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
+        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
         neutral: 'text-gray-400 bg-gray-500/20'
       }
     },
@@ -149,8 +149,8 @@ export default function MetricCard({
       icon: 'text-blue-400',
       value: 'text-blue-100',
       trend: {
-        up: 'text-green-400 bg-green-500/20',
-        down: 'text-red-400 bg-red-500/20',
+        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
+        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
         neutral: 'text-gray-400 bg-gray-500/20'
       }
     },
@@ -160,8 +160,8 @@ export default function MetricCard({
       icon: 'text-purple-400',
       value: 'text-purple-100',
       trend: {
-        up: 'text-green-400 bg-green-500/20',
-        down: 'text-red-400 bg-red-500/20',
+        up: 'text-[#1e130c] font-bold bg-[#1e130c]/5/20',
+        down: 'text-[#7a6350] italic bg-[#7a6350]/10/20',
         neutral: 'text-gray-400 bg-gray-500/20'
       }
     }

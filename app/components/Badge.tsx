@@ -1,13 +1,37 @@
-import { ReactNode } from 'react'
+import { ReactNode, CSSProperties } from 'react'
 import { X } from 'lucide-react'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const BORDER = 'rgba(30,19,12,0.12)'
+
+type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'gradient'
+type BadgeSize = 'sm' | 'md' | 'lg'
+
+const variantStyles: Record<BadgeVariant, CSSProperties> = {
+  default:  { backgroundColor: 'rgba(30,19,12,0.07)', color: INK,        border: `1px solid ${BORDER}` },
+  success:  { backgroundColor: 'rgba(30,19,12,0.05)', color: INK,        border: `1px solid ${INK}`, fontWeight: 700 },
+  warning:  { backgroundColor: 'transparent',         color: ACCENT,     border: `1px solid ${ACCENT}` },
+  error:    { backgroundColor: 'transparent',         color: MUTED,      border: `1px solid ${MUTED}`, fontStyle: 'italic' },
+  info:     { backgroundColor: 'rgba(122,99,80,0.12)', color: MUTED,     border: `1px solid ${BORDER}` },
+  gradient: { backgroundColor: 'rgba(139,109,34,0.1)', color: ACCENT,    border: '1px solid rgba(139,109,34,0.25)' },
+}
+
+const sizeStyles: Record<BadgeSize, CSSProperties> = {
+  sm: { padding: '0.15rem 0.5rem',  fontSize: '0.72rem' },
+  md: { padding: '0.25rem 0.625rem', fontSize: '0.8rem' },
+  lg: { padding: '0.35rem 0.875rem', fontSize: '0.875rem' },
+}
 
 interface BadgeProps {
   children: ReactNode
-  variant?: 'default' | 'success' | 'warning' | 'error' | 'info' | 'gradient'
-  size?: 'sm' | 'md' | 'lg'
+  variant?: BadgeVariant
+  size?: BadgeSize
   removable?: boolean
   onRemove?: () => void
   icon?: ReactNode
+  style?: CSSProperties
   className?: string
   animate?: boolean
 }
@@ -19,55 +43,49 @@ export default function Badge({
   removable = false,
   onRemove,
   icon,
+  style,
   className = '',
-  animate = false
 }: BadgeProps) {
-  const sizes = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-sm',
-    lg: 'px-3 py-1.5 text-base'
-  }
-
-  const variants = {
-    default: 'bg-navy-700/50 text-gold-300 border border-gold-500/20',
-    success: 'bg-green-500/30 text-green-700 border border-green-500/40 font-semibold',
-    warning: 'bg-yellow-500/30 text-yellow-900 border border-yellow-500/40 font-semibold',
-    error: 'bg-red-500/30 text-red-900 border border-red-500/40 font-semibold',
-    info: 'bg-blue-500/30 text-blue-700 border border-blue-500/40 font-semibold',
-    gradient: 'bg-gradient-to-r from-purple-500/20 via-gold-500/20 to-gold-600/20 text-gold-300 border border-gold-500/30'
-  }
-
   return (
     <span
-      className={`
-        inline-flex items-center gap-1.5 rounded-full font-medium
-        transition-all duration-300
-        ${variants[variant]}
-        ${sizes[size]}
-        ${animate ? 'animate-pulse' : ''}
-        hover:scale-105 hover:shadow-lg
-        ${className}
-      `}
+      className={className}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.3rem',
+        fontFamily: 'var(--font-lora, serif)',
+        fontWeight: 500,
+        lineHeight: 1,
+        ...variantStyles[variant],
+        ...sizeStyles[size],
+        ...style,
+      }}
     >
-      {icon && (
-        <span className="transition-transform hover:rotate-12">
-          {icon}
-        </span>
-      )}
+      {icon && <span style={{ display: 'flex' }}>{icon}</span>}
       {children}
       {removable && (
         <button
           onClick={onRemove}
-          className="ml-1 -mr-1 hover:text-gold-100 transition-colors"
+          style={{
+            display: 'flex',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'inherit',
+            opacity: 0.6,
+            padding: 0,
+            marginLeft: '0.1rem',
+          }}
         >
-          <X className="w-3 h-3" />
+          <X size={10} />
         </button>
       )}
     </span>
   )
 }
 
-// Chip component for filters
+// ── Chip — filter selector ──────────────────────────────────────────────────
+
 interface ChipProps {
   label: string
   selected?: boolean
@@ -77,65 +95,49 @@ interface ChipProps {
   color?: 'gold' | 'blue' | 'green' | 'purple' | 'red'
 }
 
-export function Chip({
-  label,
-  selected = false,
-  onClick,
-  count,
-  icon,
-  color = 'gold'
-}: ChipProps) {
-  const colors = {
-    gold: {
-      base: 'border-gold-500/30 text-gold-400',
-      selected: 'bg-gold-500/20 border-gold-500 text-gold-200',
-      hover: 'hover:border-gold-500/50 hover:bg-gold-500/10'
-    },
-    blue: {
-      base: 'border-blue-500/30 text-blue-400',
-      selected: 'bg-blue-500/20 border-blue-500 text-blue-200',
-      hover: 'hover:border-blue-500/50 hover:bg-blue-500/10'
-    },
-    green: {
-      base: 'border-green-500/30 text-green-400',
-      selected: 'bg-green-500/20 border-green-500 text-green-200',
-      hover: 'hover:border-green-500/50 hover:bg-green-500/10'
-    },
-    purple: {
-      base: 'border-purple-500/30 text-purple-400',
-      selected: 'bg-purple-500/20 border-purple-500 text-purple-200',
-      hover: 'hover:border-purple-500/50 hover:bg-purple-500/10'
-    },
-    red: {
-      base: 'border-red-500/30 text-red-400',
-      selected: 'bg-red-500/20 border-red-500 text-red-200',
-      hover: 'hover:border-red-500/50 hover:bg-red-500/10'
-    }
+export function Chip({ label, selected = false, onClick, count, icon }: ChipProps) {
+  const baseStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    padding: '0.35rem 0.75rem',
+    fontFamily: 'var(--font-lora, serif)',
+    fontSize: '0.85rem',
+    fontWeight: 500,
+    cursor: onClick ? 'pointer' : undefined,
+    transition: 'border-color 0.15s, background-color 0.15s, color 0.15s',
+    background: 'none',
+    border: 'none',
   }
 
-  const scheme = colors[color]
+  const selectedStyle: CSSProperties = {
+    backgroundColor: 'rgba(139,109,34,0.12)',
+    border: `1px solid ${ACCENT}`,
+    color: INK,
+  }
+
+  const unselectedStyle: CSSProperties = {
+    backgroundColor: 'transparent',
+    border: `1px solid ${BORDER}`,
+    color: MUTED,
+  }
 
   return (
     <button
       onClick={onClick}
-      className={`
-        inline-flex items-center gap-2 px-4 py-2 rounded-full
-        font-medium text-sm border transition-all duration-300
-        ${selected ? scheme.selected : `${scheme.base} ${scheme.hover}`}
-        transform hover:scale-105 active:scale-95
-      `}
+      style={{ ...baseStyle, ...(selected ? selectedStyle : unselectedStyle) }}
     >
-      {icon && (
-        <span className={`transition-transform ${selected ? 'rotate-12' : ''}`}>
-          {icon}
-        </span>
-      )}
+      {icon && <span style={{ display: 'flex' }}>{icon}</span>}
       {label}
       {count !== undefined && (
-        <span className={`
-          ml-1 px-1.5 py-0.5 rounded-full text-xs font-bold
-          ${selected ? 'bg-white/20' : 'bg-current/10'}
-        `}>
+        <span
+          style={{
+            fontSize: '0.72rem',
+            fontWeight: 600,
+            color: 'inherit',
+            opacity: 0.7,
+          }}
+        >
           {count}
         </span>
       )}
@@ -143,7 +145,8 @@ export function Chip({
   )
 }
 
-// Tag component for categorization
+// ── Tag — category label ────────────────────────────────────────────────────
+
 interface TagProps {
   text: string
   color?: string
@@ -152,30 +155,29 @@ interface TagProps {
   onClick?: () => void
 }
 
-export function Tag({
-  text,
-  color = 'gold',
-  size = 'sm',
-  clickable = false,
-  onClick
-}: TagProps) {
-  const sizes = {
-    sm: 'px-2 py-1 text-xs',
-    md: 'px-3 py-1.5 text-sm',
-    lg: 'px-4 py-2 text-base'
-  }
+const tagSizes: Record<'sm' | 'md' | 'lg', CSSProperties> = {
+  sm: { padding: '0.15rem 0.45rem', fontSize: '0.72rem' },
+  md: { padding: '0.25rem 0.625rem', fontSize: '0.8rem' },
+  lg: { padding: '0.35rem 0.875rem', fontSize: '0.875rem' },
+}
 
+export function Tag({ text, size = 'sm', clickable = false, onClick }: TagProps) {
   const Component = clickable ? 'button' : 'span'
 
   return (
     <Component
       onClick={onClick}
-      className={`
-        inline-block rounded
-        bg-navy-800/50 text-gold-300
-        ${sizes[size]}
-        ${clickable ? 'hover:bg-navy-700/50 hover:text-gold-200 cursor-pointer transition-all duration-200' : ''}
-      `}
+      style={{
+        display: 'inline-block',
+        fontFamily: 'var(--font-lora, serif)',
+        fontWeight: 500,
+        color: MUTED,
+        backgroundColor: 'rgba(30,19,12,0.05)',
+        border: `1px solid ${BORDER}`,
+        cursor: clickable ? 'pointer' : undefined,
+        transition: 'color 0.15s',
+        ...tagSizes[size],
+      }}
     >
       #{text}
     </Component>

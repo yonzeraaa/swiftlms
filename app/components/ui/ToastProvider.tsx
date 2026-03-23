@@ -9,7 +9,6 @@ import {
   Info, 
   Loader2,
   X,
-  Sparkles,
   Trophy,
   Star
 } from 'lucide-react'
@@ -32,13 +31,13 @@ const CustomToast = ({ message, type, icon, action }: CustomToastProps) => {
     success: {
       bgColor: 'from-green-500/20 to-green-600/10',
       borderColor: 'border-green-500/30',
-      textColor: 'text-green-400',
+      textColor: 'text-[#1e130c] font-bold',
       defaultIcon: <CheckCircle className="w-5 h-5" />
     },
     error: {
       bgColor: 'from-red-500/20 to-red-600/10',
       borderColor: 'border-red-500/30',
-      textColor: 'text-red-400',
+      textColor: 'text-[#7a6350] italic',
       defaultIcon: <XCircle className="w-5 h-5" />
     },
     warning: {

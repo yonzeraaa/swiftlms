@@ -1,425 +1,28 @@
-'use client'
+const fs = require('fs');
+const file = 'app/dashboard/lessons/page.tsx';
+let content = fs.readFileSync(file, 'utf8');
 
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
-import { Plus, Search, Filter, Edit, Trash2, PlayCircle, FileText, Clock, Users, MoreVertical, CheckCircle, X, AlertCircle, BookOpen, Video, FileQuestion, Eye, EyeOff, ArrowDownAZ, ArrowUpAZ, CheckSquare, Square, Check } from 'lucide-react'
-import { ClassicRule } from '../../components/ui/RenaissanceSvgs'
-import Spinner from '../../components/ui/Spinner'
-import Button from '../../components/Button'
-import { Database } from '@/lib/database.types'
-import VideoPlayer from '../../components/VideoPlayer'
-import DocumentViewer from '../../components/DocumentViewer'
-import {
-  getLessonsData,
-  createLesson,
-  updateLesson,
-  deleteLesson,
-  bulkDeleteLessons,
-  toggleLessonPreview
-} from '@/lib/actions/admin-lessons'
-import { getAllCourses } from '@/lib/actions/admin-courses'
+content = content.replace("import Card from '../../components/Card'", "import { ClassicRule, CornerBracket } from '../../components/ui/RenaissanceSvgs'");
 
-type Lesson = Database['public']['Tables']['lessons']['Row']
-type CourseModule = Database['public']['Tables']['course_modules']['Row']
-type Course = Database['public']['Tables']['courses']['Row']
-type SubjectLessonView = Database['public']['Views']['subject_lessons_view']['Row']
-
-interface LessonWithRelations extends Lesson {
-  subject_lessons?: Array<{
-    subject_id: string
-    subjects: {
-      id: string
-      name: string
-      code: string | null
-    }
-  }>
-  course_modules?: {
-    id: string
-    title: string
-    courses?: {
-      id: string
-      title: string
-    } | null
-  } | null
-}
-
-export default function LessonsPage() {
-  const router = useRouter()
-  const [codeFilter, setCodeFilter] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedCourseId, setSelectedCourseId] = useState<string>('todos')
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('todas')
-  const [loading, setLoading] = useState(true)
-  const [lessons, setLessons] = useState<LessonWithRelations[]>([])
-  const [modules, setModules] = useState<(CourseModule & { courses: Course })[]>([])
-  const [showModal, setShowModal] = useState(false)
-  const [editingLesson, setEditingLesson] = useState<LessonWithRelations | null>(null)
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    content_type: 'video',
-    content_url: '',
-    content: '',
-    duration_minutes: '',
-    order_index: '0',
-    is_preview: false
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const [lessonProgress, setLessonProgress] = useState<{ [key: string]: { completed: number, total: number } }>({})
-  const [showPreviewModal, setShowPreviewModal] = useState(false)
-  const [previewLesson, setPreviewLesson] = useState<LessonWithRelations | null>(null)
-  const [lessonSortMode, setLessonSortMode] = useState<'code' | 'title'>('code')
-  const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([])
-  const [selectAllLessons, setSelectAllLessons] = useState(false)
-  const [bulkDeletingLessons, setBulkDeletingLessons] = useState(false)
-  const [allCourses, setAllCourses] = useState<{ id: string; title: string }[]>([])
-
-  useEffect(() => {
-    fetchData()
-  }, [])
-
-  const fetchData = async () => {
-    try {
-      setLoading(true)
-
-      const data = await getLessonsData()
-
-      if (!data) {
-        setMessage({ type: 'error', text: 'Erro ao carregar aulas' })
-        return
-      }
-
-      setLessons(data.lessons)
-      setLessonProgress(data.lessonProgress)
-      setAllCourses(await getAllCourses())
-    } catch (error) {
-      console.error('Error fetching data:', error)
-      setMessage({ type: 'error', text: 'Erro ao carregar aulas' })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setMessage(null)
-
-    try {
-      const lessonData = {
-        title: formData.title,
-        description: formData.description,
-        content_type: formData.content_type,
-        content_url: formData.content_url,
-        content: formData.content,
-        duration_minutes: formData.duration_minutes ? parseInt(formData.duration_minutes) : undefined,
-        order_index: parseInt(formData.order_index),
-        is_preview: formData.is_preview
-      }
-
-      let result
-      if (editingLesson) {
-        result = await updateLesson(editingLesson.id, lessonData)
-        if (result.success) {
-          setMessage({ type: 'success', text: 'Aula atualizada com sucesso!' })
-        }
-      } else {
-        result = await createLesson(lessonData)
-        if (result.success) {
-          setMessage({ type: 'success', text: 'Aula criada com sucesso!' })
-        }
-      }
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao salvar aula')
-      }
-
-      resetForm()
-      setShowModal(false)
-      await fetchData()
-    } catch (error: any) {
-      console.error('Error saving lesson:', error)
-      setMessage({
-        type: 'error',
-        text: error.message || 'Erro ao salvar aula'
-      })
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleEdit = (lesson: LessonWithRelations) => {
-    setEditingLesson(lesson)
-    setFormData({
-      title: lesson.title,
-      description: lesson.description || '',
-      content_type: lesson.content_type,
-      content_url: lesson.content_url || '',
-      content: lesson.content || '',
-      duration_minutes: lesson.duration_minutes?.toString() || '',
-      order_index: lesson.order_index.toString(),
-      is_preview: lesson.is_preview || false
-    })
-    setShowModal(true)
-  }
-
-  const handleDelete = async (lesson: LessonWithRelations) => {
-    if (!confirm(`Tem certeza que deseja excluir a aula "${lesson.title}"?`)) {
-      return
-    }
-
-    try {
-      const result = await deleteLesson(lesson.id)
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao excluir aula')
-      }
-
-      setMessage({ type: 'success', text: 'Aula excluída com sucesso!' })
-      await fetchData()
-    } catch (error: any) {
-      console.error('Error deleting lesson:', error)
-      setMessage({
-        type: 'error',
-        text: error.message || 'Erro ao excluir aula'
-      })
-    }
-  }
-
-  const openCreateModal = () => {
-    resetForm()
-    setShowModal(true)
-  }
-
-  const resetForm = () => {
-    setEditingLesson(null)
-    setFormData({
-      title: '',
-      description: '',
-      content_type: 'video',
-      content_url: '',
-      content: '',
-      duration_minutes: '',
-      order_index: '0',
-      is_preview: false
-    })
-  }
-
-  const availableSubjects = useMemo(() => {
-    const subjectsMap = new Map<string, { id: string; name: string; code: string | null }>()
-
-    lessons.forEach(lesson => {
-      if (lesson.subject_lessons && lesson.subject_lessons.length > 0) {
-        lesson.subject_lessons.forEach(sl => {
-          if (sl.subjects && !subjectsMap.has(sl.subjects.id)) {
-            subjectsMap.set(sl.subjects.id, {
-              id: sl.subjects.id,
-              name: sl.subjects.name,
-              code: sl.subjects.code
-            })
-          }
-        })
-      }
-    })
-
-    return Array.from(subjectsMap.values()).sort((a, b) => {
-      const codeA = a.code || a.name
-      const codeB = b.code || b.name
-      return codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
-    })
-  }, [lessons])
-
-  const availableCourses = useMemo(() => {
-    const coursesMap = new Map<string, { id: string; title: string }>()
-
-    lessons.forEach(lesson => {
-      const course = lesson.course_modules?.courses
-      if (course && !coursesMap.has(course.id)) {
-        coursesMap.set(course.id, { id: course.id, title: course.title })
-      }
-    })
-
-    return Array.from(coursesMap.values()).sort((a, b) =>
-      a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' })
-    )
-  }, [lessons])
-
-  const filteredLessons = useMemo(() => {
-    return lessons.filter(lesson => {
-      if (codeFilter && !lesson.code?.toLowerCase().includes(codeFilter.toLowerCase())) return false
-
-      if (searchTerm) {
-        const matchesSearch =
-          lesson.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          lesson.description?.toLowerCase().includes(searchTerm.toLowerCase())
-        if (!matchesSearch) return false
-      }
-
-      if (selectedCourseId !== 'todos') {
-        const lessonCourseId = lesson.course_modules?.courses?.id
-        if (lessonCourseId !== selectedCourseId) return false
-      }
-
-      if (selectedSubjectId === 'todas') return true
-
-      if (selectedSubjectId === 'sem-disciplina') {
-        return !lesson.subject_lessons || lesson.subject_lessons.length === 0
-      }
-
-      return lesson.subject_lessons?.some(sl => sl.subject_id === selectedSubjectId) ?? false
-    })
-  }, [lessons, codeFilter, searchTerm, selectedCourseId, selectedSubjectId])
-
-  const getLessonSubjectCode = (lesson: LessonWithRelations) => {
-    const code = (lesson as any).subject_lessons?.[0]?.subjects?.code
-    if (typeof code === 'string' && code.trim().length > 0) {
-      return code.trim()
-    }
-    const match = lesson.title.match(/^[A-Za-zÀ-ÖØ-öø-ÿ0-9._-]+/)
-    return match ? match[0] : lesson.title
-  }
-
-  const sortedLessons = useMemo(() => {
-    const list = [...filteredLessons]
-
-    if (lessonSortMode === 'code') {
-      return list.sort((a, b) => {
-        const codeA = a.code || a.title
-        const codeB = b.code || b.title
-        return codeA.localeCompare(codeB, 'pt-BR', { sensitivity: 'base', numeric: true })
-      })
-    }
-
-    return list.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR', { sensitivity: 'base' }))
-  }, [filteredLessons, lessonSortMode])
-
-  useEffect(() => {
-    setSelectedLessonIds(prev => {
-      const filtered = prev.filter(id => sortedLessons.some(lesson => lesson.id === id))
-      const allSelected = filtered.length > 0 && filtered.length === sortedLessons.length
-      setSelectAllLessons(allSelected)
-      return filtered
-    })
-  }, [sortedLessons])
-
-  const handleToggleLessonSelection = (lessonId: string) => {
-    setSelectedLessonIds(prev => {
-      if (prev.includes(lessonId)) {
-        const updated = prev.filter(id => id !== lessonId)
-        if (selectAllLessons) setSelectAllLessons(false)
-        return updated
-      }
-      const updated = [...prev, lessonId]
-      if (updated.length === sortedLessons.length && sortedLessons.length > 0) {
-        setSelectAllLessons(true)
-      }
-      return updated
-    })
-  }
-
-  const handleSelectAllLessons = () => {
-    if (selectAllLessons) {
-      setSelectedLessonIds([])
-      setSelectAllLessons(false)
-      return
-    }
-
-    const ids = sortedLessons.map(lesson => lesson.id)
-    setSelectedLessonIds(ids)
-    setSelectAllLessons(ids.length > 0)
-  }
-
-  const handleBulkDeleteSelectedLessons = async () => {
-    if (selectedLessonIds.length === 0) return
-
-    const selectedTitles = lessons
-      .filter(lesson => selectedLessonIds.includes(lesson.id))
-      .map(lesson => lesson.title)
-      .join(', ')
-
-    if (!confirm(`Tem certeza que deseja excluir ${selectedLessonIds.length} aula(s)?\n\nAulas: ${selectedTitles}`)) {
-      return
-    }
-
-    setBulkDeletingLessons(true)
-
-    try {
-      const result = await bulkDeleteLessons(selectedLessonIds)
-
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao excluir aulas')
-      }
-
-      setMessage({ type: 'success', text: `${selectedLessonIds.length} aula(s) excluída(s) com sucesso!` })
-      setSelectedLessonIds([])
-      setSelectAllLessons(false)
-      await fetchData()
-    } catch (error: any) {
-      console.error('Error deleting lessons:', error)
-      setMessage({ type: 'error', text: error.message || 'Erro ao excluir aulas selecionadas' })
-    } finally {
-      setBulkDeletingLessons(false)
-    }
-  }
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'video':
-        return <Video className="w-4 h-4" />
-      case 'text':
-        return <FileText className="w-4 h-4" />
-      case 'quiz':
-        return <FileQuestion className="w-4 h-4" />
-      default:
-        return <FileText className="w-4 h-4" />
-    }
-  }
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case 'video':
-        return 'Vídeo'
-      case 'text':
-        return 'Texto'
-      case 'quiz':
-        return 'Quiz'
-      default:
-        return type
-    }
-  }
-
-  const totalDuration = lessons.reduce((acc, lesson) => acc + (lesson.duration_minutes || 0), 0)
-  const previewLessons = lessons.filter(lesson => lesson.is_preview === true).length
-  const completionRate = Object.values(lessonProgress).length > 0
-    ? Math.round(
-        Object.values(lessonProgress).reduce((acc, progress) => 
-          acc + (progress.total > 0 ? (progress.completed / progress.total) * 100 : 0), 0
-        ) / Object.values(lessonProgress).length
-      )
-    : 0
-
-    return (    <div className="max-w-[1400px] mx-auto p-6 md:p-10 space-y-8 bg-[#faf6ee] min-h-screen font-[family-name:var(--font-lora)] text-[#1e130c]">
+const newReturn = `return (
+    <div className="max-w-6xl mx-auto p-6 md:p-10 space-y-8 bg-[#faf6ee] min-h-screen font-[family-name:var(--font-lora)] text-[#1e130c]">
+      <Breadcrumbs className="mb-2" />
       
-      {/* Header Clássico */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
-        <div className="flex-1">
-          <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: '#1e130c', lineHeight: 1.1, fontWeight: 700 }}>
-            Livro de Preleções
-          </h1>
-          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: '#7a6350', marginTop: '0.5rem' }}>
-            Gerencie as lições e conteúdos das academias.
-          </p>
-          <div className="mt-6 w-full max-w-md">
-            <ClassicRule color="#1e130c" />
+      {/* Header */}
+      <div className="text-center sm:text-left mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-center sm:items-start gap-4">
+          <div>
+            <h1 className="font-[family-name:var(--font-playfair)] text-3xl sm:text-4xl md:text-5xl font-bold text-[#1e130c] flex items-center justify-center sm:justify-start gap-3">
+              <PlayCircle className="w-8 h-8 text-[#8b6d22]" />
+              Livro de Preleções
+            </h1>
+            <p className="text-[#7a6350] mt-2 italic">Gerencie as lições e conteúdos das academias.</p>
           </div>
+          <Button onClick={openCreateModal} icon={<Plus className="w-4 h-4 flex-shrink-0" />}>
+            Nova Preleção
+          </Button>
         </div>
-        <button
-          onClick={openCreateModal}
-          style={{ padding: '1rem 3rem', backgroundColor: '#1e130c', color: '#faf6ee', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-        >
-          Nova Preleção
-        </button>
+        <ClassicRule className="mt-6 w-full" />
       </div>
 
       {/* Message */}
@@ -429,13 +32,13 @@ export default function LessonsPage() {
             {message.type === 'success' ? (
               <AlertCircle className="w-5 h-5 text-[#8b6d22]" />
             ) : message.type === 'error' ? (
-              <AlertCircle className="w-5 h-5 text-[#7a6350] italic" />
+              <AlertCircle className="w-5 h-5 text-red-700" />
             ) : (
               <Spinner size="sm" className="text-[#8b6d22]" />
             )}
             <p className={
               message.type === 'success' ? 'text-[#1e130c] font-medium' :
-              message.type === 'error' ? 'text-[#7a6350] italic font-medium' :
+              message.type === 'error' ? 'text-red-800 font-medium' :
               'text-[#1e130c] font-medium'
             }>
               {message.text}
@@ -539,7 +142,7 @@ export default function LessonsPage() {
               <option value="sem-disciplina">Sem disciplina vinculada</option>
               {availableSubjects.map(subject => (
                 <option key={subject.id} value={subject.id}>
-                  {subject.code ? `${subject.code} - ${subject.name}` : subject.name}
+                  {subject.code ? \`\${subject.code} - \${subject.name}\` : subject.name}
                 </option>
               ))}
             </select>
@@ -551,22 +154,22 @@ export default function LessonsPage() {
           <button
             type="button"
             onClick={() => setLessonSortMode('code')}
-            className={`px-3 py-1 border-b-2 transition-colors ${
+            className={\`px-3 py-1 border-b-2 transition-colors \${
               lessonSortMode === 'code'
                 ? 'border-[#8b6d22] text-[#1e130c] font-medium'
                 : 'border-transparent text-[#7a6350] hover:text-[#1e130c]'
-            }`}
+            }\`}
           >
             Cifra da Disciplina
           </button>
           <button
             type="button"
             onClick={() => setLessonSortMode('title')}
-            className={`px-3 py-1 border-b-2 transition-colors ${
+            className={\`px-3 py-1 border-b-2 transition-colors \${
               lessonSortMode === 'title'
                 ? 'border-[#8b6d22] text-[#1e130c] font-medium'
                 : 'border-transparent text-[#7a6350] hover:text-[#1e130c]'
-            }`}
+            }\`}
           >
             Título da Preleção
           </button>
@@ -579,9 +182,9 @@ export default function LessonsPage() {
               onClick={handleSelectAllLessons}
               disabled={sortedLessons.length === 0}
               aria-pressed={selectAllLessons && sortedLessons.length > 0}
-              className={`text-[#8b6d22] hover:text-[#1e130c] transition-colors ${
+              className={\`text-[#8b6d22] hover:text-[#1e130c] transition-colors \${
                 sortedLessons.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              }\`}
             >
               {selectAllLessons && sortedLessons.length > 0 ? (
                 <CheckSquare className="w-5 h-5" />
@@ -605,9 +208,6 @@ export default function LessonsPage() {
       )}
 
       {/* Lessons Directory List */}
-      {loading ? (
-        <Spinner fullPage size="xl" />
-      ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm sm:text-base border-collapse">
           <thead className="bg-transparent sticky top-0 z-10 border-b-2 border-[#1e130c]/30">
@@ -698,7 +298,7 @@ export default function LessonsPage() {
                     </td>
                     <td className="py-4 px-4 text-center">
                       <span className="text-[#1e130c] font-medium">
-                        {lesson.duration_minutes ? `${lesson.duration_minutes} min` : '-'}
+                        {lesson.duration_minutes ? \`\${lesson.duration_minutes} min\` : '-'}
                       </span>
                     </td>
                     <td className="py-4 px-4 text-center">
@@ -713,7 +313,7 @@ export default function LessonsPage() {
 
                             setMessage({
                               type: 'success',
-                              text: `Aula ${result.newStatus ? 'marcada como' : 'removida de'} preview`
+                              text: \`Aula \${result.newStatus ? 'marcada como' : 'removida de'} preview\`
                             })
                             await fetchData()
                           } catch (error: any) {
@@ -723,11 +323,11 @@ export default function LessonsPage() {
                             })
                           }
                         }}
-                        className={`inline-flex items-center gap-1 px-3 py-1 border text-xs font-medium transition-all hover:scale-105 ${
+                        className={\`inline-flex items-center gap-1 px-3 py-1 border text-xs font-medium transition-all hover:scale-105 \${
                           lesson.is_preview
                             ? 'border-[#8b6d22] bg-[#8b6d22]/10 text-[#8b6d22]'
                             : 'border-[#1e130c]/20 bg-transparent text-[#7a6350]'
-                        }`}
+                        }\`}
                         aria-label={lesson.is_preview ? 'Marcar como privada' : 'Marcar como preview'}
                       >
                         {lesson.is_preview ? (
@@ -744,7 +344,7 @@ export default function LessonsPage() {
                           size="sm"
                           onClick={() => {
                             if (lesson.course_modules?.courses?.id) {
-                              router.push(`/student-dashboard/course/${lesson.course_modules.courses.id}?lesson=${lesson.id}`)
+                              router.push(\`/student-dashboard/course/\${lesson.course_modules.courses.id}?lesson=\${lesson.id}\`)
                             } else {
                               alert('Esta aula não está associada a um curso')
                             }
@@ -784,12 +384,15 @@ export default function LessonsPage() {
           </tbody>
         </table>
       </div>
-      )}
 
       {/* Create/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
           <div className="relative bg-[#faf6ee] w-full max-w-2xl p-8 md:p-10 shadow-2xl border border-[#1e130c]/20 my-8">
+            <CornerBracket className="absolute top-2 left-2 w-8 h-8 text-[#1e130c]/20" />
+            <CornerBracket className="absolute top-2 right-2 w-8 h-8 text-[#1e130c]/20 rotate-90" />
+            <CornerBracket className="absolute bottom-2 right-2 w-8 h-8 text-[#1e130c]/20 rotate-180" />
+            <CornerBracket className="absolute bottom-2 left-2 w-8 h-8 text-[#1e130c]/20 -rotate-90" />
 
             <div className="flex items-center justify-between mb-8 relative z-10">
               <h2 className="font-[family-name:var(--font-playfair)] text-2xl md:text-3xl font-bold text-[#1e130c] border-b-2 border-[#8b6d22] pb-2 pr-8">
@@ -957,6 +560,10 @@ export default function LessonsPage() {
       {showPreviewModal && previewLesson && (
         <div className="fixed inset-0 bg-[#1e130c]/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-y-auto">
           <div className="relative bg-[#faf6ee] w-full max-w-6xl shadow-2xl border border-[#1e130c]/20 my-8">
+            <CornerBracket className="absolute top-2 left-2 w-8 h-8 text-[#1e130c]/20 z-20" />
+            <CornerBracket className="absolute top-2 right-2 w-8 h-8 text-[#1e130c]/20 rotate-90 z-20" />
+            <CornerBracket className="absolute bottom-2 right-2 w-8 h-8 text-[#1e130c]/20 rotate-180 z-20" />
+            <CornerBracket className="absolute bottom-2 left-2 w-8 h-8 text-[#1e130c]/20 -rotate-90 z-20" />
 
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-[#1e130c]/15 relative z-10">
@@ -1003,7 +610,7 @@ export default function LessonsPage() {
                 <div className="mb-8">
                   <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold text-[#1e130c] mb-3">Ementa</h3>
                   <p className="text-[#7a6350] leading-relaxed italic">{previewLesson.description}</p>
-                  
+                  <ClassicRule className="mt-6 w-1/3" />
                 </div>
               )}
 
@@ -1074,3 +681,7 @@ export default function LessonsPage() {
     </div>
   )
 }
+`;
+
+let finalStr = content.substring(0, content.indexOf('  return (\n    <div className="space-y-6">')) + newReturn;
+fs.writeFileSync(file, finalStr, 'utf8');

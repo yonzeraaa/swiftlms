@@ -207,11 +207,11 @@ export default function ResetPasswordContent() {
           {status === 'success' ? (
             // Tela de sucesso
             <div className="text-center space-y-4">
-              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
-                <Check className="w-8 h-8 text-green-400" />
+              <div className="w-16 h-16 bg-[#1e130c]/5/20 rounded-full flex items-center justify-center mx-auto">
+                <Check className="w-8 h-8 text-[#1e130c] font-bold" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-green-400 mb-2">
+                <h3 className="text-lg font-semibold text-[#1e130c] font-bold mb-2">
                   {t('resetPassword.successTitle')}
                 </h3>
                 <p className="text-gold-300 text-sm">
@@ -268,7 +268,7 @@ export default function ResetPasswordContent() {
                     onChange={(e) => setPassword(e.target.value)}
                     onFocus={() => setPasswordFocused(true)}
                     onBlur={() => setPasswordFocused(false)}
-                    className="w-full pl-10 pr-12 py-3 bg-navy-900/50 border border-navy-600 rounded-xl text-gold-100 text-base placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                    className="w-full pl-10 pr-12 py-3 bg-navy-900/50 border border-navy-600 rounded-xl text-gold-100 text-base placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent transition-all"
                     placeholder={t('resetPassword.passwordPlaceholder')}
                     disabled={isLoading}
                     required
@@ -301,7 +301,7 @@ export default function ResetPasswordContent() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     onFocus={() => setConfirmPasswordFocused(true)}
                     onBlur={() => setConfirmPasswordFocused(false)}
-                    className="w-full pl-10 pr-12 py-3 bg-navy-900/50 border border-navy-600 rounded-xl text-gold-100 text-base placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
+                    className="w-full pl-10 pr-12 py-3 bg-navy-900/50 border border-navy-600 rounded-xl text-gold-100 text-base placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent transition-all"
                     placeholder={t('resetPassword.confirmPasswordPlaceholder')}
                     disabled={isLoading}
                     required
@@ -319,9 +319,9 @@ export default function ResetPasswordContent() {
 
               {/* Erro */}
               {error && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-400">{error}</p>
+                <div className="p-3 bg-[#7a6350]/10/10 border border-red-500/20 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-[#7a6350] italic flex-shrink-0" />
+                  <p className="text-sm text-[#7a6350] italic">{error}</p>
                 </div>
               )}
 

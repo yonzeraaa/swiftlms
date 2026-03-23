@@ -8,6 +8,7 @@ import Card from '../../../components/Card'
 import Button from '../../../components/Button'
 import Modal from '../../../components/Modal'
 import { useToast } from '../../../components/Toast'
+import Spinner from '../../../components/ui/Spinner'
 import { DEFAULT_TEMPLATE_ICON, TEMPLATE_CATEGORIES } from '../constants'
 import {
   getTemplates,
@@ -63,7 +64,7 @@ export default function ExcelTemplatesTab() {
   const getCategoryColor = (category: string) => {
     const colors = {
       users: { bg: 'from-blue-500/20 to-blue-600/10', text: 'text-blue-400', border: 'border-blue-500/30', badge: 'from-blue-500/30 to-blue-600/20' },
-      grades: { bg: 'from-green-500/20 to-green-600/10', text: 'text-green-400', border: 'border-green-500/30', badge: 'from-green-500/30 to-green-600/20' },
+      grades: { bg: 'from-green-500/20 to-green-600/10', text: 'text-[#1e130c] font-bold', border: 'border-green-500/30', badge: 'from-green-500/30 to-green-600/20' },
       enrollments: { bg: 'from-amber-500/20 to-amber-600/10', text: 'text-amber-400', border: 'border-amber-500/30', badge: 'from-amber-500/30 to-amber-600/20' },
       access: { bg: 'from-purple-500/20 to-purple-600/10', text: 'text-purple-400', border: 'border-purple-500/30', badge: 'from-purple-500/30 to-purple-600/20' },
       'student-history': { bg: 'from-emerald-500/20 to-emerald-600/10', text: 'text-emerald-400', border: 'border-emerald-500/30', badge: 'from-emerald-500/30 to-emerald-600/20' },
@@ -186,7 +187,7 @@ export default function ExcelTemplatesTab() {
             >
               <Icon className="h-4 w-4" />
               {cat.label}
-              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-gold-500/20 text-gold-300">
+              <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-[#8b6d22]/20 text-[#7a6350]">
                 {count}
               </span>
             </Button>
@@ -196,21 +197,21 @@ export default function ExcelTemplatesTab() {
 
       {/* Lista de Templates */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500"></div>
+        <div className="py-24 flex justify-center w-full">
+          <Spinner size="lg" />
         </div>
       ) : templates.length === 0 ? (
         <Card variant="elevated" className="p-16 text-center" depth={3}>
           <div className="relative inline-block mb-6">
-            <div className="absolute inset-0 bg-gradient-to-br from-gold-500/20 to-green-500/20 rounded-full blur-2xl"></div>
-            <FileSpreadsheet className="relative h-24 w-24 mx-auto text-gold-400 animate-pulse" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#8b6d22]/20 to-green-500/20 rounded-full blur-2xl"></div>
+            <FileSpreadsheet className="relative h-24 w-24 mx-auto text-[#8b6d22] animate-pulse" />
           </div>
-          <h3 className="text-2xl font-bold text-gold-100 mb-3">
+          <h3 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] mb-3">
             {selectedCategory === 'all'
               ? 'Nenhum template encontrado'
               : `Nenhum template de ${getCategoryLabel(selectedCategory)} encontrado`}
           </h3>
-          <p className="text-gold-300/70 mb-8 max-w-md mx-auto">
+          <p className="text-[#7a6350]/70 mb-8 max-w-md mx-auto">
             {selectedCategory === 'all'
               ? 'Faça upload de um template Excel personalizado para começar a gerar relatórios profissionais com sua marca'
               : `Faça upload de um template Excel para relatórios de ${getCategoryLabel(selectedCategory)}`}
@@ -249,18 +250,18 @@ export default function ExcelTemplatesTab() {
                     <div className="relative">
                       <button
                         onClick={() => setOpenDropdown(openDropdown === template.id ? null : template.id)}
-                        className="p-2 hover:bg-gold-500/10 rounded-lg transition-colors"
+                        className="p-2 hover:bg-[#8b6d22]/10 rounded-lg transition-colors"
                       >
-                        <MoreVertical className="h-4 w-4 text-gold-400" />
+                        <MoreVertical className="h-4 w-4 text-[#8b6d22]" />
                       </button>
                       {openDropdown === template.id && (
-                        <div className="absolute right-0 mt-2 w-48 bg-navy-800 border border-gold-500/20 rounded-lg shadow-xl z-10 overflow-hidden">
+                        <div className="absolute right-0 mt-2 w-48 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg shadow-xl z-10 overflow-hidden">
                           <button
                             onClick={() => {
                               handleDownloadTemplate(template)
                               setOpenDropdown(null)
                             }}
-                            className="w-full px-4 py-2.5 text-left text-sm text-gold-300 hover:bg-gold-500/10 flex items-center gap-2 transition-colors"
+                            className="w-full px-4 py-2.5 text-left text-sm text-[#7a6350] hover:bg-[#8b6d22]/10 flex items-center gap-2 transition-colors"
                           >
                             <Download className="h-4 w-4" />
                             Baixar Template
@@ -270,7 +271,7 @@ export default function ExcelTemplatesTab() {
                               handlePreviewTemplate(template)
                               setOpenDropdown(null)
                             }}
-                            className="w-full px-4 py-2.5 text-left text-sm text-gold-300 hover:bg-gold-500/10 flex items-center gap-2 transition-colors"
+                            className="w-full px-4 py-2.5 text-left text-sm text-[#7a6350] hover:bg-[#8b6d22]/10 flex items-center gap-2 transition-colors"
                           >
                             <Eye className="h-4 w-4" />
                             Visualizar
@@ -280,7 +281,7 @@ export default function ExcelTemplatesTab() {
                               handleDuplicateTemplate(template)
                               setOpenDropdown(null)
                             }}
-                            className="w-full px-4 py-2.5 text-left text-sm text-gold-300 hover:bg-gold-500/10 flex items-center gap-2 transition-colors"
+                            className="w-full px-4 py-2.5 text-left text-sm text-[#7a6350] hover:bg-[#8b6d22]/10 flex items-center gap-2 transition-colors"
                           >
                             <Copy className="h-4 w-4" />
                             Duplicar
@@ -290,18 +291,18 @@ export default function ExcelTemplatesTab() {
                               setEditingTemplate(template)
                               setOpenDropdown(null)
                             }}
-                            className="w-full px-4 py-2.5 text-left text-sm text-gold-300 hover:bg-gold-500/10 flex items-center gap-2 transition-colors"
+                            className="w-full px-4 py-2.5 text-left text-sm text-[#7a6350] hover:bg-[#8b6d22]/10 flex items-center gap-2 transition-colors"
                           >
                             <Edit3 className="h-4 w-4" />
                             Editar Info
                           </button>
-                          <div className="h-px bg-gold-500/20 my-1"></div>
+                          <div className="h-px bg-[#8b6d22]/20 my-1"></div>
                           <button
                             onClick={() => {
                               setTemplateToDelete(template)
                               setOpenDropdown(null)
                             }}
-                            className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                            className="w-full px-4 py-2.5 text-left text-sm text-[#7a6350] italic hover:bg-[#7a6350]/10/10 flex items-center gap-2 transition-colors"
                           >
                             <Trash2 className="h-4 w-4" />
                             Deletar
@@ -312,25 +313,25 @@ export default function ExcelTemplatesTab() {
                   </div>
                 </div>
 
-                <h3 className="font-semibold text-lg text-gold-100 mb-2 group-hover:text-gold-200 transition-colors">
+                <h3 className="font-[family-name:var(--font-playfair)] font-semibold text-lg text-[#1e130c] mb-2 group-hover:text-[#1e130c] transition-colors">
                   {template.name}
                 </h3>
 
                 {template.description && (
-                  <p className="text-sm text-gold-300/70 mb-4 line-clamp-2">
+                  <p className="text-sm text-[#7a6350]/70 mb-4 line-clamp-2">
                     {template.description}
                   </p>
                 )}
 
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gold-500/10">
-                  <span className="text-xs text-gold-400/60">
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-[#1e130c]/15">
+                  <span className="text-xs text-[#8b6d22]/80">
                     {new Date(template.created_at).toLocaleDateString('pt-BR')}
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDownloadTemplate(template)}
-                    className="gap-1 text-gold-400 hover:text-gold-300"
+                    className="gap-1 text-[#8b6d22] hover:text-[#1e130c]-300"
                   >
                     <Download className="h-3.5 w-3.5" />
                     Baixar
@@ -390,9 +391,9 @@ export default function ExcelTemplatesTab() {
           </div>
         }
       >
-        <p className="text-gold-200">
+        <p className="text-[#1e130c]">
           Tem certeza de que deseja remover o template{' '}
-          <span className="font-semibold text-gold-300">{templateToDelete?.name}</span>?
+          <span className="font-semibold text-[#7a6350]">{templateToDelete?.name}</span>?
           Essa ação excluirá o arquivo do armazenamento e não poderá ser desfeita.
         </p>
       </Modal>

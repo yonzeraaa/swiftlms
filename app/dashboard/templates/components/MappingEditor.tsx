@@ -312,20 +312,20 @@ export default function MappingEditor({
 
   return (
     <div className="mt-6 space-y-6">
-      <div className="flex items-center gap-2 text-gold-200">
+      <div className="flex items-center gap-2 text-[#1e130c]">
         <Settings className="h-5 w-5" />
-        <h3 className="text-lg font-semibold">Configurar Mapeamento</h3>
+        <h3 className="font-[family-name:var(--font-playfair)] text-lg font-semibold">Configurar Mapeamento</h3>
       </div>
 
       {/* Alertas de Validação */}
       {mappingValidation.hasIssues && (
         <div className="space-y-2">
           {mappingValidation.conflicts.length > 0 && (
-            <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4">
+            <div className="bg-[#7a6350]/10/20 border border-red-700/50 rounded-lg p-4">
               <div className="flex items-start gap-2">
-                <div className="text-red-400 font-semibold">⚠️ Conflitos</div>
+                <div className="text-[#7a6350] italic font-semibold">⚠️ Conflitos</div>
               </div>
-              <ul className="mt-2 space-y-1 text-sm text-red-300">
+              <ul className="mt-2 space-y-1 text-sm text-[#7a6350] italic">
                 {mappingValidation.conflicts.map((conflict, i) => (
                   <li key={i}>• {conflict}</li>
                 ))}
@@ -348,24 +348,24 @@ export default function MappingEditor({
         </div>
       )}
 
-      <p className="text-sm text-gold-300/70">
+      <p className="text-sm text-[#7a6350]/70">
         Mapeie os campos estáticos do cabeçalho e as colunas da tabela de dados:
       </p>
 
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-gold-200">
-          <div className="h-px flex-1 bg-gold-500/20" />
+        <div className="flex items-center gap-2 text-[#1e130c]">
+          <div className="h-px flex-1 bg-[#8b6d22]/20" />
           <h4 className="text-sm font-semibold">Campos Estáticos (Cabeçalho)</h4>
-          <div className="h-px flex-1 bg-gold-500/20" />
+          <div className="h-px flex-1 bg-[#8b6d22]/20" />
         </div>
 
-        <p className="text-xs text-gold-300/60">
+        <p className="text-xs text-[#7a6350]/70">
           Células individuais detectadas antes da tabela de dados. Adicione outras manualmente se necessário.
         </p>
 
         <div className="space-y-2">
           {staticCells.length === 0 && !addingStaticCell && (
-            <p className="text-xs text-gold-300/50 italic">
+            <p className="text-xs text-[#7a6350]/70 italic">
               Nenhuma célula estática detectada automaticamente.
             </p>
           )}
@@ -383,12 +383,12 @@ export default function MappingEditor({
           ))}
         </div>
 
-        <div className="pt-2 border-t border-gold-500/10 space-y-3">
+        <div className="pt-2 border-t border-[#1e130c]/15 space-y-3">
           {addingStaticCell ? (
-            <div className="space-y-3 p-4 bg-navy-900/40 border border-gold-500/20 rounded-lg">
+            <div className="space-y-3 p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg">
               <div className="flex flex-wrap gap-3">
                 <div className="flex-1 min-w-[140px]">
-                  <label className="block text-xs text-gold-300/70 mb-1 uppercase tracking-wide">
+                  <label className="block text-xs text-[#7a6350]/70 mb-1 uppercase tracking-wide">
                     Endereço (Excel)
                   </label>
                   <input
@@ -396,11 +396,11 @@ export default function MappingEditor({
                     value={newStaticAddress}
                     onChange={e => setNewStaticAddress(e.target.value)}
                     placeholder="Ex: B4"
-                    className="w-full px-3 py-2 bg-navy-900/60 border border-gold-500/20 rounded-lg text-sm text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    className="w-full px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-sm text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                   />
                 </div>
                 <div className="flex-1 min-w-[180px]">
-                  <label className="block text-xs text-gold-300/70 mb-1 uppercase tracking-wide">
+                  <label className="block text-xs text-[#7a6350]/70 mb-1 uppercase tracking-wide">
                     Rótulo
                   </label>
                   <input
@@ -408,12 +408,12 @@ export default function MappingEditor({
                     value={newStaticLabel}
                     onChange={e => setNewStaticLabel(e.target.value)}
                     placeholder="Nome do campo"
-                    className="w-full px-3 py-2 bg-navy-900/60 border border-gold-500/20 rounded-lg text-sm text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                    className="w-full px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-sm text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                   />
                 </div>
               </div>
               {staticFormError && (
-                <p className="text-xs text-red-400">{staticFormError}</p>
+                <p className="text-xs text-[#7a6350] italic">{staticFormError}</p>
               )}
               <div className="flex items-center gap-2">
                 <Button
@@ -451,15 +451,15 @@ export default function MappingEditor({
 
       <div className="space-y-4">
         {staticCells.length > 0 && (
-          <div className="flex items-center gap-2 text-gold-200">
-            <div className="h-px flex-1 bg-gold-500/20" />
+          <div className="flex items-center gap-2 text-[#1e130c]">
+            <div className="h-px flex-1 bg-[#8b6d22]/20" />
             <h4 className="text-sm font-semibold">Tabela de Dados</h4>
-            <div className="h-px flex-1 bg-gold-500/20" />
+            <div className="h-px flex-1 bg-[#8b6d22]/20" />
           </div>
         )}
 
-        <div className="p-4 bg-navy-800/50 border border-navy-600 rounded-lg">
-          <label className="block text-sm font-medium text-gold-200 mb-2">
+        <div className="p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg">
+          <label className="block text-sm font-medium text-[#1e130c] mb-2">
             Linha inicial dos dados
           </label>
           <input
@@ -467,9 +467,9 @@ export default function MappingEditor({
             min="1"
             value={startRow}
             onChange={(e) => handleStartRowChange(Number(e.target.value))}
-            className="w-32 px-3 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all"
+            className="w-32 px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all"
           />
-          <p className="text-xs text-gold-300/70 mt-2">
+          <p className="text-xs text-[#7a6350]/70 mt-2">
             Linha onde os dados começam (após o cabeçalho)
           </p>
         </div>
@@ -478,19 +478,19 @@ export default function MappingEditor({
           {columns.map((header) => (
             <div
               key={header.column}
-              className="p-4 bg-navy-800/50 border border-navy-600 rounded-lg"
+              className="p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg"
             >
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0">
-                  <div className="w-16 h-10 flex items-center justify-center bg-gold-500/10 border border-gold-500/30 rounded">
-                    <span className="text-sm font-mono text-gold-400">
+                  <div className="w-16 h-10 flex items-center justify-center bg-[#8b6d22]/10 border border-[#8b6d22]/30 rounded">
+                    <span className="text-sm font-mono text-[#8b6d22]">
                       Col {header.column}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gold-100 mb-1 truncate">
+                  <p className="text-sm font-medium text-[#1e130c] mb-1 truncate">
                     {header.value}
                   </p>
                   <FieldSelector
@@ -503,7 +503,7 @@ export default function MappingEditor({
 
                 <button
                   onClick={() => removeColumn(header.column)}
-                  className="flex-shrink-0 p-2 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                  className="flex-shrink-0 p-2 text-[#7a6350] italic hover:bg-[#7a6350]/10/10 rounded-lg transition-colors"
                   title="Remover coluna"
                 >
                   <Trash2 className="w-4 h-4" />

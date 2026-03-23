@@ -149,7 +149,7 @@ export default function DocxTemplatesSection({ onRefresh, onEdit }: DocxTemplate
                       <FileText className="w-5 h-5 text-blue-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-neutral-900 truncate">
+                      <h3 className="font-[family-name:var(--font-playfair)] font-medium text-neutral-900 truncate">
                         {template.name}
                       </h3>
                       {template.description && (
@@ -180,7 +180,7 @@ export default function DocxTemplatesSection({ onRefresh, onEdit }: DocxTemplate
                     <span
                       className={`px-2 py-0.5 rounded-full font-medium ${
                         template.is_active
-                          ? 'bg-green-100 text-green-700'
+                          ? 'bg-[#1e130c]/5 text-[#1e130c] font-bold'
                           : 'bg-neutral-100 text-neutral-600'
                       }`}
                     >
@@ -221,7 +221,7 @@ export default function DocxTemplatesSection({ onRefresh, onEdit }: DocxTemplate
                     size="sm"
                     variant="outline"
                     onClick={() => handleToggleActive(template)}
-                    className={template.is_active ? 'text-yellow-600' : 'text-green-600'}
+                    className={template.is_active ? 'text-yellow-600' : 'text-[#1e130c] font-bold'}
                   >
                     <Power className="w-4 h-4" />
                   </Button>
@@ -241,7 +241,7 @@ export default function DocxTemplatesSection({ onRefresh, onEdit }: DocxTemplate
                     variant="outline"
                     onClick={() => handleDelete(template)}
                     disabled={deletingId === template.id}
-                    className="text-red-600 hover:bg-red-50"
+                    className="text-[#7a6350] italic hover:bg-[#7a6350]/10"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

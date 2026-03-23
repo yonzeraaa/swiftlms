@@ -155,13 +155,13 @@ export default function CertificateTemplatesTab() {
     <div className="space-y-6">
       {/* Format Switcher */}
       <div className="flex items-center justify-between">
-        <div className="flex gap-2 p-1 bg-navy-900 rounded-lg border border-gold-500/20">
+        <div className="flex gap-2 p-1 bg-[#faf6ee] rounded-lg border border-[#1e130c]/15">
           <button
             onClick={() => setTemplateFormat('html')}
             className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
               templateFormat === 'html'
-                ? 'bg-gold-500/20 text-gold-200'
-                : 'text-gold-400 hover:text-gold-200'
+                ? 'bg-[#8b6d22]/20 text-[#1e130c]'
+                : 'text-[#8b6d22] hover:text-[#1e130c]'
             }`}
           >
             <Code className="w-4 h-4" />
@@ -171,8 +171,8 @@ export default function CertificateTemplatesTab() {
             onClick={() => setTemplateFormat('docx')}
             className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
               templateFormat === 'docx'
-                ? 'bg-gold-500/20 text-gold-200'
-                : 'text-gold-400 hover:text-gold-200'
+                ? 'bg-[#8b6d22]/20 text-[#1e130c]'
+                : 'text-[#8b6d22] hover:text-[#1e130c]'
             }`}
           >
             <FileText className="w-4 h-4" />
@@ -193,8 +193,8 @@ export default function CertificateTemplatesTab() {
       {message && (
         <div className={`p-4 rounded-lg flex items-center gap-2 ${
           message.type === 'success'
-            ? 'bg-green-500/20 text-green-400 border border-green-500/20'
-            : 'bg-red-500/20 text-red-400 border border-red-500/20'
+            ? 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border border-green-500/20'
+            : 'bg-[#7a6350]/10/20 text-[#7a6350] italic border border-red-500/20'
         }`}>
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           {message.text}
@@ -205,38 +205,38 @@ export default function CertificateTemplatesTab() {
       {templateFormat === 'html' ? (
         <Card>
           <div className="overflow-x-auto">
-            <table className="w-full">
-            <thead className="bg-navy-800/80">
-              <tr className="border-b border-gold-500/20">
-                <th className="text-left py-4 px-4 text-gold-200 font-medium">Nome</th>
-                <th className="text-left py-4 px-4 text-gold-200 font-medium">Tipo</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Padrão</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Ativo</th>
-                <th className="text-center py-4 px-4 text-gold-200 font-medium">Ações</th>
+            <table className="font-[family-name:var(--font-lora)] w-full">
+            <thead className="bg-transparent">
+              <tr className="border-b border-[#1e130c]/15">
+                <th className="text-left py-4 px-4 text-[#7a6350] font-medium">Nome</th>
+                <th className="text-left py-4 px-4 text-[#7a6350] font-medium">Tipo</th>
+                <th className="text-center py-4 px-4 text-[#7a6350] font-medium">Padrão</th>
+                <th className="text-center py-4 px-4 text-[#7a6350] font-medium">Ativo</th>
+                <th className="text-center py-4 px-4 text-[#7a6350] font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
               {templates.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-gold-400">
+                  <td colSpan={5} className="text-center py-12 text-[#8b6d22]">
                     Nenhum template cadastrado
                   </td>
                 </tr>
               ) : (
                 templates.map(template => (
-                  <tr key={template.id} className="border-b border-gold-500/10 hover:bg-navy-800/50">
+                  <tr key={template.id} className="border-b border-[#1e130c]/15 hover:bg-[#1e130c]/5">
                     <td className="py-4 px-4">
                       <div>
-                        <p className="text-gold-100 font-medium">{template.name}</p>
+                        <p className="text-[#1e130c] font-medium">{template.name}</p>
                         {template.description && (
-                          <p className="text-gold-400 text-sm">{template.description}</p>
+                          <p className="text-[#8b6d22] text-sm">{template.description}</p>
                         )}
                       </div>
                     </td>
                     <td className="py-4 px-4">
                       <span className={`px-2 py-1 rounded text-xs ${
                         template.certificate_type === 'technical'
-                          ? 'bg-green-500/20 text-green-300'
+                          ? 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold'
                           : template.certificate_type === 'lato-sensu'
                           ? 'bg-purple-500/20 text-purple-300'
                           : 'bg-blue-500/20 text-blue-300'
@@ -251,7 +251,7 @@ export default function CertificateTemplatesTab() {
                       ) : (
                         <button
                           onClick={() => handleSetDefault(template.id)}
-                          className="text-gold-400 hover:text-yellow-400"
+                          className="text-[#8b6d22] hover:text-yellow-400"
                           title="Definir como padrão"
                         >
                           <StarOff className="w-5 h-5" />
@@ -260,9 +260,9 @@ export default function CertificateTemplatesTab() {
                     </td>
                     <td className="py-4 px-4 text-center">
                       {template.is_active ? (
-                        <Check className="w-5 h-5 text-green-400 inline" />
+                        <Check className="w-5 h-5 text-[#1e130c] font-bold inline" />
                       ) : (
-                        <X className="w-5 h-5 text-red-400 inline" />
+                        <X className="w-5 h-5 text-[#7a6350] italic inline" />
                       )}
                     </td>
                     <td className="py-4 px-4">
@@ -276,7 +276,7 @@ export default function CertificateTemplatesTab() {
                         </button>
                         <button
                           onClick={() => handleDelete(template.id)}
-                          className="p-2 text-red-400 hover:bg-red-500/20 rounded transition"
+                          className="p-2 text-[#7a6350] italic hover:bg-[#7a6350]/10/20 rounded transition"
                           title="Excluir"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -319,18 +319,18 @@ export default function CertificateTemplatesTab() {
       {/* Modal Create/Edit */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-navy-800 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gold-500/20">
-              <h2 className="text-2xl font-bold text-gold">
+          <div className="bg-[#faf6ee] rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-[#1e130c]/15">
+              <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c]">
                 {editingTemplate ? 'Editar Template' : 'Novo Template'}
               </h2>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {validationErrors.length > 0 && (
-                <div className="p-4 bg-red-500/20 border border-red-500/20 rounded-lg">
-                  <p className="text-red-400 font-medium mb-2">Erros de validação:</p>
-                  <ul className="list-disc list-inside text-red-300 text-sm space-y-1">
+                <div className="p-4 bg-[#7a6350]/10/20 border border-red-500/20 rounded-lg">
+                  <p className="text-[#7a6350] italic font-medium mb-2">Erros de validação:</p>
+                  <ul className="list-disc list-inside text-[#7a6350] italic text-sm space-y-1">
                     {validationErrors.map((error, i) => (
                       <li key={i}>{error}</li>
                     ))}
@@ -339,32 +339,32 @@ export default function CertificateTemplatesTab() {
               )}
 
               <div>
-                <label className="block text-gold-200 mb-2">Nome *</label>
+                <label className="block text-[#1e130c] mb-2">Nome *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-gold-200 mb-2">Descrição</label>
+                <label className="block text-[#1e130c] mb-2">Descrição</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                   rows={2}
                 />
               </div>
 
               <div>
-                <label className="block text-gold-200 mb-2">Tipo de Certificado *</label>
+                <label className="block text-[#1e130c] mb-2">Tipo de Certificado *</label>
                 <select
                   value={formData.certificate_type}
                   onChange={(e) => setFormData({ ...formData, certificate_type: e.target.value as any })}
-                  className="w-full px-4 py-2 bg-navy-900 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                   required
                 >
                   <option value="all">Todos os tipos</option>
@@ -375,29 +375,29 @@ export default function CertificateTemplatesTab() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-gold-200">HTML do Template *</label>
+                  <label className="text-[#1e130c]">HTML do Template *</label>
                   <button
                     type="button"
                     onClick={() => setShowVariablesHelp(!showVariablesHelp)}
-                    className="text-sm text-gold-400 hover:text-gold-200"
+                    className="text-sm text-[#8b6d22] hover:text-[#1e130c]"
                   >
                     {showVariablesHelp ? 'Ocultar' : 'Ver'} Variáveis Disponíveis
                   </button>
                 </div>
 
                 {showVariablesHelp && (
-                  <div className="mb-4 p-4 bg-navy-900 border border-gold-500/20 rounded-lg text-sm">
-                    <p className="text-gold-200 font-medium mb-2">Variáveis disponíveis:</p>
+                  <div className="mb-4 p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-sm">
+                    <p className="text-[#1e130c] font-medium mb-2">Variáveis disponíveis:</p>
                     <div className="grid grid-cols-2 gap-2">
                       {Object.entries(TEMPLATE_VARIABLES).map(([key, value]) => (
-                        <div key={key} className="text-gold-400">
-                          <code className="bg-navy-800 px-2 py-1 rounded">{value.placeholder}</code>
-                          <span className="text-xs ml-2 text-gold-300">{value.description}</span>
+                        <div key={key} className="text-[#8b6d22]">
+                          <code className="bg-[#faf6ee] px-2 py-1 rounded">{value.placeholder}</code>
+                          <span className="text-xs ml-2 text-[#7a6350]">{value.description}</span>
                         </div>
                       ))}
                     </div>
-                    <p className="text-gold-300 text-xs mt-3">
-                      Use <code className="bg-navy-800 px-1 rounded">{'{{#if variable}}...{{/if}}'}</code> para conteúdo condicional
+                    <p className="text-[#7a6350] text-xs mt-3">
+                      Use <code className="bg-[#faf6ee] px-1 rounded">{'{{#if variable}}...{{/if}}'}</code> para conteúdo condicional
                     </p>
                   </div>
                 )}
@@ -405,22 +405,22 @@ export default function CertificateTemplatesTab() {
                 <textarea
                   value={formData.html_content}
                   onChange={(e) => setFormData({ ...formData, html_content: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 font-mono text-sm"
+                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] font-mono text-sm"
                   rows={12}
                   required
                   placeholder="Cole seu HTML aqui..."
                 />
-                <p className="text-xs text-gold-400 mt-1">
+                <p className="text-xs text-[#8b6d22] mt-1">
                   Dimensões obrigatórias: 1100px x 850px
                 </p>
               </div>
 
               <div>
-                <label className="block text-gold-200 mb-2">CSS Adicional (opcional)</label>
+                <label className="block text-[#1e130c] mb-2">CSS Adicional (opcional)</label>
                 <textarea
                   value={formData.css_content}
                   onChange={(e) => setFormData({ ...formData, css_content: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 font-mono text-sm"
+                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] font-mono text-sm"
                   rows={4}
                   placeholder=".my-class { color: #FFD700; }"
                 />
@@ -434,7 +434,7 @@ export default function CertificateTemplatesTab() {
                   onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
                   className="w-4 h-4"
                 />
-                <label htmlFor="is_default" className="text-gold-200">
+                <label htmlFor="is_default" className="text-[#1e130c]">
                   Definir como template padrão
                 </label>
               </div>

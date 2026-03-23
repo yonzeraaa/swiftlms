@@ -118,7 +118,7 @@ export default function CertificateUploadModal({
     return isDocx ? (
       <FileText className="w-12 h-12 text-blue-500" />
     ) : (
-      <FileIcon className="w-12 h-12 text-red-500" />
+      <FileIcon className="w-12 h-12 text-[#7a6350] italic" />
     )
   }
 
@@ -138,7 +138,7 @@ export default function CertificateUploadModal({
               <FileText className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-neutral-900">
+              <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold text-neutral-900">
                 Upload de Certificado
               </h2>
               <p className="text-sm text-neutral-500">
@@ -197,7 +197,7 @@ export default function CertificateUploadModal({
                 type="file"
                 accept=".docx,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf"
                 onChange={handleFileChange}
-                className="hidden"
+                className="font-[family-name:var(--font-lora)] text-[#1e130c] hidden"
               />
 
               <Button
@@ -247,17 +247,17 @@ export default function CertificateUploadModal({
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <p className="text-sm text-red-700">{errorMessage}</p>
+            <div className="flex items-center gap-2 p-3 bg-[#7a6350]/10 border border-red-200 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-[#7a6350] italic flex-shrink-0" />
+              <p className="text-sm text-[#7a6350] italic">{errorMessage}</p>
             </div>
           )}
 
           {/* Success Message */}
           {uploadStatus === 'success' && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-              <p className="text-sm text-green-700">
+            <div className="flex items-center gap-2 p-3 bg-[#1e130c]/5 border border-green-200 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-[#1e130c] font-bold flex-shrink-0" />
+              <p className="text-sm text-[#1e130c] font-bold">
                 Certificado enviado com sucesso!
               </p>
             </div>

@@ -13,27 +13,23 @@ import {
   Video,
   Award,
   Users,
-  BarChart3,
-  FileImage,
-  Link,
   Eye,
-  Send,
+  Check,
   AlertCircle,
   ChevronDown,
   ChevronUp,
-  Star
+  Star,
+  FileImage,
+  Link,
+  BarChart3
 } from 'lucide-react'
-import Card from '../../../components/Card'
-import Button from '../../../components/Button'
-import Tabs from '../../../components/Tabs'
 import { Database } from '@/lib/database.types'
-import ProgressRing from '../../../components/ui/ProgressRing'
 import { motion, AnimatePresence } from 'framer-motion'
 import VideoPlayer from '../../components/VideoPlayer'
 import DocumentViewer from '../../components/DocumentViewer'
-import Spinner from '../../../components/ui/Spinner'
-import Breadcrumbs from '../../../components/ui/Breadcrumbs'
 import { getCoursePlayerData, markLessonComplete as markLessonCompleteAction, updateEnrollmentProgress } from '@/lib/actions/course-player'
+import { ClassicRule, CornerBracket } from '../../../components/ui/RenaissanceSvgs'
+import Spinner from '../../../components/ui/Spinner'
 
 type Course = Database['public']['Tables']['courses']['Row']
 type CourseModule = Database['public']['Tables']['course_modules']['Row']
@@ -41,6 +37,12 @@ type Subject = Database['public']['Tables']['subjects']['Row']
 type Lesson = Database['public']['Tables']['lessons']['Row']
 type LessonProgress = Database['public']['Tables']['lesson_progress']['Row']
 type Enrollment = Database['public']['Tables']['enrollments']['Row']
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 interface SubjectWithLessons extends Subject {
   lessons: (Lesson & { progress?: LessonProgress })[]
@@ -60,6 +62,21 @@ interface CourseWithDetails extends Course {
   }
 }
 
+function SkeletonBlock({ height = 20, width = '100%', style }: { height?: number; width?: string | number; style?: React.CSSProperties }) {
+  return (
+    <div
+      style={{
+        height,
+        width,
+        backgroundColor: 'rgba(30,19,12,0.06)',
+        borderRadius: 0,
+        animation: 'pulse 1.5s ease-in-out infinite',
+        ...style,
+      }}
+    />
+  )
+}
+
 export default function CoursePage() {
   const params = useParams()
   const router = useRouter()
@@ -69,22 +86,18 @@ export default function CoursePage() {
 
   const [course, setCourse] = useState<CourseWithDetails | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const [selectedLesson, setSelectedLesson] = useState<(Lesson & { progress?: LessonProgress }) | null>(null)
   const [totalLessons, setTotalLessons] = useState(0)
   const [completedLessons, setCompletedLessons] = useState(0)
   const [isAdmin, setIsAdmin] = useState(false)
-  const [certificateStatus, setCertificateStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none')
-  const [canRequestCertificate, setCanRequestCertificate] = useState(false)
-  const [requestingCertificate, setRequestingCertificate] = useState(false)
-  const [showCertificateModal, setShowCertificateModal] = useState(false)
-  const [hasApprovedTcc, setHasApprovedTcc] = useState(false)
-  const [eligibilityData, setEligibilityData] = useState<any>(null)
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set())
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set())
-  const [reviews, setReviews] = useState<any[]>([])
   const [courseTests, setCourseTests] = useState<any[]>([])
   const [loadingTests, setLoadingTests] = useState(true)
-  const [userId, setUserId] = useState<string>('')
+  const [eligibilityData, setEligibilityData] = useState<any>(null)
+  const [showCertificateModal, setShowCertificateModal] = useState(false)
+  const [requestingCertificate, setRequestingCertificate] = useState(false)
+  const [activeTab, setActiveTab] = useState<'content' | 'progress' | 'evaluations' | 'certificates'>('content')
 
   useEffect(() => {
     if (courseId) {
@@ -93,14 +106,12 @@ export default function CoursePage() {
     }
   }, [courseId])
 
-  // Auto-expand module and subject that contains selected lesson and expand first module/subject by default
   useEffect(() => {
     if (course && course.modules.length > 0) {
       if (selectedLesson) {
-        // Find which module and subject contain the selected lesson
         for (const module of course.modules) {
           for (const subject of module.subjects) {
-            if (subject.lessons.some(lesson => lesson.id === selectedLesson.id)) {
+            if (subject.lessons.some(l => l.id === selectedLesson.id)) {
               setExpandedModules(prev => new Set(prev).add(module.id))
               setExpandedSubjects(prev => new Set(prev).add(subject.id))
               return
@@ -108,7 +119,6 @@ export default function CoursePage() {
           }
         }
       } else {
-        // Expand the first module and first subject by default when no lesson is selected
         setExpandedModules(new Set([course.modules[0].id]))
         if (course.modules[0].subjects.length > 0) {
           setExpandedSubjects(new Set([course.modules[0].subjects[0].id]))
@@ -120,61 +130,35 @@ export default function CoursePage() {
   const fetchCourseData = async () => {
     try {
       const result = await getCoursePlayerData(courseId)
-
       if (!result || !result.success) {
-        console.error('Error fetching course:', result?.error)
-        if ('redirectTo' in result && result.redirectTo) {
-          router.push(result.redirectTo)
-        } else {
-          router.push('/student-dashboard/my-courses')
-        }
+        router.push('/student-dashboard/my-courses')
         return
       }
 
-      const {
-        course: courseData,
-        isAdmin,
-        enrollment: enrollmentData,
-        enrollmentModules,
-        modules: modulesData,
-        progress: progressData,
-        reviews: courseReviews,
-        instructor: instructorInfo,
-        userId: uid
-      } = result
+      const { course: courseData, isAdmin, enrollment: enrollmentData, enrollmentModules, modules: modulesData, progress: progressData, instructor: instructorInfo } = result
 
       setIsAdmin(isAdmin || false)
-      setUserId(uid || '')
-
-      // Check enrollment for non-admin
-      if (!isAdmin && !enrollmentData) {
-        router.push('/student-dashboard/courses')
-        return
-      }
-
-      // Filter modules based on enrollment access
-      // Admin sees all modules, enrolled students see only their allowed modules
       let filteredModules = modulesData || []
 
       if (!isAdmin && enrollmentModules && enrollmentModules.length > 0) {
         const allowedModuleIds = enrollmentModules.map((em: any) => em.module_id).filter(Boolean)
         filteredModules = modulesData.filter((module: any) => allowedModuleIds.includes(module.id))
-        console.log('[DEBUG] Filtering modules for enrolled student. Allowed:', allowedModuleIds.length, 'Total:', modulesData?.length || 0)
-      } else if (isAdmin) {
-        console.log('[DEBUG] Admin mode: showing all', modulesData?.length || 0, 'modules')
-      } else {
-        console.log('[DEBUG] Student with no enrollment_modules: showing all', modulesData?.length || 0, 'modules')
       }
 
       // Process modules with subjects and lessons with progress
       const modulesWithProgress: ModuleWithSubjects[] = []
-      let totalLessonCount = 0
-      let completedLessonCount = 0
-      let firstIncompleteLesson: Lesson | null = null
+      let totalCount = 0
+      let completedCount = 0
+      let firstIncomplete: Lesson | null = null
+
+      // Ensure courseData exists before proceeding
+      if (!courseData) {
+        router.push('/student-dashboard/my-courses')
+        return
+      }
 
       for (const module of filteredModules) {
         const subjectsWithLessons: SubjectWithLessons[] = []
-
         const moduleSubjects = (module as any).module_subjects || []
         moduleSubjects.sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0))
 
@@ -182,133 +166,53 @@ export default function CoursePage() {
           if (moduleSubject.subject) {
             const subject = moduleSubject.subject
             const lessonsInSubject: (Lesson & { progress?: LessonProgress })[] = []
-
             if (subject.subject_lessons) {
-              for (const subjectLesson of subject.subject_lessons) {
-                if (subjectLesson.lesson) {
-                  const lesson = subjectLesson.lesson
+              for (const sl of subject.subject_lessons) {
+                if (sl.lesson) {
+                  const lesson = sl.lesson
                   const progress = progressData?.find((p: any) => p.lesson_id === lesson.id)
-
-                  if (progress?.is_completed) {
-                    completedLessonCount++
-                  } else if (!firstIncompleteLesson) {
-                    firstIncompleteLesson = lesson
-                  }
-
-                  totalLessonCount++
+                  if (progress?.is_completed) completedCount++
+                  else if (!firstIncomplete) firstIncomplete = lesson
+                  totalCount++
                   lessonsInSubject.push({ ...lesson, progress })
                 }
               }
             }
-
             lessonsInSubject.sort((a, b) => (a.order_index || 0) - (b.order_index || 0))
-
-            subjectsWithLessons.push({
-              ...subject,
-              lessons: lessonsInSubject,
-              order_index: moduleSubject.order_index || 0
-            })
+            subjectsWithLessons.push({ ...subject, lessons: lessonsInSubject, order_index: moduleSubject.order_index || 0 })
           }
         }
-
-        modulesWithProgress.push({
-          ...module,
-          subjects: subjectsWithLessons
-        })
+        modulesWithProgress.push({ ...module, subjects: subjectsWithLessons })
       }
 
-      setCourse({
-        ...courseData,
-        modules: modulesWithProgress,
-        enrollment: enrollmentData || undefined,
-        instructor: instructorInfo || undefined
-      })
+      setCourse({ 
+        ...courseData, 
+        modules: modulesWithProgress, 
+        enrollment: enrollmentData || undefined, 
+        instructor: instructorInfo || undefined 
+      } as CourseWithDetails)
+      setTotalLessons(totalCount)
+      setCompletedLessons(completedCount)
 
-      setTotalLessons(totalLessonCount)
-      setCompletedLessons(completedLessonCount)
-      setReviews(courseReviews || [])
-      
-      // Verificar elegibilidade completa usando a API
       if (enrollmentData) {
-        try {
-          const response = await fetch('/api/certificates/check-eligibility', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              courseId: courseId,
-              enrollmentId: enrollmentData.id
-            })
-          })
-
-          if (response.ok) {
-            const eligibility = await response.json()
-            setEligibilityData(eligibility)
-            setHasApprovedTcc(eligibility.hasApprovedTcc || false)
-
-            // Determinar status baseado nos dados de elegibilidade
-            const hasTechnicalRequest = eligibility.requestsByType?.technical
-            const hasLatoSensuRequest = eligibility.requestsByType?.latoSensu
-            const hasTechnicalCertificate = eligibility.approvedCertificatesByType?.technical
-            const hasLatoSensuCertificate = eligibility.approvedCertificatesByType?.latoSensu
-
-            // Se tem algum certificado aprovado
-            if (hasTechnicalCertificate || hasLatoSensuCertificate) {
-              setCertificateStatus('approved')
-            }
-            // Se tem alguma solicitação pendente
-            else if (
-              hasTechnicalRequest?.status === 'pending' ||
-              hasLatoSensuRequest?.status === 'pending'
-            ) {
-              setCertificateStatus('pending')
-            }
-            // Se tem alguma solicitação rejeitada
-            else if (
-              hasTechnicalRequest?.status === 'rejected' ||
-              hasLatoSensuRequest?.status === 'rejected'
-            ) {
-              setCertificateStatus('rejected')
-            }
-
-            // Pode solicitar se atende requisitos e não tem solicitação/certificado
-            const canRequestTechnical = eligibility.eligibleCertificates?.technical && !hasTechnicalRequest && !hasTechnicalCertificate
-            const canRequestLatoSensu = eligibility.eligibleCertificates?.latoSensu && !hasLatoSensuRequest && !hasLatoSensuCertificate
-
-            setCanRequestCertificate(canRequestTechnical || canRequestLatoSensu)
-          }
-        } catch (error) {
-          console.error('Erro ao verificar elegibilidade:', error)
-        }
+        const resp = await fetch('/api/certificates/check-eligibility', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ courseId, enrollmentId: enrollmentData.id })
+        })
+        if (resp.ok) setEligibilityData(await resp.json())
       }
-      
-      // If there's a lesson ID in the URL, select that lesson
+
       if (lessonId) {
-        const lessonToSelect = modulesWithProgress
-          .flatMap(m => m.subjects)
-          .flatMap(s => s.lessons)
-          .find(l => l.id === lessonId)
-        if (lessonToSelect) {
-          console.log('[DEBUG] Selected lesson from URL:', lessonToSelect.title, lessonToSelect)
-          setSelectedLesson(lessonToSelect)
-        } else {
-          console.warn('[DEBUG] Lesson ID not found in modules:', lessonId)
-        }
-      } else if (firstIncompleteLesson) {
-        // Otherwise, set the first incomplete lesson as selected
-        console.log('[DEBUG] Selected first incomplete lesson:', firstIncompleteLesson.title, firstIncompleteLesson)
-        setSelectedLesson(firstIncompleteLesson)
-      } else if (modulesWithProgress.length > 0 &&
-                 modulesWithProgress[0].subjects.length > 0 &&
-                 modulesWithProgress[0].subjects[0].lessons.length > 0) {
-        const firstLesson = modulesWithProgress[0].subjects[0].lessons[0]
-        console.log('[DEBUG] Selected first lesson of first module:', firstLesson.title, firstLesson)
-        setSelectedLesson(firstLesson)
-      } else {
-        console.warn('[DEBUG] No lessons found in any module')
+        const lesson = modulesWithProgress.flatMap(m => m.subjects).flatMap(s => s.lessons).find(l => l.id === lessonId)
+        if (lesson) setSelectedLesson(lesson)
+      } else if (firstIncomplete) {
+        setSelectedLesson(firstIncomplete)
+      } else if (modulesWithProgress.length > 0 && modulesWithProgress[0].subjects.length > 0 && modulesWithProgress[0].subjects[0].lessons.length > 0) {
+        setSelectedLesson(modulesWithProgress[0].subjects[0].lessons[0])
       }
-
-    } catch (error) {
-      console.error('Error fetching course data:', error)
+    } catch (err) {
+      console.error(err)
       router.push('/student-dashboard/my-courses')
     } finally {
       setLoading(false)
@@ -318,1021 +222,343 @@ export default function CoursePage() {
   const fetchCourseTests = async () => {
     try {
       setLoadingTests(true)
-      const response = await fetch(`/api/student/tests?course_id=${courseId}`)
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Erro desconhecido' }))
-        console.error('Erro da API (curso):', response.status, errorData)
-        throw new Error(errorData.error || 'Erro ao buscar testes')
+      const resp = await fetch(`/api/student/tests?course_id=${courseId}`)
+      if (resp.ok) {
+        const result = await resp.json()
+        setCourseTests(result.data.courseTests?.[0]?.tests || [])
       }
-
-      const result = await response.json()
-
-      if (result.success && result.data) {
-        // Extrair apenas os testes (sem agrupar por curso)
-        const tests = result.data.courseTests?.[0]?.tests || []
-        setCourseTests(tests)
-      }
-    } catch (error) {
-      console.error('Erro ao carregar testes do curso:', error)
-      setCourseTests([])
+    } catch (err) {
+      console.error(err)
     } finally {
       setLoadingTests(false)
     }
   }
 
-  const handleLessonSelect = (lesson: Lesson) => {
-    setSelectedLesson(lesson)
-  }
-
-  const toggleModuleExpansion = (moduleId: string) => {
-    setExpandedModules(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(moduleId)) {
-        newSet.delete(moduleId)
-      } else {
-        newSet.add(moduleId)
-      }
-      return newSet
-    })
-  }
-
-  const toggleSubjectExpansion = (subjectId: string) => {
-    setExpandedSubjects(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(subjectId)) {
-        newSet.delete(subjectId)
-      } else {
-        newSet.add(subjectId)
-      }
-      return newSet
-    })
-  }
-
-  const calculateModuleProgress = (module: ModuleWithSubjects) => {
-    let totalLessons = 0
-    let completedLessons = 0
-    
-    for (const subject of module.subjects) {
-      totalLessons += subject.lessons.length
-      completedLessons += subject.lessons.filter(lesson => lesson.progress?.is_completed).length
-    }
-    
-    return { completed: completedLessons, total: totalLessons }
-  }
-
-  const calculateSubjectProgress = (subject: SubjectWithLessons) => {
-    const totalLessons = subject.lessons.length
-    const completedLessons = subject.lessons.filter(lesson => lesson.progress?.is_completed).length
-    return { completed: completedLessons, total: totalLessons }
-  }
-
-  const markAllLessonsComplete = async () => {
+  const markLessonComplete = async (lid: string) => {
     if (!course?.enrollment) return
-
     try {
-      // Mark all lessons as complete
-      const allLessons = course.modules.flatMap(m => m.subjects).flatMap(s => s.lessons)
-
-      for (const lesson of allLessons) {
-        await markLessonCompleteAction(lesson.id, course.enrollment.id)
+      const res = await markLessonCompleteAction(lid, course.enrollment.id)
+      if (res.success) {
+        const newCount = completedLessons + 1
+        const pct = totalLessons > 0 ? Math.round((newCount / totalLessons) * 100) : 0
+        await updateEnrollmentProgress(course.enrollment.id, pct)
+        await fetchCourseData()
       }
-
-      // Update enrollment progress to 100%
-      await updateEnrollmentProgress(course.enrollment.id, 100)
-
-      // Show success message
-      alert('🎉 Todas as aulas foram marcadas como concluídas!\n\n📜 Seu certificado será emitido pela administração em breve.')
-
-      // Refresh course data
-      await fetchCourseData()
-    } catch (error) {
-      console.error('Error marking all lessons complete:', error)
-      alert('Erro ao marcar todas as aulas como concluídas')
+    } catch (err) {
+      console.error(err)
     }
   }
 
-  const requestCertificate = async (certificateType: 'technical' | 'lato-sensu') => {
-    if (!course?.enrollment || !canRequestCertificate) return
-
+  const requestCertificate = async (type: 'technical' | 'lato-sensu') => {
+    if (!course?.enrollment) return
     setRequestingCertificate(true)
-
     try {
-      const response = await fetch('/api/certificates/check-eligibility', {
+      const resp = await fetch('/api/certificates/check-eligibility', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          courseId: course.id,
-          enrollmentId: course.enrollment.id,
-          certificateType: certificateType
-        })
+        body: JSON.stringify({ courseId: course.id, enrollmentId: course.enrollment.id, certificateType: type })
       })
-
-      const result = await response.json()
-
-      if (response.ok && result.success) {
+      if (resp.ok) {
         setShowCertificateModal(false)
-        await fetchCourseData() // Recarregar dados para atualizar status
-        alert(`✅ Certificado ${certificateType === 'lato-sensu' ? 'Lato Sensu' : 'Técnico'} solicitado com sucesso!\n\nAguarde a aprovação do administrador.`)
-      } else {
-        alert(`❌ Erro ao solicitar certificado:\n\n${result.error || 'Erro desconhecido'}`)
+        await fetchCourseData()
+        alert('Solicitação enviada com sucesso.')
       }
-    } catch (error) {
-      console.error('Erro ao solicitar certificado:', error)
-      alert('❌ Erro ao solicitar certificado. Tente novamente.')
+    } catch (err) {
+      console.error(err)
     } finally {
       setRequestingCertificate(false)
     }
   }
 
-  const markLessonComplete = async (lessonId: string) => {
-    if (!course?.enrollment) return
-
-    try {
-      const result = await markLessonCompleteAction(lessonId, course.enrollment.id)
-
-      if (result.success) {
-        // Calculate new progress
-        const newCompletedLessons = completedLessons + 1
-        const progressPercentage = totalLessons > 0
-          ? Math.round((newCompletedLessons / totalLessons) * 100)
-          : 0
-
-        // Update enrollment progress
-        await updateEnrollmentProgress(course.enrollment.id, progressPercentage)
-
-        // Show success message if course is completed
-        if (progressPercentage === 100) {
-          alert('🎉 Parabéns! Você concluiu este curso com sucesso!\n\n📜 Seu certificado será emitido pela administração em breve.')
-        }
-
-        // Auto-advance to next lesson
-        let nextLesson = null
-
-        // Find current lesson in the hierarchy
-        for (let moduleIndex = 0; moduleIndex < course.modules.length; moduleIndex++) {
-          const module = course.modules[moduleIndex]
-          for (let subjectIndex = 0; subjectIndex < module.subjects.length; subjectIndex++) {
-            const subject = module.subjects[subjectIndex]
-            const lessonIndex = subject.lessons.findIndex(l => l.id === lessonId)
-
-            if (lessonIndex !== -1) {
-              // Try next lesson in same subject
-              if (lessonIndex < subject.lessons.length - 1) {
-                nextLesson = subject.lessons[lessonIndex + 1]
-              }
-              // Try first lesson of next subject in same module
-              else if (subjectIndex < module.subjects.length - 1) {
-                const nextSubject = module.subjects[subjectIndex + 1]
-                if (nextSubject.lessons.length > 0) {
-                  nextLesson = nextSubject.lessons[0]
-                }
-              }
-              // Try first lesson of first subject in next module
-              else if (moduleIndex < course.modules.length - 1) {
-                const nextModule = course.modules[moduleIndex + 1]
-                if (nextModule.subjects.length > 0 && nextModule.subjects[0].lessons.length > 0) {
-                  nextLesson = nextModule.subjects[0].lessons[0]
-                }
-              }
-              break
-            }
-          }
-          if (nextLesson) break
-        }
-
-        if (nextLesson) {
-          setSelectedLesson(nextLesson)
-        }
-
-        // Refresh course data
-        await fetchCourseData()
-      }
-    } catch (error) {
-      console.error('Error marking lesson complete:', error)
-    }
-  }
-
-  const progressPercentage = totalLessons > 0 ? (completedLessons / totalLessons) * 100 : 0
-
-  const CertificatePanel = () => {
-    if (isAdmin) return null
-
-    const technicalRequest = eligibilityData?.requestsByType?.technical
-    const latoSensuRequest = eligibilityData?.requestsByType?.latoSensu
-    const technicalCertificate = eligibilityData?.approvedCertificatesByType?.technical
-    const latoSensuCertificate = eligibilityData?.approvedCertificatesByType?.latoSensu
-
-    const canRequestTechnical = eligibilityData?.eligibleCertificates?.technical && !technicalRequest && !technicalCertificate
-    const canRequestLatoSensu = eligibilityData?.eligibleCertificates?.latoSensu && !latoSensuRequest && !latoSensuCertificate
-
-    return (
-      <div className="mt-4 space-y-3">
-        {/* Certificados aprovados */}
-        {technicalCertificate && (
-          <div className="flex items-center gap-2 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
-            <Award className="w-5 h-5 text-green-400" />
-            <span className="text-green-400">Certificado Técnico aprovado! Acesse em \"Meus Certificados\"</span>
-          </div>
-        )}
-        {latoSensuCertificate && (
-          <div className="flex items-center gap-2 p-3 bg-green-900/20 border border-green-500/30 rounded-lg">
-            <Award className="w-5 h-5 text-green-400" />
-            <span className="text-green-400">Certificado Lato Sensu aprovado! Acesse em \"Meus Certificados\"</span>
-          </div>
-        )}
-
-        {/* Solicitações pendentes */}
-        {technicalRequest?.status === 'pending' && (
-          <div className="flex items-center gap-2 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
-            <Clock className="w-5 h-5 text-yellow-400" />
-            <span className="text-yellow-400">Certificado Técnico solicitado - Aguardando aprovação</span>
-          </div>
-        )}
-        {latoSensuRequest?.status === 'pending' && (
-          <div className="flex items-center gap-2 p-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
-            <Clock className="w-5 h-5 text-yellow-400" />
-            <span className="text-yellow-400">Certificado Lato Sensu solicitado - Aguardando aprovação</span>
-          </div>
-        )}
-
-        {/* Solicitações rejeitadas */}
-        {technicalRequest?.status === 'rejected' && (
-          <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-red-400" />
-            <span className="text-red-400">Certificado Técnico rejeitado - Verifique em \"Meus Certificados\"</span>
-          </div>
-        )}
-        {latoSensuRequest?.status === 'rejected' && (
-          <div className="flex items-center gap-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-red-400" />
-            <span className="text-red-400">Certificado Lato Sensu rejeitado - Verifique em \"Meus Certificados\"</span>
-          </div>
-        )}
-
-        {/* Botão para solicitar certificados */}
-        {canRequestCertificate && (
-          <Button
-            variant="primary"
-            onClick={() => setShowCertificateModal(true)}
-            icon={<Send className="w-4 h-4" />}
-            className="w-full"
-          >
-            Solicitar Certificado de Conclusão
-          </Button>
-        )}
-
-        {/* Mensagens de requisitos não atendidos */}
-        {!canRequestCertificate && !technicalCertificate && !latoSensuCertificate && !technicalRequest && !latoSensuRequest && (
-          <>
-            {eligibilityData && eligibilityData.progressPercentage < 100 && (
-              <div className="flex items-center gap-2 p-3 bg-navy-900/50 border border-gold-500/20 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-gold-400" />
-                <span className="text-gold-400 text-sm">
-                  Complete todas as aulas do curso (atualmente em {Math.round(eligibilityData.progressPercentage)}%)
-                </span>
-              </div>
-            )}
-            {eligibilityData && eligibilityData.progressPercentage >= 100 && eligibilityData.bestTestScore < 70 && (
-              <div className="flex items-center gap-2 p-3 bg-navy-900/50 border border-gold-500/20 rounded-lg">
-                <AlertCircle className="w-5 h-5 text-gold-400" />
-                <span className="text-gold-400 text-sm">
-                  Você precisa atingir nota mínima de 70% no teste (nota atual: {eligibilityData.bestTestScore}%)
-                </span>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Modal de seleção de tipo de certificado */}
-        <AnimatePresence>
-          {showCertificateModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-              onClick={() => setShowCertificateModal(false)}
-            >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-navy-800 rounded-lg p-6 max-w-md w-full border border-gold-500/20"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3 className="text-xl font-bold text-gold mb-4">Escolha o Tipo de Certificado</h3>
-                <p className="text-gold-300/70 mb-6 text-sm">
-                  Selecione o tipo de certificado que você deseja solicitar:
-                </p>
-
-                <div className="space-y-3">
-                  {/* Certificado Técnico */}
-                  {canRequestTechnical && (
-                    <button
-                      onClick={() => requestCertificate('technical')}
-                      disabled={requestingCertificate}
-                      className="w-full p-4 bg-navy-900/50 border border-gold-500/20 rounded-lg hover:border-gold-500/40 hover:bg-navy-900/70 transition-all text-left group"
-                    >
-                      <div className="flex items-start gap-3">
-                        <Award className="w-6 h-6 text-gold-400 flex-shrink-0 mt-1" />
-                        <div className="flex-1">
-                          <h4 className="text-gold-200 font-semibold mb-1 group-hover:text-gold">
-                            Certificado Técnico
-                          </h4>
-                          <p className="text-gold-300/60 text-sm">
-                            Certifica a conclusão do curso com aproveitamento mínimo de 70%
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  )}
-
-                  {/* Certificado Lato Sensu */}
-                  {canRequestLatoSensu && (
-                    <button
-                      onClick={() => requestCertificate('lato-sensu')}
-                      disabled={requestingCertificate}
-                      className="w-full p-4 bg-gradient-to-br from-gold-900/20 to-gold-800/10 border border-gold-500/30 rounded-lg hover:border-gold-500/50 hover:from-gold-900/30 hover:to-gold-800/20 transition-all text-left group"
-                    >
-                      <div className="flex items-start gap-3">
-                        <Star className="w-6 h-6 text-gold-400 flex-shrink-0 mt-1" />
-                        <div className="flex-1">
-                          <h4 className="text-gold font-semibold mb-1 group-hover:text-gold-300">
-                            Certificado Lato Sensu
-                          </h4>
-                          <p className="text-gold-300/70 text-sm">
-                            Certificado de pós-graduação com TCC aprovado
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  )}
-
-                  {/* Mensagem caso nenhum esteja disponível */}
-                  {!canRequestTechnical && !canRequestLatoSensu && (
-                    <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
-                      <p className="text-red-400 text-sm">
-                        Nenhum certificado disponível para solicitação no momento.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6 flex justify-end">
-                  <Button
-                    variant="ghost"
-                    onClick={() => setShowCertificateModal(false)}
-                    disabled={requestingCertificate}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    )
-  }
-
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Spinner size="xl" />
-      </div>
-    )
+    return <Spinner fullPage size="xl" />
   }
 
-  if (!course) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh]">
-        <BookOpen className="w-16 h-16 text-gold-500/30 mb-4" />
-        <h2 className="text-xl font-semibold text-gold-200 mb-2">Curso não encontrado</h2>
-        <p className="text-gold-300/70 mb-4">O curso que você está procurando não foi encontrado.</p>
-        <Button onClick={() => router.push('/student-dashboard/my-courses')}>
-          Voltar aos Meus Cursos
-        </Button>
-      </div>
-    )
-  }
+  if (!course) return null
+
+  const pct = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0
 
   return (
-    <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
-      {/* Admin Mode Indicator */}
-      {isAdmin && (
-        <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-500/20 rounded-full flex items-center justify-center">
-                <Eye className="w-5 h-5 text-blue-400" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-blue-400">Modo Preview Administrador</p>
-                <p className="text-xs text-gold-400">Você está visualizando este curso como um administrador</p>
-              </div>
-            </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => router.push('/dashboard')}
-              icon={<ArrowLeft className="w-4 h-4" />}
-            >
-              Voltar ao Painel Admin
-            </Button>
+    <div className="flex flex-col">
+      {/* ── Header do Curso ── */}
+      <div className="mb-12">
+        <button
+          onClick={() => router.push(isAdmin ? '/dashboard/lessons' : '/student-dashboard/my-courses')}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: MUTED,
+            fontFamily: 'var(--font-lora)',
+            fontSize: '0.85rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.1em',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            cursor: 'pointer',
+            marginBottom: '1.5rem'
+          }}
+        >
+          <ArrowLeft size={14} /> Voltar aos Registros
+        </button>
+        <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.5rem', fontWeight: 700, color: INK, marginBottom: '0.5rem' }}>
+          {course.title}
+        </h1>
+        <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: MUTED }}>
+          {course.summary}
+        </p>
+        <div className="mt-6 flex items-center gap-6">
+          <div className="flex flex-col">
+            <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: MUTED, letterSpacing: '0.1em' }}>Progresso</span>
+            <span style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: INK }}>{pct}%</span>
+          </div>
+          <div className="h-10 w-px bg-[#1e130c]/10" />
+          <div className="flex flex-col">
+            <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: MUTED, letterSpacing: '0.1em' }}>Concluídas</span>
+            <span style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: INK }}>{completedLessons}/{totalLessons}</span>
           </div>
         </div>
-      )}
-
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          onClick={() => router.push(isAdmin ? '/dashboard/lessons' : '/student-dashboard/my-courses')}
-          icon={<ArrowLeft className="w-4 h-4" />}
-        >
-          Voltar
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">{course.title}</h1>
-          <p className="text-gold-300 mt-1">{course.summary}</p>
-        </div>
+        <div className="mt-8"><ClassicRule color={INK} /></div>
       </div>
 
-      {/* Progress Overview */}
-      <Card variant="gradient" className="mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-          <div className="flex items-center justify-center">
-            <ProgressRing
-              value={completedLessons}
-              max={totalLessons}
-              size={120}
-              showValue={true}
-              label="Progresso"
-            />
-          </div>
-          <div className="md:col-span-3 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-gold-300/70 text-sm">Aulas Concluídas</p>
-                <p className="text-2xl font-bold text-gold">{completedLessons}/{totalLessons}</p>
-              </div>
-              <div>
-                <p className="text-gold-300/70 text-sm">Duração Total</p>
-                <p className="text-2xl font-bold text-gold">{course.duration_hours}h</p>
-              </div>
-              <div>
-                <p className="text-gold-300/70 text-sm">Nível</p>
-                <p className="text-2xl font-bold text-gold">
-                  {course.difficulty === 'beginner' ? 'Iniciante' : 
-                   course.difficulty === 'intermediate' ? 'Intermediário' : 'Avançado'}
-                </p>
-              </div>
-            </div>
-            {/* Mark All Complete Button */}
-            {completedLessons < totalLessons && (
-              <div className="mt-4">
-                <Button 
-                  onClick={markAllLessonsComplete}
-                  variant="secondary"
-                  icon={<CheckCircle2 className="w-4 h-4" />}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        {/* ── Sidebar: Sumário do Curso ── */}
+        <div className="space-y-6">
+          <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.25rem', color: INK, marginBottom: '1.5rem', borderLeft: `3px solid ${ACCENT}`, paddingLeft: '1rem' }}>
+            Índice de Matérias
+          </h2>
+          <div className="space-y-4">
+            {course.modules.map(mod => (
+              <div key={mod.id} style={{ borderBottom: `1px solid ${BORDER}`, paddingBottom: '1rem' }}>
+                <button
+                  onClick={() => setExpandedModules(prev => {
+                    const next = new Set(prev);
+                    next.has(mod.id) ? next.delete(mod.id) : next.add(mod.id);
+                    return next;
+                  })}
+                  className="w-full flex justify-between items-center text-left py-2"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-playfair)', color: INK, fontSize: '1.1rem', fontWeight: 600 }}
                 >
-                  Marcar todas as aulas como concluídas
-                </Button>
-              </div>
-            )}
-            
-            {/* Certificate Status and Request Button */}
-            <CertificatePanel />
-            {course.instructor && (
-              <div className="flex items-center gap-3 pt-2 border-t border-gold-500/20">
-                <div className="w-10 h-10 bg-gradient-to-br from-gold-500/30 to-gold-600/20 rounded-full flex items-center justify-center">
-                  {course.instructor.avatar ? (
-                    <img 
-                      src={course.instructor.avatar} 
-                      alt={course.instructor.name}
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <Users className="w-5 h-5 text-gold-400" />
+                  <span className="flex-1 pr-4">{mod.title}</span>
+                  {expandedModules.has(mod.id) ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
+                <AnimatePresence>
+                  {expandedModules.has(mod.id) && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mt-2 space-y-3">
+                      {mod.subjects.map(sub => (
+                        <div key={sub.id} className="pl-4">
+                          <button
+                            onClick={() => setExpandedSubjects(prev => {
+                              const next = new Set(prev);
+                              next.has(sub.id) ? next.delete(sub.id) : next.add(sub.id);
+                              return next;
+                            })}
+                            className="w-full text-left py-1 text-sm flex justify-between items-center"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: MUTED, fontStyle: 'italic' }}
+                          >
+                            <span>{sub.name}</span>
+                            {expandedSubjects.has(sub.id) ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                          <AnimatePresence>
+                            {expandedSubjects.has(sub.id) && (
+                              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden space-y-1 mt-1 pl-2 border-l border-[#1e130c]/10">
+                                {sub.lessons.map(ls => (
+                                  <button
+                                    key={ls.id}
+                                    onClick={() => setSelectedLesson(ls)}
+                                    className="w-full text-left py-2 px-3 text-xs flex items-center gap-2 transition-colors"
+                                    style={{
+                                      background: selectedLesson?.id === ls.id ? 'rgba(30,19,12,0.04)' : 'none',
+                                      border: 'none',
+                                      color: selectedLesson?.id === ls.id ? ACCENT : INK,
+                                      fontWeight: selectedLesson?.id === ls.id ? 700 : 400,
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    {ls.progress?.is_completed ? <CheckCircle2 size={12} style={{ color: INK }} /> : <div className="w-3 h-3 border border-[#1e130c]/30 rounded-full" />}
+                                    <span className="flex-1 truncate">{ls.title}</span>
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      ))}
+                    </motion.div>
                   )}
-                </div>
-                <div>
-                  <p className="text-sm text-gold-300/70">Instrutor</p>
-                  <p className="font-medium text-gold-200">{course.instructor.name}</p>
-                </div>
+                </AnimatePresence>
               </div>
-            )}
+            ))}
           </div>
         </div>
-      </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Course Modules */}
-        <div className="lg:col-span-1 space-y-4">
-          <h2 className="text-xl font-semibold text-gold mb-4">Conteúdo do Curso</h2>
-          
-          {course.modules.map((module, moduleIndex) => {
-            const isExpanded = expandedModules.has(module.id)
-            const moduleProgress = calculateModuleProgress(module)
-            const isModuleCompleted = moduleProgress.completed === moduleProgress.total && moduleProgress.total > 0
-            const totalHours = typeof module.total_hours === 'number' ? module.total_hours : 0
-            const formattedHours = Number.isInteger(totalHours)
-              ? totalHours.toFixed(0)
-              : totalHours.toFixed(1)
-            
-            return (
-              <Card key={module.id} variant="glass">
-                <div className="space-y-3">
-                  {/* Module Header - Clickable */}
-                  <motion.button
-                    onClick={() => toggleModuleExpansion(module.id)}
-                    className="w-full text-left flex items-center justify-between gap-3 p-3 -m-3 rounded-lg transition-all hover:bg-navy-800/30"
-                    whileHover={{ scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`font-semibold break-words ${
-                        isModuleCompleted ? 'text-green-400' : 'text-gold-200'
-                      }`}>
-                        {module.title}
-                      </h3>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-gold-300/50">
-                          {moduleProgress.completed}/{moduleProgress.total} aulas concluídas
-                        </span>
-                        <span className="text-xs text-gold-300/50 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formattedHours.replace('.', ',')}h
-                        </span>
-                        {isModuleCompleted && (
-                          <div className="flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-green-400" />
-                            <span className="text-xs text-green-400">Completo</span>
+        {/* ── Área Principal: Player e Conteúdo ── */}
+        <div className="lg:col-span-2">
+          {/* Navegação de Abas Clássica */}
+          <div className="flex gap-8 mb-8 border-b border-[#1e130c]/10">
+            {[
+              { id: 'content', label: 'Estudo' },
+              { id: 'progress', label: 'Evolução' },
+              { id: 'evaluations', label: 'Avaliações' },
+              { id: 'certificates', label: 'Diplomas' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: activeTab === tab.id ? `2px solid ${INK}` : '2px solid transparent',
+                  padding: '0.75rem 0',
+                  color: activeTab === tab.id ? INK : MUTED,
+                  fontFamily: 'var(--font-lora)',
+                  fontWeight: activeTab === tab.id ? 700 : 400,
+                  fontSize: '0.9rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                  cursor: 'pointer'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="min-h-[500px]">
+            {activeTab === 'content' && (
+              selectedLesson ? (
+                <div className="space-y-8">
+                  <div className="flex justify-between items-start">
+                    <h3 style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.75rem', color: INK }}>{selectedLesson.title}</h3>
+                    {selectedLesson.progress?.is_completed && <span className="text-xs text-black opacity-60 font-bold uppercase tracking-widest bg-black/5 px-3 py-1">Registrada</span>}
+                  </div>
+                  
+                  <div className="bg-[#1e130c]/[0.02] border border-[#1e130c]/10 p-4 relative">
+                    <div className="absolute top-0 left-0 w-4 h-4 text-[#1e130c]/20"><CornerBracket size={16} /></div>
+                    <div className="aspect-video w-full bg-black flex items-center justify-center">
+                      {selectedLesson.content_type === 'video' ? (
+                        selectedLesson.content_url ? <VideoPlayer url={selectedLesson.content_url} title={selectedLesson.title} /> : <p className="text-white italic">Rolo de filme não encontrado</p>
+                      ) : (
+                        <div className="bg-[#faf6ee] w-full h-full p-8 overflow-y-auto">
+                          {selectedLesson.content_url ? <DocumentViewer url={selectedLesson.content_url} title={selectedLesson.title} /> : <div dangerouslySetInnerHTML={{ __html: selectedLesson.content || '' }} className="prose-classic" />}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-6">
+                    <div className="flex items-center gap-2 text-sm italic text-[#7a6350]"><Clock size={16} /> {selectedLesson.duration_minutes || 0} minutos de instrução</div>
+                    {!selectedLesson.progress?.is_completed && (
+                      <button
+                        onClick={() => markLessonComplete(selectedLesson.id)}
+                        style={{ padding: '0.75rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                      >
+                        Marcar Conclusão
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : <div className="text-center py-20 italic text-[#7a6350]">Abra o índice e selecione uma lição para iniciar o estudo.</div>
+            )}
+
+            {activeTab === 'progress' && (
+              <div className="space-y-12">
+                <div className="text-center">
+                  <h4 style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.25rem', color: INK, marginBottom: '2rem' }}>Resumo da Jornada</h4>
+                  <div className="relative w-full h-1 bg-[#1e130c]/10 mb-4">
+                    <div style={{ width: `${pct}%`, height: '100%', backgroundColor: ACCENT, transition: 'width 1s ease' }} />
+                  </div>
+                  <p style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>{pct}% da trilha de conhecimento percorrida</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {course.modules.map(m => {
+                    const lcount = m.subjects.reduce((a, s) => a + s.lessons.length, 0);
+                    const ccount = m.subjects.reduce((a, s) => a + s.lessons.filter(l => l.progress?.is_completed).length, 0);
+                    const mpct = lcount > 0 ? Math.round((ccount / lcount) * 100) : 0;
+                    return (
+                      <div key={m.id} style={{ padding: '1.5rem', border: `1px solid ${BORDER}` }}>
+                        <h5 style={{ fontFamily: 'var(--font-playfair)', fontWeight: 600, color: INK, marginBottom: '0.5rem' }}>{m.title}</h5>
+                        <p style={{ fontSize: '0.8rem', color: MUTED, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1rem' }}>{ccount} de {lcount} aulas</p>
+                        <div className="w-full h-px bg-[#1e130c]/10 relative"><div style={{ width: `${mpct}%`, height: '100%', backgroundColor: ACCENT, position: 'absolute', top: 0, left: 0 }} /></div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'evaluations' && (
+              <div className="space-y-6">
+                {courseTests.length === 0 ? (
+                  <div className="text-center py-20 italic text-[#7a6350]">Nenhum exame formal agendado para este curso.</div>
+                ) : (
+                  courseTests.map(t => (
+                    <div key={t.id} style={{ padding: '2rem', border: `1px solid ${BORDER}`, position: 'relative' }}>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.2rem', color: INK, marginBottom: '0.5rem' }}>{t.title}</h4>
+                          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '0.9rem', color: MUTED, marginBottom: '1.5rem' }}>{t.description}</p>
+                          <div className="flex gap-6 text-xs uppercase tracking-widest text-[#7a6350]">
+                            <span>{t.question_count} Questões</span>
+                            <span>Mínimo {t.passing_score}%</span>
                           </div>
+                        </div>
+                        <button
+                          onClick={() => router.push(`/student-dashboard/evaluations/${t.id}`)}
+                          style={{ padding: '0.75rem 1.5rem', border: `1px solid ${INK}`, color: INK, background: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600 }}
+                        >
+                          Iniciar Exame
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {activeTab === 'certificates' && (
+              <div className="space-y-8">
+                <div style={{ padding: '2rem', border: `1px dashed ${BORDER}`, textAlign: 'center' }}>
+                  <Award size={48} style={{ color: ACCENT, marginBottom: '1.5rem' }} />
+                  <h4 style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.5rem', color: INK, marginBottom: '1rem' }}>Elegibilidade de Diploma</h4>
+                  
+                  {eligibilityData?.eligibleCertificates?.technical || eligibilityData?.eligibleCertificates?.latoSensu ? (
+                    <div className="space-y-6">
+                      <p style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>Você atendeu aos critérios para emissão de certificado.</p>
+                      <div className="flex justify-center gap-4">
+                        {eligibilityData.eligibleCertificates.technical && (
+                          <button onClick={() => requestCertificate('technical')} disabled={requestingCertificate} style={{ padding: '1rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600 }}>Solicitar Técnico</button>
+                        )}
+                        {eligibilityData.eligibleCertificates.latoSensu && (
+                          <button onClick={() => requestCertificate('lato-sensu')} disabled={requestingCertificate} style={{ padding: '1rem 2rem', backgroundColor: ACCENT, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600 }}>Solicitar Lato Sensu</button>
                         )}
                       </div>
                     </div>
-                    <div className="flex-shrink-0">
-                      {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 text-gold-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-gold-400" />
-                      )}
-                    </div>
-                  </motion.button>
-
-                  {module.description && (
-                    <p className="text-sm text-gold-300/70">{module.description}</p>
-                  )}
-                  
-                  {/* Subjects - Collapsible */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3, ease: 'easeInOut' }}
-                        className="overflow-hidden"
-                      >
-                        <div className="space-y-3 pt-2">
-                          {module.subjects.map((subject, subjectIndex) => {
-                            const isSubjectExpanded = expandedSubjects.has(subject.id)
-                            const subjectProgress = calculateSubjectProgress(subject)
-                            const isSubjectCompleted = subjectProgress.completed === subjectProgress.total && subjectProgress.total > 0
-                            
-                            return (
-                              <div key={subject.id} className="border-l-2 border-gold-500/20 pl-4">
-                                {/* Subject Header */}
-                                <motion.button
-                                  onClick={() => toggleSubjectExpansion(subject.id)}
-                                  className="w-full text-left flex items-center justify-between gap-3 p-2 -m-2 rounded-lg transition-all hover:bg-navy-800/20"
-                                  whileHover={{ scale: 1.005 }}
-                                  whileTap={{ scale: 0.995 }}
-                                >
-                                  <div className="flex-1 min-w-0">
-                                    <h4 className={`text-sm font-medium break-words ${
-                                      isSubjectCompleted ? 'text-green-400' : 'text-gold-300'
-                                    }`}>
-                                      📚 {subject.code ? `${subject.code} - ${subject.name}` : subject.name}
-                                    </h4>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-xs text-gold-300/40">
-                                        {subjectProgress.completed}/{subjectProgress.total} aulas
-                                      </span>
-                                      {isSubjectCompleted && (
-                                        <div className="flex items-center gap-1">
-                                          <CheckCircle2 className="w-3 h-3 text-green-400" />
-                                          <span className="text-xs text-green-400">Completo</span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="flex-shrink-0">
-                                    {isSubjectExpanded ? (
-                                      <ChevronUp className="w-4 h-4 text-gold-400" />
-                                    ) : (
-                                      <ChevronDown className="w-4 h-4 text-gold-400" />
-                                    )}
-                                  </div>
-                                </motion.button>
-
-                                {subject.description && (
-                                  <p className="text-xs text-gold-300/60 mt-1 pl-2">{subject.description}</p>
-                                )}
-
-                                {/* Lessons in Subject */}
-                                <AnimatePresence>
-                                  {isSubjectExpanded && (
-                                    <motion.div
-                                      initial={{ opacity: 0, height: 0 }}
-                                      animate={{ opacity: 1, height: 'auto' }}
-                                      exit={{ opacity: 0, height: 0 }}
-                                      transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                      className="overflow-hidden"
-                                    >
-                                      <div className="space-y-1 pt-2 pl-2">
-                                        {subject.lessons.map((lesson, lessonIndex) => {
-                                          const isCompleted = lesson.progress?.is_completed
-                                          const isSelected = selectedLesson?.id === lesson.id
-                                          
-                                          return (
-                                            <motion.button
-                                              key={lesson.id}
-                                              onClick={() => handleLessonSelect(lesson)}
-                                              className={`
-                                                w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg transition-all group relative
-                                                ${isSelected 
-                                                  ? 'bg-gold-500/20 text-gold shadow-lg shadow-gold-500/10' 
-                                                  : isCompleted 
-                                                    ? 'text-green-400 hover:bg-green-500/10'
-                                                    : 'text-gold-300 hover:bg-navy-800/50 hover:text-gold-200'
-                                                }
-                                                cursor-pointer
-                                              `}
-                                              whileHover={{ scale: 1.01 }}
-                                              whileTap={{ scale: 0.99 }}
-                                            >
-                                              <div className="flex-shrink-0">
-                                                {isCompleted ? (
-                                                  <CheckCircle2 className="w-4 h-4 text-green-400" />
-                                                ) : (
-                                                  <div className="w-4 h-4 rounded-full border-2 border-gold-500/50" />
-                                                )}
-                                              </div>
-                                              <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium truncate whitespace-nowrap">
-                                                  {lesson.title}
-                                                </p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                  {lesson.content_type === 'video' && <Video className="w-3 h-3 text-gold-400" />}
-                                                  {lesson.content_type === 'text' && lesson.content_url && <Link className="w-3 h-3 text-gold-400" />}
-                                                  {lesson.content_type === 'text' && !lesson.content_url && <FileText className="w-3 h-3 text-gold-400" />}
-                                                  {lesson.content_type === 'document' && <FileImage className="w-3 h-3 text-gold-400" />}
-                                                  {lesson.duration_minutes && (
-                                                    <span className="text-xs text-gold-300/50 truncate">
-                                                      {lesson.duration_minutes} min
-                                                    </span>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </motion.button>
-                                          )
-                                        })}
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </Card>
-            )
-          })}
-        </div>
-
-        {/* Right Column with Tabs */}
-        <div className="lg:col-span-2">
-          <Tabs
-            variant="underline"
-            tabs={[
-              {
-                id: 'conteudo',
-                label: 'Conteúdo',
-                content: (
-                  selectedLesson ? (
-                    <Card variant="elevated" className="h-full">
-                      <div className="space-y-6">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h2 className="text-2xl font-semibold text-gold mb-2">
-                              {selectedLesson.title}
-                            </h2>
-                            {selectedLesson.description && (
-                              <p className="text-gold-300/70">{selectedLesson.description}</p>
-                            )}
-                          </div>
-                          {(selectedLesson as any).progress?.is_completed && (
-                            <div className="flex items-center gap-2 bg-green-500/20 px-3 py-1 rounded-full">
-                              <CheckCircle2 className="w-4 h-4 text-green-400" />
-                              <span className="text-sm text-green-400">Concluída</span>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="bg-navy-900/50 rounded-lg overflow-hidden">
-                          {selectedLesson.content_type === 'video' ? (
-                            selectedLesson.content_url ? (
-                              <VideoPlayer
-                                url={selectedLesson.content_url}
-                                title={selectedLesson.title}
-                                onComplete={() => {/* Removed auto-complete */}}
-                              />
-                            ) : (
-                              <div className="flex items-center justify-center h-[400px]">
-                                <div className="text-center">
-                                  <Video className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                                  <p className="text-gold-300">Vídeo não disponível</p>
-                                  <p className="text-gold-300/50 text-sm mt-2">
-                                    Nenhuma URL de vídeo foi configurada para esta aula
-                                  </p>
-                                </div>
-                              </div>
-                            )
-                          ) : selectedLesson.content_type === 'text' ? (
-                            selectedLesson.content_url ? (
-                              <DocumentViewer
-                                url={selectedLesson.content_url}
-                                title={selectedLesson.title}
-                                onComplete={() => {/* Removed auto-complete */}}
-                              />
-                            ) : (
-                              <div className="w-full h-[400px] overflow-y-auto">
-                                <div className="prose prose-gold max-w-none">
-                                  {selectedLesson.content ? (
-                                    <div 
-                                      className="text-gold-200 leading-relaxed"
-                                      dangerouslySetInnerHTML={{ __html: selectedLesson.content }}
-                                    />
-                                  ) : (
-                                    <div className="flex items-center justify-center h-full">
-                                      <div className="text-center">
-                                        <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                                        <p className="text-gold-300">Conteúdo não disponível</p>
-                                        <p className="text-gold-300/50 text-sm mt-2">
-                                          Nenhum documento ou texto foi configurado para esta aula
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          ) : selectedLesson.content_type === 'document' ? (
-                            selectedLesson.content_url ? (
-                              <DocumentViewer
-                                url={selectedLesson.content_url}
-                                title={selectedLesson.title}
-                                onComplete={() => {/* Removed auto-complete */}}
-                              />
-                            ) : (
-                              <div className="flex items-center justify-center h-[400px]">
-                                <div className="text-center">
-                                  <FileText className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                                  <p className="text-gold-300">Documento não disponível</p>
-                                  <p className="text-gold-300/50 text-sm mt-2">
-                                    Nenhuma URL de documento foi configurada para esta aula
-                                  </p>
-                                </div>
-                              </div>
-                            )
-                          ) : (
-                            <div className="flex items-center justify-center h-[400px]">
-                              <div className="text-center">
-                                <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                                <p className="text-gold-300">Tipo de conteúdo não suportado</p>
-                                <p className="text-gold-300/50 text-sm mt-2">
-                                  Tipo: {selectedLesson.content_type}
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex justify-between items-center pt-4 border-t border-gold-500/20">
-                          <div className="flex items-center gap-2 text-sm text-gold-300/70">
-                            <Clock className="w-4 h-4" />
-                            <span>{selectedLesson.duration_minutes || 0} minutos</span>
-                          </div>
-                          
-                          {!(selectedLesson as any).progress?.is_completed && (
-                            <Button 
-                              variant="primary"
-                              onClick={() => markLessonComplete(selectedLesson.id)}
-                              icon={<CheckCircle2 className="w-4 h-4" />}
-                            >
-                              Marcar esta aula como concluída
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
                   ) : (
-                    <Card className="h-full flex items-center justify-center">
-                      <div className="text-center">
-                        <BookOpen className="w-16 h-16 text-gold-500/30 mx-auto mb-4" />
-                        <p className="text-gold-300">Selecione uma aula para começar</p>
-                      </div>
-                    </Card>
-                  )
-                )
-              },
-              {
-                id: 'progresso',
-                label: 'Progresso',
-                content: (
-                  <Card>
-                    <div className="space-y-6">
-                      <div>
-                        <p className="text-gold-300 text-sm mb-2">Progresso do curso</p>
-                        <div className="w-full bg-navy-900 rounded-full h-2">
-                          <div 
-                            className="h-2 rounded-full bg-gradient-to-r from-gold-500 to-gold-600 transition-all"
-                            style={{ width: `${Math.round(progressPercentage)}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-sm text-gold-400 mt-1">
-                          <span>{completedLessons}/{totalLessons} aulas</span>
-                          <span>{Math.round(progressPercentage)}%</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <h3 className="text-gold-200 font-medium mb-2">Por módulo</h3>
-                        <div className="space-y-3">
-                          {course.modules.map((m) => {
-                            const mp = calculateModuleProgress(m)
-                            const pct = mp.total > 0 ? Math.round((mp.completed / mp.total) * 100) : 0
-                            return (
-                              <div key={m.id} className="p-3 rounded-lg bg-navy-900/40 border border-gold-500/10">
-                                <div className="flex items-center justify-between mb-1">
-                                  <p className="text-sm text-gold-200 font-medium truncate">{m.title}</p>
-                                  <span className="text-xs text-gold-400">{mp.completed}/{mp.total} • {pct}%</span>
-                                </div>
-                                <div className="w-full bg-navy-900 rounded-full h-1.5">
-                                  <div className="h-1.5 rounded-full bg-gold-600" style={{ width: `${pct}%` }} />
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              },
-              {
-                id: 'avaliacoes',
-                label: 'Avaliações',
-                content: (
-                  <Card>
                     <div className="space-y-4">
-                      {loadingTests ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Spinner />
-                        </div>
-                      ) : courseTests.length === 0 ? (
-                        <div className="text-center py-8">
-                          <FileText className="w-16 h-16 text-gold-400/30 mx-auto mb-4" />
-                          <p className="text-gold-300">Ainda não há testes disponíveis para este curso.</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {courseTests.map((test: any) => {
-                            const hasGrade = test.grade && test.grade.best_score !== null
-                            const isPassing = hasGrade && test.grade.best_score >= (test.passing_score || 70)
-                            const attemptsLeft = (test.max_attempts || 3) - (test.grade?.total_attempts || 0)
-                            const canRetake = !isPassing && attemptsLeft > 0
-
-                            return (
-                              <div
-                                key={test.id}
-                                className="p-4 rounded-lg bg-navy-900/40 border border-gold-500/10 hover:border-gold-500/30 transition-all"
-                              >
-                                <div className="flex items-start justify-between gap-4">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <FileText className="w-5 h-5 text-gold-400" />
-                                      <h4 className="text-gold-200 font-medium">{test.title}</h4>
-                                    </div>
-
-                                    {test.description && (
-                                      <p className="text-gold-300/70 text-sm mb-3">{test.description}</p>
-                                    )}
-
-                                    <div className="flex flex-wrap gap-3 text-sm">
-                                      {test.duration_minutes && (
-                                        <div className="flex items-center gap-1 text-gold-400">
-                                          <Clock className="w-4 h-4" />
-                                          <span>{test.duration_minutes} min</span>
-                                        </div>
-                                      )}
-                                      {test.question_count && (
-                                        <div className="flex items-center gap-1 text-gold-400">
-                                          <FileText className="w-4 h-4" />
-                                          <span>{test.question_count} questões</span>
-                                        </div>
-                                      )}
-                                      {test.passing_score && (
-                                        <div className="flex items-center gap-1 text-gold-400">
-                                          <Award className="w-4 h-4" />
-                                          <span>Mínimo: {test.passing_score}%</span>
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {hasGrade && (
-                                      <div className="mt-3 flex items-center gap-3">
-                                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                          isPassing
-                                            ? 'bg-green-500/20 text-green-400'
-                                            : 'bg-yellow-500/20 text-yellow-400'
-                                        }`}>
-                                          Melhor nota: {test.grade.best_score}%
-                                        </div>
-                                        <span className="text-gold-500/60 text-xs">
-                                          {test.grade.total_attempts} {test.grade.total_attempts === 1 ? 'tentativa' : 'tentativas'}
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="flex flex-col gap-2">
-                                    {!hasGrade ? (
-                                      <Button
-                                        variant="primary"
-                                        size="sm"
-                                        onClick={() => router.push(`/student-dashboard/evaluations/${test.id}`)}
-                                      >
-                                        <Play className="w-4 h-4 mr-1" />
-                                        Iniciar
-                                      </Button>
-                                    ) : (
-                                      <>
-                                        <Button
-                                          variant="secondary"
-                                          size="sm"
-                                          onClick={() => router.push(`/student-dashboard/evaluations/${test.id}/results`)}
-                                        >
-                                          <Eye className="w-4 h-4 mr-1" />
-                                          Ver Resultado
-                                        </Button>
-                                        {canRetake && (
-                                          <Button
-                                            variant="primary"
-                                            size="sm"
-                                            onClick={() => router.push(`/student-dashboard/evaluations/${test.id}`)}
-                                          >
-                                            <BarChart3 className="w-4 h-4 mr-1" />
-                                            Refazer ({attemptsLeft})
-                                          </Button>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                      )}
+                      <p style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>Critérios ainda não atingidos para emissão.</p>
+                      <div className="text-left max-w-sm mx-auto space-y-2 pt-4">
+                        <div className="flex items-center justify-between text-xs"><span>Aulas Concluídas:</span> <span className={pct >= 100 ? 'text-black font-bold' : 'text-black/40 italic'}>{pct}%</span></div>
+                        <div className="flex items-center justify-between text-xs"><span>Nota em Exame:</span> <span className={(eligibilityData?.bestTestScore || 0) >= 70 ? 'text-black font-bold' : 'text-black/40 italic'}>{eligibilityData?.bestTestScore || 0}%</span></div>
+                      </div>
                     </div>
-                  </Card>
-                )
-              },
-              {
-                id: 'certificados',
-                label: 'Certificados',
-                content: (
-                  <Card>
-                    <div className="space-y-2">
-                      <h3 className="text-gold-200 font-medium">Status de Certificação</h3>
-                      <CertificatePanel />
-                    </div>
-                  </Card>
-                )
-              }
-            ]}
-          />
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .prose-classic {
+          font-family: var(--font-lora);
+          line-height: 1.8;
+          color: #1e130c;
+        }
+        .prose-classic p { margin-bottom: 1.5rem; }
+        .prose-classic h1, .prose-classic h2, .prose-classic h3 { font-family: var(--font-playfair); margin: 2rem 0 1rem; }
+      `}} />
     </div>
   )
 }

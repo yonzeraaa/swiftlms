@@ -333,7 +333,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
             {timeRemaining !== null && (
               <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${
                 timeRemaining < 300 
-                  ? 'bg-red-900/30 text-red-400 border-red-500/50 animate-pulse' 
+                  ? 'bg-[#7a6350]/10/30 text-[#7a6350] italic border-red-500/50 animate-pulse' 
                   : 'bg-navy-900/50 text-gold-300 border-gold-500/30'
               }`}>
                 <Clock className="w-5 h-5" />
@@ -382,7 +382,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
                   max="100"
                   value={manualQuestionCount}
                   onChange={(e) => setManualQuestionCount(e.target.value)}
-                  className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full px-4 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                   placeholder="Ex: 20"
                 />
               </div>
@@ -443,7 +443,7 @@ export default function TestViewer({ test, enrollmentId, onComplete }: TestViewe
           <Card variant="gradient" className="max-w-md text-center transform animate-scale-in border-2 border-gold-500 shadow-2xl shadow-gold-500/20">
             <div className="p-8">
               <div className="w-16 h-16 bg-gradient-to-br from-green-500/30 to-green-600/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-green-500/50">
-                <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-8 h-8 text-[#1e130c] font-bold" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>

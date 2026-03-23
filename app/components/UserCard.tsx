@@ -165,9 +165,9 @@ export default function UserCard({
                 <span className="text-xs text-gold-400">Média</span>
               </div>
               <p className={`text-sm font-medium ${
-                averageScore >= 70 ? 'text-green-400' :
+                averageScore >= 70 ? 'text-[#1e130c] font-bold' :
                 averageScore >= 50 ? 'text-yellow-400' : 
-                attemptCount > 0 ? 'text-red-400' : 'text-gold-500'
+                attemptCount > 0 ? 'text-[#7a6350] italic' : 'text-gold-500'
               }`}>
                 {attemptCount > 0 ? `${averageScore}%` : '-'}
               </p>
@@ -301,7 +301,7 @@ export default function UserCard({
           <Tooltip content="Excluir">
             <button
               onClick={onDelete}
-              className="p-2 text-red-400 hover:text-red-200 hover:bg-red-500/10 rounded-lg transition-all"
+              className="p-2 text-[#7a6350] italic hover:text-[#7a6350] italic hover:bg-[#7a6350]/10/10 rounded-lg transition-all"
             >
               <Trash2 className="w-4 h-4" />
             </button>

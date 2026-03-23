@@ -78,7 +78,7 @@ export default async function CertificateVerificationPage({ params }: Certificat
           {/* Card de Verificação */}
           <div className="bg-white rounded-2xl shadow-xl border border-amber-200 overflow-hidden">
             {/* Status Banner */}
-            <div className={`px-6 py-4 ${isValid ? 'bg-emerald-500' : 'bg-red-500'}`}>
+            <div className={`px-6 py-4 ${isValid ? 'bg-emerald-500' : 'bg-[#7a6350]/10'}`}>
               <div className="flex items-center justify-center gap-3">
                 {isValid ? (
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

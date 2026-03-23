@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, Edit, Trash2, ExternalLink, Check, Clock, Target, RotateCcw, FileCheck, Search, Filter, X, Eye, EyeOff, MessageSquare, Square, CheckSquare, PlayCircle } from 'lucide-react'
+import { ClassicRule } from '../../components/ui/RenaissanceSvgs'
 import { Tables } from '@/lib/database.types'
 import Card from '../../components/Card'
 import Button from '../../components/Button'
 import Modal from '../../components/Modal'
 import { useTranslation } from '../../contexts/LanguageContext'
 import { useToast } from '../../components/Toast'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
 import { Chip } from '../../components/Badge'
 import {
@@ -422,134 +422,126 @@ export default function TestsManagementPage() {
     console.log('Modal deve estar visível:', true)
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Spinner size="xl" />
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
+    <div className="max-w-[1400px] mx-auto p-6 md:p-10 space-y-8 bg-[#faf6ee] min-h-screen font-[family-name:var(--font-lora)] text-[#1e130c]">
       {/* Header com busca e filtros */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-        <div className="flex items-center gap-4 flex-wrap">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-            <FileCheck className="w-8 h-8 text-gold-400" />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-12">
+        <div className="flex-1">
+          <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: '#1e130c', lineHeight: 1.1, fontWeight: 700 }}>
             {t('tests.title')}
           </h1>
-          {anySelection && (
-            <span className="text-sm text-gold-300 bg-gold-500/10 border border-gold-500/30 px-3 py-1 rounded-lg">
-              {selectedTests.length} selecionado(s)
-            </span>
-          )}
+          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: '#7a6350', marginTop: '0.5rem' }}>
+            Gerencie e avalie as avaliações do sistema.
+          </p>
+          <div className="mt-6 w-full max-w-md">
+            <ClassicRule color="#1e130c" />
+          </div>
         </div>
-        <div className="flex items-center gap-3 flex-wrap justify-end">
-          {anySelection && (
-            <Button
-              variant="danger"
-              onClick={handleBulkDelete}
-              loading={bulkDeleting}
+        <div className="flex items-center gap-3 flex-wrap justify-center md:justify-end">
+            {anySelection && (
+              <span className="text-xs uppercase tracking-widest text-[#7a6350] bg-[#8b6d22]/5 border border-[#8b6d22]/20 px-3 py-1 font-bold">
+                {selectedTests.length} selecionado(s)
+              </span>
+            )}
+            {anySelection && (
+              <Button
+                variant="danger"
+                onClick={handleBulkDelete}
+                loading={bulkDeleting}
+                disabled={bulkDeleting}
+                icon={<Trash2 className="w-4 h-4 flex-shrink-0" />}
+              >
+                Excluir
+              </Button>
+            )}
+            <button
+              onClick={() => setShowModal(true)}
               disabled={bulkDeleting}
-              icon={<Trash2 className="w-5 h-5 flex-shrink-0" />}
+              style={{ padding: '1rem 3rem', backgroundColor: '#1e130c', color: '#faf6ee', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
             >
-              Excluir selecionados
-            </Button>
-          )}
-          <Button
-            variant="primary"
-            onClick={() => setShowModal(true)}
-            icon={<Plus className="w-5 h-5 flex-shrink-0" />}
-            disabled={bulkDeleting}
-          >
-            {t('tests.newTest')}
-          </Button>
+              {t('tests.newTest')}
+            </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Total de Testes</p>
-              <p className="text-2xl font-bold text-gold mt-1">{tests.length}</p>
-            </div>
-            <FileCheck className="w-8 h-8 text-gold-500/30" />
-          </div>
-        </Card>
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Testes Ativos</p>
-              <p className="text-2xl font-bold text-gold mt-1">{tests.filter(t => t.is_active).length}</p>
-            </div>
-            <Check className="w-8 h-8 text-green-500/30" />
-          </div>
-        </Card>
-        <Card>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Total de Aulas</p>
-              <p className="text-2xl font-bold text-gold mt-1">{lessonsCount}</p>
-            </div>
-            <PlayCircle className="w-8 h-8 text-blue-500/30" />
-          </div>
-        </Card>
+      <div className="flex flex-wrap gap-8 font-[family-name:var(--font-lora)] text-[#1e130c] mb-10 justify-center md:justify-start border-b border-dashed border-[#1e130c]/20 pb-8">
+        <div className="flex flex-col items-center">
+          <span className="text-[#7a6350] text-xs uppercase tracking-widest mb-1 font-semibold">Total de Testes</span>
+          <span className="text-3xl font-[family-name:var(--font-playfair)] font-bold text-[#1e130c]">{tests.length}</span>
+        </div>
+        <div className="w-px bg-[#1e130c]/20"></div>
+        <div className="flex flex-col items-center">
+          <span className="text-[#7a6350] text-xs uppercase tracking-widest mb-1 font-semibold">Testes Ativos</span>
+          <span className="text-3xl font-[family-name:var(--font-playfair)] font-bold text-[#1e130c] font-bold/80">{tests.filter(t => t.is_active).length}</span>
+        </div>
+        <div className="w-px bg-[#1e130c]/20"></div>
+        <div className="flex flex-col items-center">
+          <span className="text-[#7a6350] text-xs uppercase tracking-widest mb-1 font-semibold">Total de Aulas</span>
+          <span className="text-3xl font-[family-name:var(--font-playfair)] font-bold text-[#1e130c]">{lessonsCount}</span>
+        </div>
       </div>
 
       {/* Barra de busca e filtros */}
-      <Card variant="elevated" className="mb-6">
-        <div className="space-y-4">
-          <div className="flex flex-wrap gap-3">
-            <div className="relative w-44 shrink-0">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gold-400 w-5 h-5" />
+      <div className="mb-10 p-6 bg-[#faf6ee]/50 border border-[#1e130c]/10 relative">
+
+        <div className="space-y-6">
+          <div className="flex flex-wrap gap-6">
+            <div className="relative w-full md:w-48 shrink-0">
+              <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[#8b6d22] w-4 h-4" />
               <input
                 type="text"
-                placeholder="XXXX123456"
+                placeholder="Código (Ex: XXXX123)"
                 value={codeFilter}
                 onChange={(e) => setCodeFilter(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500 font-mono"
+                className="w-full pl-6 pr-0 py-2 bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:border-[color:var(--color-focus)] font-mono text-sm transition-colors"
               />
             </div>
-            <div className="relative flex-1 min-w-[180px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gold-400 w-5 h-5" />
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-0 top-1/2 -translate-y-1/2 text-[#8b6d22] w-4 h-4" />
               <input
                 type="text"
                 placeholder="Buscar por título ou descrição..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="w-full pl-6 pr-0 py-2 bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:border-[color:var(--color-focus)] font-[family-name:var(--font-lora)] text-sm transition-colors"
               />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter className="w-4 h-4 text-gold-400 flex-shrink-0" />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-6 font-[family-name:var(--font-lora)] text-sm">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-[#8b6d22] flex-shrink-0" />
               <select
                 value={filterCourse}
                 onChange={(e) => setFilterCourse(e.target.value)}
-                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] focus:outline-none focus:border-[color:var(--color-focus)] py-1 cursor-pointer"
               >
                 <option value="all">Todos os cursos</option>
                 {courses.map(course => (
                   <option key={course.id} value={course.id}>{course.title}</option>
                 ))}
               </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-[#8b6d22] flex-shrink-0" />
               <select
                 value={filterSubject}
                 onChange={(e) => setFilterSubject(e.target.value)}
-                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] focus:outline-none focus:border-[color:var(--color-focus)] py-1 cursor-pointer"
               >
                 <option value="all">Todas as disciplinas</option>
                 {subjects.map(subject => (
                   <option key={subject.id} value={subject.id}>{subject.name}</option>
                 ))}
               </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-[#8b6d22] flex-shrink-0" />
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 bg-navy-900/50 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="bg-transparent border-b border-[#1e130c]/30 text-[#1e130c] focus:outline-none focus:border-[color:var(--color-focus)] py-1 cursor-pointer"
               >
                 <option value="all">Todos os status</option>
                 <option value="active">Ativos</option>
@@ -558,188 +550,162 @@ export default function TestsManagementPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-gold-400/80 font-medium">Ordenar por:</span>
+          <div className="flex flex-wrap items-center gap-4 text-xs uppercase tracking-widest pt-4 border-t border-dashed border-[#1e130c]/20">
+            <span className="text-[#7a6350] font-bold">Ordenar por:</span>
             <button
               type="button"
               onClick={() => setTestSortMode('code')}
-              className={`px-3 py-1.5 rounded-lg border transition-colors ${
+              className={`pb-1 border-b-2 transition-all ${
                 testSortMode === 'code'
-                  ? 'border-gold-500 text-gold-100 bg-gold-500/10'
-                  : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+                  ? 'border-[#8b6d22] text-[#1e130c] font-bold'
+                  : 'border-transparent text-[#7a6350] hover:text-[#1e130c]'
               }`}
             >
-              Código da disciplina (A-Z)
+              Código
             </button>
             <button
               type="button"
               onClick={() => setTestSortMode('title')}
-              className={`px-3 py-1.5 rounded-lg border transition-colors ${
+              className={`pb-1 border-b-2 transition-all ${
                 testSortMode === 'title'
-                  ? 'border-gold-500 text-gold-100 bg-gold-500/10'
-                  : 'border-gold-500/20 text-gold-300 hover:border-gold-500/40 hover:bg-navy-800'
+                  ? 'border-[#8b6d22] text-[#1e130c] font-bold'
+                  : 'border-transparent text-[#7a6350] hover:text-[#1e130c]'
               }`}
             >
-              Título do teste (A-Z)
+              Título
             </button>
           </div>
-
         </div>
-      </Card>
+      </div>
 
       {(codeFilter || filterCourse !== 'all' || filterSubject !== 'all' || filterStatus !== 'all' || searchTerm !== '') && (
-        <p className="text-sm text-gold-300">
+        <p className="text-sm text-[#7a6350] font-[family-name:var(--font-lora)] italic mb-4">
           Mostrando {filteredTests.length} de {tests.length} testes
         </p>
       )}
 
-      <Card>
-        <div className="overflow-x-auto table-sticky">
-          <table className="w-full table-density density-compact">
-            <thead className="bg-navy-800/80 backdrop-blur-sm sticky top-0 z-10">
-              <tr className="border-b border-gold-500/20">
-                <th className="text-center py-4 px-4 text-gold-200 font-medium w-12">
-                  <button
-                    onClick={toggleSelectAllFiltered}
-                    className="text-gold-400 hover:text-gold-200 transition-colors"
-                    title={allFilteredSelected ? 'Deselecionar todos' : 'Selecionar todos'}
-                  >
-                    {allFilteredSelected && filteredTests.length > 0 ? (
-                      <CheckSquare className="w-5 h-5" />
-                    ) : (
-                      <Square className="w-5 h-5" />
-                    )}
-                  </button>
-                </th>
-                <th scope="col" className="text-left text-gold-200 font-medium">Código</th>
-                <th scope="col" className="text-left text-gold-200 font-medium">Título</th>
-                <th scope="col" className="text-left text-gold-200 font-medium">Disciplina</th>
-                <th scope="col" className="text-center text-gold-200 font-medium">Duração</th>
-                <th scope="col" className="text-center text-gold-200 font-medium">Aprovação</th>
-                <th scope="col" className="text-center text-gold-200 font-medium">Status</th>
-                <th scope="col" className="text-left text-gold-200 font-medium">Gabarito</th>
-                <th scope="col" className="text-center text-gold-200 font-medium">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedTests.length > 0 ? (
-                sortedTests.map((test) => {
-                  const subject = subjects.find(s => s.id === test.subject_id)
-                  const isSelected = selectedTests.includes(test.id)
-
-                  return (
-                    <tr key={test.id} className="border-b border-gold-500/10 hover:bg-navy-800/30">
-                      <td className="py-4 px-4 text-center">
-                        <button
-                          onClick={() => toggleTestSelection(test.id)}
-                          className="text-gold-400 hover:text-gold-200 transition-colors"
-                        >
-                          {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
-                        </button>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="text-gold-400 font-mono text-sm">{test.code || '-'}</span>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="text-gold-100 font-medium truncate max-w-[220px] md:max-w-[300px] block" title={test.title}>
-                          {test.title}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4">
-                        {subject ? (
-                          <span className="text-gold-200 truncate max-w-[200px] block" title={subject.name}>
-                            {subject.name}
-                          </span>
-                        ) : (
-                          <span className="text-gold-500">-</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="text-gold-200">{test.duration_minutes ? `${test.duration_minutes} min` : '-'}</span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="text-gold-200">{test.passing_score != null ? `${test.passing_score}%` : '-'}</span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <Chip
-                          label={test.is_active ? t('tests.active') : t('tests.inactive')}
-                          color={test.is_active ? 'green' : 'gold'}
-                        />
-                      </td>
-                      <td className="py-4 px-4">
-                        {test.answer_key_count !== undefined ? (
-                          test.answer_key_count > 0 ? (
-                            <span className="flex items-center gap-1.5 text-green-400 text-sm">
-                              <Check className="w-4 h-4" />
-                              {test.answer_key_count} questões
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1.5 text-red-400 text-sm">
-                              <X className="w-4 h-4" />
-                              Sem gabarito
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-gold-500">-</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center justify-center gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => window.open(test.google_drive_url, '_blank')}
-                            title="Ver Documento"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => viewAnswerKey(test)}
-                            title="Ver Gabarito"
-                          >
-                            <FileCheck className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => editTest(test)}
-                            title="Editar"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={async () => {
-                              if (!confirm(`Excluir o teste "${test.title}"?`)) return
-                              await deleteTest(test.id)
-                            }}
-                            title="Excluir"
-                            disabled={bulkDeleting}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
+      {/* Tabela -> Lista de Diretório Clássico */}
+      {loading ? (
+        <Spinner fullPage size="xl" />
+      ) : (
+      <div>
+        <div className="flex items-center justify-between pb-2 border-b border-[#1e130c] mb-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleSelectAllFiltered}
+              className="text-[#8b6d22] hover:text-[#1e130c] transition-colors"
+              title={allFilteredSelected ? 'Deselecionar todos' : 'Selecionar todos'}
+            >
+              {allFilteredSelected && filteredTests.length > 0 ? (
+                <CheckSquare className="w-5 h-5" />
               ) : (
-                <tr>
-                  <td colSpan={9} className="py-12 text-center">
-                    <FileCheck className="w-12 h-12 text-gold-500/30 mx-auto mb-3" />
-                    <p className="text-gold-300">
-                      {searchTerm ? 'Nenhum teste encontrado com os critérios de busca' : t('tests.noTests')}
-                    </p>
-                  </td>
-                </tr>
+                <Square className="w-5 h-5" />
               )}
-            </tbody>
-          </table>
+            </button>
+            <span className="font-[family-name:var(--font-playfair)] text-lg font-bold text-[#1e130c]">Testes</span>
+          </div>
         </div>
-      </Card>
+
+        {sortedTests.length > 0 ? (
+          <div className="space-y-0">
+            {sortedTests.map((test) => {
+              const subject = subjects.find(s => s.id === test.subject_id)
+              const isSelected = selectedTests.includes(test.id)
+
+              return (
+                <div key={test.id} className="flex flex-col md:flex-row md:items-center justify-between py-4 border-b border-dashed border-[#1e130c]/20 hover:bg-[#1e130c]/5 px-2 -mx-2 transition-colors group">
+                  <div className="flex items-start gap-4 mb-3 md:mb-0">
+                    <button
+                      onClick={() => toggleTestSelection(test.id)}
+                      className="text-[#8b6d22] hover:text-[#1e130c] transition-colors mt-1"
+                    >
+                      {isSelected ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                    </button>
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <span className="font-[family-name:var(--font-playfair)] text-lg font-bold text-[#1e130c]">{test.title}</span>
+                        <span className="text-[#8b6d22] font-mono text-xs border border-[#8b6d22]/30 px-1">{test.code || 'S/C'}</span>
+                        <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full ${test.is_active ? 'bg-[#1e130c]/5 text-[#1e130c] font-bold' : 'bg-orange-100 text-orange-700'}`}>
+                          {test.is_active ? t('tests.active') : t('tests.inactive')}
+                        </span>
+                      </div>
+                      <div className="font-[family-name:var(--font-lora)] text-sm text-[#7a6350] flex items-center gap-4 opacity-90 flex-wrap">
+                        <span><strong className="font-semibold text-[#1e130c]">Disciplina:</strong> {subject ? subject.name : '-'}</span>
+                        <span className="w-1 h-1 rounded-full bg-[#1e130c]/20"></span>
+                        <span><strong className="font-semibold text-[#1e130c]">Duração:</strong> {test.duration_minutes ? `${test.duration_minutes}m` : '-'}</span>
+                        <span className="w-1 h-1 rounded-full bg-[#1e130c]/20"></span>
+                        <span><strong className="font-semibold text-[#1e130c]">Aprovação:</strong> {test.passing_score != null ? `${test.passing_score}%` : '-'}</span>
+                        <span className="w-1 h-1 rounded-full bg-[#1e130c]/20"></span>
+                        <span>
+                          <strong className="font-semibold text-[#1e130c]">Gabarito: </strong> 
+                          {test.answer_key_count !== undefined ? (
+                            test.answer_key_count > 0 ? (
+                              <span className="text-[#1e130c] font-bold font-bold">{test.answer_key_count} questões</span>
+                            ) : (
+                              <span className="text-[#7a6350] italic font-bold">Sem gabarito</span>
+                            )
+                          ) : '-'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 md:opacity-0 md:group-hover:opacity-100 transition-opacity pl-9 md:pl-0">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => window.open(test.google_drive_url, '_blank')}
+                      title="Ver Documento"
+                      className="!bg-transparent border-[#1e130c]/20 hover:border-[#8b6d22] text-[#1e130c]"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => viewAnswerKey(test)}
+                      title="Ver Gabarito"
+                      className="!bg-transparent border-[#1e130c]/20 hover:border-[#8b6d22] text-[#1e130c]"
+                    >
+                      <FileCheck className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => editTest(test)}
+                      title="Editar"
+                      className="!bg-transparent border-[#1e130c]/20 hover:border-[#8b6d22] text-[#1e130c]"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        if (!confirm(`Excluir o teste "${test.title}"?`)) return
+                        await deleteTest(test.id)
+                      }}
+                      title="Excluir"
+                      disabled={bulkDeleting}
+                      className="!bg-transparent border-[#1e130c]/20 hover:border-red-500 text-[#7a6350] italic"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="py-16 text-center border border-dashed border-[#1e130c]/20 bg-[#faf6ee]/30">
+            <FileCheck className="w-12 h-12 text-[#8b6d22]/50 mx-auto mb-4" />
+            <p className="text-[#7a6350] font-[family-name:var(--font-lora)] italic text-lg">
+              {searchTerm ? 'Nenhum teste encontrado com os critérios de busca' : t('tests.noTests')}
+            </p>
+          </div>
+        )}
+      </div>
+      )}
 
       {/* Modal de Criação/Edição */}
       <Modal
@@ -748,254 +714,242 @@ export default function TestsManagementPage() {
         title={editingTest ? t('tests.editTest') : t('tests.newTest')}
         size="lg"
       >
+        <div className="relative font-[family-name:var(--font-lora)] text-[#1e130c]">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-xs uppercase tracking-widest font-bold text-[#7a6350] mb-2">
+                {t('tests.testTitle')} <span className="text-[#7a6350] italic">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full bg-transparent border-b border-[#1e130c]/30 py-2 focus:outline-none focus:border-[color:var(--color-focus)] transition-colors font-[family-name:var(--font-playfair)] text-xl text-[#1e130c]"
+                placeholder={t('tests.titlePlaceholder')}
+              />
+            </div>
 
-                <form onSubmit={handleSubmit}>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-gold-200 mb-2">
-                        {t('tests.testTitle')} *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full px-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
-                        placeholder={t('tests.titlePlaceholder')}
-                      />
-                    </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest font-bold text-[#7a6350] mb-2">
+                {t('tests.description')}
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+                className="w-full bg-transparent border-b border-[#1e130c]/30 py-2 focus:outline-none focus:border-[color:var(--color-focus)] transition-colors resize-y italic text-[#1e130c]"
+                placeholder={t('tests.descriptionPlaceholder')}
+              />
+            </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gold-200 mb-2">
-                        {t('tests.description')}
-                      </label>
-                      <textarea
-                        value={formData.description}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        rows={3}
-                        className="w-full px-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
-                        placeholder={t('tests.descriptionPlaceholder')}
-                      />
-                    </div>
+            <div>
+              <label className="block text-xs uppercase tracking-widest font-bold text-[#7a6350] mb-2">
+                {t('tests.googleDriveUrl')} <span className="text-[#7a6350] italic">*</span>
+              </label>
+              <div className="flex gap-4 items-end">
+                <input
+                  type="url"
+                  required
+                  value={formData.google_drive_url}
+                  onChange={(e) => setFormData({ ...formData, google_drive_url: e.target.value })}
+                  placeholder="https://docs.google.com/document/d/..."
+                  className="flex-1 bg-transparent border-b border-[#1e130c]/30 py-2 focus:outline-none focus:border-[color:var(--color-focus)] transition-colors font-mono text-sm text-[#1e130c]"
+                />
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={extractGabarito}
+                  loading={extractingGabarito}
+                  className="uppercase tracking-widest text-xs py-2"
+                >
+                  {extractingGabarito ? t('tests.extracting') : t('tests.extractAnswerKey')}
+                </Button>
+              </div>
+            </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-gold-200 mb-2">
-                        {t('tests.googleDriveUrl')} *
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="url"
-                          required
-                          value={formData.google_drive_url}
-                          onChange={(e) => setFormData({ ...formData, google_drive_url: e.target.value })}
-                          placeholder="https://docs.google.com/document/d/..."
-                          className="flex-1 px-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
-                        />
-                        <Button
-                          type="button"
-                          variant="primary"
-                          onClick={extractGabarito}
-                          loading={extractingGabarito}
-                        >
-                          {extractingGabarito ? t('tests.extracting') : t('tests.extractAnswerKey')}
-                        </Button>
+            {gabaritoData.length > 0 && (
+              <div className="p-5 bg-[#8b6d22]/5 border border-[#8b6d22]/30 relative text-[#1e130c]">
+                <div className="flex items-center justify-between mb-4 border-b border-dashed border-[#8b6d22]/30 pb-3">
+                  <div className="flex items-center gap-3">
+                    <Check className="w-5 h-5 text-[#1e130c] font-bold" />
+                    <span className="font-bold font-[family-name:var(--font-playfair)] text-lg text-[#1e130c]">
+                      {t('tests.answerKeyExtracted')}
+                    </span>
+                    <span className="text-[#7a6350] font-bold text-sm bg-white px-2 py-0.5 border border-[#8b6d22]/20">
+                      {gabaritoData.length} {t('tests.questions')}
+                    </span>
+                  </div>
+                  {gabaritoData.some(item => item.justification) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowJustifications(!showJustifications)}
+                      className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#8b6d22] hover:text-[#1e130c] transition-colors"
+                    >
+                      {showJustifications ? (
+                        <>
+                          <EyeOff className="w-4 h-4" />
+                          Ocultar Justificativas
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-4 h-4" />
+                          Ver Justificativas
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+                
+                {!showJustifications ? (
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 text-sm text-[#1e130c]">
+                    {gabaritoData.map((item, index) => (
+                      <div key={`gabarito-${index}-${item.questionNumber}`} className="flex items-center justify-center p-2 bg-white border border-[#1e130c]/10 text-[#1e130c]">
+                        <span className="text-[#7a6350] font-bold text-xs">{item.questionNumber}.</span>
+                        <span className="ml-1 font-[family-name:var(--font-playfair)] font-bold text-[#1e130c] text-lg">{item.correctAnswer}</span>
+                        {item.justification && (
+                          <MessageSquare className="w-3 h-3 text-[#1e130c] font-bold ml-1" />
+                        )}
                       </div>
-                    </div>
-
-                    {gabaritoData.length > 0 && (
-                      <div className="p-4 bg-green-900/30 border border-green-500/30 rounded-xl">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1 bg-green-500 rounded-full">
-                              <Check className="w-4 h-4 text-white" />
-                            </div>
-                            <span className="font-semibold text-green-400">
-                              {t('tests.answerKeyExtracted')}
-                            </span>
-                            <span className="text-green-300 font-medium">
-                              {gabaritoData.length} {t('tests.questions')}
-                            </span>
-                          </div>
-                          {gabaritoData.some(item => item.justification) && (
-                            <button
-                              type="button"
-                              onClick={() => setShowJustifications(!showJustifications)}
-                              className="flex items-center gap-2 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 rounded-lg border border-gold-500/30 transition-colors"
-                            >
-                              {showJustifications ? (
-                                <>
-                                  <EyeOff className="w-4 h-4 text-gold-400" />
-                                  <span className="text-sm text-gold-300">Ocultar Justificativas</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Eye className="w-4 h-4 text-gold-400" />
-                                  <span className="text-sm text-gold-300">Ver Justificativas</span>
-                                </>
-                              )}
-                            </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2 text-[#1e130c]">
+                    {gabaritoData.map((item, index) => (
+                      <div key={`gabarito-detail-${index}-${item.questionNumber}`} className="p-4 bg-white border border-[#1e130c]/10 relative text-[#1e130c]">
+                        <div className="flex items-center gap-4 mb-2 border-b border-dashed border-[#1e130c]/10 pb-2">
+                          <span className="text-[#8b6d22] font-bold uppercase tracking-widest text-xs">Questão {item.questionNumber}</span>
+                          <span className="px-3 py-1 bg-[#8b6d22]/10 text-[#1e130c] font-[family-name:var(--font-playfair)] font-bold text-xl">{item.correctAnswer}</span>
+                          {item.points && (
+                            <span className="text-sm text-[#7a6350] italic">({item.points} pontos)</span>
                           )}
                         </div>
-                        
-                        {!showJustifications ? (
-                          <div className="grid grid-cols-10 gap-2 text-sm">
-                            {gabaritoData.map((item, index) => (
-                              <div key={`gabarito-${index}-${item.questionNumber}`} className="flex items-center justify-center p-2 bg-navy-800 rounded-lg border border-gold-500/20">
-                                <span className="text-gold-300 font-medium">{item.questionNumber}.</span>
-                                <span className="ml-1 font-bold text-gold">{item.correctAnswer}</span>
-                                {item.justification && (
-                                  <MessageSquare className="w-3 h-3 text-green-400 ml-1" />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="space-y-3 max-h-96 overflow-y-auto">
-                            {gabaritoData.map((item, index) => (
-                              <div key={`gabarito-detail-${index}-${item.questionNumber}`} className="p-3 bg-navy-800 rounded-lg border border-gold-500/20">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <span className="text-gold-400 font-semibold">Questão {item.questionNumber}</span>
-                                  <span className="px-2 py-1 bg-gold-500/20 text-gold-300 rounded font-bold">{item.correctAnswer}</span>
-                                  {item.points && (
-                                    <span className="text-sm text-gold-300/70">({item.points} pontos)</span>
-                                  )}
-                                </div>
-                                {item.justification && (
-                                  <div className="mt-2 p-2 bg-navy-900/50 rounded border border-green-500/20">
-                                    <div className="flex items-start gap-2">
-                                      <MessageSquare className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                                      <p className="text-sm text-gray-300">{item.justification}</p>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            ))}
+                        {item.justification && (
+                          <div className="mt-3 text-[#1e130c] italic text-sm leading-relaxed border-l-2 border-green-500 pl-3">
+                            {item.justification}
                           </div>
                         )}
                       </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gold-200 mb-2">
-                          {t('tests.course')}
-                        </label>
-                        <select
-                          value={formData.course_id}
-                          onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
-                          className="w-full px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
-                        >
-                          <option value="">{t('tests.select')}</option>
-                          {courses.map(course => (
-                            <option key={course.id} value={course.id}>
-                              {course.title}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-gold-200 mb-2">
-                          {t('tests.subject')}
-                        </label>
-                        <select
-                          value={formData.subject_id}
-                          onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}
-                          className="w-full px-4 py-3 bg-navy-900/50 border border-gold-500/30 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
-                        >
-                          <option value="">{t('tests.select')}</option>
-                          {subjects.map(subject => (
-                            <option key={subject.id} value={subject.id}>
-                              {subject.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm font-semibold text-gold-200 mb-2">
-                          {t('tests.duration')}
-                        </label>
-                        <div className="relative">
-                          <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
-                          <input
-                            type="number"
-                            value={formData.duration_minutes || ''}
-                            onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 60 })}
-                            min="1"
-                            className="w-full pl-11 pr-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-gold-200 mb-2">
-                          {t('tests.passingScore')}
-                        </label>
-                        <div className="relative">
-                          <Target className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
-                          <input
-                            type="number"
-                            value={formData.passing_score || ''}
-                            onChange={(e) => setFormData({ ...formData, passing_score: parseInt(e.target.value) || 70 })}
-                            min="0"
-                            max="100"
-                            className="w-full pl-11 pr-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-semibold text-gold-200 mb-2">
-                          {t('tests.maxAttempts')}
-                        </label>
-                        <div className="relative">
-                          <RotateCcw className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
-                          <input
-                            type="number"
-                            value={formData.max_attempts || ''}
-                            onChange={(e) => setFormData({ ...formData, max_attempts: parseInt(e.target.value) || 3 })}
-                            min="1"
-                            className="w-full pl-11 pr-4 py-2 bg-navy-800/50 border border-gold-500/20 rounded-xl text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent transition-all"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 p-4 bg-navy-700 rounded-xl border border-gold-500/20">
-                      <input
-                        type="checkbox"
-                        id="is_active"
-                        checked={formData.is_active}
-                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                        className="w-5 h-5 text-gold-600 focus:ring-gold-500 border-2 border-gold-500/30 rounded bg-navy-900/50"
-                      />
-                      <label htmlFor="is_active" className="text-sm font-semibold text-gold-200 cursor-pointer">
-                        {t('tests.testActive')}
-                      </label>
-                    </div>
+                    ))}
                   </div>
+                )}
+              </div>
+            )}
 
-                  <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gold-500/20">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={resetForm}
-                    >
-                      {t('common.cancel')}
-                    </Button>
-                    <Button
-                      type="submit"
-                      variant="primary"
-                      loading={creating || updating}
-                      disabled={creating || updating}
-                    >
-                      {editingTest ? t('tests.updateTest') : t('tests.createTest')}
-                    </Button>
-                  </div>
-                </form>
+            <div className="grid grid-cols-2 gap-6 text-[#1e130c]">
+              <div>
+                <label className="block text-xs uppercase tracking-widest font-bold text-[#7a6350] mb-2">
+                  {t('tests.course')}
+                </label>
+                <select
+                  value={formData.course_id}
+                  onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
+                  className="w-full bg-transparent border-b border-[#1e130c]/30 py-2 focus:outline-none focus:border-[color:var(--color-focus)] transition-colors cursor-pointer text-[#1e130c]"
+                >
+                  <option value="">{t('tests.select')}</option>
+                  {courses.map(course => (
+                    <option key={course.id} value={course.id}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-widest font-bold text-[#7a6350] mb-2">
+                  {t('tests.subject')}
+                </label>
+                <select
+                  value={formData.subject_id}
+                  onChange={(e) => setFormData({ ...formData, subject_id: e.target.value })}
+                  className="w-full bg-transparent border-b border-[#1e130c]/30 py-2 focus:outline-none focus:border-[color:var(--color-focus)] transition-colors cursor-pointer text-[#1e130c]"
+                >
+                  <option value="">{t('tests.select')}</option>
+                  {subjects.map(subject => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-6 pt-2 text-[#1e130c]">
+              <div>
+                <label className="block text-xs uppercase tracking-widest font-bold text-[#7a6350] mb-2">
+                  {t('tests.duration')} (min)
+                </label>
+                <input
+                  type="number"
+                  value={formData.duration_minutes || ''}
+                  onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 60 })}
+                  min="1"
+                  className="w-full bg-transparent border-b border-[#1e130c]/30 py-2 focus:outline-none focus:border-[color:var(--color-focus)] transition-colors font-[family-name:var(--font-playfair)] text-xl text-center text-[#1e130c]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-widest font-bold text-[#7a6350] mb-2">
+                  {t('tests.passingScore')} (%)
+                </label>
+                <input
+                  type="number"
+                  value={formData.passing_score || ''}
+                  onChange={(e) => setFormData({ ...formData, passing_score: parseInt(e.target.value) || 70 })}
+                  min="0"
+                  max="100"
+                  className="w-full bg-transparent border-b border-[#1e130c]/30 py-2 focus:outline-none focus:border-[color:var(--color-focus)] transition-colors font-[family-name:var(--font-playfair)] text-xl text-center text-[#1e130c]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-widest font-bold text-[#7a6350] mb-2">
+                  {t('tests.maxAttempts')}
+                </label>
+                <input
+                  type="number"
+                  value={formData.max_attempts || ''}
+                  onChange={(e) => setFormData({ ...formData, max_attempts: parseInt(e.target.value) || 3 })}
+                  min="1"
+                  className="w-full bg-transparent border-b border-[#1e130c]/30 py-2 focus:outline-none focus:border-[color:var(--color-focus)] transition-colors font-[family-name:var(--font-playfair)] text-xl text-center text-[#1e130c]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-4 border-t border-dashed border-[#1e130c]/20">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={formData.is_active}
+                onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                className="w-5 h-5 text-[#8b6d22] border-2 border-[#1e130c]/30 focus:ring-[color:var(--color-focus)] bg-transparent cursor-pointer"
+              />
+              <label htmlFor="is_active" className="text-sm font-bold uppercase tracking-widest text-[#1e130c] cursor-pointer">
+                {t('tests.testActive')}
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-[#1e130c]/20 text-[#1e130c]">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={resetForm}
+                className="uppercase tracking-widest text-xs font-bold"
+              >
+                {t('common.cancel')}
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                loading={creating || updating}
+                disabled={creating || updating}
+                className="uppercase tracking-widest text-xs font-bold"
+              >
+                {editingTest ? t('tests.updateTest') : t('tests.createTest')}
+              </Button>
+            </div>
+          </form>
+        </div>
       </Modal>
 
       {/* Modal para visualizar gabarito com justificativas */}
@@ -1009,111 +963,107 @@ export default function TestsManagementPage() {
         title={`Gabarito: ${viewingTestTitle}`}
         size="lg"
       >
-        {viewingAnswerKey && viewingAnswerKey.length > 0 ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <FileCheck className="w-5 h-5 text-gold-400" />
-                <span className="text-gold-300 font-semibold">
-                  Total de {viewingAnswerKey.length} questões
-                </span>
+        <div className="relative font-[family-name:var(--font-lora)] text-[#1e130c]">
+          {viewingAnswerKey && viewingAnswerKey.length > 0 ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-4 border-b border-[#1e130c]/10 pb-4">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-[#8b6d22]" />
+                  <span className="text-[#1e130c] font-bold font-[family-name:var(--font-playfair)] text-xl">
+                    {viewingAnswerKey.length} questões no total
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowJustifications(!showJustifications)}
+                  className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#8b6d22] hover:text-[#1e130c] transition-colors"
+                >
+                  {showJustifications ? (
+                    <>
+                      <EyeOff className="w-4 h-4" />
+                      Ocultar Justificativas
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-4 h-4" />
+                      Mostrar Justificativas
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                onClick={() => setShowJustifications(!showJustifications)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-navy-800 hover:bg-navy-700 rounded-lg border border-gold-500/30 transition-colors"
-              >
-                {showJustifications ? (
-                  <>
-                    <EyeOff className="w-4 h-4 text-gold-400" />
-                    <span className="text-sm text-gold-300">Ocultar Justificativas</span>
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-4 h-4 text-gold-400" />
-                    <span className="text-sm text-gold-300">Mostrar Justificativas</span>
-                  </>
-                )}
-              </button>
-            </div>
-            
-            {/* Grade compacta do gabarito */}
-            {!showJustifications && (
-              <div className="grid grid-cols-10 gap-2">
-                {viewingAnswerKey.map((item, index) => (
-                  <div 
-                    key={`key-${item.question_number}-${index}`}
-                    className="flex items-center justify-center p-2 bg-navy-800 rounded-lg border border-gold-500/20"
-                  >
-                    <span className="text-gold-300 font-medium">{item.question_number}.</span>
-                    <span className="ml-1 font-bold text-gold">{item.correct_answer}</span>
-                    {item.justification && (
-                      <MessageSquare className="w-3 h-3 text-green-400 ml-1" />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {/* Visualização detalhada com justificativas */}
-            {showJustifications && (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {viewingAnswerKey.map((item, index) => (
-                  <div 
-                    key={`detail-${item.question_number}-${index}`}
-                    className="p-4 bg-navy-800 rounded-lg border border-gold-500/20"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-gold-400 font-semibold">
-                        Questão {item.question_number}
-                      </span>
-                      <span className="px-3 py-1 bg-gold-500/20 text-gold-300 rounded font-bold">
-                        {item.correct_answer}
-                      </span>
-                      {item.points && (
-                        <span className="text-sm text-gold-300/70">
-                          ({item.points} pontos)
-                        </span>
+              
+              {/* Grade compacta do gabarito */}
+              {!showJustifications && (
+                <div className="grid grid-cols-5 sm:grid-cols-10 gap-3">
+                  {viewingAnswerKey.map((item, index) => (
+                    <div 
+                      key={`key-${item.question_number}-${index}`}
+                      className="flex flex-col items-center justify-center p-3 border border-[#1e130c]/20 bg-[#faf6ee]/50 relative"
+                    >
+                      <span className="text-[#7a6350] font-bold text-xs uppercase tracking-widest mb-1">Q.{item.question_number}</span>
+                      <span className="font-bold font-[family-name:var(--font-playfair)] text-2xl text-[#1e130c]">{item.correct_answer}</span>
+                      {item.justification && (
+                        <MessageSquare className="w-3 h-3 text-[#8b6d22] absolute top-1 right-1 opacity-50" />
                       )}
                     </div>
-                    
-                    {item.justification && (
-                      <div className="mt-3 p-3 bg-navy-900/50 rounded border border-green-500/20">
-                        <div className="flex items-start gap-2">
-                          <MessageSquare className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-semibold text-green-400 mb-1">
-                              Justificativa:
-                            </p>
-                            <p className="text-sm text-gray-300">
-                              {item.justification}
-                            </p>
-                          </div>
-                        </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Visualização detalhada com justificativas */}
+              {showJustifications && (
+                <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-4 text-[#1e130c]">
+                  {viewingAnswerKey.map((item, index) => (
+                    <div 
+                      key={`detail-${item.question_number}-${index}`}
+                      className="p-5 border border-[#1e130c]/20 bg-[#faf6ee]/50 relative"
+                    >
+                      <div className="flex items-center gap-4 mb-4 border-b border-dashed border-[#1e130c]/20 pb-3">
+                        <span className="text-[#8b6d22] font-bold uppercase tracking-widest text-sm">
+                          Questão {item.question_number}
+                        </span>
+                        <span className="px-3 py-1 bg-[#8b6d22]/10 text-[#1e130c] font-bold font-[family-name:var(--font-playfair)] text-2xl border border-[#8b6d22]/20">
+                          {item.correct_answer}
+                        </span>
+                        {item.points && (
+                          <span className="text-sm text-[#7a6350] italic">
+                            ({item.points} pontos)
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      
+                      {item.justification ? (
+                        <div className="text-[#1e130c] italic text-sm leading-relaxed border-l-2 border-[#8b6d22] pl-4">
+                          {item.justification}
+                        </div>
+                      ) : (
+                        <div className="text-[#7a6350]/50 italic text-sm">Sem justificativa cadastrada.</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="flex justify-end pt-6 border-t border-[#1e130c]/20 mt-6 text-[#1e130c]">
+                <Button
+                  onClick={() => {
+                    setShowAnswerKeyModal(false)
+                    setViewingAnswerKey(null)
+                    setViewingTestTitle('')
+                  }}
+                  variant="secondary"
+                  className="uppercase tracking-widest text-xs font-bold"
+                >
+                  Fechar
+                </Button>
               </div>
-            )}
-            
-            <div className="flex justify-end pt-4 border-t border-gold-500/20">
-              <Button
-                onClick={() => {
-                  setShowAnswerKeyModal(false)
-                  setViewingAnswerKey(null)
-                  setViewingTestTitle('')
-                }}
-                variant="secondary"
-              >
-                Fechar
-              </Button>
             </div>
-          </div>
-        ) : (
-          <div className="py-8">
-            <p className="text-gold-300 text-left">Nenhum gabarito encontrado para este teste.</p>
-          </div>
-        )}
+          ) : (
+            <div className="py-16 text-center border border-dashed border-[#1e130c]/20 bg-[#faf6ee]/30">
+              <FileCheck className="w-12 h-12 text-[#8b6d22]/50 mx-auto mb-4" />
+              <p className="text-[#7a6350] font-[family-name:var(--font-lora)] italic text-lg">Nenhum gabarito encontrado para este teste.</p>
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   )

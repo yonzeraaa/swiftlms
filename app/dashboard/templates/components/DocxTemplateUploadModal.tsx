@@ -300,37 +300,37 @@ export default function DocxTemplateUploadModal({
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" padding="none">
         {/* Header */}
-        <div className="p-6 border-b border-gold-500/20 flex items-center justify-between">
+        <div className="p-6 border-b border-[#1e130c]/15 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-gold-500/20 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-gold-400" />
+            <div className="w-10 h-10 rounded-lg bg-[#8b6d22]/20 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-[#8b6d22]" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gold">
+              <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold text-[#1e130c]">
                 {editingTemplate ? 'Editar Mapeamentos' : 'Novo Template DOCX'}
               </h2>
-              <p className="text-sm text-gold-400">
+              <p className="text-sm text-[#8b6d22]">
                 {editingTemplate ? 'Configure os campos do template' : 'Upload de template de certificado'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gold-500/10 rounded-lg transition-colors"
+            className="p-2 hover:bg-[#8b6d22]/10 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gold-400" />
+            <X className="w-5 h-5 text-[#8b6d22]" />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gold-500/20 px-6">
+        <div className="border-b border-[#1e130c]/15 px-6">
           <div className="flex gap-6">
             <button
               onClick={() => setActiveTab('info')}
               className={`py-3 px-1 border-b-2 transition-colors font-medium ${
                 activeTab === 'info'
-                  ? 'border-gold-500 text-gold-300'
-                  : 'border-transparent text-gold-500 hover:text-gold-300'
+                  ? 'border-[#8b6d22] text-[#7a6350]'
+                  : 'border-transparent text-[#8b6d22] hover:text-[#1e130c]-300'
               }`}
             >
               Informações
@@ -341,8 +341,8 @@ export default function DocxTemplateUploadModal({
                 disabled={!previewData && !previewing}
                 className={`py-3 px-1 border-b-2 transition-colors font-medium ${
                   activeTab === 'preview'
-                    ? 'border-gold-500 text-gold-300'
-                    : 'border-transparent text-gold-500 hover:text-gold-300'
+                    ? 'border-[#8b6d22] text-[#7a6350]'
+                    : 'border-transparent text-[#8b6d22] hover:text-[#1e130c]-300'
                 } ${!previewData && !previewing ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 Preview
@@ -353,8 +353,8 @@ export default function DocxTemplateUploadModal({
               disabled={uploadStatus !== 'success'}
               className={`py-3 px-1 border-b-2 transition-colors font-medium flex items-center gap-2 ${
                 activeTab === 'mapping'
-                  ? 'border-gold-500 text-gold-300'
-                  : 'border-transparent text-gold-500 hover:text-gold-300'
+                  ? 'border-[#8b6d22] text-[#7a6350]'
+                  : 'border-transparent text-[#8b6d22] hover:text-[#1e130c]-300'
               } ${uploadStatus !== 'success' ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <Settings className="w-4 h-4" />
@@ -375,17 +375,17 @@ export default function DocxTemplateUploadModal({
                   onDrop={handleDrop}
                   className={`border-2 border-dashed rounded-xl p-8 transition-all ${
                     dragActive
-                      ? 'border-gold-500 bg-gold-500/10'
-                      : 'border-gold-500/30 bg-navy-900/50 hover:border-gold-500/50'
+                      ? 'border-[#8b6d22] bg-[#8b6d22]/10'
+                      : 'border-[#8b6d22]/30 bg-[#faf6ee] hover:border-[#8b6d22]/40'
                   }`}
                 >
                   <div className="text-center">
                     <Upload
                       className={`w-12 h-12 mx-auto mb-4 ${
-                        dragActive ? 'text-gold-400' : 'text-gold-500'
+                        dragActive ? 'text-[#8b6d22]' : 'text-[#8b6d22]'
                       }`}
                     />
-                    <p className="text-sm font-medium text-gold-300 mb-2">
+                    <p className="text-sm font-medium text-[#7a6350] mb-2">
                       {file
                         ? file.name
                         : 'Arraste um arquivo .docx ou clique para selecionar'}
@@ -395,7 +395,7 @@ export default function DocxTemplateUploadModal({
                       type="file"
                       accept=".docx"
                       onChange={handleFileChange}
-                      className="hidden"
+                      className="font-[family-name:var(--font-lora)] text-[#1e130c] hidden"
                     />
                     <Button
                       onClick={() => fileInputRef.current?.click()}
@@ -412,27 +412,27 @@ export default function DocxTemplateUploadModal({
               {/* Form Fields */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gold-300 mb-2">
+                  <label className="block text-sm font-medium text-[#7a6350] mb-2">
                     Nome do Template *
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-navy-900/80 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500/50 disabled:opacity-50"
+                    className="w-full px-4 py-2.5 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-[color:var(--color-focus)] disabled:opacity-50"
                     placeholder="Ex: Certificado de Conclusão Técnico"
                     disabled={uploading || !!editingTemplate}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gold-300 mb-2">
+                  <label className="block text-sm font-medium text-[#7a6350] mb-2">
                     Descrição
                   </label>
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-navy-900/80 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500/50 disabled:opacity-50 resize-none"
+                    className="w-full px-4 py-2.5 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-[color:var(--color-focus)] disabled:opacity-50 resize-none"
                     placeholder="Descrição opcional do template"
                     rows={3}
                     disabled={uploading || !!editingTemplate}
@@ -440,13 +440,13 @@ export default function DocxTemplateUploadModal({
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gold-300 mb-2">
+                  <label className="block text-sm font-medium text-[#7a6350] mb-2">
                     Tipo de Certificado
                   </label>
                   <select
                     value={certificateKind}
                     onChange={(e) => setCertificateKind(e.target.value as CertificateKind)}
-                    className="w-full px-4 py-2.5 bg-navy-900/80 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50 focus:border-gold-500/50 disabled:opacity-50"
+                    className="w-full px-4 py-2.5 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-[color:var(--color-focus)] disabled:opacity-50"
                     disabled={uploading || !!editingTemplate}
                   >
                     <option value="all">Todos os tipos</option>
@@ -458,20 +458,20 @@ export default function DocxTemplateUploadModal({
 
               {/* Status Messages */}
               {errorMessage && (
-                <div className="flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                  <p className="text-sm text-red-300">{errorMessage}</p>
+                <div className="flex items-center gap-3 p-4 bg-[#7a6350]/10/10 border border-red-500/30 rounded-lg">
+                  <AlertCircle className="w-5 h-5 text-[#7a6350] italic flex-shrink-0" />
+                  <p className="text-sm text-[#7a6350] italic">{errorMessage}</p>
                 </div>
               )}
 
               {uploadStatus === 'success' && (
-                <div className="flex items-center gap-3 p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
+                <div className="flex items-center gap-3 p-4 bg-[#1e130c]/5/10 border border-green-500/30 rounded-lg">
+                  <CheckCircle className="w-5 h-5 text-[#1e130c] font-bold flex-shrink-0" />
                   <div>
-                    <p className="text-sm text-green-300 font-medium">
+                    <p className="text-sm text-[#1e130c] font-bold font-medium">
                       Template enviado com sucesso!
                     </p>
-                    <p className="text-xs text-green-400/80 mt-1">
+                    <p className="text-xs text-[#1e130c] font-bold/80 mt-1">
                       {placeholders.length} placeholder(s) encontrado(s). Configure os mapeamentos na próxima aba.
                     </p>
                   </div>
@@ -511,28 +511,28 @@ export default function DocxTemplateUploadModal({
 
           {activeTab === 'preview' && previewData && (
             <div className="space-y-4">
-              <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg p-4">
-                <p className="text-sm font-medium text-gold-300">
+              <div className="bg-[#8b6d22]/10 border border-[#8b6d22]/30 rounded-lg p-4">
+                <p className="text-sm font-medium text-[#7a6350]">
                   {previewData.placeholders.length} placeholder(s) encontrado(s)
                 </p>
-                <p className="text-xs text-gold-400/80 mt-1">
+                <p className="text-xs text-[#8b6d22]/80 mt-1">
                   Revise os campos detectados antes de enviar o template
                 </p>
               </div>
 
               {/* Placeholders List */}
               <div className="space-y-3">
-                <h3 className="font-medium text-gold-200">Placeholders Detectados:</h3>
+                <h3 className="font-[family-name:var(--font-playfair)] font-medium text-[#1e130c]">Placeholders Detectados:</h3>
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
                   {previewData.placeholders.map((placeholder, index) => {
                     const knownField = CERTIFICATE_DOCX_FIELDS[placeholder.name as keyof typeof CERTIFICATE_DOCX_FIELDS]
 
                     return (
-                      <div key={index} className="bg-navy-900/60 border border-gold-500/15 rounded-lg p-4">
+                      <div key={index} className="bg-[#faf6ee] border border-[#8b6d22]/30 rounded-lg p-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <code className="text-sm font-mono bg-navy-800 text-gold-300 px-2 py-1 rounded border border-gold-500/20">
+                              <code className="text-sm font-mono bg-[#faf6ee] text-[#7a6350] px-2 py-1 rounded border border-[#1e130c]/15">
                                 {'{{'}{placeholder.name}{'}}'}
                               </code>
                               {placeholder.format && (
@@ -542,7 +542,7 @@ export default function DocxTemplateUploadModal({
                               )}
                             </div>
                             {knownField && (
-                              <p className="text-sm text-gold-400 mt-2">
+                              <p className="text-sm text-[#8b6d22] mt-2">
                                 {knownField.description}
                               </p>
                             )}
@@ -554,11 +554,11 @@ export default function DocxTemplateUploadModal({
                             {/* Location info */}
                             {placeholder.locations && placeholder.locations.length > 0 && (
                               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                <MapPin className="w-3.5 h-3.5 text-gold-500" />
+                                <MapPin className="w-3.5 h-3.5 text-[#8b6d22]" />
                                 {placeholder.locations.map((loc, i) => (
                                   <span
                                     key={i}
-                                    className="text-xs bg-navy-800 text-gold-400 px-2 py-0.5 rounded border border-gold-500/20"
+                                    className="text-xs bg-[#faf6ee] text-[#8b6d22] px-2 py-0.5 rounded border border-[#1e130c]/15"
                                   >
                                     {getLocationLabel(loc.location)} ({loc.count}x)
                                   </span>
@@ -569,12 +569,12 @@ export default function DocxTemplateUploadModal({
                           <div className="flex flex-col items-end gap-1">
                             <span className={`text-xs px-2 py-1 rounded-full ${
                               placeholder.required
-                                ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                                : 'bg-navy-800 text-gold-400 border border-gold-500/20'
+                                ? 'bg-[#7a6350]/10/20 text-[#7a6350] italic border border-red-500/30'
+                                : 'bg-[#faf6ee] text-[#8b6d22] border border-[#1e130c]/15'
                             }`}>
                               {placeholder.required ? 'Obrigatório' : 'Opcional'}
                             </span>
-                            <span className="text-xs text-gold-500 capitalize">
+                            <span className="text-xs text-[#8b6d22] capitalize">
                               {placeholder.type}
                             </span>
                           </div>
@@ -602,7 +602,7 @@ export default function DocxTemplateUploadModal({
                 </div>
               )}
 
-              <div className="flex justify-between pt-4 border-t border-gold-500/20">
+              <div className="flex justify-between pt-4 border-t border-[#1e130c]/15">
                 <Button
                   onClick={() => setActiveTab('info')}
                   variant="outline"
@@ -618,8 +618,8 @@ export default function DocxTemplateUploadModal({
 
           {activeTab === 'mapping' && (
             <div className="space-y-4">
-              <div className="bg-gold-500/10 border border-gold-500/30 rounded-lg p-4">
-                <p className="text-sm text-gold-300">
+              <div className="bg-[#8b6d22]/10 border border-[#8b6d22]/30 rounded-lg p-4">
+                <p className="text-sm text-[#7a6350]">
                   Configure como cada placeholder será preenchido com dados do certificado.
                 </p>
               </div>
@@ -629,26 +629,26 @@ export default function DocxTemplateUploadModal({
                 const knownField = CERTIFICATE_DOCX_FIELDS[placeholder?.name as keyof typeof CERTIFICATE_DOCX_FIELDS]
 
                 return (
-                  <div key={index} className="bg-navy-900/60 border border-gold-500/15 rounded-lg p-4">
+                  <div key={index} className="bg-[#faf6ee] border border-[#8b6d22]/30 rounded-lg p-4">
                     <div className="space-y-4">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <p className="font-medium text-gold-200">
+                          <p className="font-medium text-[#1e130c]">
                             {placeholder?.name}
                           </p>
                           {knownField && (
-                            <p className="text-sm text-gold-400">
+                            <p className="text-sm text-[#8b6d22]">
                               {knownField.description}
                             </p>
                           )}
                           {/* Location info in mapping */}
                           {placeholder?.locations && placeholder.locations.length > 0 && (
                             <div className="flex items-center gap-2 mt-2 flex-wrap">
-                              <MapPin className="w-3.5 h-3.5 text-gold-500" />
+                              <MapPin className="w-3.5 h-3.5 text-[#8b6d22]" />
                               {placeholder.locations.map((loc, i) => (
                                 <span
                                   key={i}
-                                  className="text-xs bg-navy-800 text-gold-400 px-2 py-0.5 rounded border border-gold-500/20"
+                                  className="text-xs bg-[#faf6ee] text-[#8b6d22] px-2 py-0.5 rounded border border-[#1e130c]/15"
                                 >
                                   {getLocationLabel(loc.location)} ({loc.count}x)
                                 </span>
@@ -658,8 +658,8 @@ export default function DocxTemplateUploadModal({
                         </div>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           placeholder?.required
-                            ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                            : 'bg-navy-800 text-gold-400 border border-gold-500/20'
+                            ? 'bg-[#7a6350]/10/20 text-[#7a6350] italic border border-red-500/30'
+                            : 'bg-[#faf6ee] text-[#8b6d22] border border-[#1e130c]/15'
                         }`}>
                           {placeholder?.required ? 'Obrigatório' : 'Opcional'}
                         </span>
@@ -667,7 +667,7 @@ export default function DocxTemplateUploadModal({
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-medium text-gold-400 mb-1.5">
+                          <label className="block text-xs font-medium text-[#8b6d22] mb-1.5">
                             Fonte de Dados
                           </label>
                           <select
@@ -675,7 +675,7 @@ export default function DocxTemplateUploadModal({
                             onChange={(e) =>
                               handleMappingChange(index, 'source', e.target.value)
                             }
-                            className="w-full px-3 py-2 text-sm bg-navy-900/80 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                            className="w-full px-3 py-2 text-sm bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                           >
                             <option value="">Valor fixo</option>
                             {Object.entries(CERTIFICATE_DOCX_FIELDS).map(([key, field]) => (
@@ -687,7 +687,7 @@ export default function DocxTemplateUploadModal({
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-gold-400 mb-1.5">
+                          <label className="block text-xs font-medium text-[#8b6d22] mb-1.5">
                             Transformação
                           </label>
                           <select
@@ -695,7 +695,7 @@ export default function DocxTemplateUploadModal({
                             onChange={(e) =>
                               handleMappingChange(index, 'transform', e.target.value || undefined)
                             }
-                            className="w-full px-3 py-2 text-sm bg-navy-900/80 border border-gold-500/20 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500/50 disabled:opacity-50"
+                            className="w-full px-3 py-2 text-sm bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] disabled:opacity-50"
                             disabled={!mapping.source}
                           >
                             <option value="">Nenhuma</option>
@@ -710,7 +710,7 @@ export default function DocxTemplateUploadModal({
 
                       {!mapping.source && (
                         <div>
-                          <label className="block text-xs font-medium text-gold-400 mb-1.5">
+                          <label className="block text-xs font-medium text-[#8b6d22] mb-1.5">
                             Valor Fixo
                           </label>
                           <input
@@ -719,7 +719,7 @@ export default function DocxTemplateUploadModal({
                             onChange={(e) =>
                               handleMappingChange(index, 'fixedValue', e.target.value)
                             }
-                            className="w-full px-3 py-2 text-sm bg-navy-900/80 border border-gold-500/20 rounded-lg text-gold-100 placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-gold-500/50"
+                            className="w-full px-3 py-2 text-sm bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                             placeholder="Digite o valor fixo"
                           />
                         </div>
@@ -733,7 +733,7 @@ export default function DocxTemplateUploadModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gold-500/20 flex justify-end gap-3">
+        <div className="p-6 border-t border-[#1e130c]/15 flex justify-end gap-3">
           <Button onClick={onClose} variant="outline" disabled={uploading}>
             Cancelar
           </Button>

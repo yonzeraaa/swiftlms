@@ -17,8 +17,8 @@ const toastIcons: Record<ToastType, typeof CheckCircle> = {
 }
 
 const toastStyles: Record<ToastType, string> = {
-  success: 'bg-green-500/20 border-green-500/30 text-green-400',
-  error: 'bg-red-500/20 border-red-500/30 text-red-400',
+  success: 'bg-[#1e130c]/5/20 border-green-500/30 text-[#1e130c] font-bold',
+  error: 'bg-[#7a6350]/10/20 border-red-500/30 text-[#7a6350] italic',
   warning: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
   info: 'bg-blue-500/20 border-blue-500/30 text-blue-400'
 }

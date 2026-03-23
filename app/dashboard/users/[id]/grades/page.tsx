@@ -55,9 +55,9 @@ export default function AdminStudentGradesPage({ params }: { params: Promise<{ i
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="h-12 bg-navy-800/50 rounded-lg animate-pulse w-64" />
-        <div className="h-32 bg-navy-800/50 rounded-xl animate-pulse" />
-        <div className="h-96 bg-navy-800/50 rounded-xl animate-pulse" />
+        <div className="h-12 bg-[#faf6ee] rounded-lg animate-pulse w-64" />
+        <div className="h-32 bg-[#faf6ee] rounded-xl animate-pulse" />
+        <div className="h-96 bg-[#faf6ee] rounded-xl animate-pulse" />
       </div>
     )
   }
@@ -80,30 +80,30 @@ export default function AdminStudentGradesPage({ params }: { params: Promise<{ i
           </Button>
         </Link>
         
-        <div className="flex items-center gap-2 text-gold-400">
+        <div className="flex items-center gap-2 text-[#8b6d22]">
           <span>Dashboard</span>
           <span>/</span>
           <span>Usuários</span>
           <span>/</span>
-          <span className="text-gold">{userName}</span>
+          <span className="text-[#1e130c]">{userName}</span>
           <span>/</span>
-          <span className="text-gold">Notas</span>
+          <span className="text-[#1e130c]">Notas</span>
         </div>
       </div>
 
       {/* Informações do Aluno */}
       <Card className="bg-gradient-to-r from-navy-800/50 to-navy-900/50">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gold-500/20 flex items-center justify-center">
-            <User className="w-8 h-8 text-gold" />
+          <div className="w-16 h-16 rounded-full bg-[#8b6d22]/20 flex items-center justify-center">
+            <User className="w-8 h-8 text-[#1e130c]" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gold">Histórico de Notas</h1>
-            <p className="text-gold-300">
+            <h1 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c]">Histórico de Notas</h1>
+            <p className="text-[#7a6350]">
               <span className="font-medium">Aluno:</span> {userName}
             </p>
             {userEmail && (
-              <p className="text-gold-400 text-sm">
+              <p className="text-[#8b6d22] text-sm">
                 <span className="font-medium">Email:</span> {userEmail}
               </p>
             )}
@@ -115,8 +115,8 @@ export default function AdminStudentGradesPage({ params }: { params: Promise<{ i
       <Card className="p-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gold-400" />
-            <span className="text-gold-300 text-sm font-medium">Filtrar por período:</span>
+            <Calendar className="w-4 h-4 text-[#8b6d22]" />
+            <span className="text-[#7a6350] text-sm font-medium">Filtrar por período:</span>
           </div>
           
           <div className="flex items-center gap-2">
@@ -124,14 +124,14 @@ export default function AdminStudentGradesPage({ params }: { params: Promise<{ i
               type="date"
               value={dateRange.start}
               onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-              className="px-3 py-1.5 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="px-3 py-1.5 bg-[#faf6ee] border border-[#8b6d22]/30 rounded-lg text-[#1e130c] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
             />
-            <span className="text-gold-400">até</span>
+            <span className="text-[#8b6d22]">até</span>
             <input
               type="date"
               value={dateRange.end}
               onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-              className="px-3 py-1.5 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="px-3 py-1.5 bg-[#faf6ee] border border-[#8b6d22]/30 rounded-lg text-[#1e130c] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
             />
           </div>
         </div>

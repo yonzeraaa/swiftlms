@@ -15,7 +15,6 @@ import Card from '../../../../components/Card'
 import Button from '../../../../components/Button'
 import { Database } from '@/lib/database.types'
 import ProgressRing from '../../../../components/ui/ProgressRing'
-import Breadcrumbs from '../../../../components/ui/Breadcrumbs'
 import HeatMap from '../../../../components/ui/HeatMap'
 import Spinner from '../../../../components/ui/Spinner'
 import { DashboardBento } from '../../../../components/ui/BentoGrid'
@@ -265,7 +264,7 @@ export default function CourseProgressPage() {
           {progressData.completedLessons}/{progressData.totalLessons}
         </p>
       </div>
-      <CheckCircle2 className="w-8 h-8 text-green-500/30" />
+      <CheckCircle2 className="w-8 h-8 text-[#1e130c] font-bold/30" />
     </div>,
 
     <div key="time" className="flex items-center justify-between">
@@ -306,7 +305,7 @@ export default function CourseProgressPage() {
         {progressData.recentActivity.map((activity, index) => (
           <div key={index} className="flex items-center gap-3 p-3 bg-navy-800/30 rounded-lg">
             <div className={`w-3 h-3 rounded-full ${
-              activity.type === 'completed' ? 'bg-green-400' : 'bg-blue-400'
+              activity.type === 'completed' ? 'bg-[#1e130c]/5' : 'bg-blue-400'
             }`} />
             <div className="flex-1">
               <p className="text-sm font-medium text-gold-200">{activity.lesson}</p>
@@ -333,13 +332,13 @@ export default function CourseProgressPage() {
       <div className="space-y-3">
         {progressData.milestones.map((milestone, index) => (
           <div key={index} className={`flex items-center gap-3 p-3 rounded-lg ${
-            milestone.completed ? 'bg-green-500/20' : 'bg-navy-800/30'
+            milestone.completed ? 'bg-[#1e130c]/5/20' : 'bg-navy-800/30'
           }`}>
             <CheckCircle2 className={`w-5 h-5 ${
-              milestone.completed ? 'text-green-400' : 'text-gold-300/30'
+              milestone.completed ? 'text-[#1e130c] font-bold' : 'text-gold-300/30'
             }`} />
             <span className={`text-sm ${
-              milestone.completed ? 'text-green-300' : 'text-gold-300/70'
+              milestone.completed ? 'text-[#1e130c] font-bold' : 'text-gold-300/70'
             }`}>
               {milestone.title}
             </span>
@@ -351,7 +350,6 @@ export default function CourseProgressPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button 

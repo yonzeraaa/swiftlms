@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Clock, UserPlus, BookPlus, Activity, Award, Calendar, Filter, Search } from 'lucide-react'
 import Card from '../../components/Card'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
 import Button from '../../components/Button'
 import { Database } from '@/lib/database.types'
@@ -122,14 +121,14 @@ export default function ActivitiesPage() {
         return 'bg-blue-500/20 text-blue-400'
       case 'course_created':
       case 'course_published':
-        return 'bg-green-500/20 text-green-400'
+        return 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold'
       case 'enrolled_in_course':
       case 'student_enrolled':
         return 'bg-purple-500/20 text-purple-400'
       case 'completed_course':
-        return 'bg-gold-500/20 text-gold-400'
+        return 'bg-[#8b6d22]/20 text-[#8b6d22]'
       default:
-        return 'bg-gray-500/20 text-gray-400'
+        return 'bg-gray-500/20 text-[#7a6350]'
     }
   }
 
@@ -174,11 +173,10 @@ export default function ActivitiesPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">{t('activities.title')}</h1>
-        <p className="text-gold-300 mt-1">{t('activities.subtitle')}</p>
+        <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e130c]">{t('activities.title')}</h1>
+        <p className="text-[#7a6350] mt-1">{t('activities.subtitle')}</p>
       </div>
 
       {/* Filters */}
@@ -188,20 +186,20 @@ export default function ActivitiesPage() {
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gold-400 w-5 h-5" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#8b6d22] w-5 h-5" />
                 <input
                   type="text"
                   placeholder={t('activities.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                  className="w-full pl-10 pr-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                 />
               </div>
             </div>
             <select
               value={selectedAction}
               onChange={(e) => setSelectedAction(e.target.value)}
-              className="px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+              className="px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
             >
               {actionTypes.map(type => (
                 <option key={type.value} value={type.value}>{type.label}</option>
@@ -211,21 +209,21 @@ export default function ActivitiesPage() {
 
           {/* Date Range Filter */}
           <div className="flex items-center gap-4">
-            <Calendar className="w-5 h-5 text-gold-400" />
+            <Calendar className="w-5 h-5 text-[#8b6d22]" />
             <div className="flex items-center gap-2 flex-1">
-              <label className="text-gold-300">{t('reports.dateRange')}:</label>
+              <label className="text-[#7a6350]">{t('reports.dateRange')}:</label>
               <input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className="px-3 py-1 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="px-3 py-1 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
               />
-              <span className="text-gold-300">{t('reports.to')}</span>
+              <span className="text-[#7a6350]">{t('reports.to')}</span>
               <input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className="px-3 py-1 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="px-3 py-1 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
               />
             </div>
           </div>
@@ -237,21 +235,21 @@ export default function ActivitiesPage() {
         <div className="space-y-4">
           {filteredActivities.length > 0 ? (
             filteredActivities.map((activity) => (
-              <div key={activity.id} className="flex items-start gap-3 pb-4 border-b border-gold-500/20 last:border-0">
+              <div key={activity.id} className="flex items-start gap-3 pb-4 border-b border-[#1e130c]/15 last:border-0">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getActionColor(activity.action)}`}>
                   {getActionIcon(activity.action)}
                 </div>
                 <div className="flex-1">
-                  <p className="text-gold-200">
-                    <span className="font-semibold text-gold">
+                  <p className="text-[#1e130c]">
+                    <span className="font-semibold text-[#1e130c]">
                       {activity.user?.full_name || activity.user?.email || 'Unknown User'}
                     </span>{' '}
                     {getActionText(activity.action)}
                   </p>
                   {activity.entity_name && (
-                    <p className="text-gold-400 text-sm mt-1">{activity.entity_name}</p>
+                    <p className="text-[#8b6d22] text-sm mt-1">{activity.entity_name}</p>
                   )}
-                  <p className="text-gold-500/60 text-xs mt-2 flex items-center gap-1">
+                  <p className="text-[#8b6d22]/50 text-xs mt-2 flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {activity.created_at ? formatDate(activity.created_at) : '-'}
                   </p>
@@ -260,7 +258,7 @@ export default function ActivitiesPage() {
             ))
           ) : (
             <div className="text-center py-8">
-              <p className="text-gold-300">{t('activities.noActivities')}</p>
+              <p className="text-[#7a6350]">{t('activities.noActivities')}</p>
             </div>
           )}
         </div>
@@ -270,32 +268,32 @@ export default function ActivitiesPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         <Card>
           <div className="text-center">
-            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">{filteredActivities.length}</p>
-            <p className="text-gold-300 mt-1">{t('activities.totalActivities')}</p>
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e130c]">{filteredActivities.length}</p>
+            <p className="text-[#7a6350] mt-1">{t('activities.totalActivities')}</p>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e130c]">
               {filteredActivities.filter(a => a.action === 'user_created').length}
             </p>
-            <p className="text-gold-300 mt-1">{t('activities.newUsers')}</p>
+            <p className="text-[#7a6350] mt-1">{t('activities.newUsers')}</p>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e130c]">
               {filteredActivities.filter(a => a.action === 'enrolled_in_course' || a.action === 'student_enrolled').length}
             </p>
-            <p className="text-gold-300 mt-1">{t('activities.enrollments')}</p>
+            <p className="text-[#7a6350] mt-1">{t('activities.enrollments')}</p>
           </div>
         </Card>
         <Card>
           <div className="text-center">
-            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold">
+            <p className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e130c]">
               {filteredActivities.filter(a => a.action === 'completed_course').length}
             </p>
-            <p className="text-gold-300 mt-1">{t('activities.completions')}</p>
+            <p className="text-[#7a6350] mt-1">{t('activities.completions')}</p>
           </div>
         </Card>
       </div>

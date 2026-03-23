@@ -3,8 +3,10 @@
 import { Fragment } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronRight, Home } from 'lucide-react'
-import { motion } from 'framer-motion'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
 
 interface BreadcrumbItem {
   label: string
@@ -14,46 +16,40 @@ interface BreadcrumbItem {
 
 interface BreadcrumbsProps {
   items?: BreadcrumbItem[]
-  separator?: React.ReactNode
   showHome?: boolean
   maxItems?: number
   className?: string
+  // legacy props
+  separator?: React.ReactNode
 }
 
 export default function Breadcrumbs({
   items,
-  separator = <ChevronRight className="w-4 h-4 text-gold-600" />,
   showHome = true,
   maxItems = 5,
   className = '',
 }: BreadcrumbsProps) {
   const pathname = usePathname()
 
-  // Generate breadcrumbs from pathname if items not provided
   const generateBreadcrumbs = (): BreadcrumbItem[] => {
     const paths = pathname.split('/').filter(Boolean)
     const breadcrumbs: BreadcrumbItem[] = []
 
-    // Add home if enabled
     if (showHome) {
       breadcrumbs.push({
         label: 'Início',
         href: paths[0] === 'dashboard' ? '/dashboard' : '/student-dashboard',
-        icon: <Home className="w-4 h-4" />,
       })
     }
 
-    // Build breadcrumb items from path
     let currentPath = ''
     paths.forEach((path, index) => {
       currentPath += `/${path}`
-      
-      // Skip the first segment if it's dashboard/student-dashboard and home is shown
+
       if (showHome && index === 0 && (path === 'dashboard' || path === 'student-dashboard')) {
         return
       }
 
-      // Format label
       const label = path
         .split('-')
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -68,57 +64,59 @@ export default function Breadcrumbs({
     return breadcrumbs
   }
 
-  const breadcrumbItems = items || generateBreadcrumbs()
+  const allItems = items || generateBreadcrumbs()
 
-  // Handle max items with ellipsis
-  const displayItems = () => {
-    if (breadcrumbItems.length <= maxItems) {
-      return breadcrumbItems
-    }
-
-    const firstItem = breadcrumbItems[0]
-    const lastItems = breadcrumbItems.slice(-(maxItems - 2))
-    
-    return [
-      firstItem,
-      { label: '...', href: undefined },
-      ...lastItems,
-    ]
-  }
-
-  const itemsToDisplay = displayItems()
+  const displayItems =
+    allItems.length <= maxItems
+      ? allItems
+      : [allItems[0], { label: '…' }, ...allItems.slice(-(maxItems - 2))]
 
   return (
-    <nav aria-label="Breadcrumb" className={`flex items-center space-x-2 ${className}`}>
-      {itemsToDisplay.map((item, index) => (
+    <nav aria-label="Breadcrumb" className={className} style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+      {displayItems.map((item, index) => (
         <Fragment key={index}>
           {index > 0 && (
-            <span className="text-gold-600">
-              {separator}
+            <span
+              aria-hidden="true"
+              style={{
+                fontFamily: 'var(--font-lora, serif)',
+                fontSize: '0.875rem',
+                color: MUTED,
+                opacity: 0.6,
+              }}
+            >
+              ·
             </span>
           )}
-          
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="flex items-center"
-          >
-            {item.href ? (
-              <Link
-                href={item.href}
-                className="flex items-center gap-1.5 text-sm font-medium text-gold-400 hover:text-gold-200 transition-colors"
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </Link>
-            ) : (
-              <span className="flex items-center gap-1.5 text-sm font-medium text-gold-100" aria-current="page">
-                {item.icon}
-                <span>{item.label}</span>
-              </span>
-            )}
-          </motion.div>
+
+          {item.href ? (
+            <Link
+              href={item.href}
+              style={{
+                fontFamily: 'var(--font-lora, serif)',
+                fontSize: '0.875rem',
+                color: MUTED,
+                textDecoration: 'none',
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = ACCENT }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = MUTED }}
+            >
+              {item.label}
+            </Link>
+          ) : (
+            <span
+              aria-current="page"
+              style={{
+                fontFamily: 'var(--font-lora, serif)',
+                fontSize: '0.875rem',
+                color: INK,
+                fontWeight: 500,
+              }}
+            >
+              {item.label}
+            </span>
+          )}
         </Fragment>
       ))}
     </nav>

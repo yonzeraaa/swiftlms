@@ -7,7 +7,6 @@ import Button from '../../components/Button'
 import Modal from '../../components/Modal'
 import MetricCard from '../../components/reports/MetricCard'
 import Spinner from '../../components/ui/Spinner'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import DataTable, { Column } from '../../components/reports/DataTable'
 import StatusBadge from '../../components/reports/StatusBadge'
 import SkeletonLoader from '../../components/reports/SkeletonLoader'
@@ -1655,8 +1654,8 @@ export default function ReportsPage() {
       description: 'Acompanhe o acesso dos alunos: frequência, tempo de estudo e engajamento',
       type: 'access',
       icon: Activity,
-      color: 'text-green-400',
-      bgColor: 'bg-green-500/10'
+      color: 'text-[#1e130c] font-bold',
+      bgColor: 'bg-[#1e130c]/5/10'
     },
     {
       title: 'Relatório de Usuários (IPETEC/UCP)',
@@ -1682,21 +1681,21 @@ export default function ReportsPage() {
         {/* Header Skeleton */}
         <div className="flex justify-between items-start">
           <div>
-            <div className="h-9 w-48 bg-gold-500/20 rounded-lg animate-pulse mb-2"></div>
-            <div className="h-5 w-64 bg-gold-500/10 rounded animate-pulse"></div>
+            <div className="h-9 w-48 bg-[#8b6d22]/20 rounded-lg animate-pulse mb-2"></div>
+            <div className="h-5 w-64 bg-[#8b6d22]/10 rounded animate-pulse"></div>
           </div>
           <SkeletonLoader type="button" className="w-48" />
         </div>
 
         {/* Date Filter Skeleton */}
-        <div className="p-6 bg-navy-900/30 border border-gold-500/10 rounded-xl">
+        <div className="p-6 bg-[#faf6ee] border border-[#1e130c]/15 rounded-xl">
           <div className="flex items-center gap-4">
-            <div className="w-5 h-5 bg-gold-500/20 rounded animate-pulse"></div>
+            <div className="w-5 h-5 bg-[#8b6d22]/20 rounded animate-pulse"></div>
             <div className="flex items-center gap-2 flex-1">
-              <div className="h-5 w-24 bg-gold-500/10 rounded animate-pulse"></div>
-              <div className="h-9 w-32 bg-gold-500/20 rounded-lg animate-pulse"></div>
-              <div className="h-5 w-8 bg-gold-500/10 rounded animate-pulse"></div>
-              <div className="h-9 w-32 bg-gold-500/20 rounded-lg animate-pulse"></div>
+              <div className="h-5 w-24 bg-[#8b6d22]/10 rounded animate-pulse"></div>
+              <div className="h-9 w-32 bg-[#8b6d22]/20 rounded-lg animate-pulse"></div>
+              <div className="h-5 w-8 bg-[#8b6d22]/10 rounded animate-pulse"></div>
+              <div className="h-9 w-32 bg-[#8b6d22]/20 rounded-lg animate-pulse"></div>
             </div>
           </div>
         </div>
@@ -1707,10 +1706,10 @@ export default function ReportsPage() {
         </div>
 
         {/* Reports Cards Skeleton */}
-        <div className="p-6 bg-navy-900/30 border border-gold-500/10 rounded-xl">
+        <div className="p-6 bg-[#faf6ee] border border-[#1e130c]/15 rounded-xl">
           <div className="mb-6">
-            <div className="h-6 w-48 bg-gold-500/20 rounded animate-pulse mb-2"></div>
-            <div className="h-4 w-64 bg-gold-500/10 rounded animate-pulse"></div>
+            <div className="h-6 w-48 bg-[#8b6d22]/20 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-64 bg-[#8b6d22]/10 rounded animate-pulse"></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <SkeletonLoader type="card" count={3} />
@@ -1728,15 +1727,14 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-            <BarChart3 className="w-8 h-8 text-gold-400" />
+          <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e130c] flex items-center gap-2">
+            <BarChart3 className="w-8 h-8 text-[#8b6d22]" />
             {t('reports.title')}
           </h1>
-          <p className="text-gold-300 mt-1">{t('reports.subtitle')}</p>
+          <p className="text-[#7a6350] mt-1">{t('reports.subtitle')}</p>
         </div>
         <div className="flex flex-col gap-2 items-end">
           <div className="flex gap-2 items-center">
@@ -1759,17 +1757,17 @@ export default function ReportsPage() {
           </div>
 
           {showAdvancedOptions && (
-            <div className="bg-navy-800 border border-navy-600 rounded-lg p-4 space-y-2">
-              <p className="text-gold-300 text-sm mb-2">
+            <div className="bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg p-4 space-y-2">
+              <p className="text-[#7a6350] text-sm mb-2">
                 ℹ️ Por padrão, o sistema usa automaticamente o template ativo mais recente para cada tipo de relatório.
                 Use esta opção apenas se quiser forçar um template específico.
               </p>
               <div className="flex gap-2 items-center">
-                <label className="text-gold-100 text-sm font-medium">Template Excel:</label>
+                <label className="text-[#1e130c] text-sm font-medium">Template Excel:</label>
                 <select
                   value={selectedTemplate || ''}
                   onChange={(e) => setSelectedTemplate(e.target.value || null)}
-                  className="px-4 py-2 bg-navy-900 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 flex-1"
+                  className="px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] flex-1"
                   title="Deixe em 'Automático' para usar o template ativo da categoria, ou selecione um template específico"
                 >
                   <option value="">🔄 Automático (usa template ativo)</option>
@@ -1811,24 +1809,24 @@ export default function ReportsPage() {
       <Card>
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-4 flex-wrap">
-            <Filter className="w-5 h-5 text-gold-400" />
+            <Filter className="w-5 h-5 text-[#8b6d22]" />
             <div className="flex items-center gap-2 flex-1 flex-wrap">
-              <label className="text-gold-300">{t('reports.dateRange')}:</label>
+              <label className="text-[#7a6350]">{t('reports.dateRange')}:</label>
               <input
                 type="date"
                 value={dateRange.start}
                 onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                className={`px-3 py-1 bg-navy-900/50 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
-                  dateError ? 'border-red-500 focus:ring-red-500' : 'border-navy-600 focus:ring-gold-500'
+                className={`px-3 py-1 bg-[#faf6ee] border rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 ${
+                  dateError ? 'border-red-500 focus:ring-red-500' : 'border-[#1e130c]/15 focus:ring-[color:var(--color-focus)]'
                 }`}
               />
-              <span className="text-gold-300">{t('reports.to')}</span>
+              <span className="text-[#7a6350]">{t('reports.to')}</span>
               <input
                 type="date"
                 value={dateRange.end}
                 onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                className={`px-3 py-1 bg-navy-900/50 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
-                  dateError ? 'border-red-500 focus:ring-red-500' : 'border-navy-600 focus:ring-gold-500'
+                className={`px-3 py-1 bg-[#faf6ee] border rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 ${
+                  dateError ? 'border-red-500 focus:ring-red-500' : 'border-[#1e130c]/15 focus:ring-[color:var(--color-focus)]'
                 }`}
               />
             </div>
@@ -1868,7 +1866,7 @@ export default function ReportsPage() {
             </div>
           </div>
           {dateError && (
-            <div className="flex items-center gap-2 text-red-400 text-sm">
+            <div className="flex items-center gap-2 text-[#7a6350] italic text-sm">
               <span>⚠️</span>
               <span>{dateError}</span>
             </div>
@@ -1939,10 +1937,10 @@ export default function ReportsPage() {
             return (
               <div 
                 key={index} 
-                className="group relative border border-gold-500/20 rounded-xl overflow-hidden hover:border-gold-500/40 transition-all duration-300 hover:shadow-lg hover:shadow-gold-500/10"
+                className="group relative border border-[#1e130c]/15 rounded-xl overflow-hidden hover:border-[#8b6d22]/40 transition-all duration-300 hover:shadow-lg hover:shadow-gold-500/10"
               >
                 {/* Background Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-gold-500/5 via-transparent to-navy-800/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#8b6d22]/5 via-transparent to-navy-800/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 
                 {/* Content */}
                 <div className="relative p-6">
@@ -1962,10 +1960,10 @@ export default function ReportsPage() {
                   </div>
                   
                   {/* Title and Description */}
-                  <h4 className="font-bold text-lg text-gold-100 mb-2 group-hover:text-gold transition-colors">
+                  <h4 className="font-bold text-lg text-[#1e130c] mb-2 group-hover:text-[#1e130c] transition-colors">
                     {report.title}
                   </h4>
-                  <p className="text-gold-400 text-sm leading-relaxed mb-6 min-h-[3rem]">
+                  <p className="text-[#8b6d22] text-sm leading-relaxed mb-6 min-h-[3rem]">
                     {report.description}
                   </p>
                   
@@ -1989,18 +1987,18 @@ export default function ReportsPage() {
                   </Button>
                   
                   {/* Formats Available */}
-                  <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-gold-500/10">
-                    <div className="flex items-center gap-1 text-xs text-gold-500">
+                  <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-[#1e130c]/15">
+                    <div className="flex items-center gap-1 text-xs text-[#8b6d22]">
                       <FileSpreadsheet className="w-3 h-3" />
                       <span>Excel</span>
                     </div>
-                    <span className="text-gold-700">•</span>
-                    <div className="flex items-center gap-1 text-xs text-gold-500">
+                    <span className="text-[#1e130c]-700">•</span>
+                    <div className="flex items-center gap-1 text-xs text-[#8b6d22]">
                       <FileText className="w-3 h-3" />
                       <span>CSV</span>
                     </div>
-                    <span className="text-gold-700">•</span>
-                    <div className="flex items-center gap-1 text-xs text-gold-500">
+                    <span className="text-[#1e130c]-700">•</span>
+                    <div className="flex items-center gap-1 text-xs text-[#8b6d22]">
                       <Table className="w-3 h-3" />
                       <span>Dinâmico</span>
                     </div>
@@ -2034,7 +2032,7 @@ export default function ReportsPage() {
                       ${value === 1 ? 'bg-yellow-500/20 text-yellow-400' : 
                         value === 2 ? 'bg-gray-300/20 text-gray-300' :
                         value === 3 ? 'bg-orange-500/20 text-orange-400' :
-                        'bg-navy-700/50 text-gold-400'}
+                        'bg-[#faf6ee] text-[#8b6d22]'}
                     `}>
                       {value}º
                     </span>
@@ -2046,8 +2044,8 @@ export default function ReportsPage() {
                 header: 'Curso',
                 format: (value) => (
                   <div className="flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-gold-500/50" />
-                    <span className="font-medium text-gold-100">{value}</span>
+                    <BookOpen className="w-4 h-4 text-[#8b6d22]/50" />
+                    <span className="font-medium text-[#1e130c]">{value}</span>
                   </div>
                 )
               },
@@ -2058,8 +2056,8 @@ export default function ReportsPage() {
                 sortable: true,
                 format: (value) => (
                   <div className="flex items-center justify-end gap-2">
-                    <Users className="w-4 h-4 text-gold-500/30" />
-                    <span className="text-gold-200 font-semibold">
+                    <Users className="w-4 h-4 text-[#8b6d22]/50" />
+                    <span className="text-[#1e130c] font-semibold">
                       {formatCompactNumber(value)}
                     </span>
                   </div>
@@ -2101,7 +2099,7 @@ export default function ReportsPage() {
                 sortable: true,
                 align: 'center',
                 format: (value) => (
-                  <span className="px-3 py-1 bg-gold-500/20 text-gold-200 rounded-full text-sm font-medium">
+                  <span className="px-3 py-1 bg-[#8b6d22]/20 text-[#1e130c] rounded-full text-sm font-medium">
                     {value}
                   </span>
                 )
@@ -2114,10 +2112,10 @@ export default function ReportsPage() {
                   const percentage = Math.round((row.count / (reportData?.totalCourses || 1)) * 100)
                   return (
                     <div className="flex items-center justify-end gap-2">
-                      <span className="text-gold-300 font-medium">{percentage}%</span>
-                      <div className="w-24 bg-navy-900/50 rounded-full h-2">
+                      <span className="text-[#7a6350] font-medium">{percentage}%</span>
+                      <div className="w-24 bg-[#faf6ee] rounded-full h-2">
                         <div 
-                          className="bg-gradient-to-r from-gold-500 to-gold-600 h-2 rounded-full transition-all duration-500"
+                          className="bg-gradient-to-r from-[#8b6d22] to-[#8b6d22] h-2 rounded-full transition-all duration-500"
                           style={{ width: `${percentage}%` }}
                         />
                       </div>
@@ -2156,7 +2154,7 @@ export default function ReportsPage() {
         <div className="space-y-4">
           {modalStep === 'student' ? (
             <>
-              <p className="text-sm text-gold-300/70">
+              <p className="text-sm text-[#7a6350]/70">
                 Selecione um aluno para gerar o histórico acadêmico
               </p>
 
@@ -2167,7 +2165,7 @@ export default function ReportsPage() {
                   placeholder="Buscar aluno por nome ou email..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-3 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all"
+                  className="w-full px-4 py-3 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all"
                 />
               </div>
 
@@ -2187,23 +2185,23 @@ export default function ReportsPage() {
                       onClick={() => setSelectedStudent(student)}
                       className={`w-full p-4 rounded-lg border text-left transition-all ${
                         selectedStudent?.id === student.id
-                          ? 'bg-gold-500/10 border-gold-500/50'
-                          : 'bg-navy-800/50 border-navy-600 hover:bg-navy-800 hover:border-gold-500/30'
+                          ? 'bg-[#8b6d22]/10 border-[#8b6d22]/30'
+                          : 'bg-[#faf6ee] border-[#1e130c]/15 hover:bg-[#1e130c]/5 hover:border-[#8b6d22]/40'
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gold-100">
+                          <p className="text-sm font-medium text-[#1e130c]">
                             {student.full_name || 'Usuário desconhecido'}
                           </p>
-                          <p className="text-xs text-gold-300/70 mt-1">
+                          <p className="text-xs text-[#7a6350]/70 mt-1">
                             {student.email}
                           </p>
                         </div>
                         {selectedStudent?.id === student.id && (
                           <div className="ml-3 flex-shrink-0">
-                            <div className="w-5 h-5 rounded-full bg-gold-500/20 border-2 border-gold-500 flex items-center justify-center">
-                              <div className="w-2 h-2 rounded-full bg-gold-500"></div>
+                            <div className="w-5 h-5 rounded-full bg-[#8b6d22]/20 border-2 border-[#8b6d22] flex items-center justify-center">
+                              <div className="w-2 h-2 rounded-full bg-[#8b6d22]"></div>
                             </div>
                           </div>
                         )}
@@ -2218,14 +2216,14 @@ export default function ReportsPage() {
                       .includes(searchQuery.toLowerCase()) ||
                     student.email?.toLowerCase().includes(searchQuery.toLowerCase())
                 ).length === 0 && (
-                  <p className="text-center text-sm text-gold-300/50 py-8">
+                  <p className="text-center text-sm text-[#7a6350]/70 py-8">
                     Nenhum aluno encontrado
                   </p>
                 )}
               </div>
 
               {/* Botões */}
-              <div className="flex gap-3 pt-4 border-t border-navy-600">
+              <div className="flex gap-3 pt-4 border-t border-[#1e130c]/15">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -2255,14 +2253,14 @@ export default function ReportsPage() {
             </>
           ) : (
             <>
-              <p className="text-sm text-gold-300/70">
-                Selecione o curso para gerar o relatório de <span className="font-medium text-gold-100">{selectedStudent?.full_name}</span>
+              <p className="text-sm text-[#7a6350]/70">
+                Selecione o curso para gerar o relatório de <span className="font-medium text-[#1e130c]">{selectedStudent?.full_name}</span>
               </p>
 
               {/* Lista de Cursos */}
               <div className="max-h-96 overflow-y-auto space-y-2">
                 {studentCourses.length === 0 ? (
-                  <p className="text-center text-sm text-gold-300/50 py-8">
+                  <p className="text-center text-sm text-[#7a6350]/70 py-8">
                     Este aluno não possui matrículas ativas
                   </p>
                 ) : (
@@ -2272,20 +2270,20 @@ export default function ReportsPage() {
                       onClick={() => setSelectedCourse(course.course_id)}
                       className={`w-full p-4 rounded-lg border text-left transition-all ${
                         selectedCourse === course.course_id
-                          ? 'bg-gold-500/10 border-gold-500/50'
-                          : 'bg-navy-800/50 border-navy-600 hover:bg-navy-800 hover:border-gold-500/30'
+                          ? 'bg-[#8b6d22]/10 border-[#8b6d22]/30'
+                          : 'bg-[#faf6ee] border-[#1e130c]/15 hover:bg-[#1e130c]/5 hover:border-[#8b6d22]/40'
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gold-100">
+                          <p className="text-sm font-medium text-[#1e130c]">
                             {course.course_title}
                           </p>
                         </div>
                         {selectedCourse === course.course_id && (
                           <div className="ml-3 flex-shrink-0">
-                            <div className="w-5 h-5 rounded-full bg-gold-500/20 border-2 border-gold-500 flex items-center justify-center">
-                              <div className="w-2 h-2 rounded-full bg-gold-500"></div>
+                            <div className="w-5 h-5 rounded-full bg-[#8b6d22]/20 border-2 border-[#8b6d22] flex items-center justify-center">
+                              <div className="w-2 h-2 rounded-full bg-[#8b6d22]"></div>
                             </div>
                           </div>
                         )}
@@ -2296,7 +2294,7 @@ export default function ReportsPage() {
               </div>
 
               {/* Botões */}
-              <div className="flex gap-3 pt-4 border-t border-navy-600">
+              <div className="flex gap-3 pt-4 border-t border-[#1e130c]/15">
                 <Button
                   variant="outline"
                   onClick={() => {

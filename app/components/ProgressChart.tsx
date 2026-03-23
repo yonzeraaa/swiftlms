@@ -37,7 +37,7 @@ export default function ProgressChart({
         return {
           bg: 'stroke-green-900/30',
           progress: 'stroke-green-500',
-          text: 'text-green-400'
+          text: 'text-[#1e130c] font-bold'
         }
       case 'blue':
         return {

@@ -26,9 +26,9 @@ export default function FieldSelector({
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value || undefined)}
-        className="w-full px-3 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 transition-all cursor-pointer"
+        className="w-full px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all cursor-pointer"
       >
-        <option value="" className="bg-navy-800 text-gold-300">
+        <option value="" className="bg-[#faf6ee] text-[#7a6350]">
           Não mapear
         </option>
         {fields.map((field: FieldDefinition) => {
@@ -38,7 +38,7 @@ export default function FieldSelector({
             <option
               key={field.key}
               value={field.key}
-              className="bg-navy-800 text-gold-100"
+              className="bg-[#faf6ee] text-[#1e130c]"
             >
               {field.label}
               {field.required && ' ⚠️'}
@@ -48,14 +48,14 @@ export default function FieldSelector({
         })}
       </select>
       {value && fields.find(f => f.key === value)?.description && (
-        <p className="text-xs text-gold-300/70 mt-1">
+        <p className="text-xs text-[#7a6350]/70 mt-1">
           {fields.find(f => f.key === value)?.description}
         </p>
       )}
       {value && fields.find(f => f.key === value)?.required && (
         <div className="flex items-center gap-1 mt-1">
-          <AlertCircle className="h-3 w-3 text-gold-400" />
-          <span className="text-xs text-gold-400">Campo obrigatório</span>
+          <AlertCircle className="h-3 w-3 text-[#8b6d22]" />
+          <span className="text-xs text-[#8b6d22]">Campo obrigatório</span>
         </div>
       )}
     </div>

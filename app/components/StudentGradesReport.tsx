@@ -679,14 +679,14 @@ export default function StudentGradesReport({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gold-400 text-sm">Média Final</p>
-              <p className={`text-3xl font-bold ${gradeMetrics.finalAverage >= 70 ? 'text-gold' : 'text-red-500'}`}>
+              <p className={`text-3xl font-bold ${gradeMetrics.finalAverage >= 70 ? 'text-gold' : 'text-[#7a6350] italic'}`}>
                 {gradeMetrics.finalAverage.toFixed(2)}
               </p>
               <p className="text-xs text-gold-400 mt-1">
                 Pesos: Testes {gradeMetrics.testsWeight.toFixed(2)} · TCC {gradeMetrics.tccWeight.toFixed(2)}
               </p>
             </div>
-            <TrendingUp className={`w-8 h-8 ${gradeMetrics.finalAverage >= 70 ? 'text-gold-500' : 'text-red-500'}`} />
+            <TrendingUp className={`w-8 h-8 ${gradeMetrics.finalAverage >= 70 ? 'text-gold-500' : 'text-[#7a6350] italic'}`} />
           </div>
         </Card>
 
@@ -778,20 +778,20 @@ export default function StudentGradesReport({
               </div>
               <div className="text-right">
                 <p className="text-xs uppercase text-gold-400">Pré-visualização média final</p>
-                <p className={`text-2xl font-bold ${gradeMetrics.finalAverage >= 70 ? 'text-gold' : 'text-red-400'}`}>
+                <p className={`text-2xl font-bold ${gradeMetrics.finalAverage >= 70 ? 'text-gold' : 'text-[#7a6350] italic'}`}>
                   {gradeMetrics.finalAverage.toFixed(2)}
                 </p>
               </div>
             </div>
 
           {overrideMessage && (
-            <div className="mb-4 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-300 text-sm">
+            <div className="mb-4 px-3 py-2 rounded-lg bg-[#1e130c]/5/10 border border-green-500/20 text-[#1e130c] font-bold text-sm">
               {overrideMessage}
             </div>
           )}
 
           {overrideError && (
-            <div className="mb-4 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+            <div className="mb-4 px-3 py-2 rounded-lg bg-[#7a6350]/10/10 border border-red-500/20 text-[#7a6350] italic text-sm">
               {overrideError}
             </div>
           )}
@@ -808,11 +808,11 @@ export default function StudentGradesReport({
                   className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
                     validationErrors.testsAverage
                       ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gold-500/30 focus:ring-gold-500'
+                      : 'border-gold-500/30 focus:ring-[color:var(--color-focus)]'
                   }`}
                 />
                 {validationErrors.testsAverage && (
-                  <p className="text-xs text-red-400 mt-1">{validationErrors.testsAverage}</p>
+                  <p className="text-xs text-[#7a6350] italic mt-1">{validationErrors.testsAverage}</p>
                 )}
                 {!validationErrors.testsAverage && (
                   <p className="text-xs text-gold-400 mt-1">
@@ -829,11 +829,11 @@ export default function StudentGradesReport({
                   className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
                     validationErrors.testsWeight
                       ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gold-500/30 focus:ring-gold-500'
+                      : 'border-gold-500/30 focus:ring-[color:var(--color-focus)]'
                   }`}
                 />
                 {validationErrors.testsWeight && (
-                  <p className="text-xs text-red-400 mt-1">{validationErrors.testsWeight}</p>
+                  <p className="text-xs text-[#7a6350] italic mt-1">{validationErrors.testsWeight}</p>
                 )}
                 {!validationErrors.testsWeight && (
                   <p className="text-xs text-gold-400 mt-1">
@@ -854,11 +854,11 @@ export default function StudentGradesReport({
                   className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
                     validationErrors.tccGrade
                       ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gold-500/30 focus:ring-gold-500'
+                      : 'border-gold-500/30 focus:ring-[color:var(--color-focus)]'
                   }`}
                 />
                 {validationErrors.tccGrade && (
-                  <p className="text-xs text-red-400 mt-1">{validationErrors.tccGrade}</p>
+                  <p className="text-xs text-[#7a6350] italic mt-1">{validationErrors.tccGrade}</p>
                 )}
                 {!validationErrors.tccGrade && (
                   <p className="text-xs text-gold-400 mt-1">
@@ -875,11 +875,11 @@ export default function StudentGradesReport({
                   className={`w-full px-3 py-2 bg-navy-900/60 border rounded-lg text-gold-100 focus:outline-none focus:ring-2 ${
                     validationErrors.tccWeight
                       ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gold-500/30 focus:ring-gold-500'
+                      : 'border-gold-500/30 focus:ring-[color:var(--color-focus)]'
                   }`}
                 />
                 {validationErrors.tccWeight && (
-                  <p className="text-xs text-red-400 mt-1">{validationErrors.tccWeight}</p>
+                  <p className="text-xs text-[#7a6350] italic mt-1">{validationErrors.tccWeight}</p>
                 )}
                 {!validationErrors.tccWeight && (
                   <p className="text-xs text-gold-400 mt-1">
@@ -926,7 +926,7 @@ export default function StudentGradesReport({
                   <div className="flex items-center gap-6 mt-3">
                     <div>
                       <span className="text-gold-500 text-sm">Média: </span>
-                      <span className={`font-bold text-lg ${subject.average >= 70 ? 'text-gold' : 'text-red-500'}`}>
+                      <span className={`font-bold text-lg ${subject.average >= 70 ? 'text-gold' : 'text-[#7a6350] italic'}`}>
                         {subject.average.toFixed(1)}
                       </span>
                     </div>
@@ -964,11 +964,11 @@ export default function StudentGradesReport({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                   <div>
                     <p className="text-gold-500 text-sm">Maior Nota</p>
-                    <p className="text-2xl font-bold text-green-500">{subject.highestScore}</p>
+                    <p className="text-2xl font-bold text-[#1e130c] font-bold">{subject.highestScore}</p>
                   </div>
                   <div>
                     <p className="text-gold-500 text-sm">Menor Nota</p>
-                    <p className={`text-2xl font-bold ${subject.lowestScore >= 70 ? 'text-gold' : 'text-red-500'}`}>
+                    <p className={`text-2xl font-bold ${subject.lowestScore >= 70 ? 'text-gold' : 'text-[#7a6350] italic'}`}>
                       {subject.lowestScore}
                     </p>
                   </div>
@@ -998,7 +998,7 @@ export default function StudentGradesReport({
                       <div className="ml-4 flex items-center gap-3">
                         <div>
                           {test.completed ? (
-                            <span className={`font-bold text-lg ${test.score >= 70 ? 'text-gold' : 'text-red-500'}`}>
+                            <span className={`font-bold text-lg ${test.score >= 70 ? 'text-gold' : 'text-[#7a6350] italic'}`}>
                               {test.score}
                             </span>
                           ) : (

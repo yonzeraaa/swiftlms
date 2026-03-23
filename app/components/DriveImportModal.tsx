@@ -836,7 +836,7 @@ useEffect(() => {
     switch (type) {
       case 'module': return <Folder className="w-5 h-5 text-blue-400" />
       case 'subject': return <BookOpen className="w-5 h-5 text-purple-400" />
-      case 'lesson': return <FileText className="w-5 h-5 text-green-400" />
+      case 'lesson': return <FileText className="w-5 h-5 text-[#1e130c] font-bold" />
       case 'test': return <GraduationCap className="w-5 h-5 text-orange-400" />
       default: return <FileCheck className="w-5 h-5 text-gray-400" />
     }
@@ -856,7 +856,7 @@ useEffect(() => {
     switch (type) {
       case 'module': return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
       case 'subject': return 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-      case 'lesson': return 'bg-green-500/20 text-green-300 border-green-500/30'
+      case 'lesson': return 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border-green-500/30'
       case 'test': return 'bg-orange-500/20 text-orange-300 border-orange-500/30'
       default: return 'bg-gray-500/20 text-gray-300 border-gray-500/30'
     }
@@ -900,8 +900,8 @@ useEffect(() => {
   const getStatusIcon = (status: ProcessedItem['status']) => {
     switch (status) {
       case 'uploading': return <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-      case 'success': return <CheckCircle2 className="w-4 h-4 text-green-400" />
-      case 'error': return <AlertCircle className="w-4 h-4 text-red-400" />
+      case 'success': return <CheckCircle2 className="w-4 h-4 text-[#1e130c] font-bold" />
+      case 'error': return <AlertCircle className="w-4 h-4 text-[#7a6350] italic" />
       default: return null
     }
   }
@@ -937,8 +937,8 @@ useEffect(() => {
     const statusClasses = {
       pending: isSelected ? 'opacity-100' : 'opacity-40',
       uploading: 'bg-blue-500/5 border-blue-500/40',
-      success: 'bg-green-500/5',
-      error: 'bg-red-500/5 border-red-500/40'
+      success: 'bg-[#1e130c]/5/5',
+      error: 'bg-[#7a6350]/10/5 border-red-500/40'
     }
 
     return (
@@ -957,7 +957,7 @@ useEffect(() => {
             ${borderColors[item.type]}
             ${statusClasses[item.status]}
             ${item.status === 'uploading' ? 'animate-pulse' : ''}
-            ${hasValidationErrors ? 'border-red-500/50 bg-red-500/10' : ''}
+            ${hasValidationErrors ? 'border-red-500/50 bg-[#7a6350]/10/10' : ''}
           `}
           style={{ marginLeft: `${depth * 24}px` }}
           whileHover={{ scale: 1.01 }}
@@ -968,7 +968,7 @@ useEffect(() => {
             onClick={() => toggleItemSelection(item.id, item)}
             className={`p-1 rounded transition-colors flex-shrink-0 ${
               hasValidationErrors
-                ? 'text-red-400 cursor-not-allowed'
+                ? 'text-[#7a6350] italic cursor-not-allowed'
                 : 'hover:bg-navy-600'
             }`}
             disabled={hasValidationErrors || item.status === 'success'}
@@ -976,7 +976,7 @@ useEffect(() => {
             whileTap={!hasValidationErrors ? { scale: 0.9 } : {}}
           >
             {hasValidationErrors ? (
-              <XCircle className="w-5 h-5 text-red-400" />
+              <XCircle className="w-5 h-5 text-[#7a6350] italic" />
             ) : isSelected ? (
               <CheckSquare className="w-5 h-5 text-gold-400" />
             ) : (
@@ -1035,7 +1035,7 @@ useEffect(() => {
               <motion.div
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-red-400 text-xs mt-1 space-y-0.5"
+                className="text-[#7a6350] italic text-xs mt-1 space-y-0.5"
               >
                 {item.validationErrors.map((err, idx) => (
                   <p key={idx} className="flex items-center gap-1">
@@ -1051,7 +1051,7 @@ useEffect(() => {
               <motion.p
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="text-red-400 text-xs mt-1 flex items-center gap-1"
+                className="text-[#7a6350] italic text-xs mt-1 flex items-center gap-1"
               >
                 <AlertCircle className="w-3 h-3" />
                 {item.error}
@@ -1066,7 +1066,7 @@ useEffect(() => {
                 className={`
                   text-xs px-2 py-1 rounded inline-flex items-center gap-1
                   ${item.answerKey.success
-                    ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                    ? 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border border-green-500/30'
                     : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
                   }
                 `}
@@ -1155,13 +1155,13 @@ useEffect(() => {
         {!isCheckingToken && accessToken && step === 'link' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-green-400 text-sm flex items-center gap-2">
+              <p className="text-[#1e130c] font-bold text-sm flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
                 Conectado ao Google Drive
               </p>
               <button
                 onClick={handleDisconnect}
-                className="text-red-400 hover:text-red-300 text-sm underline"
+                className="text-[#7a6350] italic hover:text-[#7a6350] italic text-sm underline"
               >
                 Desconectar
               </button>
@@ -1207,7 +1207,7 @@ useEffect(() => {
                       <select
                         value={selectedTargetCourseId || ''}
                         onChange={(e) => handleCourseSelect(e.target.value)}
-                        className="w-full px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500"
+                        className="w-full px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
                       >
                         <option value="">Selecione um curso...</option>
                         {availableCourses.map(c => (
@@ -1221,7 +1221,7 @@ useEffect(() => {
                         value={selectedTargetModuleId || ''}
                         onChange={(e) => setSelectedTargetModuleId(e.target.value || null)}
                         disabled={!selectedTargetCourseId}
-                        className="w-full px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full px-3 py-2 bg-navy-800 border border-gold-500/30 rounded-lg text-gold-100 text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <option value="">Selecione um módulo...</option>
                         {filteredModules.map(m => (
@@ -1273,7 +1273,7 @@ useEffect(() => {
                       <span>Disciplinas (subpastas)</span>
                     </div>
                     <div className="flex items-center gap-2 ml-8">
-                      <FileText className="w-3 h-3 text-green-400" />
+                      <FileText className="w-3 h-3 text-[#1e130c] font-bold" />
                       <span>Aulas (arquivos)</span>
                     </div>
                     <div className="flex items-center gap-2 ml-8">
@@ -1291,7 +1291,7 @@ useEffect(() => {
                       <span>Pasta raiz = Disciplina</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
-                      <FileText className="w-3 h-3 text-green-400" />
+                      <FileText className="w-3 h-3 text-[#1e130c] font-bold" />
                       <span>Aulas (arquivos)</span>
                     </div>
                     <div className="flex items-center gap-2 ml-4">
@@ -1310,7 +1310,7 @@ useEffect(() => {
                 value={driveUrl}
                 onChange={(e) => setDriveUrl(e.target.value)}
                 placeholder="https://drive.google.com/drive/folders/..."
-                className="w-full px-4 py-2 bg-navy-700 border border-gold-500/30 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="w-full px-4 py-2 bg-navy-700 border border-gold-500/30 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
               />
             </div>
             <Button
@@ -1346,14 +1346,14 @@ useEffect(() => {
                 >
                   Voltar
                 </Button>
-                <p className="text-green-400 text-sm flex items-center gap-2">
+                <p className="text-[#1e130c] font-bold text-sm flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" />
                   Conectado
                 </p>
               </div>
               <button
                 onClick={handleDisconnect}
-                className="text-red-400 hover:text-red-300 text-xs underline"
+                className="text-[#7a6350] italic hover:text-[#7a6350] italic text-xs underline"
                 disabled={isImporting}
               >
                 Desconectar
@@ -1390,7 +1390,7 @@ useEffect(() => {
                       )}
                       {getSelectedItemStats().lessons.total > 0 && (
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                          <div className="w-2 h-2 rounded-full bg-[#1e130c]/5"></div>
                           <span className="text-gold-200 text-sm">
                             {getSelectedItemStats().lessons.total} {getSelectedItemStats().lessons.total === 1 ? 'Aula' : 'Aulas'}
                           </span>
@@ -1486,7 +1486,7 @@ useEffect(() => {
                   </p>
                 )}
                 {isCancelled && (
-                  <p className="text-red-400 text-xs flex items-center gap-1">
+                  <p className="text-[#7a6350] italic text-xs flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
                     Importação cancelada
                   </p>
@@ -1595,12 +1595,12 @@ useEffect(() => {
 
         {/* Success Message */}
         {showSuccess && !isImporting && (
-          <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <div className="p-4 bg-[#1e130c]/5/10 border border-green-500/30 rounded-lg">
             <div className="flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-5 h-5 text-[#1e130c] font-bold flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-green-400 font-medium mb-2">Importação concluída com sucesso!</p>
-                <div className="text-green-300 text-sm space-y-1">
+                <p className="text-[#1e130c] font-bold font-medium mb-2">Importação concluída com sucesso!</p>
+                <div className="text-[#1e130c] font-bold text-sm space-y-1">
                   {importMode === 'full' && (
                     <p>• {allFlatItems.filter(it => it.type === 'module' && it.status === 'success').length} módulos importados</p>
                   )}
@@ -1618,8 +1618,8 @@ useEffect(() => {
 
         {/* Error Message */}
         {error && (
-          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-            <p className="text-red-400 text-sm">{error}</p>
+          <div className="p-4 bg-[#7a6350]/10/10 border border-red-500/30 rounded-lg">
+            <p className="text-[#7a6350] italic text-sm">{error}</p>
           </div>
         )}
       </div>

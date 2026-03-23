@@ -1,5 +1,4 @@
 import { getGradesUserInfo } from '@/lib/actions/student-grades'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Card from '@/app/components/Card'
 import GradesPageClient from './GradesPageClient'
 
@@ -18,7 +17,6 @@ export default async function StudentGradesPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
 
       <GradesPageClient
         userId={userInfo.id}

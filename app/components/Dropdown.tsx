@@ -127,7 +127,7 @@ export default function Dropdown({
           transition-all duration-200
           ${disabled 
             ? 'opacity-50 cursor-not-allowed border-gold-500/20' 
-            : 'hover:border-gold-400 focus:outline-none focus:ring-2 focus:ring-gold-500 border-gold-500/30'
+            : 'hover:border-gold-400 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] border-gold-500/30'
           }
           ${error ? 'border-red-500' : ''}
           ${isOpen ? 'ring-2 ring-gold-500' : ''}
@@ -145,7 +145,7 @@ export default function Dropdown({
       </button>
 
       {error && (
-        <p className="mt-1 text-sm text-red-400">{error}</p>
+        <p className="mt-1 text-sm text-[#7a6350] italic">{error}</p>
       )}
 
       {/* Dropdown menu */}
@@ -171,7 +171,7 @@ export default function Dropdown({
                     w-full pl-9 pr-3 py-2
                     bg-navy-900/50 border border-gold-500/20 rounded-lg
                     text-gold-100 placeholder-gold-400/50
-                    focus:outline-none focus:ring-2 focus:ring-gold-500
+                    focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]
                   "
                 />
               </div>

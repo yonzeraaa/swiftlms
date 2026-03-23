@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Save, Bell, Shield, Palette, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail, Settings as SettingsIcon, HardDriveDownload, ExternalLink, Loader2, Trash2, AlertTriangle } from 'lucide-react'
 import Card from '../../components/Card'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import Spinner from '../../components/ui/Spinner'
 import Button from '../../components/Button'
 import { Database } from '@/lib/database.types'
@@ -428,22 +427,21 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-          <SettingsIcon className="w-8 h-8 text-gold-400" />
+        <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e130c] flex items-center gap-2">
+          <SettingsIcon className="w-8 h-8 text-[#8b6d22]" />
           {t('settings.title')}
         </h1>
-        <p className="text-gold-300 mt-1">{t('settings.subtitle')}</p>
+        <p className="text-[#7a6350] mt-1">{t('settings.subtitle')}</p>
       </div>
 
       {/* Message */}
       {message && (
         <div className={`flex items-center gap-2 p-4 rounded-lg ${
           message.type === 'success' 
-            ? 'bg-green-500/10 border border-green-500/20 text-green-400' 
-            : 'bg-red-500/10 border border-red-500/20 text-red-400'
+            ? 'bg-[#1e130c]/5/10 border border-green-500/20 text-[#1e130c] font-bold' 
+            : 'bg-[#7a6350]/10/10 border border-red-500/20 text-[#7a6350] italic'
         }`}>
           {message.type === 'success' ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
           <span>{message.text}</span>
@@ -460,8 +458,8 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-gold-500/20 text-gold border border-gold-500/30'
-                  : 'text-gold-300 hover:bg-navy-700/30'
+                  ? 'bg-[#8b6d22]/20 text-[#1e130c] border border-[#8b6d22]/30'
+                  : 'text-[#7a6350] hover:bg-[#1e130c]/5'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -478,68 +476,68 @@ export default function SettingsPage() {
             {/* Avatar Section */}
             <div className="flex items-center gap-6">
               <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-gold-500/20 flex items-center justify-center text-gold">
+                <div className="w-24 h-24 rounded-full bg-[#8b6d22]/20 flex items-center justify-center text-[#1e130c]">
                   <User className="w-12 h-12" />
                 </div>
-                <button className="absolute bottom-0 right-0 p-2 bg-gold-500 rounded-full text-navy-900 hover:bg-gold-600 transition-colors">
+                <button className="absolute bottom-0 right-0 p-2 bg-[#8b6d22] rounded-full text-[#1e130c] hover:bg-gold-600 transition-colors">
                   <Camera className="w-4 h-4" />
                 </button>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-gold">{currentUser?.full_name || t('settings.noName')}</h3>
-                <p className="text-gold-300">{currentUser?.role === 'admin' ? t('settings.administrator') : currentUser?.role === 'instructor' ? t('settings.instructor') : t('settings.student')}</p>
+                <h3 className="font-[family-name:var(--font-playfair)] text-xl font-semibold text-[#1e130c]">{currentUser?.full_name || t('settings.noName')}</h3>
+                <p className="text-[#7a6350]">{currentUser?.role === 'admin' ? t('settings.administrator') : currentUser?.role === 'instructor' ? t('settings.instructor') : t('settings.student')}</p>
               </div>
             </div>
 
             {/* Form Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
+                <label className="block text-sm font-medium text-[#1e130c] mb-2">
                   {t('settings.fullName')}
                 </label>
                 <input
                   type="text"
                   value={profileForm.full_name}
                   onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
+                <label className="block text-sm font-medium text-[#1e130c] mb-2">
                   {t('settings.email')}
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b6d22]" />
                   <input
                     type="email"
                     value={profileForm.email}
                     disabled
-                    className="w-full pl-10 pr-4 py-2 bg-navy-900/30 border border-navy-600 rounded-lg text-gold-300 cursor-not-allowed"
+                    className="font-[family-name:var(--font-lora)] text-[#1e130c] w-full pl-10 pr-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#7a6350] cursor-not-allowed"
                   />
                 </div>
-                <p className="text-xs text-gold-300 mt-1">{t('settings.emailCannotChange')}</p>
+                <p className="text-xs text-[#7a6350] mt-1">{t('settings.emailCannotChange')}</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
+                <label className="block text-sm font-medium text-[#1e130c] mb-2">
                   {t('settings.phone')}
                 </label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gold-400" />
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b6d22]" />
                   <input
                     type="tel"
                     value={profileForm.phone}
                     onChange={(e) => setProfileForm({ ...profileForm, phone: formatPhone(e.target.value) })}
                     placeholder="(21) 98765-4321"
                     maxLength={15}
-                    className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
                   />
                 </div>
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gold-200 mb-2">
+                <label className="block text-sm font-medium text-[#1e130c] mb-2">
                   {t('settings.bio')}
                 </label>
                 <textarea
@@ -547,7 +545,7 @@ export default function SettingsPage() {
                   onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
                   rows={4}
                   placeholder={t('settings.bioPlaceholder')}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
                 />
               </div>
             </div>
@@ -571,39 +569,39 @@ export default function SettingsPage() {
         <Card title={t('settings.changePassword')}>
           <div className="max-w-md space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
+              <label className="block text-sm font-medium text-[#1e130c] mb-2">
                 Senha Atual
               </label>
               <input
                 type="password"
                 value={passwordForm.currentPassword}
                 onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
+              <label className="block text-sm font-medium text-[#1e130c] mb-2">
                 Nova Senha
               </label>
               <input
                 type="password"
                 value={passwordForm.newPassword}
                 onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
               />
-              <p className="text-xs text-gold-300 mt-1">Mínimo 6 caracteres</p>
+              <p className="text-xs text-[#7a6350] mt-1">Mínimo 6 caracteres</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
+              <label className="block text-sm font-medium text-[#1e130c] mb-2">
                 Confirmar Nova Senha
               </label>
               <input
                 type="password"
                 value={passwordForm.confirmPassword}
                 onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
               />
             </div>
 
@@ -631,12 +629,12 @@ export default function SettingsPage() {
               newEnrollments: { label: 'Novas Matrículas', description: 'Notificar quando alunos se matriculam em seus cursos' },
               systemUpdates: { label: 'Atualizações do Sistema', description: 'Notificar sobre manutenções e novidades' }
             }).map(([key, info]) => (
-              <label key={key} className="flex items-center justify-between p-4 bg-navy-900/30 rounded-lg cursor-pointer hover:bg-navy-700/30">
+              <label key={key} className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
                 <div className="flex items-center gap-3">
-                  <Bell className="w-5 h-5 text-gold-400" />
+                  <Bell className="w-5 h-5 text-[#8b6d22]" />
                   <div>
-                    <p className="text-gold-200 font-medium">{info.label}</p>
-                    <p className="text-gold-400 text-sm">{info.description}</p>
+                    <p className="text-[#1e130c] font-medium">{info.label}</p>
+                    <p className="text-[#8b6d22] text-sm">{info.description}</p>
                   </div>
                 </div>
                 <input
@@ -646,7 +644,7 @@ export default function SettingsPage() {
                     ...settings,
                     notifications: { ...settings.notifications, [key]: e.target.checked }
                   })}
-                  className="w-4 h-4 text-gold-500 bg-navy-900 border-navy-600 rounded focus:ring-gold-500"
+                  className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
                 />
               </label>
             ))}
@@ -670,7 +668,7 @@ export default function SettingsPage() {
         <Card title="Aparência">
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-3">
+              <label className="block text-sm font-medium text-[#1e130c] mb-3">
                 Tema
               </label>
               <div className="grid grid-cols-3 gap-3">
@@ -686,15 +684,15 @@ export default function SettingsPage() {
                     }}
                     className={`p-4 rounded-lg border transition-all ${
                       settings.appearance.theme === themeOption
-                        ? 'border-gold-500 bg-gold-500/10'
-                        : 'border-navy-600 hover:border-gold-500/50'
+                        ? 'border-[#8b6d22] bg-[#8b6d22]/10'
+                        : 'border-[#1e130c]/15 hover:border-[#8b6d22]/40'
                     }`}
                   >
                     <Palette className={`w-6 h-6 mx-auto mb-2 ${
-                      settings.appearance.theme === themeOption ? 'text-gold' : 'text-gold-400'
+                      settings.appearance.theme === themeOption ? 'text-[#1e130c]' : 'text-[#8b6d22]'
                     }`} />
                     <p className={`text-sm ${
-                      settings.appearance.theme === themeOption ? 'text-gold' : 'text-gold-300'
+                      settings.appearance.theme === themeOption ? 'text-[#1e130c]' : 'text-[#7a6350]'
                     }`}>
                       {themeOption === 'light' ? 'Claro' : themeOption === 'dark' ? 'Escuro' : 'Automático'}
                     </p>
@@ -704,7 +702,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
+              <label className="block text-sm font-medium text-[#1e130c] mb-2">
                 Idioma
               </label>
               <select
@@ -717,7 +715,7 @@ export default function SettingsPage() {
                   })
                   setLanguage(newLanguage)
                 }}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
               >
                 <option value="pt-BR">Português (Brasil)</option>
                 <option value="en-US">English (US)</option>
@@ -726,7 +724,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
+              <label className="block text-sm font-medium text-[#1e130c] mb-2">
                 Formato de Data
               </label>
               <select
@@ -735,7 +733,7 @@ export default function SettingsPage() {
                   ...settings,
                   appearance: { ...settings.appearance, dateFormat: e.target.value }
                 })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
               >
                 <option value="DD/MM/YYYY">DD/MM/AAAA</option>
                 <option value="MM/DD/YYYY">MM/DD/AAAA</option>
@@ -762,7 +760,7 @@ export default function SettingsPage() {
         <Card title="Privacidade">
           <div className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gold-200 mb-2">
+              <label className="block text-sm font-medium text-[#1e130c] mb-2">
                 Visibilidade do Perfil
               </label>
               <select
@@ -771,7 +769,7 @@ export default function SettingsPage() {
                   ...settings,
                   privacy: { ...settings.privacy, profileVisibility: e.target.value as any }
                 })}
-                className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
               >
                 <option value="public">Público - Todos podem ver</option>
                 <option value="connections">Conexões - Apenas contatos</option>
@@ -780,10 +778,10 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-3">
-              <label className="flex items-center justify-between p-4 bg-navy-900/30 rounded-lg cursor-pointer hover:bg-navy-700/30">
+              <label className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
                 <div>
-                  <p className="text-gold-200 font-medium">Mostrar Email no Perfil</p>
-                  <p className="text-gold-400 text-sm">Permitir que outros vejam seu email</p>
+                  <p className="text-[#1e130c] font-medium">Mostrar Email no Perfil</p>
+                  <p className="text-[#8b6d22] text-sm">Permitir que outros vejam seu email</p>
                 </div>
                 <input
                   type="checkbox"
@@ -792,14 +790,14 @@ export default function SettingsPage() {
                     ...settings,
                     privacy: { ...settings.privacy, showEmail: e.target.checked }
                   })}
-                  className="w-4 h-4 text-gold-500 bg-navy-900 border-navy-600 rounded focus:ring-gold-500"
+                  className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
                 />
               </label>
 
-              <label className="flex items-center justify-between p-4 bg-navy-900/30 rounded-lg cursor-pointer hover:bg-navy-700/30">
+              <label className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
                 <div>
-                  <p className="text-gold-200 font-medium">Mostrar Telefone no Perfil</p>
-                  <p className="text-gold-400 text-sm">Permitir que outros vejam seu telefone</p>
+                  <p className="text-[#1e130c] font-medium">Mostrar Telefone no Perfil</p>
+                  <p className="text-[#8b6d22] text-sm">Permitir que outros vejam seu telefone</p>
                 </div>
                 <input
                   type="checkbox"
@@ -808,7 +806,7 @@ export default function SettingsPage() {
                     ...settings,
                     privacy: { ...settings.privacy, showPhone: e.target.checked }
                   })}
-                  className="w-4 h-4 text-gold-500 bg-navy-900 border-navy-600 rounded focus:ring-gold-500"
+                  className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
                 />
               </label>
             </div>
@@ -831,30 +829,30 @@ export default function SettingsPage() {
       {activeTab === 'backup' && (
         <Card title="Backup para Google Drive">
           <div className="space-y-6">
-            <p className="text-gold-300 text-sm">
+            <p className="text-[#7a6350] text-sm">
               Exporta dados dos alunos, estrutura acadêmica, provas e templates em artefatos
               criptografados para uma pasta datada no Google Drive.
             </p>
 
             {/* Status feedback */}
             {backupState.status === 'success' && backupState.lastResult && (
-              <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg space-y-2">
-                <div className="flex items-center gap-2 text-green-400 font-medium">
+              <div className="p-4 bg-[#1e130c]/5/10 border border-green-500/20 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-[#1e130c] font-bold font-medium">
                   <Check className="w-5 h-5" />
                   Backup concluído: {backupState.lastResult.backupId}
                 </div>
-                <div className="text-gold-300 text-sm">
-                  <p>Status: <span className="text-gold-100">{backupState.lastResult.status}</span></p>
-                  <p>Tabelas exportadas: <span className="text-gold-100">{backupState.lastResult.tablesExported}</span></p>
-                  <p>Arquivos exportados: <span className="text-gold-100">{backupState.lastResult.filesExported}</span></p>
-                  <p>Bytes enviados: <span className="text-gold-100">{backupState.lastResult.bytesUploaded}</span></p>
-                  <p>Concluído em: <span className="text-gold-100">{new Date(backupState.lastResult.completedAt).toLocaleString('pt-BR')}</span></p>
+                <div className="text-[#7a6350] text-sm">
+                  <p>Status: <span className="text-[#1e130c]">{backupState.lastResult.status}</span></p>
+                  <p>Tabelas exportadas: <span className="text-[#1e130c]">{backupState.lastResult.tablesExported}</span></p>
+                  <p>Arquivos exportados: <span className="text-[#1e130c]">{backupState.lastResult.filesExported}</span></p>
+                  <p>Bytes enviados: <span className="text-[#1e130c]">{backupState.lastResult.bytesUploaded}</span></p>
+                  <p>Concluído em: <span className="text-[#1e130c]">{new Date(backupState.lastResult.completedAt).toLocaleString('pt-BR')}</span></p>
                 </div>
                 <a
                   href={backupState.lastResult.driveFolderUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-gold hover:underline"
+                  className="inline-flex items-center gap-1 text-sm text-[#1e130c] hover:underline"
                 >
                   Abrir pasta no Drive <ExternalLink className="w-3 h-3" />
                 </a>
@@ -862,7 +860,7 @@ export default function SettingsPage() {
             )}
 
             {backupState.status === 'error' && (
-              <div className="flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400">
+              <div className="flex items-start gap-2 p-4 bg-[#7a6350]/10/10 border border-red-500/20 rounded-lg text-[#7a6350] italic">
                 <X className="w-5 h-5 flex-shrink-0 mt-0.5" />
                 <span className="text-sm">{backupState.error}</span>
               </div>
@@ -882,11 +880,11 @@ export default function SettingsPage() {
               </Button>
             </div>
 
-            <div className="rounded-lg border border-navy-600 p-4 space-y-4">
+            <div className="rounded-lg border border-[#1e130c]/15 p-4 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-gold-200 font-medium">Restauração pela interface</p>
-                  <p className="text-gold-400 text-sm">
+                  <p className="text-[#1e130c] font-medium">Restauração pela interface</p>
+                  <p className="text-[#8b6d22] text-sm">
                     Primeiro valide o backup. Depois aplique a restauração real.
                   </p>
                 </div>
@@ -904,19 +902,19 @@ export default function SettingsPage() {
               </div>
 
               {backupListState.status === 'error' && backupListState.error && (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+                <div className="rounded-lg border border-red-500/30 bg-[#7a6350]/10/10 p-3 text-sm text-[#7a6350] italic">
                   {backupListState.error}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gold-200 mb-2">
+                <label className="block text-sm font-medium text-[#1e130c] mb-2">
                   Backup disponível
                 </label>
                 <select
                   value={selectedBackupId}
                   onChange={(e) => setSelectedBackupId(e.target.value)}
-                  className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
                 >
                   {availableBackups.length === 0 && (
                     <option value="">Nenhum backup encontrado</option>
@@ -930,19 +928,19 @@ export default function SettingsPage() {
               </div>
 
               {selectedBackupId && (
-                <div className="rounded-lg bg-navy-900/30 p-4 text-sm text-gold-300 space-y-1">
+                <div className="rounded-lg bg-[#faf6ee] p-4 text-sm text-[#7a6350] space-y-1">
                   {availableBackups
                     .filter(backup => backup.backupId === selectedBackupId)
                     .map(backup => (
                       <div key={backup.backupId}>
-                        <p>Status: <span className="text-gold-100">{backup.status}</span></p>
-                        <p>Tabelas: <span className="text-gold-100">{backup.tablesExported}</span></p>
-                        <p>Arquivos: <span className="text-gold-100">{backup.filesExported}</span></p>
+                        <p>Status: <span className="text-[#1e130c]">{backup.status}</span></p>
+                        <p>Tabelas: <span className="text-[#1e130c]">{backup.tablesExported}</span></p>
+                        <p>Arquivos: <span className="text-[#1e130c]">{backup.filesExported}</span></p>
                         <a
                           href={backup.driveFolderUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-gold hover:underline mt-1"
+                          className="inline-flex items-center gap-1 text-sm text-[#1e130c] hover:underline mt-1"
                         >
                           Abrir pasta no Drive <ExternalLink className="w-3 h-3" />
                         </a>
@@ -952,35 +950,35 @@ export default function SettingsPage() {
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="flex items-center justify-between p-4 bg-navy-900/30 rounded-lg cursor-pointer hover:bg-navy-700/30">
+                <label className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
                   <div>
-                    <p className="text-gold-200 font-medium">Restaurar banco</p>
-                    <p className="text-gold-400 text-sm">Tabelas acadêmicas e perfis.</p>
+                    <p className="text-[#1e130c] font-medium">Restaurar banco</p>
+                    <p className="text-[#8b6d22] text-sm">Tabelas acadêmicas e perfis.</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={restoreOptions.restoreDatabase}
                     onChange={(e) => setRestoreOptions(prev => ({ ...prev, restoreDatabase: e.target.checked }))}
-                    className="w-4 h-4 text-gold-500 bg-navy-900 border-navy-600 rounded focus:ring-gold-500"
+                    className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-4 bg-navy-900/30 rounded-lg cursor-pointer hover:bg-navy-700/30">
+                <label className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
                   <div>
-                    <p className="text-gold-200 font-medium">Restaurar arquivos</p>
-                    <p className="text-gold-400 text-sm">Buckets `certificados` e `avatars`.</p>
+                    <p className="text-[#1e130c] font-medium">Restaurar arquivos</p>
+                    <p className="text-[#8b6d22] text-sm">Buckets `certificados` e `avatars`.</p>
                   </div>
                   <input
                     type="checkbox"
                     checked={restoreOptions.restoreStorage}
                     onChange={(e) => setRestoreOptions(prev => ({ ...prev, restoreStorage: e.target.checked }))}
-                    className="w-4 h-4 text-gold-500 bg-navy-900 border-navy-600 rounded focus:ring-gold-500"
+                    className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
                   />
                 </label>
               </div>
 
               {restoreState.status === 'success' && restoreState.lastResult && (
-                <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-300 space-y-1">
+                <div className="rounded-lg border border-green-500/30 bg-[#1e130c]/5/10 p-4 text-sm text-[#1e130c] font-bold space-y-1">
                   <p>Backup: {restoreState.lastResult.backupId}</p>
                   <p>Modo: {restoreState.lastResult.mode === 'dry-run' ? 'validação' : 'restauração real'}</p>
                   <p>Artefatos validados: {restoreState.lastResult.validatedArtifacts}</p>
@@ -990,7 +988,7 @@ export default function SettingsPage() {
               )}
 
               {restoreState.status === 'error' && restoreState.error && (
-                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+                <div className="rounded-lg border border-red-500/30 bg-[#7a6350]/10/10 p-4 text-sm text-[#7a6350] italic">
                   {restoreState.error}
                 </div>
               )}
@@ -1027,13 +1025,13 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="p-4 bg-navy-900/30 rounded-lg space-y-1 text-sm text-gold-400">
-              <p className="font-medium text-gold-200">Sobre o backup automático (cron)</p>
+            <div className="p-4 bg-[#faf6ee] rounded-lg space-y-1 text-sm text-[#8b6d22]">
+              <p className="font-medium text-[#1e130c]">Sobre o backup automático (cron)</p>
               <p>O deploy agora usa Vercel Cron para backup diário e validação semanal do último backup.</p>
-              <code className="block mt-2 text-xs bg-navy-900/60 p-2 rounded text-gold-300 font-mono">
+              <code className="block mt-2 text-xs bg-[#faf6ee] p-2 rounded text-[#7a6350] font-mono">
                 0 5 * * * → /api/admin/backup
               </code>
-              <code className="block mt-2 text-xs bg-navy-900/60 p-2 rounded text-gold-300 font-mono">
+              <code className="block mt-2 text-xs bg-[#faf6ee] p-2 rounded text-[#7a6350] font-mono">
                 0 6 * * 0 → /api/admin/backup/validate
               </code>
               <p className="mt-2">As rotinas usam segredo dedicado via header Authorization.</p>
@@ -1041,11 +1039,11 @@ export default function SettingsPage() {
 
             {/* Danger zone */}
             <div className="border border-red-500/30 rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2 text-red-400 font-medium">
+              <div className="flex items-center gap-2 text-[#7a6350] italic font-medium">
                 <AlertTriangle className="w-5 h-5" />
                 Zona de Perigo
               </div>
-              <p className="text-gold-400 text-sm">
+              <p className="text-[#8b6d22] text-sm">
                 Remove banco operacional, arquivos e perfis não-admin. A instalação e os acessos
                 de administrador são preservados. Esta ação não pode ser desfeita.
               </p>
@@ -1064,11 +1062,11 @@ export default function SettingsPage() {
       {activeTab === 'installation' && (
         <Card title="Configuração da Instalação">
           <div className="space-y-6">
-            <div className="rounded-lg border border-navy-600 bg-navy-900/30 p-4 text-sm text-gold-300 space-y-2">
-              <p>Status: <span className="text-gold-100">{installationState?.installation.status || 'indisponível'}</span></p>
-              <p>Setup completo: <span className="text-gold-100">{installationState?.installation.isSetupComplete ? 'Sim' : 'Não'}</span></p>
-              <p>Etapa atual: <span className="text-gold-100">{installationState?.installation.currentStep || '-'}</span></p>
-              <p>Pendências: <span className="text-gold-100">{installationState?.validation.issues.length || 0}</span></p>
+            <div className="rounded-lg border border-[#1e130c]/15 bg-[#faf6ee] p-4 text-sm text-[#7a6350] space-y-2">
+              <p>Status: <span className="text-[#1e130c]">{installationState?.installation.status || 'indisponível'}</span></p>
+              <p>Setup completo: <span className="text-[#1e130c]">{installationState?.installation.isSetupComplete ? 'Sim' : 'Não'}</span></p>
+              <p>Etapa atual: <span className="text-[#1e130c]">{installationState?.installation.currentStep || '-'}</span></p>
+              <p>Pendências: <span className="text-[#1e130c]">{installationState?.validation.issues.length || 0}</span></p>
             </div>
 
             {installationState?.validation.checks?.length ? (
@@ -1078,8 +1076,8 @@ export default function SettingsPage() {
                     key={check.key}
                     className={`rounded-lg border p-3 text-sm ${
                       check.status === 'ok'
-                        ? 'border-green-500/30 bg-green-500/10 text-green-300'
-                        : 'border-red-500/30 bg-red-500/10 text-red-300'
+                        ? 'border-green-500/30 bg-[#1e130c]/5/10 text-[#1e130c] font-bold'
+                        : 'border-red-500/30 bg-[#7a6350]/10/10 text-[#7a6350] italic'
                     }`}
                   >
                     {check.message}
@@ -1089,7 +1087,7 @@ export default function SettingsPage() {
             ) : null}
 
             {installationState?.validation.issues && installationState.validation.issues.length > 0 && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300 space-y-1">
+              <div className="rounded-lg border border-red-500/30 bg-[#7a6350]/10/10 p-4 text-sm text-[#7a6350] italic space-y-1">
                 {installationState.validation.issues.map(issue => (
                   <p key={issue}>{issue}</p>
                 ))}
@@ -1097,13 +1095,13 @@ export default function SettingsPage() {
             )}
 
             {installationValidationState.status === 'error' && installationValidationState.error && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+              <div className="rounded-lg border border-red-500/30 bg-[#7a6350]/10/10 p-3 text-sm text-[#7a6350] italic">
                 {installationValidationState.error}
               </div>
             )}
 
             {installationValidationState.status === 'success' && (
-              <div className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">
+              <div className="rounded-lg border border-green-500/30 bg-[#1e130c]/5/10 p-3 text-sm text-[#1e130c] font-bold">
                 Integrações revalidadas.
               </div>
             )}
@@ -1123,7 +1121,7 @@ export default function SettingsPage() {
 
               <a
                 href="/setup"
-                className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-navy-950 font-medium hover:bg-gold-300 transition-colors"
+                className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-[#1e130c] font-medium hover:bg-gold-300 transition-colors"
               >
                 Abrir Setup
                 <ExternalLink className="w-4 h-4" />
@@ -1136,26 +1134,26 @@ export default function SettingsPage() {
       {/* Restore confirmation modal */}
       {restoreModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-navy-800 border border-red-500/30 rounded-xl p-6 w-full max-w-lg mx-4 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3 text-red-400">
+          <div className="bg-[#faf6ee] border border-red-500/30 rounded-xl p-6 w-full max-w-lg mx-4 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-[#7a6350] italic">
               <AlertTriangle className="w-6 h-6 flex-shrink-0" />
-              <h2 className="text-lg font-semibold">Confirmar restauração</h2>
+              <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold">Confirmar restauração</h2>
             </div>
 
-            <div className="text-sm text-gold-300 space-y-2">
+            <div className="text-sm text-[#7a6350] space-y-2">
               <p>
-                Você vai aplicar o backup <span className="text-gold-100 font-medium">{selectedBackupId}</span>.
+                Você vai aplicar o backup <span className="text-[#1e130c] font-medium">{selectedBackupId}</span>.
               </p>
               <p>Use isso apenas em ambiente isolado ou após validar impacto no banco atual.</p>
             </div>
 
-            <div className="rounded-lg bg-navy-900/40 p-4 text-sm text-gold-300 space-y-1">
-              <p>Banco: <span className="text-gold-100">{restoreOptions.restoreDatabase ? 'sim' : 'não'}</span></p>
-              <p>Arquivos: <span className="text-gold-100">{restoreOptions.restoreStorage ? 'sim' : 'não'}</span></p>
+            <div className="rounded-lg bg-[#faf6ee] p-4 text-sm text-[#7a6350] space-y-1">
+              <p>Banco: <span className="text-[#1e130c]">{restoreOptions.restoreDatabase ? 'sim' : 'não'}</span></p>
+              <p>Arquivos: <span className="text-[#1e130c]">{restoreOptions.restoreStorage ? 'sim' : 'não'}</span></p>
             </div>
 
             {restoreModal.error && (
-              <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+              <div className="flex items-start gap-2 p-3 bg-[#7a6350]/10/10 border border-red-500/20 rounded-lg text-[#7a6350] italic text-sm">
                 <X className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <span>{restoreModal.error}</span>
               </div>
@@ -1165,7 +1163,7 @@ export default function SettingsPage() {
               <button
                 onClick={() => setRestoreModal({ open: false, status: 'idle', error: null })}
                 disabled={restoreModal.status === 'running'}
-                className="px-4 py-2 text-gold-300 hover:text-gold-100 transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-[#7a6350] hover:text-[#1e130c]-100 transition-colors disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -1188,33 +1186,33 @@ export default function SettingsPage() {
       {/* Clear data confirmation modal */}
       {clearModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-navy-800 border border-red-500/30 rounded-xl p-6 w-full max-w-md mx-4 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3 text-red-400">
+          <div className="bg-[#faf6ee] border border-red-500/30 rounded-xl p-6 w-full max-w-md mx-4 space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-[#7a6350] italic">
               <AlertTriangle className="w-6 h-6 flex-shrink-0" />
-              <h2 className="text-lg font-semibold">Confirmar limpeza de dados</h2>
+              <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold">Confirmar limpeza de dados</h2>
             </div>
 
-            <p className="text-gold-300 text-sm">
+            <p className="text-[#7a6350] text-sm">
               O sistema vai remover banco operacional, storage e usuários não-admin. Digite sua
               senha de administrador para confirmar.
             </p>
 
             {clearModal.status === 'success' ? (
-              <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400">
+              <div className="flex items-center gap-2 p-3 bg-[#1e130c]/5/10 border border-green-500/20 rounded-lg text-[#1e130c] font-bold">
                 <Check className="w-5 h-5" />
                 Limpeza completa concluída.
               </div>
             ) : (
               <>
                 {clearModal.error && (
-                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                  <div className="flex items-center gap-2 p-3 bg-[#7a6350]/10/10 border border-red-500/20 rounded-lg text-[#7a6350] italic text-sm">
                     <X className="w-4 h-4 flex-shrink-0" />
                     {clearModal.error}
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gold-200 mb-2">
+                  <label className="block text-sm font-medium text-[#1e130c] mb-2">
                     Senha do administrador
                   </label>
                   <input
@@ -1223,7 +1221,7 @@ export default function SettingsPage() {
                     onChange={e => setClearModal(prev => ({ ...prev, password: e.target.value }))}
                     onKeyDown={e => e.key === 'Enter' && clearModal.password && handleClearData()}
                     autoFocus
-                    className="w-full px-4 py-2 bg-navy-900/50 border border-navy-600 rounded-lg text-gold-100 placeholder-gold-300/50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     placeholder="••••••••"
                   />
                 </div>
@@ -1231,7 +1229,7 @@ export default function SettingsPage() {
                 <div className="flex gap-3 justify-end pt-1">
                   <button
                     onClick={() => setClearModal({ open: false, password: '', status: 'idle', error: null })}
-                    className="px-4 py-2 text-gold-300 hover:text-gold-100 transition-colors"
+                    className="px-4 py-2 text-[#7a6350] hover:text-[#1e130c]-100 transition-colors"
                   >
                     Cancelar
                   </button>
@@ -1254,7 +1252,7 @@ export default function SettingsPage() {
               <div className="flex justify-end">
                 <button
                   onClick={() => setClearModal({ open: false, password: '', status: 'idle', error: null })}
-                  className="px-4 py-2 text-gold-300 hover:text-gold-100 transition-colors"
+                  className="px-4 py-2 text-[#7a6350] hover:text-[#1e130c]-100 transition-colors"
                 >
                   Fechar
                 </button>
@@ -1267,32 +1265,32 @@ export default function SettingsPage() {
       {/* System Info */}
       <Card title={t('settings.systemInfo')}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-center gap-3 p-3 bg-navy-900/30 rounded-lg">
-            <Globe className="w-5 h-5 text-gold-400" />
+          <div className="flex items-center gap-3 p-3 bg-[#faf6ee] rounded-lg">
+            <Globe className="w-5 h-5 text-[#8b6d22]" />
             <div>
-              <p className="text-gold-400 text-sm">{t('settings.version')}</p>
-              <p className="text-gold-200 font-mono text-xs">
+              <p className="text-[#8b6d22] text-sm">{t('settings.version')}</p>
+              <p className="text-[#1e130c] font-mono text-xs">
                 {versionInfo?.version || '1.0.0'}
               </p>
               {versionInfo?.gitHash && versionInfo.gitHash !== 'unknown' && (
-                <p className="text-gold-300/50 text-xs mt-0.5">
+                <p className="text-[#7a6350]/70 text-xs mt-0.5">
                   {versionInfo.gitHash}
                 </p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-navy-900/30 rounded-lg">
-            <DatabaseIcon className="w-5 h-5 text-gold-400" />
+          <div className="flex items-center gap-3 p-3 bg-[#faf6ee] rounded-lg">
+            <DatabaseIcon className="w-5 h-5 text-[#8b6d22]" />
             <div>
-              <p className="text-gold-400 text-sm">{t('settings.database')}</p>
-              <p className="text-gold-200">Supabase</p>
+              <p className="text-[#8b6d22] text-sm">{t('settings.database')}</p>
+              <p className="text-[#1e130c]">Supabase</p>
             </div>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-navy-900/30 rounded-lg">
-            <Shield className="w-5 h-5 text-gold-400" />
+          <div className="flex items-center gap-3 p-3 bg-[#faf6ee] rounded-lg">
+            <Shield className="w-5 h-5 text-[#8b6d22]" />
             <div>
-              <p className="text-gold-400 text-sm">{t('settings.lastUpdate')}</p>
-              <p className="text-gold-200 text-xs">
+              <p className="text-[#8b6d22] text-sm">{t('settings.lastUpdate')}</p>
+              <p className="text-[#1e130c] text-xs">
                 {versionInfo?.gitDate
                   ? new Date(versionInfo.gitDate).toLocaleString('pt-BR', {
                       dateStyle: 'short',

@@ -8,7 +8,6 @@ import Button from '@/app/components/Button'
 import EmptyState from '@/app/components/EmptyState'
 import { SkeletonCard } from '@/app/components/Skeleton'
 import Link from 'next/link'
-import Breadcrumbs from '@/app/components/ui/Breadcrumbs'
 
 type Test = Tables<'tests'>
 type TestGrade = Tables<'test_grades'>
@@ -130,8 +129,8 @@ export default function StudentEvaluationsPage() {
     if (passed) {
       return {
         label: 'Aprovado',
-        color: 'text-green-400',
-        bgColor: 'bg-green-500/20',
+        color: 'text-[#1e130c] font-bold',
+        bgColor: 'bg-[#1e130c]/5/20',
         icon: <CheckCircle className="w-4 h-4" />
       }
     } else if (hasAttemptsLeft) {
@@ -144,8 +143,8 @@ export default function StudentEvaluationsPage() {
     } else {
       return {
         label: 'Reprovado',
-        color: 'text-red-400',
-        bgColor: 'bg-red-500/20',
+        color: 'text-[#7a6350] italic',
+        bgColor: 'bg-[#7a6350]/10/20',
         icon: <X className="w-4 h-4" />
       }
     }
@@ -178,7 +177,6 @@ export default function StudentEvaluationsPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
 
       {/* Header */}
       <div>
@@ -205,9 +203,9 @@ export default function StudentEvaluationsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gold-300 text-sm">Concluídas</p>
-              <p className="text-2xl font-bold text-green-400">{completedTests}</p>
+              <p className="text-2xl font-bold text-[#1e130c] font-bold">{completedTests}</p>
             </div>
-            <CheckCircle className="w-8 h-8 text-green-400" />
+            <CheckCircle className="w-8 h-8 text-[#1e130c] font-bold" />
           </div>
         </Card>
 
@@ -234,7 +232,7 @@ export default function StudentEvaluationsPage() {
                 placeholder="Buscar avaliação..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
+                className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
               />
             </div>
           </div>
@@ -315,7 +313,7 @@ export default function StudentEvaluationsPage() {
                   {/* Resumo de Status */}
                   <div className="flex gap-4">
                     {tests.filter((t: any) => t.grade && t.grade.best_score >= (t.passing_score || 70)).length > 0 && (
-                      <span className="text-sm text-green-400">
+                      <span className="text-sm text-[#1e130c] font-bold">
                         {tests.filter((t: any) => t.grade && t.grade.best_score >= (t.passing_score || 70)).length} aprovadas
                       </span>
                     )}
@@ -376,8 +374,8 @@ export default function StudentEvaluationsPage() {
                                         {test.grade.best_score !== null && (
                                           <span className={`text-xs font-medium ${
                                             test.grade.best_score >= (test.passing_score || 70)
-                                              ? 'text-green-400'
-                                              : 'text-red-400'
+                                              ? 'text-[#1e130c] font-bold'
+                                              : 'text-[#7a6350] italic'
                                           }`}>
                                             Melhor nota: {test.grade.best_score.toFixed(1)}
                                           </span>

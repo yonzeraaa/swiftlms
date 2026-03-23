@@ -69,18 +69,18 @@ export default function StatusBadge({
       label: 'Sucesso',
       icon: <CheckCircle className="w-3.5 h-3.5" />,
       colors: {
-        solid: 'bg-green-500 text-white border-green-500',
-        outline: 'border-green-500 text-green-400 bg-transparent',
-        soft: 'bg-green-500/20 text-green-400 border-green-500/30'
+        solid: 'bg-[#1e130c]/5 text-white border-green-500',
+        outline: 'border-green-500 text-[#1e130c] font-bold bg-transparent',
+        soft: 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border-green-500/30'
       }
     },
     error: {
       label: 'Erro',
       icon: <XCircle className="w-3.5 h-3.5" />,
       colors: {
-        solid: 'bg-red-500 text-white border-red-500',
-        outline: 'border-red-500 text-red-400 bg-transparent',
-        soft: 'bg-red-500/20 text-red-400 border-red-500/30'
+        solid: 'bg-[#7a6350]/10 text-white border-red-500',
+        outline: 'border-red-500 text-[#7a6350] italic bg-transparent',
+        soft: 'bg-[#7a6350]/10/20 text-[#7a6350] italic border-red-500/30'
       }
     },
     warning: {
@@ -123,9 +123,9 @@ export default function StatusBadge({
       label: 'Ativo',
       icon: <PlayCircle className="w-3.5 h-3.5" />,
       colors: {
-        solid: 'bg-green-500 text-white border-green-500',
-        outline: 'border-green-500 text-green-400 bg-transparent',
-        soft: 'bg-green-500/20 text-green-400 border-green-500/30'
+        solid: 'bg-[#1e130c]/5 text-white border-green-500',
+        outline: 'border-green-500 text-[#1e130c] font-bold bg-transparent',
+        soft: 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border-green-500/30'
       }
     },
     paused: {
@@ -141,36 +141,36 @@ export default function StatusBadge({
       label: 'Concluído',
       icon: <CheckCircle className="w-3.5 h-3.5" />,
       colors: {
-        solid: 'bg-green-500 text-white border-green-500',
-        outline: 'border-green-500 text-green-400 bg-transparent',
-        soft: 'bg-green-500/20 text-green-400 border-green-500/30'
+        solid: 'bg-[#1e130c]/5 text-white border-green-500',
+        outline: 'border-green-500 text-[#1e130c] font-bold bg-transparent',
+        soft: 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border-green-500/30'
       }
     },
     cancelled: {
       label: 'Cancelado',
       icon: <XCircle className="w-3.5 h-3.5" />,
       colors: {
-        solid: 'bg-red-500 text-white border-red-500',
-        outline: 'border-red-500 text-red-400 bg-transparent',
-        soft: 'bg-red-500/20 text-red-400 border-red-500/30'
+        solid: 'bg-[#7a6350]/10 text-white border-red-500',
+        outline: 'border-red-500 text-[#7a6350] italic bg-transparent',
+        soft: 'bg-[#7a6350]/10/20 text-[#7a6350] italic border-red-500/30'
       }
     },
     approved: {
       label: 'Aprovado',
       icon: <CheckCircle className="w-3.5 h-3.5" />,
       colors: {
-        solid: 'bg-green-500 text-white border-green-500',
-        outline: 'border-green-500 text-green-400 bg-transparent',
-        soft: 'bg-green-500/20 text-green-400 border-green-500/30'
+        solid: 'bg-[#1e130c]/5 text-white border-green-500',
+        outline: 'border-green-500 text-[#1e130c] font-bold bg-transparent',
+        soft: 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border-green-500/30'
       }
     },
     rejected: {
       label: 'Rejeitado',
       icon: <XCircle className="w-3.5 h-3.5" />,
       colors: {
-        solid: 'bg-red-500 text-white border-red-500',
-        outline: 'border-red-500 text-red-400 bg-transparent',
-        soft: 'bg-red-500/20 text-red-400 border-red-500/30'
+        solid: 'bg-[#7a6350]/10 text-white border-red-500',
+        outline: 'border-red-500 text-[#7a6350] italic bg-transparent',
+        soft: 'bg-[#7a6350]/10/20 text-[#7a6350] italic border-red-500/30'
       }
     },
     draft: {

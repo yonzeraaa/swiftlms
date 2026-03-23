@@ -1,13 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FileText, Upload, Send, Clock, CheckCircle, XCircle, AlertCircle, Mail, Award, BookOpen } from 'lucide-react'
-import Card from '@/app/components/Card'
-import Button from '@/app/components/Button'
-import Breadcrumbs from '@/app/components/ui/Breadcrumbs'
+import { FileText, Upload, Check, Clock, AlertCircle, Mail, Award, BookOpen, XCircle, CheckCircle } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import toast from 'react-hot-toast'
 import { getTCCSubmissionData, submitTCC } from '@/lib/actions/tcc-submissions'
+import { ClassicRule, CornerBracket } from '@/app/components/ui/RenaissanceSvgs'
+import Spinner from '../../../components/ui/Spinner'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 interface TccSubmission {
   id: string
@@ -21,18 +26,28 @@ interface TccSubmission {
   submission_date: string
   evaluated_at: string | null
   file_url: string | null
-  course?: {
-    title: string
-  }
+  course?: { title: string }
 }
 
 interface EnrollmentWithCourse {
   id: string
   course_id: string
-  course: {
-    id: string
-    title: string
-  }
+  course: { id: string; title: string }
+}
+
+function SkeletonBlock({ height = 20, width = '100%', style }: { height?: number; width?: string | number; style?: React.CSSProperties }) {
+  return (
+    <div
+      style={{
+        height,
+        width,
+        backgroundColor: 'rgba(30,19,12,0.06)',
+        borderRadius: 0,
+        animation: 'pulse 1.5s ease-in-out infinite',
+        ...style,
+      }}
+    />
+  )
 }
 
 export default function TccSubmissionPage() {
@@ -41,11 +56,7 @@ export default function TccSubmissionPage() {
   const [enrollments, setEnrollments] = useState<EnrollmentWithCourse[]>([])
   const [tccSubmissions, setTccSubmissions] = useState<TccSubmission[]>([])
   const [selectedEnrollment, setSelectedEnrollment] = useState<string>('')
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    file_url: ''
-  })
+  const [formData, setFormData] = useState({ title: '', description: '', file_url: '' })
   const [adminEmail, setAdminEmail] = useState('admin@swiftedu.com')
 
   const router = useRouter()
@@ -57,30 +68,16 @@ export default function TccSubmissionPage() {
   const fetchData = async () => {
     try {
       const data = await getTCCSubmissionData()
-
-      if (!data) {
-        router.push('/')
-        return
-      }
-
+      if (!data) { router.push('/'); return; }
       const { enrollments: enrollmentsData, submissions: tccData, adminEmail: adminEmailData } = data
-
       if (enrollmentsData) {
         setEnrollments(enrollmentsData as any)
-        if (enrollmentsData.length > 0) {
-          setSelectedEnrollment(enrollmentsData[0].id)
-        }
+        if (enrollmentsData.length > 0) setSelectedEnrollment(enrollmentsData[0].id)
       }
-
-      if (tccData) {
-        setTccSubmissions(tccData as any)
-      }
-
-      if (adminEmailData) {
-        setAdminEmail(adminEmailData)
-      }
+      if (tccData) setTccSubmissions(tccData as any)
+      if (adminEmailData) setAdminEmail(adminEmailData)
     } catch (error) {
-      console.error('Erro ao carregar dados:', error)
+      console.error(error)
     } finally {
       setLoading(false)
     }
@@ -88,324 +85,161 @@ export default function TccSubmissionPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!selectedEnrollment) {
-      toast.error('Selecione um curso')
-      return
-    }
-
-    if (!formData.title) {
-      toast.error('Digite o título do TCC')
-      return
-    }
-
+    if (!selectedEnrollment || !formData.title) { toast.error('Preencha os campos obrigatórios'); return; }
     setSubmitting(true)
-
     try {
       const enrollment = enrollments.find(e => e.id === selectedEnrollment)
       if (!enrollment) return
-
-      // Verificar se já existe submissão para este enrollment
-      const existingSubmission = tccSubmissions.find(
-        tcc => tcc.enrollment_id === selectedEnrollment
-      )
-
-      if (existingSubmission && existingSubmission.status === 'approved') {
-        toast.error('Você já tem um TCC aprovado para este curso')
-        return
-      }
-
-      // Submit using server action
-      const result = await submitTCC({
-        title: formData.title,
-        course_id: enrollment.course_id,
-        enrollment_id: selectedEnrollment,
-        document_url: formData.file_url || undefined,
-        description: formData.description || undefined
-      })
-
-      if (!result.success) {
-        throw new Error(result.error)
-      }
-
-      toast.success('TCC enviado com sucesso! O administrador foi notificado.')
-
-      // Limpar formulário
-      setFormData({
-        title: '',
-        description: '',
-        file_url: ''
-      })
-
-      // Recarregar dados
+      const existing = tccSubmissions.find(tcc => tcc.enrollment_id === selectedEnrollment)
+      if (existing && existing.status === 'approved') { toast.error('TCC já aprovado'); return; }
+      const result = await submitTCC({ title: formData.title, course_id: enrollment.course_id, enrollment_id: selectedEnrollment, document_url: formData.file_url || undefined, description: formData.description || undefined })
+      if (!result.success) throw new Error(result.error)
+      toast.success('TCC enviado com sucesso!')
+      setFormData({ title: '', description: '', file_url: '' })
       await fetchData()
     } catch (error) {
-      console.error('Erro ao enviar TCC:', error)
-      toast.error('Erro ao enviar TCC. Tente novamente.')
+      console.error(error)
+      toast.error('Erro ao enviar TCC.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const getStatusBadge = (status: string, grade?: number | null) => {
-    switch (status) {
-      case 'pending':
-        return (
-          <span className="flex items-center gap-1 px-3 py-1 bg-yellow-500/20 text-yellow-400 rounded-full text-sm">
-            <Clock className="w-4 h-4" />
-            Aguardando Avaliação
-          </span>
-        )
-      case 'reviewing':
-        return (
-          <span className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-sm">
-            <AlertCircle className="w-4 h-4" />
-            Em Análise
-          </span>
-        )
-      case 'approved':
-        return (
-          <span className="flex items-center gap-1 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm">
-            <CheckCircle className="w-4 h-4" />
-            Aprovado {grade && `- Nota: ${grade}`}
-          </span>
-        )
-      case 'rejected':
-        return (
-          <span className="flex items-center gap-1 px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm">
-            <XCircle className="w-4 h-4" />
-            Reprovado
-          </span>
-        )
-      default:
-        return null
-    }
-  }
-
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gold-500"></div>
-      </div>
-    )
+    return <Spinner fullPage size="xl" />
   }
 
   return (
-    <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
-
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-          <FileText className="w-8 h-8 text-gold-400" />
-          Trabalho de Conclusão de Curso (TCC)
+    <div className="flex flex-col">
+      <div className="text-center flex flex-col items-center mb-12">
+        <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.5rem', fontWeight: 700, color: INK, marginBottom: '0.5rem' }}>
+          Trabalho de Conclusão de Curso
         </h1>
-        <p className="text-gold-300 mt-1">
-          Envie seu TCC para avaliação e liberação do certificado
+        <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', fontStyle: 'italic', color: MUTED }}>
+          A última etapa para a conquista do seu diploma de excelência
         </p>
+        <ClassicRule style={{ width: '100%', maxWidth: '300px', marginTop: '2.5rem', color: INK }} />
       </div>
 
-      {/* Instruções */}
-      <Card className="p-6 border-blue-500/30 bg-blue-500/10">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
-          <div>
-            <h3 className="text-lg font-semibold text-gold mb-2">Como funciona o processo:</h3>
-            <ol className="list-decimal list-inside space-y-1 text-gold-300">
-              <li>Envie seu TCC através do formulário abaixo</li>
-              <li>O administrador receberá uma notificação por email</li>
-              <li>Seu trabalho será avaliado e receberá uma nota</li>
-              <li>A nota final será calculada: (Média dos Testes × 1 + Nota do TCC × 2) ÷ 3</li>
-              <li>Após aprovação, seu certificado será liberado</li>
-            </ol>
-            <p className="mt-3 text-sm text-gold-400">
-              <Mail className="w-4 h-4 inline mr-1" />
-              Email do administrador: <span className="font-medium">{adminEmail}</span>
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Formulário de Submissão */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold text-gold mb-4 flex items-center gap-2">
-          <Upload className="w-5 h-5 text-gold-400" />
-          Enviar TCC
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Seleção do Curso */}
-          <div>
-            <label className="block text-gold-300 text-sm font-medium mb-2">
-              Curso <span className="text-red-400">*</span>
-            </label>
-            <select
-              value={selectedEnrollment}
-              onChange={(e) => setSelectedEnrollment(e.target.value)}
-              className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 focus:outline-none focus:ring-2 focus:ring-gold-500"
-              required
-              disabled={enrollments.length === 0}
-            >
-              {enrollments.length === 0 ? (
-                <option value="">Nenhum curso encontrado</option>
-              ) : (
-                enrollments.map(enrollment => {
-                  const existingSubmission = tccSubmissions.find(
-                    tcc => tcc.enrollment_id === enrollment.id
-                  )
-                  return (
-                    <option key={enrollment.id} value={enrollment.id}>
-                      {enrollment.course.title}
-                      {existingSubmission && ` - ${existingSubmission.status === 'approved' ? 'TCC Aprovado' : 'TCC Enviado'}`}
-                    </option>
-                  )
-                })
-              )}
-            </select>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-12">
+        {/* Lado Esquerdo: Instruções e Submissões */}
+        <div className="lg:col-span-2 space-y-10">
+          <div style={{ backgroundColor: '#1e130c/[0.02]', border: `1px dashed ${BORDER}`, padding: '2rem' }}>
+            <h3 style={{ fontFamily: 'var(--font-playfair)', fontWeight: 600, color: INK, marginBottom: '1rem' }}>Instruções do Exame</h3>
+            <ul style={{ fontFamily: 'var(--font-lora)', fontSize: '0.9rem', color: MUTED, lineHeight: 1.6 }} className="space-y-3">
+              <li>1. Redija seu trabalho seguindo as normas acadêmicas.</li>
+              <li>2. Realize o upload em um serviço de nuvem (Drive, Dropbox).</li>
+              <li>3. Informe o link e o resumo no formulário ao lado.</li>
+              <li>4. O conselho administrativo avaliará seu trabalho em breve.</li>
+            </ul>
+            <div className="mt-6 pt-4 border-t border-[#1e130c]/10">
+              <p style={{ fontSize: '0.8rem', color: MUTED }}><Mail size={12} className="inline mr-2" /> Suporte: {adminEmail}</p>
+            </div>
           </div>
 
-          {/* Título do TCC */}
-          <div>
-            <label className="block text-gold-300 text-sm font-medium mb-2">
-              Título do TCC <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
-              placeholder="Digite o título do seu trabalho"
-              required
-            />
-          </div>
-
-          {/* Descrição */}
-          <div>
-            <label className="block text-gold-300 text-sm font-medium mb-2">
-              Descrição / Resumo
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
-              placeholder="Descreva brevemente seu trabalho"
-              rows={4}
-            />
-          </div>
-
-          {/* Link do Arquivo */}
-          <div>
-            <label className="block text-gold-300 text-sm font-medium mb-2">
-              Link do Arquivo (Google Drive, Dropbox, etc.)
-            </label>
-            <input
-              type="url"
-              value={formData.file_url}
-              onChange={(e) => setFormData({ ...formData, file_url: e.target.value })}
-              className="w-full px-4 py-2 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-gold-500"
-              placeholder="https://drive.google.com/..."
-            />
-            <p className="text-xs text-gold-400 mt-1">
-              Faça upload do arquivo em um serviço de nuvem e cole o link aqui
-            </p>
-          </div>
-
-          {/* Botão de Envio */}
-          <div className="flex justify-end gap-3">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={submitting || enrollments.length === 0}
-              loading={submitting}
-              icon={!submitting ? <Send className="w-4 h-4 flex-shrink-0" /> : undefined}
-            >
-              {submitting ? 'Enviando...' : 'Enviar TCC'}
-            </Button>
-          </div>
-        </form>
-      </Card>
-
-      {/* Lista de Submissões */}
-      {tccSubmissions.length > 0 && (
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold text-gold mb-4 flex items-center gap-2">
-            <Award className="w-5 h-5 text-gold-400" />
-            Minhas Submissões
-          </h2>
-
-          <div className="space-y-4">
-            {tccSubmissions.map(submission => (
-              <div
-                key={submission.id}
-                className="p-4 bg-navy-800/30 rounded-lg border border-gold-500/20"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <BookOpen className="w-5 h-5 text-gold-400" />
-                      <h3 className="font-semibold text-gold">
-                        {submission.course?.title}
-                      </h3>
-                      {getStatusBadge(submission.status, submission.grade)}
-                    </div>
-
-                    <p className="text-gold-100 font-medium mb-1">
-                      {submission.title}
-                    </p>
-
-                    {submission.description && (
-                      <p className="text-gold-300 text-sm mb-2">
-                        {submission.description}
-                      </p>
-                    )}
-
-                    <div className="flex flex-wrap gap-4 text-sm text-gold-400">
-                      <span>
-                        Enviado em: {new Date(submission.submission_date).toLocaleDateString('pt-BR')}
+          {tccSubmissions.length > 0 && (
+            <div>
+              <h3 style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.25rem', color: INK, marginBottom: '1.5rem' }}>Registros de Envio</h3>
+              <div className="space-y-6">
+                {tccSubmissions.map(sub => (
+                  <div key={sub.id} style={{ borderBottom: `1px solid ${BORDER}`, paddingBottom: '1.5rem' }}>
+                    <div className="flex justify-between items-start mb-2">
+                      <h4 style={{ fontFamily: 'var(--font-lora)', fontWeight: 600, color: INK, fontSize: '1rem' }}>{sub.title}</h4>
+                      <span style={{ 
+                        fontSize: '0.7rem', 
+                        fontWeight: 700, 
+                        textTransform: 'uppercase', 
+                        color: sub.status === 'approved' ? INK : sub.status === 'rejected' ? MUTED : ACCENT 
+                      }}>
+                        {sub.status === 'approved' ? 'Aprovado' : sub.status === 'pending' ? 'Em Análise' : 'Reprovado'}
                       </span>
-                      {submission.evaluated_at && (
-                        <span>
-                          Avaliado em: {new Date(submission.evaluated_at).toLocaleDateString('pt-BR')}
-                        </span>
-                      )}
-                      {submission.file_url && (
-                        <a
-                          href={submission.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-400 hover:text-blue-300 underline"
-                        >
-                          Ver arquivo
-                        </a>
-                      )}
                     </div>
-
-                    {submission.feedback && (
-                      <div className="mt-3 p-3 bg-navy-900/50 rounded-lg">
-                        <p className="text-sm text-gold-300 font-medium mb-1">Feedback do Avaliador:</p>
-                        <p className="text-sm text-gold-200">{submission.feedback}</p>
-                      </div>
-                    )}
-
-                    {submission.grade && (
-                      <div className="mt-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-gold-300">Nota do TCC:</span>
-                          <span className={`text-xl font-bold ${
-                            submission.grade >= 70 ? 'text-green-400' : 'text-red-400'
-                          }`}>
-                            {submission.grade.toFixed(1)}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                    <p style={{ fontSize: '0.8rem', color: MUTED, fontStyle: 'italic' }}>Curso: {sub.course?.title}</p>
+                    {sub.grade && <p style={{ fontSize: '0.9rem', color: INK, fontWeight: 700, marginTop: '0.5rem' }}>Nota Final: {sub.grade.toFixed(1)}</p>}
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Lado Direito: Formulário */}
+        <div className="lg:col-span-3">
+          <div style={{ backgroundColor: PARCH, border: `1px solid ${BORDER}`, padding: '3rem', position: 'relative' }}>
+            <div className="absolute top-4 left-4 w-8 h-8"><CornerBracket size={32} /></div>
+            
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="space-y-6">
+                <div className="flex flex-col">
+                  <label style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', color: MUTED }}>Selecione o Curso</label>
+                  <select
+                    value={selectedEnrollment}
+                    onChange={(e) => setSelectedEnrollment(e.target.value)}
+                    style={{ padding: '0.75rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)' }}
+                    required
+                  >
+                    {enrollments.map(e => <option key={e.id} value={e.id}>{e.course.title}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col">
+                  <label style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', color: MUTED }}>Título da Tese</label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    style={{ padding: '0.75rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)' }}
+                    placeholder="Título oficial do trabalho"
+                    required
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', color: MUTED }}>Resumo do Estudo</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    style={{ padding: '0.75rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)', minHeight: '120px' }}
+                    placeholder="Breve descrição dos objetivos e resultados"
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem', color: MUTED }}>Link do Documento Digital</label>
+                  <input
+                    type="url"
+                    value={formData.file_url}
+                    onChange={(e) => setFormData({ ...formData, file_url: e.target.value })}
+                    style={{ padding: '0.75rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)' }}
+                    placeholder="https://link-do-seu-trabalho.com/pdf"
+                  />
                 </div>
               </div>
-            ))}
+
+              <div className="flex justify-end pt-4">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{ 
+                    padding: '1rem 3rem', 
+                    backgroundColor: INK, 
+                    color: PARCH, 
+                    border: 'none', 
+                    cursor: submitting ? 'not-allowed' : 'pointer', 
+                    fontFamily: 'var(--font-lora)', 
+                    fontWeight: 600, 
+                    textTransform: 'uppercase', 
+                    letterSpacing: '0.15em',
+                    opacity: submitting ? 0.7 : 1
+                  }}
+                >
+                  {submitting ? 'Enviando...' : 'Submeter TCC'}
+                </button>
+              </div>
+            </form>
           </div>
-        </Card>
-      )}
+        </div>
+      </div>
     </div>
   )
 }

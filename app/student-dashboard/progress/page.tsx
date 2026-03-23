@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { BookOpen, Clock, Target, Award, TrendingUp, Calendar, CheckCircle, Activity, BarChart3, ArrowUp, ArrowDown, ChevronRight, ChevronDown, Loader2 as ProgressIcon } from 'lucide-react'
 import Card from '../../components/Card'
 import Spinner from '../../components/ui/Spinner'
-import Breadcrumbs from '../../components/ui/Breadcrumbs'
 import ProgressChart from '../../components/ProgressChart'
 import { Database } from '@/lib/database.types'
 import { useTranslation } from '../../contexts/LanguageContext'
@@ -201,10 +200,10 @@ export default function ProgressPage() {
   }
 
   const getProgressColor = (progress: number) => {
-    if (progress >= 80) return 'text-green-400 bg-green-500'
+    if (progress >= 80) return 'text-[#1e130c] font-bold bg-[#1e130c]/5'
     if (progress >= 50) return 'text-yellow-400 bg-yellow-500'
     if (progress >= 20) return 'text-orange-400 bg-orange-500'
-    return 'text-red-400 bg-red-500'
+    return 'text-[#7a6350] italic bg-[#7a6350]/10'
   }
 
   if (loading) {
@@ -217,7 +216,6 @@ export default function ProgressPage() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs className="mb-2" />
 
       {/* Header */}
       <div>
@@ -263,12 +261,12 @@ export default function ProgressPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gold-300 text-sm">Aulas Concluídas</p>
-              <p className="text-2xl font-bold text-green-400">{totalStats.completedLessons}</p>
+              <p className="text-2xl font-bold text-[#1e130c] font-bold">{totalStats.completedLessons}</p>
               <p className="text-xs text-gold-400 mt-1">
                 de {totalStats.totalLessons} totais
               </p>
             </div>
-            <CheckCircle className="w-8 h-8 text-green-400" />
+            <CheckCircle className="w-8 h-8 text-[#1e130c] font-bold" />
           </div>
         </Card>
 
@@ -403,7 +401,7 @@ export default function ProgressPage() {
                               {module.progress}%
                             </span>
                             {module.progress === 100 && (
-                              <CheckCircle className="w-4 h-4 text-green-400" />
+                              <CheckCircle className="w-4 h-4 text-[#1e130c] font-bold" />
                             )}
                           </div>
                         </div>
@@ -424,7 +422,7 @@ export default function ProgressPage() {
                         <p className="text-xs text-gold-400">Status</p>
                         <p className="text-lg font-semibold text-gold">
                           {courseProgress.progress === 100 ? (
-                            <span className="text-green-400">Concluído</span>
+                            <span className="text-[#1e130c] font-bold">Concluído</span>
                           ) : courseProgress.progress > 0 ? (
                             <span className="text-yellow-400">Em Progresso</span>
                           ) : (
