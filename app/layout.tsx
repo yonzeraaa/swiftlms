@@ -20,12 +20,10 @@ const montserrat = Montserrat({
 })
 
 export const metadata: Metadata = {
-  title: 'SwiftEDU - Login',
+  title: 'SwiftEdu',
   description: 'Sistema de Gestão de Aprendizagem',
   icons: {
-    icon: '/icon.svg',
-    shortcut: '/icon.svg',
-    apple: '/icon.svg',
+    icon: '/favicon.png',
   },
 }
 
