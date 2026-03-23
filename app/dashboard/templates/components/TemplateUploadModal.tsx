@@ -5,11 +5,18 @@ import { X, Upload, FileSpreadsheet, CheckCircle, AlertCircle, Info, FileText, S
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
 import Card from '../../../components/Card'
+import Modal from '../../../components/Modal'
 import { createSuggestedMapping, validateMapping, type TemplateAnalysis, type SuggestedMapping } from '@/lib/template-analyzer'
 import { extractArrayMapping, extractStaticMappings, buildMetadata } from '@/lib/template-utils'
 import MappingEditor from './MappingEditor'
 import { TEMPLATE_CATEGORIES } from '../constants'
 import { deleteTemplateFile, uploadTemplateFile, updateTemplate, createTemplate } from '@/lib/actions/template-upload'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 interface ExcelTemplate {
   id: string
@@ -134,12 +141,6 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
         if (Object.keys(staticMaps).length > 0) {
           setStaticMappings(staticMaps)
         }
-
-        console.log('[TemplateUploadModal] Metadata carregado:', {
-          hasAnalysis: !!template.metadata.analysis,
-          hasArrayMapping: !!arrayMapping,
-          staticCellsCount: Object.keys(staticMaps).length,
-        })
       }
     }
   }, [template])
@@ -501,213 +502,56 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card variant="elevated" depth={3} className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c]">
-              {isEditMode ? 'Editar Template' : 'Novo Template Excel'}
-            </h2>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={isEditMode ? 'Editar Template' : 'Novo Template Excel'}
+      size="xl"
+    >
+      <div className="font-[family-name:var(--font-lora)] relative z-10 px-1 py-1">
+        {/* Tabs - Apenas no modo edição */}
+        {isEditMode && (
+          <div className="flex gap-2 mb-6 border-b border-[#1e130c]/10">
             <button
-              onClick={onClose}
-              className="p-2 hover:bg-[#1e130c]/5 rounded-lg transition-colors text-[#8b6d22] hover:text-[#1e130c]-300"
+              onClick={() => setActiveTab('info')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-[0.65rem] font-bold uppercase tracking-widest transition-all duration-300 ${
+                activeTab === 'info'
+                  ? 'text-[#1e130c] border-b-2 border-[#8b6d22]'
+                  : 'text-[#7a6350] hover:text-[#1e130c]'
+              }`}
             >
-              <X className="h-5 w-5" />
+              <FileText className="h-3.5 w-3.5" />
+              Informações
+            </button>
+            <button
+              onClick={() => setActiveTab('mapping')}
+              className={`flex items-center gap-2 px-4 py-2.5 text-[0.65rem] font-bold uppercase tracking-widest transition-all duration-300 ${
+                activeTab === 'mapping'
+                  ? 'text-[#1e130c] border-b-2 border-[#8b6d22]'
+                  : 'text-[#7a6350] hover:text-[#1e130c]'
+              }`}
+            >
+              <Settings className="h-3.5 w-3.5" />
+              Mapeamento
+              {analysis && (
+                <span className="ml-1 text-[#8b6d22]">✓</span>
+              )}
             </button>
           </div>
+        )}
 
-          {/* Tabs - Apenas no modo edição */}
-          {isEditMode && (
-            <div className="flex gap-2 mb-6 border-b border-[#1e130c]/15">
-              <button
-                onClick={() => setActiveTab('info')}
-                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all ${
-                  activeTab === 'info'
-                    ? 'text-[#8b6d22] border-b-2 border-[#8b6d22]'
-                    : 'text-[#7a6350]/70 hover:text-[#1e130c]-300'
-                }`}
-              >
-                <FileText className="h-4 w-4" />
-                Informações Básicas
-              </button>
-              <button
-                onClick={() => setActiveTab('mapping')}
-                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all ${
-                  activeTab === 'mapping'
-                    ? 'text-[#8b6d22] border-b-2 border-[#8b6d22]'
-                    : 'text-[#7a6350]/70 hover:text-[#1e130c]-300'
-                }`}
-              >
-                <Settings className="h-4 w-4" />
-                Mapeamento de Campos
-                {analysis && (
-                  <span className="px-2 py-0.5 text-xs bg-[#1e130c]/5/20 text-[#1e130c] font-bold rounded-full">
-                    ✓
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
-
-          {/* Aviso de mudança de categoria */}
-          {categoryChanged && (
-            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-amber-300 font-medium mb-1">
-                    Categoria alterada
-                  </p>
-                  <p className="text-sm text-amber-300/70">
-                    Você alterou a categoria de "{categories.find(c => c.value === originalCategory)?.label}"
-                    para "{categories.find(c => c.value === category)?.label}".
-                    Verifique se os mapeamentos de campos ainda estão corretos.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
+        {/* Conteúdo Principal */}
+        <div className="space-y-6">
           {/* Aba: Informações Básicas */}
           {(!isEditMode || activeTab === 'info') && (
             <>
-              {/* Upload Area - Apenas no modo criação */}
+              {/* Upload Area - Estilo Classic */}
               {!isEditMode && (
                 <div
-                className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-all duration-300 ${
-                  dragActive
-                    ? 'border-[#8b6d22] bg-[#8b6d22]/10 scale-[1.02]'
-                    : 'border-[#8b6d22]/30 bg-[#faf6ee]'
-                }`}
-                onDragEnter={handleDrag}
-                onDragLeave={handleDrag}
-                onDragOver={handleDrag}
-                onDrop={handleDrop}
-              >
-            {file ? (
-              <div className="flex items-center justify-center gap-3">
-                <FileSpreadsheet className="h-8 w-8 text-[#1e130c] font-bold" />
-                <div className="text-left">
-                  <p className="font-medium text-[#1e130c]">{file.name}</p>
-                  <p className="text-sm text-[#7a6350]/70">
-                    {(file.size / 1024).toFixed(2)} KB
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFile(null)}
-                  className="ml-auto"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <>
-                <Upload className="h-12 w-12 mx-auto text-[#8b6d22] mb-4" />
-                <p className="text-[#1e130c] mb-2">
-                  Arraste o arquivo Excel aqui ou
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  type="button"
-                >
-                  Selecionar Arquivo
-                </Button>
-                <p className="text-xs text-[#7a6350]/70 mt-2">Apenas arquivos .xlsx (máx 10MB)</p>
-              </>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-              onChange={handleFileChange}
-              className="font-[family-name:var(--font-lora)] text-[#1e130c] hidden"
-            />
-          </div>
-          )}
-
-          {/* Form Fields */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                Nome do Template *
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all"
-                placeholder="Ex: Relatório de Usuários IPETEC"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                Descrição
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all resize-none"
-                placeholder="Descreva o propósito deste template..."
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                Categoria *
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all cursor-pointer"
-              >
-                {categories.map((cat) => (
-                  <option key={cat.value} value={cat.value} className="bg-[#faf6ee] text-[#1e130c]">
-                    {cat.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-            </>
-          )}
-
-          {/* Aba: Mapeamento de Campos */}
-          {isEditMode && activeTab === 'mapping' && (
-            <>
-              {/* Toggle Substituir Arquivo */}
-              <div className="mb-6 p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={replaceFile}
-                    onChange={(e) => setReplaceFile(e.target.checked)}
-                    className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)] focus:ring-2"
-                  />
-                  <div className="flex items-center gap-2 flex-1">
-                    <RotateCw className="h-4 w-4 text-[#8b6d22]" />
-                    <span className="text-[#1e130c] font-medium">
-                      Substituir arquivo Excel
-                    </span>
-                  </div>
-                </label>
-                <p className="text-xs text-[#7a6350]/70 mt-2 ml-7">
-                  Marque para fazer upload de um novo arquivo e re-analisar a estrutura
-                </p>
-              </div>
-
-              {/* Upload Area - Apenas se marcou "substituir arquivo" */}
-              {replaceFile && (
-                <div
-                  className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-all duration-300 ${
+                  className={`border-2 border-dashed p-8 text-center transition-all duration-500 ${
                     dragActive
-                      ? 'border-[#8b6d22] bg-[#8b6d22]/10 scale-[1.02]'
-                      : 'border-[#8b6d22]/30 bg-[#faf6ee]'
+                      ? 'border-[#8b6d22] bg-[#8b6d22]/5'
+                      : 'border-[#1e130c]/20 bg-white/30 hover:border-[#1e130c]/40'
                   }`}
                   onDragEnter={handleDrag}
                   onDragLeave={handleDrag}
@@ -715,196 +559,286 @@ export default function TemplateUploadModal({ onClose, onSuccess, defaultCategor
                   onDrop={handleDrop}
                 >
                   {file ? (
-                    <div className="flex items-center justify-center gap-3">
-                      <FileSpreadsheet className="h-8 w-8 text-[#1e130c] font-bold" />
+                    <div className="flex items-center justify-center gap-4">
+                      <div className="p-2.5 bg-[#1e130c]/5 border border-[#1e130c]/10">
+                        <FileSpreadsheet className="h-6 w-6 text-[#1e130c]" />
+                      </div>
                       <div className="text-left">
-                        <p className="font-medium text-[#1e130c]">{file.name}</p>
-                        <p className="text-sm text-[#7a6350]/70">
-                          {(file.size / 1024).toFixed(2)} KB
+                        <p className="font-bold text-[#1e130c] text-base leading-tight">{file.name}</p>
+                        <p className="text-[0.6rem] text-[#7a6350] uppercase tracking-widest mt-0.5">
+                          {(file.size / 1024).toFixed(2)} KB • Pronto
                         </p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
+                      <button
                         onClick={() => setFile(null)}
-                        className="ml-auto"
+                        className="ml-4 p-1.5 text-[#7a6350] hover:text-[#1e130c] transition-colors"
                       >
                         <X className="h-4 w-4" />
-                      </Button>
+                      </button>
                     </div>
                   ) : (
                     <>
-                      <Upload className="h-12 w-12 mx-auto text-[#8b6d22] mb-4" />
-                      <p className="text-[#1e130c] mb-2">
-                        Arraste o novo arquivo Excel aqui ou
+                      <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center border border-[#1e130c]/10 bg-[#faf6ee]">
+                        <Upload className="h-6 w-6 text-[#8b6d22]" />
+                      </div>
+                      <p className="font-[family-name:var(--font-playfair)] text-lg text-[#1e130c] mb-1 italic">
+                        Selecione a matriz Excel
                       </p>
-                      <Button
-                        variant="outline"
+                      <button
                         onClick={() => fileInputRef.current?.click()}
                         type="button"
+                        className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#8b6d22] hover:text-[#1e130c] transition-colors py-1.5 border-b border-[#8b6d22]/30"
                       >
-                        Selecionar Arquivo
-                      </Button>
-                      <p className="text-xs text-[#7a6350]/70 mt-2">Apenas arquivos .xlsx (máx 10MB)</p>
+                        Procurar no Computador
+                      </button>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+              )}
+
+              {/* Form Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-1.5">
+                    Título do Template <span className="text-[#8b6d22]">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-0 py-1.5 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/30 focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none text-base font-medium"
+                    placeholder="Ex: Matriz de Relatório IPETEC"
+                  />
+                </div>
+
+                <div className="md:col-span-1">
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-1.5">
+                    Categoria Acadêmica <span className="text-[#8b6d22]">*</span>
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-0 py-1.5 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer text-sm"
+                  >
+                    {categories.map((cat) => (
+                      <option key={cat.value} value={cat.value} className="bg-[#faf6ee]">
+                        {cat.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-1.5">
+                    Observações
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    rows={1}
+                    className="w-full px-0 py-1.5 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/30 focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none resize-none italic text-sm"
+                    placeholder="Descreva o propósito..."
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Aba: Mapeamento de Campos */}
+          {isEditMode && activeTab === 'mapping' && (
+            <div className="space-y-6">
+              {/* Toggle Substituir Arquivo */}
+              <div className="p-4 border border-[#1e130c]/10 bg-white/20">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={replaceFile}
+                      onChange={(e) => setReplaceFile(e.target.checked)}
+                      className="w-4 h-4 text-[#8b6d22] bg-transparent border-[#1e130c]/30 rounded-none focus:ring-0"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-[#1e130c] font-bold uppercase text-[0.6rem] tracking-[0.1em] group-hover:text-[#8b6d22] transition-colors">
+                      Substituir Matriz Excel
+                    </span>
+                  </div>
+                  <RotateCw className={`h-3.5 w-3.5 text-[#8b6d22] ${replaceFile ? 'animate-spin' : ''}`} />
+                </label>
+              </div>
+
+              {/* Upload Area (Substituição) */}
+              {replaceFile && (
+                <div
+                  className={`border-2 border-dashed p-8 text-center transition-all duration-500 ${
+                    dragActive
+                      ? 'border-[#8b6d22] bg-[#8b6d22]/5'
+                      : 'border-[#1e130c]/20 bg-white/30 hover:border-[#1e130c]/40'
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  {file ? (
+                    <div className="flex items-center justify-center gap-4">
+                      <div className="p-2.5 bg-[#1e130c]/5 border border-[#1e130c]/10">
+                        <FileSpreadsheet className="h-6 w-6 text-[#1e130c]" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-[#1e130c] text-sm leading-tight">{file.name}</p>
+                      </div>
+                      <button
+                        onClick={() => setFile(null)}
+                        className="ml-4 p-1.5 text-[#7a6350] hover:text-[#1e130c]"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="font-[family-name:var(--font-playfair)] text-lg text-[#1e130c] mb-1 italic">
+                        Arraste o novo arquivo aqui
+                      </p>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        type="button"
+                        className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#8b6d22] hover:text-[#1e130c] transition-colors py-1.5 border-b border-[#8b6d22]/30"
+                      >
+                        Selecionar Novo Arquivo
+                      </button>
                     </>
                   )}
                 </div>
               )}
-            </>
-          )}
-
-          {/* Template Analysis */}
-          {(!isEditMode || (isEditMode && activeTab === 'mapping')) && analyzing && (
-            <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-300">
-                <Info className="h-5 w-5 animate-pulse" />
-                <span>Analisando estrutura do template...</span>
-              </div>
             </div>
           )}
 
-          {(!isEditMode || (isEditMode && activeTab === 'mapping')) && analysis && !analyzing && (
-            <>
-              <div className="mt-6 p-4 bg-[#1e130c]/5/10 border border-green-500/30 rounded-lg space-y-3">
-                <div className="flex items-center gap-2 text-[#1e130c] font-bold">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="font-semibold">Template analisado com sucesso!</span>
-                </div>
-                <div className="text-sm text-[#1e130c] space-y-2">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <span>• Planilha:</span>
-                    {analysis.availableSheets.length > 1 ? (
-                      <select
-                        value={selectedSheet || analysis.sheetName}
-                        onChange={(e) => handleSheetChange(e.target.value)}
-                        disabled={!file}
-                        className="px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-sm text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={!file ? 'Faça upload de um novo arquivo para reanalisar outras planilhas' : 'Selecione a aba que deseja mapear'}
-                      >
-                        {analysis.availableSheets.map(sheet => (
-                          <option key={sheet} value={sheet}>
-                            {sheet}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-[#1e130c] font-medium">{analysis.sheetName}</span>
-                    )}
-                    {!file && analysis.availableSheets.length > 1 && (
-                      <span className="text-xs text-[#7a6350]/70">
-                        Faça upload do arquivo para reprocessar outras planilhas.
-                      </span>
-                    )}
+          {/* Analysis Feedback Area */}
+          {(!isEditMode || (isEditMode && activeTab === 'mapping')) && (
+            <div className="space-y-4">
+              {analyzing && (
+                <div className="p-4 border border-[#8b6d22]/20 bg-[#faf6ee]/50 flex items-center gap-3">
+                  <div className="w-8 h-8 border-2 border-[#8b6d22]/20 border-t-[#8b6d22] rounded-full animate-spin" />
+                  <div>
+                    <p className="text-[#1e130c] font-bold uppercase text-[0.65rem] tracking-widest">Processando</p>
                   </div>
-                  <p>• Linha de dados: <span className="text-[#1e130c] font-medium">{analysis.dataStartRow}</span></p>
-                  <p>• Colunas encontradas: <span className="text-[#1e130c] font-medium">{analysis.headers.length}</span></p>
                 </div>
-                <div className="text-xs text-[#7a6350]/70">
-                  Configure os mapeamentos abaixo ou use os sugeridos automaticamente
-                </div>
-              </div>
-
-              {resolvedMapping && (
-                <MappingEditor
-                  analysis={analysis}
-                  category={category}
-                  initialMapping={resolvedMapping}
-                  onChange={setCustomMapping}
-                  onStaticMappingsChange={setStaticMappings}
-                  initialStaticMappings={staticMappings}
-                  manualMode={manualMode}
-                  onAnalysisChange={setAnalysis}
-                />
               )}
-            </>
-          )}
 
-          {(!isEditMode || (isEditMode && activeTab === 'mapping')) && analysisError && !analyzing && !analysis && (
-            <div className="mt-6 p-4 bg-[#7a6350]/10/10 border border-red-500/30 rounded-lg space-y-4">
-              <div className="flex items-center gap-2 text-[#7a6350] italic">
-                <AlertCircle className="h-5 w-5" />
-                <div className="flex-1">
-                  <p className="font-semibold">Erro ao analisar template automaticamente</p>
-                  <p className="text-sm mt-1">{analysisError}</p>
+              {analysis && !analyzing && (
+                <div className="space-y-4">
+                  {/* Summary Card */}
+                  <div className="p-4 border border-[#1e130c]/10 bg-white/40 shadow-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-[0.7rem] text-[#7a6350]">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="uppercase tracking-widest opacity-60 font-bold text-[0.55rem]">Planilha</span>
+                        <div className="flex items-center gap-2">
+                          {analysis.availableSheets.length > 1 && file ? (
+                            <select
+                              value={selectedSheet || analysis.sheetName}
+                              onChange={(e) => handleSheetChange(e.target.value)}
+                              className="bg-transparent border-0 border-b border-[#1e130c]/20 text-[#1e130c] font-bold py-0.5 focus:ring-0 focus:border-[#8b6d22] cursor-pointer text-[0.7rem]"
+                            >
+                              {analysis.availableSheets.map(sheet => (
+                                <option key={sheet} value={sheet}>{sheet}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className="text-[#1e130c] font-bold truncate">{analysis.sheetName}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="uppercase tracking-widest opacity-60 font-bold text-[0.55rem]">Início</span>
+                        <span className="text-[#1e130c] font-bold">Linha {analysis.dataStartRow}</span>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="uppercase tracking-widest opacity-60 font-bold text-[0.55rem]">Colunas</span>
+                        <span className="text-[#1e130c] font-bold">{analysis.headers.length} detectadas</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mapping Component */}
+                  {resolvedMapping && (
+                    <div className="border border-[#1e130c]/10">
+                      <MappingEditor
+                        analysis={analysis}
+                        category={category}
+                        initialMapping={resolvedMapping}
+                        onChange={setCustomMapping}
+                        onStaticMappingsChange={setStaticMappings}
+                        initialStaticMappings={staticMappings}
+                        manualMode={manualMode}
+                        onAnalysisChange={setAnalysis}
+                      />
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="flex items-center gap-3 pt-2 border-t border-red-500/30">
-                <Button
-                  variant="outline"
-                  onClick={createManualAnalysis}
-                  className="flex-1"
-                  type="button"
-                >
-                  Configurar Manualmente
-                </Button>
-                <p className="text-xs text-[#7a6350] italic/70 flex-1">
-                  Configure os mapeamentos do zero ou tente novamente o upload
-                </p>
-              </div>
+              )}
             </div>
           )}
 
-          {/* Progress Bar */}
+          {/* Progress Section */}
           {uploadStatus !== 'idle' && (
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-[#7a6350]">
-                  {uploadStatus === 'uploading' && 'Enviando template...'}
-                  {uploadStatus === 'success' && 'Upload concluído!'}
-                  {uploadStatus === 'error' && 'Erro no upload'}
+            <div className="p-4 border border-[#1e130c]/10 bg-[#faf6ee]/30 space-y-3">
+              <div className="flex items-center justify-between text-[0.6rem] uppercase font-bold tracking-[0.15em]">
+                <span className={uploadStatus === 'error' ? 'text-red-800' : 'text-[#7a6350]'}>
+                  {uploadStatus === 'uploading' && 'Transmitindo...'}
+                  {uploadStatus === 'success' && 'Concluído'}
+                  {uploadStatus === 'error' && 'Erro'}
                 </span>
-                <span className="text-[#8b6d22] font-medium">{uploadProgress}%</span>
+                <span className="text-[#1e130c]">{uploadProgress}%</span>
               </div>
-              <div className="h-2 bg-[#faf6ee] rounded-full overflow-hidden">
+              <div className="h-1 w-full bg-[#1e130c]/10 overflow-hidden">
                 <div
-                  className={`h-full transition-all duration-300 ${
-                    uploadStatus === 'success'
-                      ? 'bg-gradient-to-r from-green-500 to-green-400'
-                      : uploadStatus === 'error'
-                      ? 'bg-gradient-to-r from-red-500 to-red-400'
-                      : 'bg-gradient-to-r from-[#8b6d22] to-gold-400'
+                  className={`h-full transition-all duration-500 ${
+                    uploadStatus === 'success' ? 'bg-[#8b6d22]' : uploadStatus === 'error' ? 'bg-red-800' : 'bg-[#1e130c]'
                   }`}
                   style={{ width: `${uploadProgress}%` }}
                 />
               </div>
-              {uploadStatus === 'success' && (
-                <div className="flex items-center gap-2 text-[#1e130c] font-bold text-sm">
-                  <CheckCircle className="h-4 w-4" />
-                  Template enviado com sucesso!
-                </div>
-              )}
-              {uploadStatus === 'error' && errorMessage && (
-                <div className="flex items-center gap-2 text-[#7a6350] italic text-sm">
-                  <AlertCircle className="h-4 w-4" />
-                  {errorMessage}
-                </div>
-              )}
             </div>
           )}
-
-          {/* Actions */}
-          <div className="flex gap-3 mt-6">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              className="flex-1"
-              disabled={uploading || uploadStatus === 'success'}
-            >
-              {uploadStatus === 'success' ? 'Fechar' : 'Cancelar'}
-            </Button>
-            <Button
-              onClick={handleUpload}
-              variant={uploadStatus === 'success' ? 'success' : 'primary'}
-              className="flex-1 gap-2"
-              disabled={isEditMode ? (!name || uploading || uploadStatus === 'success') : (!file || !name || uploading || uploadStatus === 'success')}
-              
-            >
-              {uploadStatus === 'success' && <CheckCircle className="h-4 w-4" />}
-              {uploading ? (isEditMode ? 'Salvando...' : 'Enviando...') : uploadStatus === 'success' ? 'Concluído' : (isEditMode ? 'Salvar Alterações' : 'Enviar Template')}
-            </Button>
-          </div>
         </div>
-      </Card>
-    </div>
+
+        {/* Footer Actions */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-6 mt-6 border-t border-[#1e130c]/10">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={uploading || uploadStatus === 'success'}
+            className="flex-1 py-3 border border-[#1e130c]/20 text-[#1e130c] hover:bg-[#1e130c]/5 transition-colors font-bold uppercase tracking-[0.15em] text-[0.6rem]"
+          >
+            {uploadStatus === 'success' ? 'Fechar' : 'Cancelar'}
+          </button>
+          <button
+            type="button"
+            onClick={handleUpload}
+            disabled={isEditMode ? (!name || uploading || uploadStatus === 'success') : (!file || !name || uploading || uploadStatus === 'success')}
+            className="flex-2 py-3 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-bold uppercase tracking-[0.15em] text-[0.6rem] flex items-center justify-center gap-2 px-8"
+          >
+            {uploading ? (
+              <span>Processando...</span>
+            ) : uploadStatus === 'success' ? (
+              <>
+                <CheckCircle className="h-3.5 w-3.5" />
+                <span>Concluído</span>
+              </>
+            ) : (
+              <span>{isEditMode ? 'Gravar Alterações' : 'Publicar Template'}</span>
+            )}
+          </button>
+        </div>
+      </div>
+    </Modal>
   )
 }

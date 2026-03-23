@@ -1,12 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, Settings, Trash2 } from 'lucide-react'
+import { Plus, Settings, Trash2, AlertCircle, AlertTriangle } from 'lucide-react'
 import type { TemplateAnalysis, SuggestedMapping, StaticCell } from '@/lib/template-analyzer'
 import FieldSelector from './FieldSelector'
 import StaticFieldMapper from './StaticFieldMapper'
 import MappingPreview from './MappingPreview'
 import Button from '../../../components/Button'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 interface MappingEditorProps {
   analysis: TemplateAnalysis
@@ -311,21 +317,22 @@ export default function MappingEditor({
   )
 
   return (
-    <div className="mt-6 space-y-6">
-      <div className="flex items-center gap-2 text-[#1e130c]">
-        <Settings className="h-5 w-5" />
-        <h3 className="font-[family-name:var(--font-playfair)] text-lg font-semibold">Configurar Mapeamento</h3>
+    <div className="space-y-8 p-6 bg-white/30 border border-[#1e130c]/10">
+      <div className="flex items-center gap-3 text-[#1e130c]">
+        <Settings className="h-5 w-5 text-[#8b6d22]" />
+        <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold uppercase tracking-wide">Configurar Mapeamento</h3>
       </div>
 
       {/* Alertas de Validação */}
       {mappingValidation.hasIssues && (
-        <div className="space-y-2">
+        <div className="space-y-4">
           {mappingValidation.conflicts.length > 0 && (
-            <div className="bg-[#7a6350]/10/20 border border-red-700/50 rounded-lg p-4">
-              <div className="flex items-start gap-2">
-                <div className="text-[#7a6350] italic font-semibold">⚠️ Conflitos</div>
+            <div className="bg-[#7a6350]/5 border border-[#7a6350]/20 p-5">
+              <div className="flex items-center gap-3 text-[#7a6350] mb-2">
+                <AlertCircle className="h-5 w-5" />
+                <span className="font-bold uppercase text-[0.7rem] tracking-widest">Conflitos de Mapeamento</span>
               </div>
-              <ul className="mt-2 space-y-1 text-sm text-[#7a6350] italic">
+              <ul className="space-y-1 text-sm text-[#7a6350] italic ml-8">
                 {mappingValidation.conflicts.map((conflict, i) => (
                   <li key={i}>• {conflict}</li>
                 ))}
@@ -334,11 +341,12 @@ export default function MappingEditor({
           )}
 
           {mappingValidation.warnings.length > 0 && (
-            <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
-              <div className="flex items-start gap-2">
-                <div className="text-yellow-400 font-semibold">⚠️ Avisos</div>
+            <div className="bg-[#8b6d22]/5 border border-[#8b6d22]/20 p-5">
+              <div className="flex items-center gap-3 text-[#8b6d22] mb-2">
+                <AlertTriangle className="h-5 w-5" />
+                <span className="font-bold uppercase text-[0.7rem] tracking-widest">Avisos de Estrutura</span>
               </div>
-              <ul className="mt-2 space-y-1 text-sm text-yellow-300">
+              <ul className="space-y-1 text-sm text-[#1e130c] italic ml-8">
                 {mappingValidation.warnings.map((warning, i) => (
                   <li key={i}>• {warning}</li>
                 ))}
@@ -348,25 +356,21 @@ export default function MappingEditor({
         </div>
       )}
 
-      <p className="text-sm text-[#7a6350]/70">
-        Mapeie os campos estáticos do cabeçalho e as colunas da tabela de dados:
+      <p className="text-sm text-[#7a6350] italic font-[family-name:var(--font-lora)]">
+        Mapeie os campos estáticos do cabeçalho e as colunas da tabela de dados conforme o modelo acadêmico:
       </p>
 
-      <div className="space-y-3">
-        <div className="flex items-center gap-2 text-[#1e130c]">
-          <div className="h-px flex-1 bg-[#8b6d22]/20" />
-          <h4 className="text-sm font-semibold">Campos Estáticos (Cabeçalho)</h4>
-          <div className="h-px flex-1 bg-[#8b6d22]/20" />
+      {/* Seção: Campos Estáticos */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <span className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[#7a6350] whitespace-nowrap">Campos Estáticos</span>
+          <div className="h-px w-full bg-[#1e130c]/10" />
         </div>
 
-        <p className="text-xs text-[#7a6350]/70">
-          Células individuais detectadas antes da tabela de dados. Adicione outras manualmente se necessário.
-        </p>
-
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 gap-4">
           {staticCells.length === 0 && !addingStaticCell && (
-            <p className="text-xs text-[#7a6350]/70 italic">
-              Nenhuma célula estática detectada automaticamente.
+            <p className="text-xs text-[#7a6350] italic opacity-60 px-4">
+              Nenhuma célula estática detectada automaticamente na matriz.
             </p>
           )}
           {staticCells.map((cell) => (
@@ -383,115 +387,111 @@ export default function MappingEditor({
           ))}
         </div>
 
-        <div className="pt-2 border-t border-[#1e130c]/15 space-y-3">
+        <div className="pt-4 border-t border-[#1e130c]/5">
           {addingStaticCell ? (
-            <div className="space-y-3 p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg">
-              <div className="flex flex-wrap gap-3">
-                <div className="flex-1 min-w-[140px]">
-                  <label className="block text-xs text-[#7a6350]/70 mb-1 uppercase tracking-wide">
-                    Endereço (Excel)
+            <div className="p-6 bg-[#faf6ee] border border-[#1e130c]/10 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-widest mb-2">
+                    Endereço (Ex: B4)
                   </label>
                   <input
                     type="text"
                     value={newStaticAddress}
                     onChange={e => setNewStaticAddress(e.target.value)}
-                    placeholder="Ex: B4"
-                    className="w-full px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-sm text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
+                    placeholder="B4"
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none font-mono"
                   />
                 </div>
-                <div className="flex-1 min-w-[180px]">
-                  <label className="block text-xs text-[#7a6350]/70 mb-1 uppercase tracking-wide">
-                    Rótulo
+                <div>
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-widest mb-2">
+                    Rótulo Descritivo
                   </label>
                   <input
                     type="text"
                     value={newStaticLabel}
                     onChange={e => setNewStaticLabel(e.target.value)}
                     placeholder="Nome do campo"
-                    className="w-full px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-sm text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none italic"
                   />
                 </div>
               </div>
               {staticFormError && (
-                <p className="text-xs text-[#7a6350] italic">{staticFormError}</p>
+                <p className="text-xs text-[#7a6350] italic uppercase tracking-wider">{staticFormError}</p>
               )}
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="success"
+              <div className="flex items-center gap-4 pt-4">
+                <button
                   type="button"
                   onClick={handleAddStaticCell}
+                  className="px-6 py-2 bg-[#1e130c] text-[#faf6ee] text-[0.65rem] font-bold uppercase tracking-widest hover:bg-[#8b6d22] transition-colors"
                 >
-                  Adicionar célula
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
+                  Vincular Célula
+                </button>
+                <button
                   type="button"
                   onClick={cancelAddStaticCell}
+                  className="px-6 py-2 border border-[#1e130c]/20 text-[#1e130c] text-[0.65rem] font-bold uppercase tracking-widest hover:bg-[#1e130c]/5 transition-colors"
                 >
                   Cancelar
-                </Button>
+                </button>
               </div>
             </div>
           ) : (
-            <Button
+            <button
               type="button"
-              size="sm"
-              variant="ghost"
-              className="gap-2"
               onClick={() => setAddingStaticCell(true)}
+              className="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-[#8b6d22] hover:text-[#1e130c] transition-colors group"
             >
-              <Plus className="w-4 h-4" />
-              Adicionar célula estática
-            </Button>
+              <Plus className="w-3 h-3 group-hover:rotate-90 transition-transform duration-300" />
+              Adicionar Mapeamento Estático
+            </button>
           )}
         </div>
       </div>
 
-      <div className="space-y-4">
-        {staticCells.length > 0 && (
-          <div className="flex items-center gap-2 text-[#1e130c]">
-            <div className="h-px flex-1 bg-[#8b6d22]/20" />
-            <h4 className="text-sm font-semibold">Tabela de Dados</h4>
-            <div className="h-px flex-1 bg-[#8b6d22]/20" />
-          </div>
-        )}
+      {/* Seção: Tabela de Dados */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <span className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[#7a6350] whitespace-nowrap">Matriz de Dados (Tabela)</span>
+          <div className="h-px w-full bg-[#1e130c]/10" />
+        </div>
 
-        <div className="p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg">
-          <label className="block text-sm font-medium text-[#1e130c] mb-2">
-            Linha inicial dos dados
-          </label>
-          <input
-            type="number"
-            min="1"
-            value={startRow}
-            onChange={(e) => handleStartRowChange(Number(e.target.value))}
-            className="w-32 px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all"
-          />
-          <p className="text-xs text-[#7a6350]/70 mt-2">
-            Linha onde os dados começam (após o cabeçalho)
+        <div className="p-6 bg-[#faf6ee] border border-[#1e130c]/10 flex flex-col sm:flex-row sm:items-center gap-6">
+          <div className="flex-1">
+            <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-widest mb-2">
+              Linha Inicial do Processamento
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={startRow}
+              onChange={(e) => handleStartRowChange(Number(e.target.value))}
+              className="w-32 px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none font-bold text-lg"
+            />
+          </div>
+          <p className="text-[0.7rem] text-[#7a6350] italic max-w-xs leading-relaxed">
+            Informe o número da linha na planilha onde os dados efetivamente começam (ignorando os títulos).
           </p>
         </div>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {columns.map((header) => (
             <div
               key={header.column}
-              className="p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg"
+              className="p-4 bg-white/50 border border-[#1e130c]/10 hover:border-[#8b6d22]/30 transition-colors group"
             >
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0">
-                  <div className="w-16 h-10 flex items-center justify-center bg-[#8b6d22]/10 border border-[#8b6d22]/30 rounded">
-                    <span className="text-sm font-mono text-[#8b6d22]">
-                      Col {header.column}
+                  <div className="w-16 h-10 flex items-center justify-center border border-[#1e130c]/10 bg-[#faf6ee] group-hover:bg-[#8b6d22]/5 transition-colors">
+                    <span className="text-[0.6rem] font-bold font-mono text-[#8b6d22] uppercase tracking-tighter">
+                      COL {header.column}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1e130c] mb-1 truncate">
-                    {header.value}
+                  <p className="text-[0.65rem] font-bold text-[#1e130c] uppercase tracking-wider mb-1 truncate opacity-80">
+                    Título: {header.value}
                   </p>
                   <FieldSelector
                     category={category}
@@ -503,35 +503,36 @@ export default function MappingEditor({
 
                 <button
                   onClick={() => removeColumn(header.column)}
-                  className="flex-shrink-0 p-2 text-[#7a6350] italic hover:bg-[#7a6350]/10/10 rounded-lg transition-colors"
-                  title="Remover coluna"
+                  className="p-1.5 text-[#7a6350] hover:text-red-800 transition-colors"
+                  title="Expurgar coluna"
                 >
-                  <Trash2 className="w-4 h-4" />
-                  <span className="sr-only">Remover coluna</span>
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           ))}
+        </div>
 
-          <Button
+        <div className="pt-2">
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            className="gap-2"
             onClick={addColumn}
+            className="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-[#8b6d22] hover:text-[#1e130c] transition-colors group py-2 px-2"
           >
-            <Plus className="h-4 w-4" />
-            Adicionar coluna
-          </Button>
+            <Plus className="w-3 h-3 group-hover:rotate-90 transition-transform duration-300" />
+            Vincular Nova Coluna
+          </button>
         </div>
       </div>
 
-      <MappingPreview
-        mapping={previewMapping}
-        category={category}
-        staticMappings={staticMappings}
-        analysis={previewAnalysis}
-      />
+      <div className="pt-10 border-t border-[#1e130c]/10">
+        <MappingPreview
+          mapping={previewMapping}
+          category={category}
+          staticMappings={staticMappings}
+          analysis={previewAnalysis}
+        />
+      </div>
     </div>
   )
 }

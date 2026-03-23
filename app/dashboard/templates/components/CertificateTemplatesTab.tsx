@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Star, StarOff, AlertCircle, Check, X, FileText, Code } from 'lucide-react'
+import { Plus, Edit, Trash2, Star, StarOff, AlertCircle, Check, X, FileText, Code, Info } from 'lucide-react'
 import Card from '../../../components/Card'
 import Spinner from '../../../components/ui/Spinner'
 import Button from '../../../components/Button'
@@ -19,6 +19,12 @@ import {
 import { validateTemplate } from '@/lib/utils/template-renderer'
 import DocxTemplatesSection from './DocxTemplatesSection'
 import DocxTemplateUploadModal from './DocxTemplateUploadModal'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 type TemplateFormat = 'html' | 'docx'
 
@@ -143,140 +149,138 @@ export default function CertificateTemplatesTab() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Spinner size="xl" />
-      </div>
-    )
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Format Switcher */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-2 p-1 bg-[#faf6ee] rounded-lg border border-[#1e130c]/15">
+    <div className="space-y-6 flex flex-col w-full">
+      {/* Format Switcher & Action Button */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <div className="flex gap-2 p-1 bg-transparent border border-[#1e130c]/15 self-start">
           <button
             onClick={() => setTemplateFormat('html')}
-            className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+            className={`flex items-center gap-2 px-4 py-1.5 transition-all duration-300 ${
               templateFormat === 'html'
-                ? 'bg-[#8b6d22]/20 text-[#1e130c]'
-                : 'text-[#8b6d22] hover:text-[#1e130c]'
+                ? 'bg-[#1e130c] text-[#faf6ee]'
+                : 'text-[#7a6350] hover:text-[#1e130c]'
             }`}
+            style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}
           >
-            <Code className="w-4 h-4" />
+            <Code className="w-3.5 h-3.5" />
             Templates HTML
           </button>
           <button
             onClick={() => setTemplateFormat('docx')}
-            className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+            className={`flex items-center gap-2 px-4 py-1.5 transition-all duration-300 ${
               templateFormat === 'docx'
-                ? 'bg-[#8b6d22]/20 text-[#1e130c]'
-                : 'text-[#8b6d22] hover:text-[#1e130c]'
+                ? 'bg-[#1e130c] text-[#faf6ee]'
+                : 'text-[#7a6350] hover:text-[#1e130c]'
             }`}
+            style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-3.5 h-3.5" />
             Templates DOCX
           </button>
         </div>
 
-        {/* Action Button */}
-        <Button
+        <button
           onClick={templateFormat === 'html' ? openCreateModal : () => setShowDocxModal(true)}
-          icon={<Plus className="w-4 h-4" />}
+          style={{ padding: '0.75rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', fontSize: '0.85rem' }}
         >
           {templateFormat === 'html' ? 'Novo Template HTML' : 'Novo Template DOCX'}
-        </Button>
+        </button>
       </div>
 
       {/* Message */}
       {message && (
-        <div className={`p-4 rounded-lg flex items-center gap-2 ${
+        <div className={`p-3 flex items-center gap-3 border ${
           message.type === 'success'
-            ? 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border border-green-500/20'
-            : 'bg-[#7a6350]/10/20 text-[#7a6350] italic border border-red-500/20'
-        }`}>
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          {message.text}
+            ? 'bg-[#1e130c]/[0.02] text-[#1e130c] border-[#1e130c]/10'
+            : 'bg-[#7a6350]/[0.05] text-[#7a6350] italic border-[#7a6350]/20'
+        }`} style={{ fontFamily: 'var(--font-lora)', fontSize: '0.9rem' }}>
+          <AlertCircle className="w-4 h-4 flex-shrink-0 opacity-50" />
+          <span className="font-medium">{message.text}</span>
         </div>
       )}
 
       {/* Templates List */}
-      {templateFormat === 'html' ? (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="font-[family-name:var(--font-lora)] w-full">
-            <thead className="bg-transparent">
-              <tr className="border-b border-[#1e130c]/15">
-                <th className="text-left py-4 px-4 text-[#7a6350] font-medium">Nome</th>
-                <th className="text-left py-4 px-4 text-[#7a6350] font-medium">Tipo</th>
-                <th className="text-center py-4 px-4 text-[#7a6350] font-medium">Padrão</th>
-                <th className="text-center py-4 px-4 text-[#7a6350] font-medium">Ativo</th>
-                <th className="text-center py-4 px-4 text-[#7a6350] font-medium">Ações</th>
+      {loading ? (
+        <Spinner fullPage size="xl" />
+      ) : templateFormat === 'html' ? (
+        <div className="w-full overflow-x-auto custom-scrollbar">
+          <table className="w-full border-collapse min-w-[800px]">
+            <thead>
+              <tr style={{ borderBottom: `2px solid ${INK}` }}>
+                <th className="px-4 py-3 text-left" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Nome do Modelo</th>
+                <th className="px-4 py-3 text-left w-40" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Tipo</th>
+                <th className="px-4 py-3 text-center w-24" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Padrão</th>
+                <th className="px-4 py-3 text-center w-24" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Status</th>
+                <th className="px-4 py-3 text-right w-32" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Ações</th>
               </tr>
             </thead>
             <tbody>
               {templates.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-[#8b6d22]">
-                    Nenhum template cadastrado
+                  <td colSpan={5} className="py-16 text-center italic text-[#7a6350] border border-dashed border-[#1e130c]/10">
+                    Nenhum template cadastrado no acervo.
                   </td>
                 </tr>
               ) : (
                 templates.map(template => (
-                  <tr key={template.id} className="border-b border-[#1e130c]/15 hover:bg-[#1e130c]/5">
-                    <td className="py-4 px-4">
+                  <tr key={template.id} style={{ borderBottom: `1px dashed ${BORDER}` }} className="hover:bg-[#1e130c]/[0.02] transition-colors group">
+                    <td className="px-4 py-4 align-top">
                       <div>
-                        <p className="text-[#1e130c] font-medium">{template.name}</p>
+                        <p style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.15rem', fontWeight: 600, color: INK, display: 'block' }}>{template.name}</p>
                         {template.description && (
-                          <p className="text-[#8b6d22] text-sm">{template.description}</p>
+                          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '0.85rem', fontStyle: 'italic', color: ACCENT, mt: '0.25rem' }}>{template.description}</p>
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        template.certificate_type === 'technical'
-                          ? 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold'
-                          : template.certificate_type === 'lato-sensu'
-                          ? 'bg-purple-500/20 text-purple-300'
-                          : 'bg-blue-500/20 text-blue-300'
-                      }`}>
+                    <td className="px-4 py-6 align-top">
+                      <span style={{ 
+                        display: 'inline-block',
+                        fontSize: '0.65rem', 
+                        fontWeight: 700, 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '0.05em',
+                        color: INK,
+                        backgroundColor: 'rgba(30,19,12,0.05)',
+                        padding: '0.35rem 0.75rem',
+                        border: `1px solid ${INK}`
+                      }}>
                         {template.certificate_type === 'technical' ? 'Técnico' :
                          template.certificate_type === 'lato-sensu' ? 'Lato Sensu' : 'Todos'}
                       </span>
                     </td>
-                    <td className="py-4 px-4 text-center">
+                    <td className="px-4 py-6 text-center align-top">
                       {template.is_default ? (
-                        <Star className="w-5 h-5 text-yellow-400 inline" />
+                        <Star className="w-5 h-5 text-[#8b6d22] inline fill-[#8b6d22]" />
                       ) : (
                         <button
                           onClick={() => handleSetDefault(template.id)}
-                          className="text-[#8b6d22] hover:text-yellow-400"
+                          className="text-[#7a6350]/30 hover:text-[#8b6d22] transition-colors"
                           title="Definir como padrão"
                         >
                           <StarOff className="w-5 h-5" />
                         </button>
                       )}
                     </td>
-                    <td className="py-4 px-4 text-center">
+                    <td className="px-4 py-6 text-center align-top">
                       {template.is_active ? (
-                        <Check className="w-5 h-5 text-[#1e130c] font-bold inline" />
+                        <span className="text-[#1e130c] font-bold text-xs uppercase tracking-widest">Ativo</span>
                       ) : (
-                        <X className="w-5 h-5 text-[#7a6350] italic inline" />
+                        <span className="text-[#7a6350] italic text-xs uppercase tracking-widest opacity-50">Inativo</span>
                       )}
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="px-4 py-6 text-right align-top">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => openEditModal(template)}
-                          className="p-2 text-blue-400 hover:bg-blue-500/20 rounded transition"
+                          className="p-2 text-[#8b6d22] hover:text-[#1e130c] transition-colors"
                           title="Editar"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(template.id)}
-                          className="p-2 text-[#7a6350] italic hover:bg-[#7a6350]/10/20 rounded transition"
+                          className="p-2 text-[#7a6350] hover:text-red-800 transition-colors"
                           title="Excluir"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -289,7 +293,6 @@ export default function CertificateTemplatesTab() {
             </tbody>
           </table>
         </div>
-      </Card>
       ) : (
         <DocxTemplatesSection 
           onRefresh={docxRefresh} 
@@ -316,21 +319,39 @@ export default function CertificateTemplatesTab() {
         />
       )}
 
-      {/* Modal Create/Edit */}
+      {/* Modal Create/Edit HTML */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#faf6ee] rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[#1e130c]/15">
-              <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c]">
-                {editingTemplate ? 'Editar Template' : 'Novo Template'}
-              </h2>
+        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
+          <div className="relative bg-[#faf6ee] w-full max-w-4xl p-8 md:p-10 shadow-2xl border border-[#1e130c]/20 my-8">
+            <div className="flex items-center justify-between mb-10 border-b border-[#1e130c]/10 pb-6 relative z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 border border-[#1e130c]/10 bg-[#faf6ee] flex items-center justify-center">
+                  <Code className="w-6 h-6 text-[#8b6d22]" />
+                </div>
+                <div>
+                  <h2 className="font-[family-name:var(--font-playfair)] text-2xl md:text-3xl font-bold text-[#1e130c] leading-tight">
+                    {editingTemplate ? 'Vincular Template HTML' : 'Novo Template HTML'}
+                  </h2>
+                  <p className="text-[0.65rem] text-[#8b6d22] font-bold uppercase tracking-widest mt-1">Configuração de Certificado Digital</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-[#7a6350] hover:text-[#1e130c] transition-colors p-2"
+                aria-label="Fechar"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-8 relative z-10 font-[family-name:var(--font-lora)]">
               {validationErrors.length > 0 && (
-                <div className="p-4 bg-[#7a6350]/10/20 border border-red-500/20 rounded-lg">
-                  <p className="text-[#7a6350] italic font-medium mb-2">Erros de validação:</p>
-                  <ul className="list-disc list-inside text-[#7a6350] italic text-sm space-y-1">
+                <div className="p-6 bg-red-900/5 border border-red-900/20">
+                  <div className="flex items-center gap-3 text-red-900 mb-3">
+                    <AlertCircle className="h-5 w-5" />
+                    <span className="text-[0.7rem] font-bold uppercase tracking-widest">Inconsistências no Código HTML</span>
+                  </div>
+                  <ul className="list-disc list-inside text-[#7a6350] italic text-sm space-y-1 ml-4">
                     {validationErrors.map((error, i) => (
                       <li key={i}>{error}</li>
                     ))}
@@ -338,118 +359,137 @@ export default function CertificateTemplatesTab() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-[#1e130c] mb-2">Nome *</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="md:col-span-1">
+                  <label className="block text-[0.7rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">Nome do Modelo <span className="text-[#8b6d22]">*</span></label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/30 focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none text-lg font-medium"
+                    required
+                    placeholder="Ex: Certificado IPETEC 2024"
+                  />
+                </div>
+
+                <div className="md:col-span-1">
+                  <label className="block text-[0.7rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">Segmento Acadêmico <span className="text-[#8b6d22]">*</span></label>
+                  <select
+                    value={formData.certificate_type}
+                    onChange={(e) => setFormData({ ...formData, certificate_type: e.target.value as any })}
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer font-bold italic text-sm"
+                    required
+                  >
+                    <option value="all" className="bg-[#faf6ee] not-italic">Todos os tipos</option>
+                    <option value="technical" className="bg-[#faf6ee] not-italic">Ensino Técnico</option>
+                    <option value="lato-sensu" className="bg-[#faf6ee] not-italic">Lato Sensu (Pós)</option>
+                  </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-[#1e130c] mb-2">Descrição</label>
+                <label className="block text-[0.7rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">Breve Descrição</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
+                  className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/30 focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none resize-none italic text-sm"
                   rows={2}
+                  placeholder="Notas internas sobre este modelo..."
                 />
               </div>
 
-              <div>
-                <label className="block text-[#1e130c] mb-2">Tipo de Certificado *</label>
-                <select
-                  value={formData.certificate_type}
-                  onChange={(e) => setFormData({ ...formData, certificate_type: e.target.value as any })}
-                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
-                  required
-                >
-                  <option value="all">Todos os tipos</option>
-                  <option value="technical">Técnico</option>
-                  <option value="lato-sensu">Lato Sensu</option>
-                </select>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[#1e130c]">HTML do Template *</label>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between border-b border-[#1e130c]/10 pb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[0.7rem] font-bold uppercase text-[#1e130c] tracking-[0.2em]">Estrutura HTML</span>
+                    <span className="text-[0.6rem] text-[#8b6d22] font-bold uppercase bg-[#8b6d22]/5 px-2 py-0.5 border border-[#8b6d22]/10 tracking-widest">Dimensões: 1100x850px</span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setShowVariablesHelp(!showVariablesHelp)}
-                    className="text-sm text-[#8b6d22] hover:text-[#1e130c]"
+                    className="text-[0.6rem] uppercase font-bold tracking-[0.15em] text-[#8b6d22] hover:text-[#1e130c] transition-colors flex items-center gap-2"
                   >
-                    {showVariablesHelp ? 'Ocultar' : 'Ver'} Variáveis Disponíveis
+                    <Info className="w-3 h-3" />
+                    {showVariablesHelp ? 'Ocultar Dicionário' : 'Ver Dicionário de Variáveis'}
                   </button>
                 </div>
 
                 {showVariablesHelp && (
-                  <div className="mb-4 p-4 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-sm">
-                    <p className="text-[#1e130c] font-medium mb-2">Variáveis disponíveis:</p>
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="p-6 bg-white/40 border border-[#1e130c]/10 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <p className="text-[0.65rem] text-[#1e130c] font-bold mb-4 uppercase tracking-[0.2em] opacity-60">Variáveis Dinâmicas Disponíveis:</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {Object.entries(TEMPLATE_VARIABLES).map(([key, value]) => (
-                        <div key={key} className="text-[#8b6d22]">
-                          <code className="bg-[#faf6ee] px-2 py-1 rounded">{value.placeholder}</code>
-                          <span className="text-xs ml-2 text-[#7a6350]">{value.description}</span>
+                        <div key={key} className="flex flex-col gap-1.5">
+                          <code className="text-[#8b6d22] font-bold text-xs bg-[#8b6d22]/5 px-1.5 py-0.5 self-start">{value.placeholder}</code>
+                          <span className="text-[0.65rem] text-[#7a6350] italic leading-tight uppercase tracking-tighter">{value.description}</span>
                         </div>
                       ))}
                     </div>
-                    <p className="text-[#7a6350] text-xs mt-3">
-                      Use <code className="bg-[#faf6ee] px-1 rounded">{'{{#if variable}}...{{/if}}'}</code> para conteúdo condicional
-                    </p>
                   </div>
                 )}
 
-                <textarea
-                  value={formData.html_content}
-                  onChange={(e) => setFormData({ ...formData, html_content: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] font-mono text-sm"
-                  rows={12}
-                  required
-                  placeholder="Cole seu HTML aqui..."
-                />
-                <p className="text-xs text-[#8b6d22] mt-1">
-                  Dimensões obrigatórias: 1100px x 850px
-                </p>
+                <div className="relative group">
+                  <textarea
+                    value={formData.html_content}
+                    onChange={(e) => setFormData({ ...formData, html_content: e.target.value })}
+                    className="w-full px-6 py-6 bg-white/20 border border-[#1e130c]/10 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none font-mono text-[0.8rem] resize-y leading-relaxed"
+                    rows={12}
+                    required
+                    placeholder="Cole aqui o código estrutural HTML..."
+                  />
+                  <div className="absolute top-0 right-0 w-1 h-full bg-gradient-to-b from-[#8b6d22]/20 to-transparent pointer-events-none" />
+                </div>
               </div>
 
               <div>
-                <label className="block text-[#1e130c] mb-2">CSS Adicional (opcional)</label>
+                <label className="block text-[0.7rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-3">Estilos CSS Complementares</label>
                 <textarea
                   value={formData.css_content}
                   onChange={(e) => setFormData({ ...formData, css_content: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] font-mono text-sm"
+                  className="w-full px-6 py-4 bg-white/20 border border-[#1e130c]/10 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none font-mono text-[0.8rem] resize-y"
                   rows={4}
-                  placeholder=".my-class { color: #FFD700; }"
+                  placeholder="Defina aqui os estilos CSS específicos para este template..."
                 />
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="is_default"
-                  checked={formData.is_default}
-                  onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
-                  className="w-4 h-4"
-                />
-                <label htmlFor="is_default" className="text-[#1e130c]">
-                  Definir como template padrão
+              <div className="flex items-center gap-4 py-4 p-6 bg-white/20 border border-[#1e130c]/5">
+                <div className="relative flex items-center">
+                  <input
+                    type="checkbox"
+                    id="is_default"
+                    checked={formData.is_default}
+                    onChange={(e) => setFormData({ ...formData, is_default: e.target.checked })}
+                    className="w-5 h-5 text-[#8b6d22] bg-transparent border-[#1e130c]/30 rounded-none focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                  />
+                </div>
+                <label htmlFor="is_default" className="text-[#1e130c] text-[0.7rem] font-bold uppercase tracking-[0.15em] cursor-pointer">
+                  Definir como Matriz Padrão para emissão de novos certificados
                 </label>
               </div>
 
-              <div className="flex gap-4 pt-4">
-                <Button type="submit" disabled={submitting}>
-                  {submitting ? <Spinner size="sm" /> : editingTemplate ? 'Atualizar' : 'Criar'}
-                </Button>
-                <Button
+              <div className="flex flex-col sm:flex-row gap-4 pt-10 border-t border-[#1e130c]/10">
+                <button
                   type="button"
-                  variant="secondary"
                   onClick={() => setShowModal(false)}
+                  disabled={submitting}
+                  className="flex-1 py-4 border border-[#1e130c]/20 text-[#1e130c] font-bold uppercase tracking-[0.2em] text-[0.65rem] hover:bg-[#1e130c]/5 transition-colors disabled:opacity-30"
                 >
                   Cancelar
-                </Button>
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-2 py-4 bg-[#1e130c] text-[#faf6ee] font-bold uppercase tracking-[0.2em] text-[0.65rem] hover:bg-[#8b6d22] transition-all flex items-center justify-center gap-3 px-10 disabled:opacity-50"
+                >
+                  {submitting ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-[#faf6ee]/20 border-t-[#faf6ee] rounded-full animate-spin" />
+                      <span>Gravando...</span>
+                    </>
+                  ) : (
+                    <span>{editingTemplate ? 'Efetivar Alterações' : 'Publicar Template HTML'}</span>
+                  )}
+                </button>
               </div>
             </form>
           </div>

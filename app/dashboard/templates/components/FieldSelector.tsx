@@ -26,10 +26,10 @@ export default function FieldSelector({
       <select
         value={value || ''}
         onChange={(e) => onChange(e.target.value || undefined)}
-        className="w-full px-3 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] transition-all cursor-pointer"
+        className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer font-[family-name:var(--font-lora)] text-sm italic"
       >
-        <option value="" className="bg-[#faf6ee] text-[#7a6350]">
-          Não mapear
+        <option value="" className="bg-[#faf6ee] text-[#7a6350] not-italic">
+          Ignorar Coluna (Não mapear)
         </option>
         {fields.map((field: FieldDefinition) => {
           const isUsedElsewhere = usedFields.has(field.key) && value !== field.key
@@ -38,24 +38,24 @@ export default function FieldSelector({
             <option
               key={field.key}
               value={field.key}
-              className="bg-[#faf6ee] text-[#1e130c]"
+              className="bg-[#faf6ee] text-[#1e130c] not-italic"
             >
               {field.label}
-              {field.required && ' ⚠️'}
-              {isUsedElsewhere && ' (mapeado em outra coluna)'}
+              {field.required && ' [!]'}
+              {isUsedElsewhere && ' (VINCULADO EM OUTRA COLUNA)'}
             </option>
           )
         })}
       </select>
       {value && fields.find(f => f.key === value)?.description && (
-        <p className="text-xs text-[#7a6350]/70 mt-1">
-          {fields.find(f => f.key === value)?.description}
+        <p className="text-[0.65rem] text-[#7a6350] uppercase tracking-widest mt-1.5 leading-relaxed opacity-60">
+          INFO: {fields.find(f => f.key === value)?.description}
         </p>
       )}
       {value && fields.find(f => f.key === value)?.required && (
-        <div className="flex items-center gap-1 mt-1">
+        <div className="flex items-center gap-1.5 mt-2">
           <AlertCircle className="h-3 w-3 text-[#8b6d22]" />
-          <span className="text-xs text-[#8b6d22]">Campo obrigatório</span>
+          <span className="text-[0.6rem] font-bold uppercase tracking-widest text-[#8b6d22]">Atributo Obrigatório</span>
         </div>
       )}
     </div>

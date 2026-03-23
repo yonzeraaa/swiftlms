@@ -12,6 +12,13 @@ import {
 import { deleteTemplate } from '@/lib/actions/admin-templates'
 import { CertificateDocxTemplate, CertificateKind } from '@/types/certificate-docx'
 import toast from 'react-hot-toast'
+import Spinner from '../../../components/ui/Spinner'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 interface DocxTemplatesSectionProps {
   onRefresh?: number
@@ -104,84 +111,78 @@ export default function DocxTemplatesSection({ onRefresh, onEdit }: DocxTemplate
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center py-24 w-full">
+        <Spinner size="lg" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Filter */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-neutral-700">Filtrar por tipo:</label>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 border-b border-[#1e130c]/10 pb-4">
+        <label className="text-[0.6rem] font-bold uppercase tracking-[0.15em] text-[#7a6350]">Acervo por Categoria:</label>
         <select
           value={filterKind}
           onChange={(e) => setFilterKind(e.target.value as CertificateKind)}
-          className="px-3 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+          className="px-0 py-1.5 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer font-[family-name:var(--font-lora)] text-[0.85rem] italic"
         >
-          <option value="all">Todos os tipos</option>
-          <option value="technical">Técnico</option>
-          <option value="lato-sensu">Lato Sensu</option>
+          <option value="all" className="bg-[#faf6ee] not-italic">Todos os tipos acadêmicos</option>
+          <option value="technical" className="bg-[#faf6ee] not-italic">Ensino Técnico</option>
+          <option value="lato-sensu" className="bg-[#faf6ee] not-italic">Lato Sensu (Pós-Graduação)</option>
         </select>
       </div>
 
       {/* Templates Grid */}
       {templates.length === 0 ? (
-        <Card className="p-8">
-          <div className="text-center text-neutral-500">
-            <FileText className="w-12 h-12 mx-auto mb-3 text-neutral-400" />
-            <p className="font-medium">Nenhum template DOCX encontrado</p>
-            <p className="text-sm mt-1">
-              Clique em "Novo Template DOCX" para criar um
-            </p>
-          </div>
-        </Card>
+        <div className="py-16 text-center border border-dashed border-[#1e130c]/20 bg-white/10 w-full">
+          <FileText className="w-12 h-12 mx-auto mb-4 text-[#1e130c] opacity-20" />
+          <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold text-[#1e130c] mb-2 uppercase tracking-tight">Nenhum template DOCX</h3>
+          <p className="text-sm text-[#7a6350] italic font-[family-name:var(--font-lora)] opacity-70">
+            Realize o upload para iniciar a gestão do acervo.
+          </p>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {templates.map((template) => (
-            <Card key={template.id} className="p-4 hover:shadow-md transition-shadow">
+            <div key={template.id} className="bg-white/40 border border-[#1e130c]/10 p-5 flex flex-col justify-between hover:border-[#8b6d22]/40 transition-all duration-300 group">
               <div className="space-y-3">
                 {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-[family-name:var(--font-playfair)] font-medium text-neutral-900 truncate">
-                        {template.name}
-                      </h3>
-                      {template.description && (
-                        <p className="text-sm text-neutral-500 line-clamp-2 mt-1">
-                          {template.description}
-                        </p>
-                      )}
-                    </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 border border-[#1e130c]/10 bg-[#faf6ee] flex items-center justify-center flex-shrink-0 group-hover:bg-[#8b6d22]/5 transition-colors">
+                    <FileText className="w-5 h-5 text-[#8b6d22]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-[family-name:var(--font-playfair)] text-[1.05rem] font-bold text-[#1e130c] truncate group-hover:text-[#8b6d22] transition-colors leading-tight">
+                      {template.name}
+                    </h3>
+                    <p className="text-[0.55rem] text-[#7a6350] uppercase tracking-[0.1em] font-bold mt-0.5">
+                      {getCertificateKindLabel(template.certificate_kind)}
+                    </p>
                   </div>
                 </div>
 
-                {/* Info */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-500">Tipo:</span>
-                    <span className="font-medium text-neutral-700">
-                      {getCertificateKindLabel(template.certificate_kind)}
+                {template.description && (
+                  <p className="text-[0.8rem] text-[#7a6350] font-[family-name:var(--font-lora)] italic line-clamp-2 leading-snug opacity-80">
+                    {template.description}
+                  </p>
+                )}
+
+                {/* Info List */}
+                <div className="space-y-1.5 pt-3 border-t border-[#1e130c]/5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[0.55rem] font-bold uppercase tracking-widest text-[#7a6350] opacity-60">Atributos:</span>
+                    <span className="text-[0.65rem] font-bold text-[#1e130c]">
+                      {template.placeholders?.length || 0} Variáveis
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-500">Placeholders:</span>
-                    <span className="font-medium text-neutral-700">
-                      {template.placeholders?.length || 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-neutral-500">Status:</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[0.55rem] font-bold uppercase tracking-widest text-[#7a6350] opacity-60">Status:</span>
                     <span
-                      className={`px-2 py-0.5 rounded-full font-medium ${
+                      className={`text-[0.6rem] font-bold uppercase tracking-widest ${
                         template.is_active
-                          ? 'bg-[#1e130c]/5 text-[#1e130c] font-bold'
-                          : 'bg-neutral-100 text-neutral-600'
+                          ? 'text-[#1e130c]'
+                          : 'text-[#7a6350] italic opacity-40'
                       }`}
                     >
                       {template.is_active ? 'Ativo' : 'Inativo'}
@@ -191,12 +192,12 @@ export default function DocxTemplatesSection({ onRefresh, onEdit }: DocxTemplate
 
                 {/* Warnings */}
                 {template.validation_warnings && template.validation_warnings.length > 0 && (
-                  <div className="p-2 bg-yellow-50 border border-yellow-200 rounded">
+                  <div className="p-3 bg-[#8b6d22]/5 border border-[#8b6d22]/20">
                     <div className="flex items-start gap-2">
-                      <AlertTriangle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                      <div className="text-xs text-yellow-700">
-                        <p className="font-medium">Avisos:</p>
-                        <ul className="mt-1 space-y-0.5">
+                      <AlertTriangle className="w-4 h-4 text-[#8b6d22] flex-shrink-0 mt-0.5" />
+                      <div className="text-[0.65rem] text-[#1e130c] italic leading-tight">
+                        <p className="font-bold uppercase tracking-widest text-[0.6rem] mb-1">Inconsistências:</p>
+                        <ul className="space-y-1">
                           {template.validation_warnings.slice(0, 2).map((warning, i) => (
                             <li key={i}>• {warning}</li>
                           ))}
@@ -205,49 +206,46 @@ export default function DocxTemplatesSection({ onRefresh, onEdit }: DocxTemplate
                     </div>
                   </div>
                 )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 pt-2 border-t border-neutral-200">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDownload(template)}
-                    className="flex-1"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleToggleActive(template)}
-                    className={template.is_active ? 'text-yellow-600' : 'text-[#1e130c] font-bold'}
-                  >
-                    <Power className="w-4 h-4" />
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onEdit?.(template)}
-                    className="text-blue-600 hover:bg-blue-50"
-                    title="Editar Mapeamentos"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Button>
-
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(template)}
-                    disabled={deletingId === template.id}
-                    className="text-[#7a6350] italic hover:bg-[#7a6350]/10"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
               </div>
-            </Card>
+
+              {/* Actions Grid */}
+              <div className="grid grid-cols-4 gap-2 pt-6 mt-6 border-t border-[#1e130c]/5">
+                <button
+                  onClick={() => handleDownload(template)}
+                  className="flex items-center justify-center p-2 border border-[#1e130c]/10 text-[#7a6350] hover:text-[#1e130c] hover:bg-[#1e130c]/5 transition-colors"
+                  title="Download da Matriz"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => handleToggleActive(template)}
+                  className={`flex items-center justify-center p-2 border border-[#1e130c]/10 transition-colors ${
+                    template.is_active ? 'text-[#8b6d22] hover:bg-[#8b6d22]/5' : 'text-[#1e130c] hover:bg-[#1e130c]/5'
+                  }`}
+                  title={template.is_active ? "Desativar" : "Ativar"}
+                >
+                  <Power className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => onEdit?.(template)}
+                  className="flex items-center justify-center p-2 border border-[#1e130c]/10 text-[#7a6350] hover:text-[#1e130c] hover:bg-[#1e130c]/5 transition-colors"
+                  title="Configurar Metadados"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => handleDelete(template)}
+                  disabled={deletingId === template.id}
+                  className="flex items-center justify-center p-2 border border-[#1e130c]/10 text-[#7a6350] hover:text-red-800 hover:bg-red-50/50 transition-colors disabled:opacity-30"
+                  title="Expurgar do Acervo"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}

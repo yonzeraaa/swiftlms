@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Upload, FileText, CheckCircle, AlertCircle, Settings, MapPin } from 'lucide-react'
+import { X, Upload, FileText, CheckCircle, AlertCircle, Settings, MapPin, AlertTriangle, RotateCw, Info } from 'lucide-react'
 import { useAuth } from '../../../providers/AuthProvider'
 import Button from '../../../components/Button'
 import Card from '../../../components/Card'
+import Modal from '../../../components/Modal'
 import { updateTemplateMappings } from '@/lib/actions/certificate-docx-templates'
 import {
   CertificateKind,
@@ -13,6 +14,12 @@ import {
   CERTIFICATE_DOCX_FIELDS,
   CertificateDocxTemplate,
 } from '@/types/certificate-docx'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 interface DocxTemplateUploadModalProps {
   onClose: () => void
@@ -122,7 +129,7 @@ export default function DocxTemplateUploadModal({
     setErrorMessage('')
 
     try {
-      // 1. Upload temporário via API (evita vazamento de libs com eval para o bundle cliente)
+      // 1. Upload temporário via API
       const uploadFormData = new FormData()
       uploadFormData.append('file', file)
 
@@ -139,7 +146,7 @@ export default function DocxTemplateUploadModal({
 
       setTempStoragePath(uploadResult.storagePath)
 
-      // 2. Chamar API de análise com path do Storage
+      // 2. Chamar API de análise
       const response = await fetch('/api/analyze-docx-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,8 +156,6 @@ export default function DocxTemplateUploadModal({
 
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        console.error('Resposta não-JSON da API:', text.substring(0, 500))
         throw new Error(`Erro do servidor (${response.status}): resposta inválida`)
       }
 
@@ -163,28 +168,12 @@ export default function DocxTemplateUploadModal({
         })
         setActiveTab('preview')
       } else {
-        // Limpar arquivo temporário em caso de erro
-        await fetch('/api/upload-docx-temp', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storagePath: uploadResult.storagePath }),
-        })
-        setTempStoragePath(null)
         setErrorMessage(result.error || 'Erro ao analisar template')
       }
     } catch (error: unknown) {
       console.error('Erro ao fazer preview:', error)
       const msg = error instanceof Error ? error.message : 'Erro ao fazer preview do template'
       setErrorMessage(msg)
-      // Limpar arquivo temporário em caso de erro
-      if (tempStoragePath) {
-        await fetch('/api/upload-docx-temp', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ storagePath: tempStoragePath }),
-        })
-        setTempStoragePath(null)
-      }
     } finally {
       setPreviewing(false)
     }
@@ -201,7 +190,6 @@ export default function DocxTemplateUploadModal({
     setErrorMessage('')
 
     try {
-      // Se não tiver feito preview, fazer upload temporário primeiro
       let storagePath = tempStoragePath
       if (!storagePath) {
         const uploadFormData = new FormData()
@@ -220,7 +208,6 @@ export default function DocxTemplateUploadModal({
         storagePath = tempResult.storagePath
       }
 
-      // Chamar API de upload definitivo
       const response = await fetch('/api/upload-docx-template', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -255,8 +242,8 @@ export default function DocxTemplateUploadModal({
       setActiveTab('mapping')
     } catch (error: unknown) {
       console.error('Erro ao fazer upload:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer upload do template'
-      setErrorMessage(errorMessage)
+      const msg = error instanceof Error ? error.message : 'Erro ao fazer upload do template'
+      setErrorMessage(msg)
       setUploadStatus('error')
     } finally {
       setUploading(false)
@@ -275,13 +262,12 @@ export default function DocxTemplateUploadModal({
     setUploading(true)
     try {
       await updateTemplateMappings(templateId, mappings)
-      setUploadStatus('idle')
       onSuccess()
       onClose()
     } catch (error: unknown) {
       console.error('Erro ao salvar mapeamentos:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar mapeamentos'
-      setErrorMessage(errorMessage)
+      const msg = error instanceof Error ? error.message : 'Erro ao salvar mapeamentos'
+      setErrorMessage(msg)
     } finally {
       setUploading(false)
     }
@@ -297,73 +283,55 @@ export default function DocxTemplateUploadModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" padding="none">
-        {/* Header */}
-        <div className="p-6 border-b border-[#1e130c]/15 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#8b6d22]/20 flex items-center justify-center">
-              <FileText className="w-5 h-5 text-[#8b6d22]" />
-            </div>
-            <div>
-              <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold text-[#1e130c]">
-                {editingTemplate ? 'Editar Mapeamentos' : 'Novo Template DOCX'}
-              </h2>
-              <p className="text-sm text-[#8b6d22]">
-                {editingTemplate ? 'Configure os campos do template' : 'Upload de template de certificado'}
-              </p>
-            </div>
-          </div>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title={editingTemplate ? 'Vincular Atributos DOCX' : 'Novo Template DOCX'}
+      size="xl"
+    >
+      <div className="font-[family-name:var(--font-lora)] relative z-10 px-1 py-1">
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 border-b border-[#1e130c]/10">
           <button
-            onClick={onClose}
-            className="p-2 hover:bg-[#8b6d22]/10 rounded-lg transition-colors"
+            onClick={() => setActiveTab('info')}
+            className={`flex items-center gap-2 px-4 py-2.5 text-[0.65rem] font-bold uppercase tracking-widest transition-all duration-300 ${
+              activeTab === 'info'
+                ? 'text-[#1e130c] border-b-2 border-[#8b6d22]'
+                : 'text-[#7a6350] hover:text-[#1e130c]'
+            }`}
           >
-            <X className="w-5 h-5 text-[#8b6d22]" />
+            <FileText className="h-3.5 w-3.5" />
+            Matriz
+          </button>
+          {!editingTemplate && (
+            <button
+              onClick={() => setActiveTab('preview')}
+              disabled={!previewData && !previewing}
+              className={`flex items-center gap-2 px-4 py-2.5 text-[0.65rem] font-bold uppercase tracking-widest transition-all duration-300 ${
+                activeTab === 'preview'
+                  ? 'text-[#1e130c] border-b-2 border-[#8b6d22]'
+                  : 'text-[#7a6350] hover:text-[#1e130c]'
+              } ${!previewData && !previewing ? 'opacity-30 cursor-not-allowed' : ''}`}
+            >
+              Análise
+            </button>
+          )}
+          <button
+            onClick={() => setActiveTab('mapping')}
+            disabled={uploadStatus !== 'success'}
+            className={`flex items-center gap-2 px-4 py-2.5 text-[0.65rem] font-bold uppercase tracking-widest transition-all duration-300 ${
+              activeTab === 'mapping'
+                ? 'text-[#1e130c] border-b-2 border-[#8b6d22]'
+                : 'text-[#7a6350] hover:text-[#1e130c]'
+            } ${uploadStatus !== 'success' ? 'opacity-30 cursor-not-allowed' : ''}`}
+          >
+            <Settings className="h-3.5 w-3.5" />
+            Vínculos
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="border-b border-[#1e130c]/15 px-6">
-          <div className="flex gap-6">
-            <button
-              onClick={() => setActiveTab('info')}
-              className={`py-3 px-1 border-b-2 transition-colors font-medium ${
-                activeTab === 'info'
-                  ? 'border-[#8b6d22] text-[#7a6350]'
-                  : 'border-transparent text-[#8b6d22] hover:text-[#1e130c]-300'
-              }`}
-            >
-              Informações
-            </button>
-            {!editingTemplate && (
-              <button
-                onClick={() => setActiveTab('preview')}
-                disabled={!previewData && !previewing}
-                className={`py-3 px-1 border-b-2 transition-colors font-medium ${
-                  activeTab === 'preview'
-                    ? 'border-[#8b6d22] text-[#7a6350]'
-                    : 'border-transparent text-[#8b6d22] hover:text-[#1e130c]-300'
-                } ${!previewData && !previewing ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                Preview
-              </button>
-            )}
-            <button
-              onClick={() => setActiveTab('mapping')}
-              disabled={uploadStatus !== 'success'}
-              className={`py-3 px-1 border-b-2 transition-colors font-medium flex items-center gap-2 ${
-                activeTab === 'mapping'
-                  ? 'border-[#8b6d22] text-[#7a6350]'
-                  : 'border-transparent text-[#8b6d22] hover:text-[#1e130c]-300'
-              } ${uploadStatus !== 'success' ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <Settings className="w-4 h-4" />
-              Mapeamentos
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Conteúdo Principal */}
+        <div className="space-y-6">
           {activeTab === 'info' && (
             <div className="space-y-6">
               {/* Upload Area */}
@@ -373,211 +341,192 @@ export default function DocxTemplateUploadModal({
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-xl p-8 transition-all ${
+                  className={`border-2 border-dashed p-8 text-center transition-all duration-500 ${
                     dragActive
-                      ? 'border-[#8b6d22] bg-[#8b6d22]/10'
-                      : 'border-[#8b6d22]/30 bg-[#faf6ee] hover:border-[#8b6d22]/40'
+                      ? 'border-[#8b6d22] bg-[#8b6d22]/5'
+                      : 'border-[#1e130c]/20 bg-white/30 hover:border-[#1e130c]/40'
                   }`}
                 >
-                  <div className="text-center">
-                    <Upload
-                      className={`w-12 h-12 mx-auto mb-4 ${
-                        dragActive ? 'text-[#8b6d22]' : 'text-[#8b6d22]'
-                      }`}
-                    />
-                    <p className="text-sm font-medium text-[#7a6350] mb-2">
-                      {file
-                        ? file.name
-                        : 'Arraste um arquivo .docx ou clique para selecionar'}
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".docx"
-                      onChange={handleFileChange}
-                      className="font-[family-name:var(--font-lora)] text-[#1e130c] hidden"
-                    />
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      variant="outline"
-                      size="sm"
-                      disabled={uploading}
-                    >
-                      Selecionar Arquivo
-                    </Button>
-                  </div>
+                  {file ? (
+                    <div className="flex items-center justify-center gap-4">
+                      <div className="p-2.5 bg-[#1e130c]/5 border border-[#1e130c]/10">
+                        <FileText className="h-6 w-6 text-[#1e130c]" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-bold text-[#1e130c] text-base leading-tight">{file.name}</p>
+                        <p className="text-[0.6rem] text-[#7a6350] uppercase tracking-widest mt-0.5">
+                          Pronto para análise
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setFile(null)}
+                        className="ml-4 p-1.5 text-[#7a6350] hover:text-[#1e130c]"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="w-12 h-12 mx-auto mb-4 flex items-center justify-center border border-[#1e130c]/10 bg-[#faf6ee]">
+                        <Upload className="h-6 w-6 text-[#8b6d22]" />
+                      </div>
+                      <p className="font-[family-name:var(--font-playfair)] text-lg text-[#1e130c] mb-1 italic">
+                        Selecione a matriz Word (.docx)
+                      </p>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        type="button"
+                        className="text-[0.6rem] font-bold uppercase tracking-[0.2em] text-[#8b6d22] hover:text-[#1e130c] transition-colors py-1.5 border-b border-[#8b6d22]/30"
+                      >
+                        Procurar no Computador
+                      </button>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".docx"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
                 </div>
               )}
 
               {/* Form Fields */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#7a6350] mb-2">
-                    Nome do Template *
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="md:col-span-2">
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-1.5">
+                    Título do Template <span className="text-[#8b6d22]">*</span>
                   </label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-[color:var(--color-focus)] disabled:opacity-50"
-                    placeholder="Ex: Certificado de Conclusão Técnico"
+                    className="w-full px-0 py-1.5 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none text-base font-medium"
+                    placeholder="Ex: Certificado de Pós-Graduação"
                     disabled={uploading || !!editingTemplate}
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-[#7a6350] mb-2">
+                <div className="md:col-span-1">
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-1.5">
+                    Categoria <span className="text-[#8b6d22]">*</span>
+                  </label>
+                  <select
+                    value={certificateKind}
+                    onChange={(e) => setCertificateKind(e.target.value as CertificateKind)}
+                    className="w-full px-0 py-1.5 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer text-sm"
+                    disabled={uploading || !!editingTemplate}
+                  >
+                    <option value="all" className="bg-[#faf6ee]">Todos os tipos</option>
+                    <option value="technical" className="bg-[#faf6ee]">Ensino Técnico</option>
+                    <option value="lato-sensu" className="bg-[#faf6ee]">Lato Sensu (Pós)</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-1.5">
                     Descrição
                   </label>
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-[color:var(--color-focus)] disabled:opacity-50 resize-none"
-                    placeholder="Descrição opcional do template"
-                    rows={3}
+                    rows={1}
+                    className="w-full px-0 py-1.5 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none resize-none italic text-sm"
+                    placeholder="Observações..."
                     disabled={uploading || !!editingTemplate}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#7a6350] mb-2">
-                    Tipo de Certificado
-                  </label>
-                  <select
-                    value={certificateKind}
-                    onChange={(e) => setCertificateKind(e.target.value as CertificateKind)}
-                    className="w-full px-4 py-2.5 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-[color:var(--color-focus)] disabled:opacity-50"
-                    disabled={uploading || !!editingTemplate}
-                  >
-                    <option value="all">Todos os tipos</option>
-                    <option value="technical">Apenas Técnico</option>
-                    <option value="lato-sensu">Apenas Lato Sensu</option>
-                  </select>
                 </div>
               </div>
 
               {/* Status Messages */}
               {errorMessage && (
-                <div className="flex items-center gap-3 p-4 bg-[#7a6350]/10/10 border border-red-500/30 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-[#7a6350] italic flex-shrink-0" />
-                  <p className="text-sm text-[#7a6350] italic">{errorMessage}</p>
+                <div className="p-4 border border-red-900/10 bg-[#7a6350]/5 flex items-start gap-3">
+                  <AlertCircle className="h-4 w-4 text-[#7a6350] flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[#1e130c] font-bold uppercase text-[0.6rem] tracking-widest mb-0.5">Erro</p>
+                    <p className="text-xs text-[#7a6350] italic">{errorMessage}</p>
+                  </div>
                 </div>
               )}
 
-              {uploadStatus === 'success' && (
-                <div className="flex items-center gap-3 p-4 bg-[#1e130c]/5/10 border border-green-500/30 rounded-lg">
-                  <CheckCircle className="w-5 h-5 text-[#1e130c] font-bold flex-shrink-0" />
+              {uploadStatus === 'success' && !editingTemplate && (
+                <div className="p-4 border border-[#1e130c]/10 bg-white/40 flex items-start gap-3">
+                  <CheckCircle className="h-4 w-4 text-[#8b6d22] flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm text-[#1e130c] font-bold font-medium">
-                      Template enviado com sucesso!
-                    </p>
-                    <p className="text-xs text-[#1e130c] font-bold/80 mt-1">
-                      {placeholders.length} placeholder(s) encontrado(s). Configure os mapeamentos na próxima aba.
+                    <p className="text-[#1e130c] font-bold uppercase text-[0.6rem] tracking-widest mb-0.5">Arquivo Catalogado</p>
+                    <p className="text-xs text-[#7a6350] italic">
+                      {placeholders.length} variáveis identificadas.
                     </p>
                   </div>
                 </div>
               )}
 
               {warnings.length > 0 && (
-                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                  <p className="text-sm font-medium text-yellow-300 mb-2">
-                    Avisos de Validação:
+                <div className="p-4 border border-[#8b6d22]/20 bg-[#8b6d22]/5 space-y-2">
+                  <p className="text-[#1e130c] font-bold uppercase text-[0.6rem] tracking-widest flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-[#8b6d22]" />
+                    Inconsistências:
                   </p>
-                  <ul className="text-sm text-yellow-400/80 space-y-1">
-                    {warnings.map((warning, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-yellow-500">•</span>
-                        <span>{warning}</span>
-                      </li>
+                  <ul className="text-[0.65rem] text-[#7a6350] italic space-y-0.5 ml-5">
+                    {warnings.slice(0, 3).map((warning, i) => (
+                      <li key={i}>• {warning}</li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* Preview Button */}
-              {file && !previewData && (
-                <Button
+              {/* Action Buttons */}
+              {!editingTemplate && file && !previewData && (
+                <button
                   onClick={handlePreview}
-                  variant="outline"
                   disabled={previewing || uploading}
-                  loading={previewing}
-                  fullWidth
+                  className="w-full py-3 bg-[#1e130c] text-[#faf6ee] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-[#8b6d22] transition-all flex items-center justify-center gap-3"
                 >
-                  {previewing ? 'Analisando...' : 'Analisar Placeholders'}
-                </Button>
+                  {previewing ? (
+                    <span>Analisando...</span>
+                  ) : (
+                    <span>Realizar Leitura</span>
+                  )}
+                </button>
               )}
             </div>
           )}
 
           {activeTab === 'preview' && previewData && (
-            <div className="space-y-4">
-              <div className="bg-[#8b6d22]/10 border border-[#8b6d22]/30 rounded-lg p-4">
-                <p className="text-sm font-medium text-[#7a6350]">
-                  {previewData.placeholders.length} placeholder(s) encontrado(s)
-                </p>
-                <p className="text-xs text-[#8b6d22]/80 mt-1">
-                  Revise os campos detectados antes de enviar o template
+            <div className="space-y-6">
+              <div className="p-4 border border-[#1e130c]/10 bg-white/40 flex items-center gap-3">
+                <Info className="h-4 w-4 text-[#8b6d22]" />
+                <p className="text-[0.65rem] font-bold text-[#1e130c] uppercase tracking-widest">
+                  {previewData.placeholders.length} variáveis extraídas
                 </p>
               </div>
 
-              {/* Placeholders List */}
               <div className="space-y-3">
-                <h3 className="font-[family-name:var(--font-playfair)] font-medium text-[#1e130c]">Placeholders Detectados:</h3>
-                <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                <h3 className="font-[family-name:var(--font-playfair)] text-lg font-bold text-[#1e130c]">Mapeamento de Variáveis</h3>
+                <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
                   {previewData.placeholders.map((placeholder, index) => {
                     const knownField = CERTIFICATE_DOCX_FIELDS[placeholder.name as keyof typeof CERTIFICATE_DOCX_FIELDS]
-
                     return (
-                      <div key={index} className="bg-[#faf6ee] border border-[#8b6d22]/30 rounded-lg p-4">
+                      <div key={index} className="p-4 bg-white/30 border border-[#1e130c]/10 hover:border-[#8b6d22]/30 transition-colors group">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <code className="text-sm font-mono bg-[#faf6ee] text-[#7a6350] px-2 py-1 rounded border border-[#1e130c]/15">
+                              <code className="text-[0.7rem] font-mono bg-[#1e130c]/5 text-[#1e130c] px-1.5 py-0.5 border border-[#1e130c]/10 font-bold uppercase">
                                 {'{{'}{placeholder.name}{'}}'}
                               </code>
-                              {placeholder.format && (
-                                <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded border border-purple-500/30">
-                                  {placeholder.format}
-                                </span>
-                              )}
                             </div>
                             {knownField && (
-                              <p className="text-sm text-[#8b6d22] mt-2">
+                              <p className="text-[0.65rem] text-[#7a6350] italic mt-2 uppercase tracking-tight opacity-70">
                                 {knownField.description}
                               </p>
                             )}
-                            {!knownField && (
-                              <p className="text-sm text-yellow-400/80 mt-2">
-                                Campo desconhecido - será necessário mapear manualmente
-                              </p>
-                            )}
-                            {/* Location info */}
-                            {placeholder.locations && placeholder.locations.length > 0 && (
-                              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                <MapPin className="w-3.5 h-3.5 text-[#8b6d22]" />
-                                {placeholder.locations.map((loc, i) => (
-                                  <span
-                                    key={i}
-                                    className="text-xs bg-[#faf6ee] text-[#8b6d22] px-2 py-0.5 rounded border border-[#1e130c]/15"
-                                  >
-                                    {getLocationLabel(loc.location)} ({loc.count}x)
-                                  </span>
-                                ))}
-                              </div>
-                            )}
                           </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              placeholder.required
-                                ? 'bg-[#7a6350]/10/20 text-[#7a6350] italic border border-red-500/30'
-                                : 'bg-[#faf6ee] text-[#8b6d22] border border-[#1e130c]/15'
-                            }`}>
-                              {placeholder.required ? 'Obrigatório' : 'Opcional'}
-                            </span>
-                            <span className="text-xs text-[#8b6d22] capitalize">
-                              {placeholder.type}
-                            </span>
-                          </div>
+                          <span className={`text-[0.55rem] font-bold uppercase tracking-widest px-1.5 py-0.5 ${
+                            placeholder.required ? 'bg-red-800/10 text-red-800' : 'bg-[#1e130c]/5 text-[#7a6350]'
+                          }`}>
+                            {placeholder.required ? 'Obrigatório' : 'Opcional'}
+                          </span>
                         </div>
                       </div>
                     )
@@ -585,101 +534,60 @@ export default function DocxTemplateUploadModal({
                 </div>
               </div>
 
-              {/* Warnings */}
-              {previewData.warnings.length > 0 && (
-                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                  <p className="text-sm font-medium text-yellow-300 mb-2">
-                    Avisos:
-                  </p>
-                  <ul className="text-sm text-yellow-400/80 space-y-1">
-                    {previewData.warnings.map((warning, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-yellow-500">•</span>
-                        <span>{warning}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              <div className="flex justify-between pt-4 border-t border-[#1e130c]/15">
-                <Button
+              <div className="flex justify-between pt-6 border-t border-[#1e130c]/10">
+                <button
                   onClick={() => setActiveTab('info')}
-                  variant="outline"
+                  className="px-6 py-2.5 border border-[#1e130c]/20 text-[#1e130c] font-bold uppercase tracking-widest text-[0.6rem] hover:bg-[#1e130c]/5 transition-colors"
                 >
-                  Voltar
-                </Button>
-                <Button onClick={() => setActiveTab('info')}>
-                  Prosseguir com Upload
-                </Button>
+                  Revisar
+                </button>
+                <button
+                  onClick={() => setActiveTab('info')}
+                  className="px-6 py-2.5 bg-[#1e130c] text-[#faf6ee] font-bold uppercase tracking-widest text-[0.6rem] hover:bg-[#8b6d22] transition-colors"
+                >
+                  Publicar
+                </button>
               </div>
             </div>
           )}
 
           {activeTab === 'mapping' && (
             <div className="space-y-4">
-              <div className="bg-[#8b6d22]/10 border border-[#8b6d22]/30 rounded-lg p-4">
-                <p className="text-sm text-[#7a6350]">
-                  Configure como cada placeholder será preenchido com dados do certificado.
+              <div className="p-4 bg-[#faf6ee] border border-[#1e130c]/10">
+                <p className="text-[0.65rem] text-[#7a6350] font-bold uppercase tracking-widest">
+                  Defina os vínculos acadêmicos para cada campo identificado.
                 </p>
               </div>
 
-              {mappings.map((mapping, index) => {
-                const placeholder = placeholders[index]
-                const knownField = CERTIFICATE_DOCX_FIELDS[placeholder?.name as keyof typeof CERTIFICATE_DOCX_FIELDS]
-
-                return (
-                  <div key={index} className="bg-[#faf6ee] border border-[#8b6d22]/30 rounded-lg p-4">
-                    <div className="space-y-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-[#1e130c]">
-                            {placeholder?.name}
-                          </p>
-                          {knownField && (
-                            <p className="text-sm text-[#8b6d22]">
-                              {knownField.description}
-                            </p>
-                          )}
-                          {/* Location info in mapping */}
-                          {placeholder?.locations && placeholder.locations.length > 0 && (
-                            <div className="flex items-center gap-2 mt-2 flex-wrap">
-                              <MapPin className="w-3.5 h-3.5 text-[#8b6d22]" />
-                              {placeholder.locations.map((loc, i) => (
-                                <span
-                                  key={i}
-                                  className="text-xs bg-[#faf6ee] text-[#8b6d22] px-2 py-0.5 rounded border border-[#1e130c]/15"
-                                >
-                                  {getLocationLabel(loc.location)} ({loc.count}x)
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          placeholder?.required
-                            ? 'bg-[#7a6350]/10/20 text-[#7a6350] italic border border-red-500/30'
-                            : 'bg-[#faf6ee] text-[#8b6d22] border border-[#1e130c]/15'
+              <div className="grid grid-cols-1 gap-3 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                {mappings.map((mapping, index) => {
+                  const placeholder = placeholders[index]
+                  return (
+                    <div key={index} className="p-4 bg-white/30 border border-[#1e130c]/10 space-y-4">
+                      <div className="flex items-start justify-between gap-4 border-b border-[#1e130c]/5 pb-2">
+                        <p className="text-[0.75rem] font-bold text-[#1e130c] uppercase tracking-wider">
+                          {placeholder?.name}
+                        </p>
+                        <span className={`text-[0.55rem] font-bold uppercase tracking-widest px-1.5 py-0.5 ${
+                          placeholder?.required ? 'bg-red-800/10 text-red-800' : 'bg-[#1e130c]/5 text-[#7a6350]'
                         }`}>
                           {placeholder?.required ? 'Obrigatório' : 'Opcional'}
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-medium text-[#8b6d22] mb-1.5">
+                          <label className="block text-[0.55rem] font-bold uppercase text-[#7a6350] tracking-widest mb-1">
                             Fonte de Dados
                           </label>
                           <select
                             value={mapping.source}
-                            onChange={(e) =>
-                              handleMappingChange(index, 'source', e.target.value)
-                            }
-                            className="w-full px-3 py-2 text-sm bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
+                            onChange={(e) => handleMappingChange(index, 'source', e.target.value)}
+                            className="w-full px-0 py-1.5 bg-transparent border-0 border-b border-[#1e130c]/20 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none font-bold italic text-xs"
                           >
-                            <option value="">Valor fixo</option>
+                            <option value="" className="bg-[#faf6ee] not-italic">--- Valor Fixo ---</option>
                             {Object.entries(CERTIFICATE_DOCX_FIELDS).map(([key, field]) => (
-                              <option key={key} value={key}>
+                              <option key={key} value={key} className="bg-[#faf6ee] not-italic">
                                 {field.description}
                               </option>
                             ))}
@@ -687,79 +595,72 @@ export default function DocxTemplateUploadModal({
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-[#8b6d22] mb-1.5">
-                            Transformação
+                          <label className="block text-[0.55rem] font-bold uppercase text-[#7a6350] tracking-widest mb-1">
+                            Formatação
                           </label>
                           <select
                             value={mapping.transform || ''}
-                            onChange={(e) =>
-                              handleMappingChange(index, 'transform', e.target.value || undefined)
-                            }
-                            className="w-full px-3 py-2 text-sm bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] disabled:opacity-50"
+                            onChange={(e) => handleMappingChange(index, 'transform', e.target.value || undefined)}
+                            className="w-full px-0 py-1.5 bg-transparent border-0 border-b border-[#1e130c]/20 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none font-bold italic text-xs"
                             disabled={!mapping.source}
                           >
-                            <option value="">Nenhuma</option>
-                            <option value="uppercase">MAIÚSCULAS</option>
-                            <option value="lowercase">minúsculas</option>
-                            <option value="capitalize">Capitalizar</option>
-                            <option value="date-short">Data curta (DD/MM/AAAA)</option>
-                            <option value="date-long">Data por extenso</option>
+                            <option value="" className="bg-[#faf6ee] not-italic">Padrão</option>
+                            <option value="uppercase" className="bg-[#faf6ee] not-italic">MAIÚSCULAS</option>
+                            <option value="lowercase" className="bg-[#faf6ee] not-italic">minúsculas</option>
+                            <option value="capitalize" className="bg-[#faf6ee] not-italic">Capitalizar</option>
+                            <option value="date-short" className="bg-[#faf6ee] not-italic">Data Curta</option>
+                            <option value="date-long" className="bg-[#faf6ee] not-italic">Data Extenso</option>
                           </select>
                         </div>
                       </div>
-
-                      {!mapping.source && (
-                        <div>
-                          <label className="block text-xs font-medium text-[#8b6d22] mb-1.5">
-                            Valor Fixo
-                          </label>
-                          <input
-                            type="text"
-                            value={mapping.fixedValue || ''}
-                            onChange={(e) =>
-                              handleMappingChange(index, 'fixedValue', e.target.value)
-                            }
-                            className="w-full px-3 py-2 text-sm bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-gold-500/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
-                            placeholder="Digite o valor fixo"
-                          />
-                        </div>
-                      )}
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-[#1e130c]/15 flex justify-end gap-3">
-          <Button onClick={onClose} variant="outline" disabled={uploading}>
+        <div className="flex flex-col sm:flex-row gap-3 pt-6 mt-6 border-t border-[#1e130c]/10">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={uploading}
+            className="flex-1 py-3 border border-[#1e130c]/20 text-[#1e130c] font-bold uppercase tracking-[0.15em] text-[0.6rem] hover:bg-[#1e130c]/5 transition-colors disabled:opacity-30"
+          >
             Cancelar
-          </Button>
+          </button>
 
           {activeTab === 'info' && !editingTemplate && (
-            <Button
+            <button
               onClick={handleUpload}
               disabled={!file || !name || uploading}
-              loading={uploading}
+              className="flex-2 py-3 bg-[#1e130c] text-[#faf6ee] font-bold uppercase tracking-[0.15em] text-[0.6rem] hover:bg-[#8b6d22] transition-all flex items-center justify-center gap-2 px-8 disabled:opacity-50"
             >
-              {uploading ? 'Enviando...' : 'Enviar Template'}
-            </Button>
-          )}
-          {activeTab === 'info' && editingTemplate && (
-             <Button onClick={() => setActiveTab('mapping')}>
-               Editar Mapeamentos
-             </Button>
+              {uploading ? (
+                <span>Publicando...</span>
+              ) : (
+                <span>Enviar Template Word</span>
+              )}
+            </button>
           )}
 
           {activeTab === 'mapping' && (
-            <Button onClick={handleFinish} loading={uploading}>
-              Concluir
-            </Button>
+            <button
+              onClick={handleFinish}
+              disabled={uploading}
+              className="flex-2 py-3 bg-[#1e130c] text-[#faf6ee] font-bold uppercase tracking-[0.15em] text-[0.6rem] hover:bg-[#8b6d22] transition-all flex items-center justify-center gap-2 px-8 disabled:opacity-50"
+            >
+              {uploading ? (
+                <span>Salvando...</span>
+              ) : (
+                <span>Finalizar</span>
+              )}
+            </button>
           )}
         </div>
-      </Card>
-    </div>
+      </div>
+    </Modal>
   )
 }
