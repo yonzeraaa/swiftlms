@@ -5,6 +5,27 @@ import { productionCSP, developmentCSP, apiCSP, formatCSP } from './app/lib/csp-
 import type { Database } from './lib/database.types'
 import { logger } from './lib/utils/logger'
 
+function cloneResponseState(source: NextResponse, target: NextResponse) {
+  source.headers.forEach((value, key) => {
+    if (key.toLowerCase() === 'content-length') return
+    target.headers.set(key, value)
+  })
+
+  source.cookies.getAll().forEach(cookie => {
+    target.cookies.set(cookie)
+  })
+
+  return target
+}
+
+function redirectWithState(source: NextResponse, url: URL) {
+  return cloneResponseState(source, NextResponse.redirect(url))
+}
+
+function jsonWithState(source: NextResponse, body: unknown, init?: ResponseInit) {
+  return cloneResponseState(source, NextResponse.json(body, init))
+}
+
 export async function ensureUserEnrollmentForPreview(
   supabase: SupabaseClient<Database>,
   userId: string
@@ -203,10 +224,11 @@ export async function middleware(request: NextRequest) {
 
   // Se não há sessão mas há refresh token, tentar refresh
   if (!session) {
-    const refreshToken = request.cookies.get('sb-refresh-token')?.value
-    const authToken = request.cookies.get('sb-mdzgnktlsmkjecdbermo-auth-token')?.value
+    const hasSupabaseAuthCookie = request.cookies.getAll().some(({ name }) =>
+      name === 'sb-refresh-token' || (name.startsWith('sb-') && name.includes('auth-token'))
+    )
 
-    if (refreshToken || authToken) {
+    if (hasSupabaseAuthCookie) {
       logger.debug('No session but tokens present, attempting refresh', undefined, { context: 'MIDDLEWARE' })
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
 
@@ -256,7 +278,8 @@ export async function middleware(request: NextRequest) {
   if (isAPI && !session &&
       !request.nextUrl.pathname.startsWith('/api/auth/') &&
       !request.nextUrl.pathname.startsWith('/api/import-from-drive-runner')) {
-    return NextResponse.json(
+    return jsonWithState(
+      response,
       { error: 'Unauthorized - Authentication required' },
       { status: 401 }
     )
@@ -270,7 +293,7 @@ export async function middleware(request: NextRequest) {
       const redirectUrl = request.nextUrl.clone()
       redirectUrl.pathname = '/'
       redirectUrl.searchParams.set('callbackUrl', request.nextUrl.pathname)
-      return NextResponse.redirect(redirectUrl)
+      return redirectWithState(response, redirectUrl)
     }
   }
 
@@ -292,7 +315,8 @@ export async function middleware(request: NextRequest) {
 
     if (!isSetupComplete && !isSetupRoute && !(isAPI && isAllowedApiDuringSetup)) {
       if (isAPI) {
-        return NextResponse.json(
+        return jsonWithState(
+          response,
           { error: 'Setup inicial pendente' },
           { status: 423 }
         )
@@ -300,7 +324,7 @@ export async function middleware(request: NextRequest) {
 
       const redirectUrl = request.nextUrl.clone()
       redirectUrl.pathname = '/setup'
-      return NextResponse.redirect(redirectUrl)
+      return redirectWithState(response, redirectUrl)
     }
   }
 
@@ -316,7 +340,7 @@ export async function middleware(request: NextRequest) {
 
     if (installation?.is_setup_complete !== true) {
       redirectUrl.pathname = '/setup'
-      return NextResponse.redirect(redirectUrl)
+      return redirectWithState(response, redirectUrl)
     }
     
     // Get user role from profiles table
@@ -327,7 +351,7 @@ export async function middleware(request: NextRequest) {
       .single()
     
     redirectUrl.pathname = profile?.role === 'student' ? '/student-dashboard' : '/dashboard'
-    return NextResponse.redirect(redirectUrl)
+    return redirectWithState(response, redirectUrl)
   }
 
   // Handle student dashboard access for different roles
@@ -420,7 +444,7 @@ export async function middleware(request: NextRequest) {
         logger.debug('Instructor redirected - no view mode', undefined, { context: 'MIDDLEWARE' })
         const redirectUrl = request.nextUrl.clone()
         redirectUrl.pathname = '/dashboard'
-        return NextResponse.redirect(redirectUrl)
+        return redirectWithState(response, redirectUrl)
       }
     }
   }

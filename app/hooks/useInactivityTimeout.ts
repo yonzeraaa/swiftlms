@@ -6,6 +6,7 @@ import { signOutAction } from '@/lib/actions/auth'
 
 const INACTIVITY_TIMEOUT = 15 * 60 * 1000 // 15 minutos em ms
 const STORAGE_KEY = 'last_activity_timestamp'
+const SESSION_STORAGE_KEY = 'last_activity_session_key'
 const BROADCAST_CHANNEL_NAME = 'inactivity_sync'
 const IMPORT_ACTIVE_KEY = 'swiftlms_import_active'
 const isDevelopment = process.env.NODE_ENV === 'development'
@@ -29,11 +30,39 @@ function debugWarn(message: string, ...args: unknown[]) {
  * - Sincronização entre múltiplas abas via BroadcastChannel
  * - Tratamento especial para tabs escondidas (visibilitychange)
  */
-export function useInactivityTimeout(enabled = true) {
+export function useInactivityTimeout(enabled = true, sessionKey?: string | null) {
   const router = useRouter()
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   const lastActivityRef = useRef<number>(Date.now())
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null)
+  const sessionKeyRef = useRef<string | null>(sessionKey ?? null)
+
+  useEffect(() => {
+    sessionKeyRef.current = sessionKey ?? null
+  }, [sessionKey])
+
+  const syncStoredActivity = useCallback((timestamp: number) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, timestamp.toString())
+
+      if (sessionKeyRef.current) {
+        localStorage.setItem(SESSION_STORAGE_KEY, sessionKeyRef.current)
+      } else {
+        localStorage.removeItem(SESSION_STORAGE_KEY)
+      }
+    } catch (error) {
+      debugWarn('[INACTIVITY] localStorage error:', error)
+    }
+  }, [])
+
+  const clearStoredActivity = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(SESSION_STORAGE_KEY)
+    } catch (error) {
+      debugWarn('[INACTIVITY] localStorage cleanup error:', error)
+    }
+  }, [])
 
   const performLogout = useCallback(async () => {
     if (!enabled) return
@@ -53,37 +82,32 @@ export function useInactivityTimeout(enabled = true) {
       timeoutRef.current = null
     }
 
-    // Notificar outras abas via BroadcastChannel
-    try {
-      broadcastChannelRef.current?.postMessage({ type: 'logout' })
-    } catch (error) {
-      debugWarn('[INACTIVITY] BroadcastChannel error:', error)
-    }
-
     // Fazer logout no servidor
     const result = await signOutAction()
 
     if (result.success) {
-      // Limpar localStorage
-      localStorage.removeItem(STORAGE_KEY)
+      clearStoredActivity()
+
+      // Só notificar outras abas após o servidor limpar a sessão,
+      // evitando redirecionamentos prematuros para uma raiz ainda autenticada.
+      try {
+        broadcastChannelRef.current?.postMessage({ type: 'logout' })
+      } catch (error) {
+        debugWarn('[INACTIVITY] BroadcastChannel error:', error)
+      }
 
       // Redirecionar para login
       router.push('/')
     } else {
       console.error('[INACTIVITY] Logout failed:', result.error)
     }
-  }, [enabled, router])
+  }, [clearStoredActivity, enabled, router])
 
   const resetTimer = useCallback(() => {
     const now = Date.now()
     lastActivityRef.current = now
 
-    // Atualizar timestamp no localStorage para sincronizar entre abas
-    try {
-      localStorage.setItem(STORAGE_KEY, now.toString())
-    } catch (error) {
-      debugWarn('[INACTIVITY] localStorage error:', error)
-    }
+    syncStoredActivity(now)
 
     // Limpar timeout anterior
     if (timeoutRef.current) {
@@ -94,7 +118,7 @@ export function useInactivityTimeout(enabled = true) {
     timeoutRef.current = setTimeout(() => {
       performLogout()
     }, INACTIVITY_TIMEOUT)
-  }, [performLogout])
+  }, [performLogout, syncStoredActivity])
 
   const handleActivity = useCallback(() => {
     resetTimer()
@@ -121,6 +145,11 @@ export function useInactivityTimeout(enabled = true) {
   const handleStorageChange = useCallback((event: StorageEvent) => {
     // Sincronizar última atividade entre abas via localStorage
     if (event.key === STORAGE_KEY && event.newValue) {
+      const storedSessionKey = localStorage.getItem(SESSION_STORAGE_KEY)
+      if (storedSessionKey && sessionKeyRef.current && storedSessionKey !== sessionKeyRef.current) {
+        return
+      }
+
       const timestamp = parseInt(event.newValue, 10)
       if (!isNaN(timestamp)) {
         lastActivityRef.current = timestamp
@@ -167,9 +196,14 @@ export function useInactivityTimeout(enabled = true) {
       }
     }
 
-    // Verificar timestamp inicial do localStorage
+    const activeSessionKey = sessionKeyRef.current
+    const storedSessionKey = localStorage.getItem(SESSION_STORAGE_KEY)
     const storedTimestamp = localStorage.getItem(STORAGE_KEY)
-    if (storedTimestamp) {
+    const isCurrentSession = Boolean(activeSessionKey) && storedSessionKey === activeSessionKey
+
+    // Só reaproveitar o timestamp se ele pertence à mesma sessão autenticada.
+    // Isso evita derrubar um login recém-criado com um valor antigo do localStorage.
+    if (storedTimestamp && isCurrentSession) {
       const timestamp = parseInt(storedTimestamp, 10)
       if (!isNaN(timestamp)) {
         const now = Date.now()
@@ -183,6 +217,10 @@ export function useInactivityTimeout(enabled = true) {
           lastActivityRef.current = timestamp
         }
       }
+    } else {
+      const now = Date.now()
+      lastActivityRef.current = now
+      syncStoredActivity(now)
     }
 
     // Iniciar timer
@@ -218,7 +256,7 @@ export function useInactivityTimeout(enabled = true) {
         broadcastChannelRef.current.close()
       }
     }
-  }, [enabled, handleActivity, handleVisibilityChange, handleStorageChange, handleBroadcastMessage, resetTimer, performLogout])
+  }, [enabled, handleActivity, handleVisibilityChange, handleStorageChange, handleBroadcastMessage, resetTimer, performLogout, syncStoredActivity, sessionKey])
 
   // Retornar função para resetar manualmente (útil para vídeos, etc)
   return { resetTimer }

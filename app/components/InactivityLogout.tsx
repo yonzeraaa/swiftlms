@@ -8,8 +8,11 @@ import { useAuth } from '../providers/AuthProvider'
  * Deve ser incluído no layout raiz da aplicação
  */
 export default function InactivityLogout() {
-  const { user, isLoading } = useAuth()
+  const { user, session, isLoading } = useAuth()
+  const sessionKey = user?.id && session?.expires_at
+    ? `${user.id}:${session.expires_at}`
+    : null
 
-  useInactivityTimeout(!isLoading && Boolean(user))
+  useInactivityTimeout(!isLoading && Boolean(user), sessionKey)
   return null
 }

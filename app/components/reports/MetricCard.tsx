@@ -136,7 +136,7 @@ export default function MetricCard({
       {tooltip && (
         <div className="absolute top-3 right-3 group z-20" data-testid="metric-card-tooltip-icon">
           <Info size={16} style={{ color: MUTED, opacity: 0.6, cursor: 'help' }} />
-          <div className="absolute right-0 top-6 w-48 p-3 rounded"
+          <div className="absolute right-0 top-6 w-48 p-3 rounded group-hover:opacity-100 group-hover:visible"
             data-testid="metric-card-tooltip-content"
             style={{ 
               backgroundColor: INK, 
@@ -149,7 +149,6 @@ export default function MetricCard({
               transition: 'all 0.2s ease',
               zIndex: 30
             }}
-            className="group-hover:opacity-100 group-hover:visible"
           >
             {tooltip}
           </div>

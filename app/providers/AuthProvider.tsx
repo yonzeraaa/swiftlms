@@ -36,6 +36,13 @@ interface AuthProviderProps {
 const SESSION_REFRESH_INTERVAL_MINUTES = 240
 const SESSION_REFRESH_INTERVAL_MS = SESSION_REFRESH_INTERVAL_MINUTES * 60 * 1000
 const SESSION_REFRESH_MARGIN_MS = 5 * 60 * 1000
+const AUTH_STATUS_RETRY_DELAY_MS = 150
+
+function isProtectedPathname(pathname: string) {
+  return pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/student-dashboard') ||
+    pathname.startsWith('/setup')
+}
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [authState, setAuthState] = useState<AuthState>({
@@ -67,6 +74,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
       clearTimeout(refreshTimerRef.current)
       refreshTimerRef.current = undefined
     }
+  }, [])
+
+  const getSessionStatusWithRetry = useCallback(async () => {
+    const status = await getSessionStatus()
+
+    if (status.isAuthenticated) {
+      return status
+    }
+
+    if (typeof window === 'undefined' || !isProtectedPathname(window.location.pathname)) {
+      return status
+    }
+
+    logger.info(
+      'Session not visible on protected route, retrying once',
+      { path: window.location.pathname },
+      { context: 'AUTH_PROVIDER' }
+    )
+
+    await new Promise(resolve => setTimeout(resolve, AUTH_STATUS_RETRY_DELAY_MS))
+    return getSessionStatus()
   }, [])
 
   const handleSessionExpired = useCallback((message?: string) => {
@@ -162,7 +190,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return
       }
 
-      const status = await getSessionStatus()
+      const status = await getSessionStatusWithRetry()
 
       if (applyAuthenticatedState(status)) {
         return
@@ -173,7 +201,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       logger.error('Session refresh error', error, { context: 'AUTH_PROVIDER' })
       handleSessionExpired('Sessão expirada. Faça login novamente.')
     }
-  }, [applyAuthenticatedState, handleSessionExpired])
+  }, [applyAuthenticatedState, getSessionStatusWithRetry, handleSessionExpired])
 
   useEffect(() => {
     refreshSessionRef.current = refreshSession
@@ -181,7 +209,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const revalidateSession = useCallback(async () => {
     try {
-      const status = await getSessionStatus()
+      const status = await getSessionStatusWithRetry()
 
       if (applyAuthenticatedState(status)) {
         return
@@ -200,7 +228,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error) {
       logger.error('Error revalidating session', error, { context: 'AUTH_PROVIDER' })
     }
-  }, [applyAuthenticatedState, handleSessionExpired, updateAuthState])
+  }, [applyAuthenticatedState, getSessionStatusWithRetry, handleSessionExpired, updateAuthState])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -210,7 +238,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         logger.info('Getting initial session from server', undefined, { context: 'AUTH_PROVIDER' })
 
-        const status = await getSessionStatus()
+        const status = await getSessionStatusWithRetry()
 
         if (!mounted) {
           return
@@ -267,7 +295,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('online', handleOnline)
     }
-  }, [applyAuthenticatedState, clearRefreshTimer, revalidateSession, updateAuthState])
+  }, [applyAuthenticatedState, clearRefreshTimer, getSessionStatusWithRetry, revalidateSession, updateAuthState])
 
   const getSession = useCallback(async (): Promise<Session | null> => {
     try {
@@ -282,7 +310,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
 
       logger.info('Getting updated session from server', undefined, { context: 'AUTH_PROVIDER' })
-      const status = await getSessionStatus()
+      const status = await getSessionStatusWithRetry()
 
       if (applyAuthenticatedState(status)) {
         return { expires_at: status.session!.expires_at } as Session
@@ -291,7 +319,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (currentSession) {
         await refreshSession()
 
-        const newStatus = await getSessionStatus()
+        const newStatus = await getSessionStatusWithRetry()
 
         if (applyAuthenticatedState(newStatus)) {
           return { expires_at: newStatus.session!.expires_at } as Session
@@ -303,7 +331,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       logger.error('Error getting session', error, { context: 'AUTH_PROVIDER' })
       return null
     }
-  }, [applyAuthenticatedState, refreshSession])
+  }, [applyAuthenticatedState, getSessionStatusWithRetry, refreshSession])
 
   const contextValue: AuthContextType = {
     ...authState,
