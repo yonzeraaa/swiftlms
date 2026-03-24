@@ -1,5 +1,6 @@
 'use server'
 
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Tables } from '@/lib/database.types'
@@ -161,33 +162,40 @@ export async function createNewUser(userData: {
       return { success: false, error: 'Sem permissão para criar usuários' }
     }
 
-    // Create user in Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const adminClient = createAdminClient()
+    const now = new Date().toISOString()
+
+    // Create user without mutating the current admin session cookies.
+    const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
       email: userData.email,
       password: userData.password,
-      options: {
-        data: {
-          full_name: userData.full_name,
-          role: userData.role
-        }
+      email_confirm: true,
+      user_metadata: {
+        full_name: userData.full_name,
+        role: userData.role,
+        phone: userData.phone || null
       }
     })
 
     if (authError) throw authError
-
-    // Update the profile with the correct role and phone
-    if (authData.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: userData.full_name,
-          phone: userData.phone,
-          role: userData.role
-        })
-        .eq('id', authData.user.id)
-
-      if (profileError) throw profileError
+    if (!authData.user?.id) {
+      throw new Error('Falha ao criar usuário no Auth')
     }
+
+    const { error: profileError } = await adminClient
+      .from('profiles')
+      .upsert({
+        id: authData.user.id,
+        email: userData.email,
+        full_name: userData.full_name,
+        phone: userData.phone || null,
+        role: userData.role,
+        status: 'active',
+        created_at: now,
+        updated_at: now
+      })
+
+    if (profileError) throw profileError
 
     return { success: true }
   } catch (error: any) {
