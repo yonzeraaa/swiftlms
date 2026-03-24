@@ -2,15 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import { Save, Bell, Shield, Palette, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail, Settings as SettingsIcon, HardDriveDownload, ExternalLink, Loader2, Trash2, AlertTriangle } from 'lucide-react'
-import Card from '../../components/Card'
 import Spinner from '../../components/ui/Spinner'
-import Button from '../../components/Button'
 import { Database } from '@/lib/database.types'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useLanguage, useTranslation } from '../../contexts/LanguageContext'
 import { getUserProfileData, updateUserProfile } from '@/lib/actions/admin-settings'
 import type { BackupSummary } from '@/lib/backup/types'
 import type { SetupWizardState } from '@/lib/setup/types'
+import { ClassicRule } from '../../components/ui/RenaissanceSvgs'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -238,8 +243,6 @@ export default function SettingsPage() {
 
       if (result.success) {
         setMessage({ type: 'success', text: t('settings.profileUpdated') })
-
-        // Update local state
         setCurrentUser({
           ...currentUser,
           full_name: profileForm.full_name,
@@ -302,10 +305,7 @@ export default function SettingsPage() {
     setMessage(null)
 
     try {
-      // In a real app, you would save these settings to a user_settings table
-      // For now, we'll just show a success message
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
       setMessage({ type: 'success', text: t('settings.title') + ' ' + t('settings.success') })
     } catch {
       setMessage({ type: 'error', text: t('settings.error') + ' ' + t('settings.title').toLowerCase() })
@@ -418,890 +418,959 @@ export default function SettingsPage() {
   ]
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Spinner size="xl" />
-      </div>
-    )
+    return <Spinner fullPage size="xl" />
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="font-[family-name:var(--font-playfair)] text-2xl sm:text-3xl md:text-4xl font-bold text-[#1e130c] flex items-center gap-2">
-          <SettingsIcon className="w-8 h-8 text-[#8b6d22]" />
-          {t('settings.title')}
-        </h1>
-        <p className="text-[#7a6350] mt-1">{t('settings.subtitle')}</p>
+    <div className="flex flex-col w-full">
+      {/* ── Cabeçalho Principal ── */}
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-end gap-4 w-full border-b border-[#1e130c]/10 pb-6">
+        <div className="flex-1">
+          <h1 style={{ fontFamily: 'var(--font-playfair)', fontSize: 'clamp(2rem, 4vw, 2.75rem)', fontWeight: 700, color: INK, lineHeight: 1.1 }}>
+            {t('settings.title')}
+          </h1>
+          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1rem', fontStyle: 'italic', color: MUTED, marginTop: '0.25rem' }}>
+            {t('settings.subtitle')}
+          </p>
+          <div className="mt-4 w-full max-w-xs">
+            <ClassicRule color={INK} />
+          </div>
+        </div>
       </div>
 
       {/* Message */}
       {message && (
-        <div className={`flex items-center gap-2 p-4 rounded-lg ${
-          message.type === 'success' 
-            ? 'bg-[#1e130c]/5/10 border border-green-500/20 text-[#1e130c] font-bold' 
-            : 'bg-[#7a6350]/10/10 border border-red-500/20 text-[#7a6350] italic'
-        }`}>
-          {message.type === 'success' ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
-          <span>{message.text}</span>
+        <div className={`p-4 mb-6 flex items-center gap-3 border ${
+          message.type === 'success'
+            ? 'bg-[#1e130c]/[0.02] text-[#1e130c] border-[#1e130c]/10'
+            : 'bg-[#7a6350]/[0.05] text-[#7a6350] italic border-[#7a6350]/20'
+        }`} style={{ fontFamily: 'var(--font-lora)' }}>
+          {message.type === 'success' ? <Check className="w-5 h-5 flex-shrink-0 opacity-50" /> : <X className="w-5 h-5 flex-shrink-0 opacity-50" />}
+          <span className="font-medium">{message.text}</span>
         </div>
       )}
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {tabs.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-[#8b6d22]/20 text-[#1e130c] border border-[#8b6d22]/30'
-                  : 'text-[#7a6350] hover:bg-[#1e130c]/5'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          )
-        })}
+      <div className="border-b border-[#1e130c]/10 mb-8 overflow-x-auto custom-scrollbar">
+        <nav className="-mb-px flex space-x-8 min-w-max">
+          {tabs.map((tab) => {
+            const Icon = tab.icon
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`
+                  group inline-flex items-center gap-2 border-b-2 py-4 px-1 text-[0.65rem] font-bold transition-all duration-300
+                  ${isActive
+                    ? 'border-[#8b6d22] text-[#1e130c]'
+                    : 'border-transparent text-[#7a6350] hover:text-[#1e130c] hover:border-[#1e130c]/20'
+                  }
+                `}
+                style={{ fontFamily: 'var(--font-lora)', textTransform: 'uppercase', letterSpacing: '0.15em' }}
+              >
+                <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-[#8b6d22]' : 'text-[#7a6350]'}`} />
+                {tab.label}
+              </button>
+            )
+          })}
+        </nav>
       </div>
 
-      {/* Profile Tab */}
-      {activeTab === 'profile' && (
-        <Card title={t('settings.profileInfo')}>
-          <div className="space-y-6">
+      {/* Content Area */}
+      <div className="bg-white/40 border border-[#1e130c]/10 p-6 md:p-8">
+        {/* Profile Tab */}
+        {activeTab === 'profile' && (
+          <div className="space-y-8">
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] mb-6 pb-2 border-b border-[#1e130c]/5">{t('settings.profileInfo')}</h2>
+            
             {/* Avatar Section */}
-            <div className="flex items-center gap-6">
-              <div className="relative">
-                <div className="w-24 h-24 rounded-full bg-[#8b6d22]/20 flex items-center justify-center text-[#1e130c]">
-                  <User className="w-12 h-12" />
+            <div className="flex items-center gap-6 mb-8">
+              <div className="relative group">
+                <div className="w-24 h-24 bg-[#faf6ee] border border-[#1e130c]/10 flex items-center justify-center text-[#1e130c] transition-colors group-hover:bg-[#1e130c]/5">
+                  <User className="w-10 h-10 text-[#8b6d22]" />
                 </div>
-                <button className="absolute bottom-0 right-0 p-2 bg-[#8b6d22] rounded-full text-[#1e130c] hover:bg-gold-600 transition-colors">
+                <button className="absolute -bottom-2 -right-2 p-2 bg-[#1e130c] text-[#faf6ee] border border-[#faf6ee] hover:bg-[#8b6d22] transition-colors">
                   <Camera className="w-4 h-4" />
                 </button>
               </div>
               <div>
-                <h3 className="font-[family-name:var(--font-playfair)] text-xl font-semibold text-[#1e130c]">{currentUser?.full_name || t('settings.noName')}</h3>
-                <p className="text-[#7a6350]">{currentUser?.role === 'admin' ? t('settings.administrator') : currentUser?.role === 'instructor' ? t('settings.instructor') : t('settings.student')}</p>
+                <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold text-[#1e130c] tracking-tight">{currentUser?.full_name || t('settings.noName')}</h3>
+                <p className="text-[0.7rem] text-[#7a6350] uppercase tracking-[0.2em] font-bold mt-1">
+                  {currentUser?.role === 'admin' ? t('settings.administrator') : currentUser?.role === 'instructor' ? t('settings.instructor') : t('settings.student')}
+                </p>
               </div>
             </div>
 
             {/* Form Fields */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-[family-name:var(--font-lora)]">
               <div>
-                <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                  {t('settings.fullName')}
+                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
+                  {t('settings.fullName')} <span className="text-[#8b6d22]">*</span>
                 </label>
                 <input
                   type="text"
                   value={profileForm.full_name}
                   onChange={(e) => setProfileForm({ ...profileForm, full_name: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
+                  className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none text-base font-medium"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#1e130c] mb-2">
+                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
                   {t('settings.email')}
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b6d22]" />
+                  <Mail className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7a6350] opacity-50" />
                   <input
                     type="email"
                     value={profileForm.email}
                     disabled
-                    className="font-[family-name:var(--font-lora)] text-[#1e130c] w-full pl-10 pr-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#7a6350] cursor-not-allowed"
+                    className="w-full pl-6 pr-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/10 text-[#7a6350] italic rounded-none cursor-not-allowed text-base"
                   />
                 </div>
-                <p className="text-xs text-[#7a6350] mt-1">{t('settings.emailCannotChange')}</p>
+                <p className="text-[0.6rem] text-[#7a6350] uppercase tracking-widest mt-1.5 opacity-60">{t('settings.emailCannotChange')}</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#1e130c] mb-2">
+                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
                   {t('settings.phone')}
                 </label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b6d22]" />
+                  <Phone className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8b6d22]" />
                   <input
                     type="tel"
                     value={profileForm.phone}
                     onChange={(e) => setProfileForm({ ...profileForm, phone: formatPhone(e.target.value) })}
                     placeholder="(21) 98765-4321"
                     maxLength={15}
-                    className="w-full pl-10 pr-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
+                    className="w-full pl-6 pr-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none text-base font-medium"
                   />
                 </div>
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-[#1e130c] mb-2">
+                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
                   {t('settings.bio')}
                 </label>
                 <textarea
                   value={profileForm.bio}
                   onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                  rows={4}
+                  rows={3}
                   placeholder={t('settings.bioPlaceholder')}
-                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
+                  className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] placeholder-[#7a6350]/30 focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none resize-none italic text-sm"
                 />
               </div>
             </div>
-
-            <div className="flex justify-end">
-              <Button
-                variant="primary"
-                onClick={handleProfileSave}
-                disabled={saving}
-                icon={<Save className="w-5 h-5 flex-shrink-0" />}
-              >
-                {saving ? t('settings.saving') : t('settings.saveChanges')}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Password Tab */}
-      {activeTab === 'password' && (
-        <Card title={t('settings.changePassword')}>
-          <div className="max-w-md space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                Senha Atual
-              </label>
-              <input
-                type="password"
-                value={passwordForm.currentPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                Nova Senha
-              </label>
-              <input
-                type="password"
-                value={passwordForm.newPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
-              />
-              <p className="text-xs text-[#7a6350] mt-1">Mínimo 6 caracteres</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                Confirmar Nova Senha
-              </label>
-              <input
-                type="password"
-                value={passwordForm.confirmPassword}
-                onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
-              />
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                variant="primary"
-                onClick={handlePasswordChange}
-                disabled={saving}
-                icon={<Key className="w-5 h-5 flex-shrink-0" />}
-              >
-                {saving ? 'Alterando...' : 'Alterar Senha'}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Notifications Tab */}
-      {activeTab === 'notifications' && (
-        <Card title="Preferências de Notificação">
-          <div className="space-y-4">
-            {Object.entries({
-              email: { label: 'Notificações por Email', description: 'Receber notificações importantes por email' },
-              courseUpdates: { label: 'Atualizações de Cursos', description: 'Notificar sobre mudanças nos cursos matriculados' },
-              newEnrollments: { label: 'Novas Matrículas', description: 'Notificar quando alunos se matriculam em seus cursos' },
-              systemUpdates: { label: 'Atualizações do Sistema', description: 'Notificar sobre manutenções e novidades' }
-            }).map(([key, info]) => (
-              <label key={key} className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
-                <div className="flex items-center gap-3">
-                  <Bell className="w-5 h-5 text-[#8b6d22]" />
-                  <div>
-                    <p className="text-[#1e130c] font-medium">{info.label}</p>
-                    <p className="text-[#8b6d22] text-sm">{info.description}</p>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.notifications[key as keyof typeof settings.notifications]}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    notifications: { ...settings.notifications, [key]: e.target.checked }
-                  })}
-                  className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
-                />
-              </label>
-            ))}
 
             <div className="flex justify-end pt-4">
-              <Button
-                variant="primary"
-                onClick={handleSettingsSave}
+              <button
+                onClick={handleProfileSave}
                 disabled={saving}
-                icon={<Save className="w-5 h-5 flex-shrink-0" />}
+                style={{ padding: '0.75rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                className="hover:bg-[#8b6d22] transition-colors disabled:opacity-50"
               >
-                {saving ? 'Salvando...' : 'Salvar Preferências'}
-              </Button>
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? 'Gravando...' : t('settings.saveChanges')}
+              </button>
             </div>
           </div>
-        </Card>
-      )}
+        )}
 
-      {/* Appearance Tab */}
-      {activeTab === 'appearance' && (
-        <Card title="Aparência">
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-3">
-                Tema
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {(['light', 'dark', 'auto'] as const).map((themeOption) => (
-                  <button
-                    key={themeOption}
-                    onClick={() => {
+        {/* Password Tab */}
+        {activeTab === 'password' && (
+          <div className="space-y-8 max-w-xl">
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] mb-6 pb-2 border-b border-[#1e130c]/5">{t('settings.changePassword')}</h2>
+            
+            <div className="space-y-6 font-[family-name:var(--font-lora)]">
+              <div>
+                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
+                  Senha Atual
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none text-base tracking-widest font-mono"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
+                  Nova Senha
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none text-base tracking-widest font-mono"
+                  placeholder="••••••••"
+                />
+                <p className="text-[0.6rem] text-[#7a6350] uppercase tracking-widest mt-1.5 opacity-60">Mínimo 6 caracteres</p>
+              </div>
+
+              <div>
+                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
+                  Confirmar Nova Senha
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none text-base tracking-widest font-mono"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={handlePasswordChange}
+                  disabled={saving}
+                  style={{ padding: '0.75rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  className="hover:bg-[#8b6d22] transition-colors disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                  {saving ? 'Alterando...' : 'Alterar Senha'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notifications Tab */}
+        {activeTab === 'notifications' && (
+          <div className="space-y-8">
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] mb-6 pb-2 border-b border-[#1e130c]/5">Preferências de Notificação</h2>
+            
+            <div className="space-y-4 font-[family-name:var(--font-lora)]">
+              {Object.entries({
+                email: { label: 'Notificações por Email', description: 'Receber notificações importantes por email' },
+                courseUpdates: { label: 'Atualizações de Cursos', description: 'Notificar sobre mudanças nos cursos matriculados' },
+                newEnrollments: { label: 'Novas Matrículas', description: 'Notificar quando alunos se matriculam em seus cursos' },
+                systemUpdates: { label: 'Atualizações do Sistema', description: 'Notificar sobre manutenções e novidades' }
+              }).map(([key, info]) => (
+                <label key={key} className="flex items-center justify-between p-4 bg-[#faf6ee] border border-[#1e130c]/10 cursor-pointer hover:border-[#8b6d22]/40 transition-colors">
+                  <div className="flex items-start gap-4">
+                    <Bell className="w-4 h-4 text-[#8b6d22] mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-[0.75rem] font-bold uppercase tracking-widest text-[#1e130c]">{info.label}</p>
+                      <p className="text-[0.7rem] text-[#7a6350] italic mt-0.5">{info.description}</p>
+                    </div>
+                  </div>
+                  <div className="relative flex items-center ml-4">
+                    <input
+                      type="checkbox"
+                      checked={settings.notifications[key as keyof typeof settings.notifications]}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        notifications: { ...settings.notifications, [key]: e.target.checked }
+                      })}
+                      className="w-5 h-5 text-[#8b6d22] bg-transparent border-[#1e130c]/30 rounded-none focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                    />
+                  </div>
+                </label>
+              ))}
+
+              <div className="flex justify-end pt-6">
+                <button
+                  onClick={handleSettingsSave}
+                  disabled={saving}
+                  style={{ padding: '0.75rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  className="hover:bg-[#8b6d22] transition-colors disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {saving ? 'Gravando...' : 'Salvar Preferências'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Appearance Tab */}
+        {activeTab === 'appearance' && (
+          <div className="space-y-8 max-w-2xl">
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] mb-6 pb-2 border-b border-[#1e130c]/5">Aparência e Localização</h2>
+            
+            <div className="space-y-8 font-[family-name:var(--font-lora)]">
+              <div>
+                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-4">
+                  Tema da Interface
+                </label>
+                <div className="grid grid-cols-3 gap-4">
+                  {(['light', 'dark', 'auto'] as const).map((themeOption) => (
+                    <button
+                      key={themeOption}
+                      onClick={() => {
+                        setSettings({
+                          ...settings,
+                          appearance: { ...settings.appearance, theme: themeOption }
+                        })
+                        setTheme(themeOption)
+                      }}
+                      className={`p-4 border transition-all ${
+                        settings.appearance.theme === themeOption
+                          ? 'border-[#8b6d22] bg-[#8b6d22]/5'
+                          : 'border-[#1e130c]/15 hover:border-[#8b6d22]/30 bg-[#faf6ee]'
+                      }`}
+                    >
+                      <Palette className={`w-5 h-5 mx-auto mb-3 ${
+                        settings.appearance.theme === themeOption ? 'text-[#1e130c]' : 'text-[#7a6350]'
+                      }`} />
+                      <p className={`text-[0.65rem] font-bold uppercase tracking-widest text-center ${
+                        settings.appearance.theme === themeOption ? 'text-[#1e130c]' : 'text-[#7a6350]'
+                      }`}>
+                        {themeOption === 'light' ? 'Claro' : themeOption === 'dark' ? 'Escuro' : 'Auto'}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                <div>
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
+                    Idioma
+                  </label>
+                  <select
+                    value={settings.appearance.language}
+                    onChange={(e) => {
+                      const newLanguage = e.target.value as any
                       setSettings({
                         ...settings,
-                        appearance: { ...settings.appearance, theme: themeOption }
+                        appearance: { ...settings.appearance, language: newLanguage }
                       })
-                      setTheme(themeOption)
+                      setLanguage(newLanguage)
                     }}
-                    className={`p-4 rounded-lg border transition-all ${
-                      settings.appearance.theme === themeOption
-                        ? 'border-[#8b6d22] bg-[#8b6d22]/10'
-                        : 'border-[#1e130c]/15 hover:border-[#8b6d22]/40'
-                    }`}
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer text-sm font-bold"
                   >
-                    <Palette className={`w-6 h-6 mx-auto mb-2 ${
-                      settings.appearance.theme === themeOption ? 'text-[#1e130c]' : 'text-[#8b6d22]'
-                    }`} />
-                    <p className={`text-sm ${
-                      settings.appearance.theme === themeOption ? 'text-[#1e130c]' : 'text-[#7a6350]'
-                    }`}>
-                      {themeOption === 'light' ? 'Claro' : themeOption === 'dark' ? 'Escuro' : 'Automático'}
-                    </p>
-                  </button>
-                ))}
+                    <option value="pt-BR" className="bg-[#faf6ee]">Português (Brasil)</option>
+                    <option value="en-US" className="bg-[#faf6ee]">English (US)</option>
+                    <option value="es-ES" className="bg-[#faf6ee]">Español</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
+                    Formato de Data
+                  </label>
+                  <select
+                    value={settings.appearance.dateFormat}
+                    onChange={(e) => setSettings({
+                      ...settings,
+                      appearance: { ...settings.appearance, dateFormat: e.target.value }
+                    })}
+                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer text-sm font-bold"
+                  >
+                    <option value="DD/MM/YYYY" className="bg-[#faf6ee]">DD/MM/AAAA</option>
+                    <option value="MM/DD/YYYY" className="bg-[#faf6ee]">MM/DD/AAAA</option>
+                    <option value="YYYY-MM-DD" className="bg-[#faf6ee]">AAAA-MM-DD</option>
+                  </select>
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                Idioma
-              </label>
-              <select
-                value={settings.appearance.language}
-                onChange={(e) => {
-                  const newLanguage = e.target.value as any
-                  setSettings({
-                    ...settings,
-                    appearance: { ...settings.appearance, language: newLanguage }
-                  })
-                  setLanguage(newLanguage)
-                }}
-                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
-              >
-                <option value="pt-BR">Português (Brasil)</option>
-                <option value="en-US">English (US)</option>
-                <option value="es-ES">Español</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                Formato de Data
-              </label>
-              <select
-                value={settings.appearance.dateFormat}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  appearance: { ...settings.appearance, dateFormat: e.target.value }
-                })}
-                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
-              >
-                <option value="DD/MM/YYYY">DD/MM/AAAA</option>
-                <option value="MM/DD/YYYY">MM/DD/AAAA</option>
-                <option value="YYYY-MM-DD">AAAA-MM-DD</option>
-              </select>
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                variant="primary"
-                onClick={handleSettingsSave}
-                disabled={saving}
-                icon={<Save className="w-5 h-5 flex-shrink-0" />}
-              >
-                {saving ? 'Salvando...' : 'Salvar Aparência'}
-              </Button>
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={handleSettingsSave}
+                  disabled={saving}
+                  style={{ padding: '0.75rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  className="hover:bg-[#8b6d22] transition-colors disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {saving ? 'Gravando...' : 'Salvar Aparência'}
+                </button>
+              </div>
             </div>
           </div>
-        </Card>
-      )}
+        )}
 
-      {/* Privacy Tab */}
-      {activeTab === 'privacy' && (
-        <Card title="Privacidade">
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                Visibilidade do Perfil
-              </label>
-              <select
-                value={settings.privacy.profileVisibility}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  privacy: { ...settings.privacy, profileVisibility: e.target.value as any }
-                })}
-                className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
-              >
-                <option value="public">Público - Todos podem ver</option>
-                <option value="connections">Conexões - Apenas contatos</option>
-                <option value="private">Privado - Apenas você</option>
-              </select>
-            </div>
-
-            <div className="space-y-3">
-              <label className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
-                <div>
-                  <p className="text-[#1e130c] font-medium">Mostrar Email no Perfil</p>
-                  <p className="text-[#8b6d22] text-sm">Permitir que outros vejam seu email</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.privacy.showEmail}
+        {/* Privacy Tab */}
+        {activeTab === 'privacy' && (
+          <div className="space-y-8 max-w-xl">
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] mb-6 pb-2 border-b border-[#1e130c]/5">Privacidade do Perfil</h2>
+            
+            <div className="space-y-6 font-[family-name:var(--font-lora)]">
+              <div>
+                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
+                  Nível de Visibilidade
+                </label>
+                <select
+                  value={settings.privacy.profileVisibility}
                   onChange={(e) => setSettings({
                     ...settings,
-                    privacy: { ...settings.privacy, showEmail: e.target.checked }
+                    privacy: { ...settings.privacy, profileVisibility: e.target.value as any }
                   })}
-                  className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
-                />
-              </label>
+                  className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer text-sm font-bold"
+                >
+                  <option value="public" className="bg-[#faf6ee]">Público Geral</option>
+                  <option value="connections" className="bg-[#faf6ee]">Apenas Conexões</option>
+                  <option value="private" className="bg-[#faf6ee]">Estritamente Privado</option>
+                </select>
+              </div>
 
-              <label className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
-                <div>
-                  <p className="text-[#1e130c] font-medium">Mostrar Telefone no Perfil</p>
-                  <p className="text-[#8b6d22] text-sm">Permitir que outros vejam seu telefone</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.privacy.showPhone}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    privacy: { ...settings.privacy, showPhone: e.target.checked }
-                  })}
-                  className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
-                />
-              </label>
-            </div>
+              <div className="space-y-4 pt-4">
+                <label className="flex items-center justify-between p-4 bg-[#faf6ee] border border-[#1e130c]/10 cursor-pointer hover:border-[#8b6d22]/40 transition-colors">
+                  <div>
+                    <p className="text-[0.75rem] font-bold uppercase tracking-widest text-[#1e130c]">Exibir Email</p>
+                    <p className="text-[0.7rem] text-[#7a6350] italic mt-0.5">Tornar o endereço de email público no perfil</p>
+                  </div>
+                  <div className="relative flex items-center ml-4">
+                    <input
+                      type="checkbox"
+                      checked={settings.privacy.showEmail}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        privacy: { ...settings.privacy, showEmail: e.target.checked }
+                      })}
+                      className="w-5 h-5 text-[#8b6d22] bg-transparent border-[#1e130c]/30 rounded-none focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                    />
+                  </div>
+                </label>
 
-            <div className="flex justify-end">
-              <Button
-                variant="primary"
-                onClick={handleSettingsSave}
-                disabled={saving}
-                icon={<Save className="w-5 h-5 flex-shrink-0" />}
-              >
-                {saving ? 'Salvando...' : 'Salvar Privacidade'}
-              </Button>
+                <label className="flex items-center justify-between p-4 bg-[#faf6ee] border border-[#1e130c]/10 cursor-pointer hover:border-[#8b6d22]/40 transition-colors">
+                  <div>
+                    <p className="text-[0.75rem] font-bold uppercase tracking-widest text-[#1e130c]">Exibir Telefone</p>
+                    <p className="text-[0.7rem] text-[#7a6350] italic mt-0.5">Tornar o número de telefone público no perfil</p>
+                  </div>
+                  <div className="relative flex items-center ml-4">
+                    <input
+                      type="checkbox"
+                      checked={settings.privacy.showPhone}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        privacy: { ...settings.privacy, showPhone: e.target.checked }
+                      })}
+                      className="w-5 h-5 text-[#8b6d22] bg-transparent border-[#1e130c]/30 rounded-none focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                    />
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex justify-end pt-6">
+                <button
+                  onClick={handleSettingsSave}
+                  disabled={saving}
+                  style={{ padding: '0.75rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  className="hover:bg-[#8b6d22] transition-colors disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {saving ? 'Gravando...' : 'Salvar Privacidade'}
+                </button>
+              </div>
             </div>
           </div>
-        </Card>
-      )}
+        )}
 
-      {/* Backup Tab */}
-      {activeTab === 'backup' && (
-        <Card title="Backup para Google Drive">
-          <div className="space-y-6">
-            <p className="text-[#7a6350] text-sm">
-              Exporta dados dos alunos, estrutura acadêmica, provas e templates em artefatos
-              criptografados para uma pasta datada no Google Drive.
-            </p>
+        {/* Backup Tab */}
+        {activeTab === 'backup' && (
+          <div className="space-y-8 max-w-4xl">
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] mb-6 pb-2 border-b border-[#1e130c]/5">Gestão de Backup e Restauração</h2>
+            
+            <div className="space-y-8 font-[family-name:var(--font-lora)]">
+              <p className="text-sm text-[#7a6350] italic leading-relaxed">
+                A rotina de backup exporta dados vitais do sistema (alunos, matrizes curriculares, templates e avaliações) em artefatos criptografados para uma unidade segura no Google Drive.
+              </p>
 
-            {/* Status feedback */}
-            {backupState.status === 'success' && backupState.lastResult && (
-              <div className="p-4 bg-[#1e130c]/5/10 border border-green-500/20 rounded-lg space-y-2">
-                <div className="flex items-center gap-2 text-[#1e130c] font-bold font-medium">
-                  <Check className="w-5 h-5" />
-                  Backup concluído: {backupState.lastResult.backupId}
+              {/* Status feedback */}
+              {backupState.status === 'success' && backupState.lastResult && (
+                <div className="p-5 bg-white/40 border border-[#8b6d22]/30 space-y-3">
+                  <div className="flex items-center gap-3 text-[#1e130c] font-bold uppercase tracking-widest text-[0.7rem]">
+                    <Check className="w-4 h-4 text-[#8b6d22]" />
+                    Processo de Backup Finalizado
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-[#7a6350]">
+                    <div className="space-y-1.5">
+                      <p>Identificador: <span className="text-[#1e130c] font-bold font-mono">{backupState.lastResult.backupId}</span></p>
+                      <p>Status da Operação: <span className="text-[#1e130c] font-bold uppercase">{backupState.lastResult.status}</span></p>
+                      <p>Data/Hora: <span className="text-[#1e130c] font-bold">{new Date(backupState.lastResult.completedAt).toLocaleString('pt-BR')}</span></p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <p>Tabelas Exportadas: <span className="text-[#1e130c] font-bold">{backupState.lastResult.tablesExported}</span></p>
+                      <p>Arquivos Transferidos: <span className="text-[#1e130c] font-bold">{backupState.lastResult.filesExported}</span></p>
+                      <p>Volume Enviado: <span className="text-[#1e130c] font-bold">{(backupState.lastResult.bytesUploaded / 1024).toFixed(2)} KB</span></p>
+                    </div>
+                  </div>
+                  <div className="pt-2">
+                    <a
+                      href={backupState.lastResult.driveFolderUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-widest text-[#8b6d22] hover:text-[#1e130c] transition-colors border-b border-[#8b6d22]/30 hover:border-[#1e130c] pb-0.5"
+                    >
+                      Acessar Arquivos no Google Drive <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
-                <div className="text-[#7a6350] text-sm">
-                  <p>Status: <span className="text-[#1e130c]">{backupState.lastResult.status}</span></p>
-                  <p>Tabelas exportadas: <span className="text-[#1e130c]">{backupState.lastResult.tablesExported}</span></p>
-                  <p>Arquivos exportados: <span className="text-[#1e130c]">{backupState.lastResult.filesExported}</span></p>
-                  <p>Bytes enviados: <span className="text-[#1e130c]">{backupState.lastResult.bytesUploaded}</span></p>
-                  <p>Concluído em: <span className="text-[#1e130c]">{new Date(backupState.lastResult.completedAt).toLocaleString('pt-BR')}</span></p>
-                </div>
-                <a
-                  href={backupState.lastResult.driveFolderUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-[#1e130c] hover:underline"
-                >
-                  Abrir pasta no Drive <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-            )}
+              )}
 
-            {backupState.status === 'error' && (
-              <div className="flex items-start gap-2 p-4 bg-[#7a6350]/10/10 border border-red-500/20 rounded-lg text-[#7a6350] italic">
-                <X className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span className="text-sm">{backupState.error}</span>
-              </div>
-            )}
-
-            <div className="flex items-center gap-4">
-              <Button
-                variant="primary"
-                onClick={handleBackup}
-                disabled={backupState.status === 'running'}
-                icon={backupState.status === 'running'
-                  ? <Loader2 className="w-5 h-5 flex-shrink-0 animate-spin" />
-                  : <HardDriveDownload className="w-5 h-5 flex-shrink-0" />
-                }
-              >
-                {backupState.status === 'running' ? 'Executando backup...' : 'Executar Backup Agora'}
-              </Button>
-            </div>
-
-            <div className="rounded-lg border border-[#1e130c]/15 p-4 space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[#1e130c] font-medium">Restauração pela interface</p>
-                  <p className="text-[#8b6d22] text-sm">
-                    Primeiro valide o backup. Depois aplique a restauração real.
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  onClick={fetchBackups}
-                  disabled={backupListState.status === 'running'}
-                  icon={backupListState.status === 'running'
-                    ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
-                    : <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                  }
-                >
-                  {backupListState.status === 'running' ? 'Atualizando...' : 'Atualizar Lista'}
-                </Button>
-              </div>
-
-              {backupListState.status === 'error' && backupListState.error && (
-                <div className="rounded-lg border border-red-500/30 bg-[#7a6350]/10/10 p-3 text-sm text-[#7a6350] italic">
-                  {backupListState.error}
+              {backupState.status === 'error' && (
+                <div className="flex items-start gap-3 p-5 bg-[#7a6350]/5 border border-red-900/20 text-[#7a6350]">
+                  <X className="w-5 h-5 flex-shrink-0" />
+                  <div>
+                    <p className="font-bold uppercase text-[0.65rem] tracking-widest mb-1">Falha na Operação</p>
+                    <p className="text-sm italic">{backupState.error}</p>
+                  </div>
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                  Backup disponível
-                </label>
-                <select
-                  value={selectedBackupId}
-                  onChange={(e) => setSelectedBackupId(e.target.value)}
-                  className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)] focus:border-transparent"
+                <button
+                  onClick={handleBackup}
+                  disabled={backupState.status === 'running'}
+                  style={{ padding: '0.85rem 2.5rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}
+                  className="hover:bg-[#8b6d22] transition-colors disabled:opacity-50"
                 >
-                  {availableBackups.length === 0 && (
-                    <option value="">Nenhum backup encontrado</option>
-                  )}
-                  {availableBackups.map(backup => (
-                    <option key={backup.backupId} value={backup.backupId}>
-                      {backup.backupId} • {backup.status} • {backup.completedAt ? new Date(backup.completedAt).toLocaleString('pt-BR') : 'sem conclusão'}
-                    </option>
-                  ))}
-                </select>
+                  {backupState.status === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> : <HardDriveDownload className="w-4 h-4" />}
+                  {backupState.status === 'running' ? 'Processando Exportação...' : 'Solicitar Novo Backup'}
+                </button>
               </div>
 
-              {selectedBackupId && (
-                <div className="rounded-lg bg-[#faf6ee] p-4 text-sm text-[#7a6350] space-y-1">
-                  {availableBackups
-                    .filter(backup => backup.backupId === selectedBackupId)
-                    .map(backup => (
-                      <div key={backup.backupId}>
-                        <p>Status: <span className="text-[#1e130c]">{backup.status}</span></p>
-                        <p>Tabelas: <span className="text-[#1e130c]">{backup.tablesExported}</span></p>
-                        <p>Arquivos: <span className="text-[#1e130c]">{backup.filesExported}</span></p>
-                        <a
-                          href={backup.driveFolderUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-[#1e130c] hover:underline mt-1"
-                        >
-                          Abrir pasta no Drive <ExternalLink className="w-3 h-3" />
-                        </a>
+              <div className="pt-8 border-t border-[#1e130c]/10 space-y-6">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold text-[#1e130c]">Restauração do Sistema</h3>
+                    <p className="text-sm text-[#7a6350] italic mt-1">Valide os artefatos antes de aplicar a restauração completa no banco operacional.</p>
+                  </div>
+                  <button
+                    onClick={fetchBackups}
+                    disabled={backupListState.status === 'running'}
+                    className="flex items-center gap-2 text-[0.65rem] font-bold uppercase tracking-widest text-[#8b6d22] hover:text-[#1e130c] transition-colors disabled:opacity-50"
+                  >
+                    {backupListState.status === 'running' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
+                    Sincronizar Lista
+                  </button>
+                </div>
+
+                {backupListState.status === 'error' && backupListState.error && (
+                  <div className="p-4 border border-red-900/20 bg-[#7a6350]/5 text-sm text-[#7a6350] italic">
+                    {backupListState.error}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em]">
+                      Selecionar Ponto de Restauração
+                    </label>
+                    <select
+                      value={selectedBackupId}
+                      onChange={(e) => setSelectedBackupId(e.target.value)}
+                      className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer text-sm font-mono"
+                    >
+                      {availableBackups.length === 0 && (
+                        <option value="" className="font-sans italic">Nenhum registro encontrado</option>
+                      )}
+                      {availableBackups.map(backup => (
+                        <option key={backup.backupId} value={backup.backupId} className="bg-[#faf6ee]">
+                          {backup.backupId} • {backup.status.toUpperCase()}
+                        </option>
+                      ))}
+                    </select>
+
+                    {selectedBackupId && (
+                      <div className="p-4 bg-white/40 border border-[#1e130c]/10 text-xs text-[#7a6350] space-y-1.5">
+                        {availableBackups
+                          .filter(backup => backup.backupId === selectedBackupId)
+                          .map(backup => (
+                            <div key={backup.backupId} className="space-y-1">
+                              <p className="flex justify-between"><span>Status:</span> <span className="text-[#1e130c] font-bold uppercase">{backup.status}</span></p>
+                              <p className="flex justify-between"><span>Data:</span> <span className="text-[#1e130c] font-bold">{backup.completedAt ? new Date(backup.completedAt).toLocaleString('pt-BR') : 'N/A'}</span></p>
+                              <p className="flex justify-between"><span>Tabelas:</span> <span className="text-[#1e130c] font-bold">{backup.tablesExported}</span></p>
+                              <p className="flex justify-between"><span>Arquivos:</span> <span className="text-[#1e130c] font-bold">{backup.filesExported}</span></p>
+                              <div className="pt-2 mt-2 border-t border-[#1e130c]/10">
+                                <a
+                                  href={backup.driveFolderUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-[0.6rem] font-bold uppercase tracking-widest text-[#8b6d22] hover:text-[#1e130c] transition-colors"
+                                >
+                                  Ver Fonte no Drive <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em]">
+                      Escopo da Restauração
+                    </label>
+                    <div className="space-y-3">
+                      <label className="flex items-center justify-between p-4 bg-[#faf6ee] border border-[#1e130c]/10 cursor-pointer hover:border-[#8b6d22]/40 transition-colors">
+                        <div>
+                          <p className="text-[0.7rem] font-bold uppercase tracking-widest text-[#1e130c]">Banco de Dados</p>
+                          <p className="text-xs text-[#7a6350] italic mt-0.5">Tabelas e perfis de usuário</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={restoreOptions.restoreDatabase}
+                          onChange={(e) => setRestoreOptions(prev => ({ ...prev, restoreDatabase: e.target.checked }))}
+                          className="w-4 h-4 text-[#8b6d22] bg-transparent border-[#1e130c]/30 rounded-none focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                        />
+                      </label>
+
+                      <label className="flex items-center justify-between p-4 bg-[#faf6ee] border border-[#1e130c]/10 cursor-pointer hover:border-[#8b6d22]/40 transition-colors">
+                        <div>
+                          <p className="text-[0.7rem] font-bold uppercase tracking-widest text-[#1e130c]">Arquivos Storage</p>
+                          <p className="text-xs text-[#7a6350] italic mt-0.5">Certificados e avatares (Buckets)</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={restoreOptions.restoreStorage}
+                          onChange={(e) => setRestoreOptions(prev => ({ ...prev, restoreStorage: e.target.checked }))}
+                          className="w-4 h-4 text-[#8b6d22] bg-transparent border-[#1e130c]/30 rounded-none focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {restoreState.status === 'success' && restoreState.lastResult && (
+                  <div className="p-4 bg-white/40 border border-[#8b6d22]/30 space-y-2">
+                    <p className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[#8b6d22] mb-3">Relatório da Operação</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-[#7a6350]">
+                      <p>Modo: <span className="text-[#1e130c] font-bold uppercase">{restoreState.lastResult.mode === 'dry-run' ? 'Validação (Dry-Run)' : 'Restauração Efetiva'}</span></p>
+                      <p>Artefatos: <span className="text-[#1e130c] font-bold">{restoreState.lastResult.validatedArtifacts} Validados</span></p>
+                      <p>Tabelas: <span className="text-[#1e130c] font-bold">{restoreState.lastResult.restoredTables} Restauradas</span></p>
+                      <p>Arquivos: <span className="text-[#1e130c] font-bold">{restoreState.lastResult.restoredFiles} Recuperados</span></p>
+                    </div>
+                  </div>
+                )}
+
+                {restoreState.status === 'error' && restoreState.error && (
+                  <div className="p-4 border border-red-900/20 bg-[#7a6350]/5 text-sm text-[#7a6350] italic">
+                    <span className="font-bold text-red-900 not-italic uppercase text-[0.65rem] tracking-widest block mb-1">Erro na Restauração</span>
+                    {restoreState.error}
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                  <button
+                    onClick={handleBackupValidation}
+                    disabled={!selectedBackupId || restoreState.status === 'running' || (!restoreOptions.restoreDatabase && !restoreOptions.restoreStorage)}
+                    className="flex-1 py-3 border border-[#1e130c]/20 text-[#1e130c] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-[#1e130c]/5 transition-colors disabled:opacity-30 flex items-center justify-center gap-2"
+                  >
+                    {restoreState.status === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {restoreState.status === 'running' ? 'Processando...' : 'Validar Integridade (Dry-Run)'}
+                  </button>
+
+                  <button
+                    onClick={() => setRestoreModal({ open: true, status: 'idle', error: null })}
+                    disabled={!selectedBackupId || !(restoreState.lastResult?.backupId === selectedBackupId && restoreState.lastResult.mode === 'dry-run') || (!restoreOptions.restoreDatabase && !restoreOptions.restoreStorage)}
+                    className="flex-1 py-3 bg-[#1e130c] text-[#faf6ee] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-red-900 transition-colors disabled:opacity-30 flex items-center justify-center gap-2"
+                  >
+                    <AlertTriangle className="w-4 h-4" />
+                    Aplicar Restauração Definitiva
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 bg-[#faf6ee] border border-[#1e130c]/10 text-sm text-[#7a6350] mt-8">
+                <p className="font-bold text-[#1e130c] uppercase text-[0.65rem] tracking-widest mb-3">Automação de Sistema (Cron)</p>
+                <p className="italic mb-4">A infraestrutura utiliza o Vercel Cron para execução diária de salvaguarda e validação semanal de integridade.</p>
+                <div className="space-y-2">
+                  <div className="bg-white/50 border border-[#1e130c]/5 px-3 py-2 flex items-center justify-between">
+                    <span className="font-mono text-xs text-[#1e130c] font-bold">0 5 * * *</span>
+                    <span className="font-mono text-xs text-[#8b6d22]">/api/admin/backup</span>
+                  </div>
+                  <div className="bg-white/50 border border-[#1e130c]/5 px-3 py-2 flex items-center justify-between">
+                    <span className="font-mono text-xs text-[#1e130c] font-bold">0 6 * * 0</span>
+                    <span className="font-mono text-xs text-[#8b6d22]">/api/admin/backup/validate</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Danger zone */}
+              <div className="mt-10 pt-8 border-t-2 border-red-900/10">
+                <div className="p-6 border border-red-900/20 bg-red-900/5 space-y-4">
+                  <div className="flex items-center gap-3 text-red-900">
+                    <AlertTriangle className="w-6 h-6" />
+                    <h3 className="font-[family-name:var(--font-playfair)] text-xl font-bold">Expurgo Total de Dados</h3>
+                  </div>
+                  <p className="text-sm text-[#7a6350] italic leading-relaxed max-w-2xl">
+                    Atenção: Esta ação removerá irrevogavelmente o banco de dados operacional, todos os arquivos de armazenamento (storage) e perfis de usuários não-administradores. Apenas as credenciais de administração e os artefatos de instalação básica serão preservados.
+                  </p>
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setClearModal({ open: true, password: '', status: 'idle', error: null })}
+                      className="px-6 py-3 bg-red-900 text-[#faf6ee] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-red-800 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Inicializar Expurgo do Sistema
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Installation Tab */}
+        {activeTab === 'installation' && (
+          <div className="space-y-8 max-w-3xl">
+            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] mb-6 pb-2 border-b border-[#1e130c]/5">Diagnóstico de Instalação</h2>
+            
+            <div className="space-y-6 font-[family-name:var(--font-lora)]">
+              <div className="p-6 bg-white/40 border border-[#1e130c]/10">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm text-[#7a6350]">
+                  <div className="flex flex-col gap-1">
+                    <span className="uppercase tracking-widest opacity-60 font-bold text-[0.6rem]">Status Global</span>
+                    <span className="text-[#1e130c] font-bold uppercase tracking-wider">{installationState?.installation.status || 'Indisponível'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="uppercase tracking-widest opacity-60 font-bold text-[0.6rem]">Setup Base</span>
+                    <span className="text-[#1e130c] font-bold">{installationState?.installation.isSetupComplete ? 'Concluído' : 'Pendente'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="uppercase tracking-widest opacity-60 font-bold text-[0.6rem]">Estágio Atual</span>
+                    <span className="text-[#1e130c] font-bold capitalize">{installationState?.installation.currentStep || 'Nenhum'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="uppercase tracking-widest opacity-60 font-bold text-[0.6rem]">Inconsistências</span>
+                    <span className={`font-bold ${installationState?.validation.issues.length ? 'text-red-800' : 'text-[#8b6d22]'}`}>
+                      {installationState?.validation.issues.length || 0} Registros
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {installationState?.validation.checks?.length ? (
+                <div className="space-y-3">
+                  <h4 className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[#1e130c] mb-2 pl-1">Verificações de Serviços Internos</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {installationState.validation.checks.map(check => (
+                      <div
+                        key={check.key}
+                        className={`p-4 border text-[0.75rem] flex items-start gap-3 ${
+                          check.status === 'ok'
+                            ? 'border-[#1e130c]/10 bg-white/40 text-[#1e130c]'
+                            : 'border-red-900/20 bg-[#7a6350]/5 text-[#7a6350] italic'
+                        }`}
+                      >
+                        {check.status === 'ok' ? <Check className="w-4 h-4 text-[#8b6d22] flex-shrink-0" /> : <X className="w-4 h-4 flex-shrink-0 text-red-900" />}
+                        <span className={check.status === 'ok' ? 'font-bold uppercase tracking-wide' : ''}>{check.message}</span>
                       </div>
                     ))}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <label className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
-                  <div>
-                    <p className="text-[#1e130c] font-medium">Restaurar banco</p>
-                    <p className="text-[#8b6d22] text-sm">Tabelas acadêmicas e perfis.</p>
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={restoreOptions.restoreDatabase}
-                    onChange={(e) => setRestoreOptions(prev => ({ ...prev, restoreDatabase: e.target.checked }))}
-                    className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
-                  />
-                </label>
+                </div>
+              ) : null}
 
-                <label className="flex items-center justify-between p-4 bg-[#faf6ee] rounded-lg cursor-pointer hover:bg-[#1e130c]/5">
-                  <div>
-                    <p className="text-[#1e130c] font-medium">Restaurar arquivos</p>
-                    <p className="text-[#8b6d22] text-sm">Buckets `certificados` e `avatars`.</p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={restoreOptions.restoreStorage}
-                    onChange={(e) => setRestoreOptions(prev => ({ ...prev, restoreStorage: e.target.checked }))}
-                    className="w-4 h-4 text-[#8b6d22] bg-[#faf6ee] border-[#1e130c]/15 rounded focus:ring-[color:var(--color-focus)]"
-                  />
-                </label>
-              </div>
-
-              {restoreState.status === 'success' && restoreState.lastResult && (
-                <div className="rounded-lg border border-green-500/30 bg-[#1e130c]/5/10 p-4 text-sm text-[#1e130c] font-bold space-y-1">
-                  <p>Backup: {restoreState.lastResult.backupId}</p>
-                  <p>Modo: {restoreState.lastResult.mode === 'dry-run' ? 'validação' : 'restauração real'}</p>
-                  <p>Artefatos validados: {restoreState.lastResult.validatedArtifacts}</p>
-                  <p>Tabelas restauradas: {restoreState.lastResult.restoredTables}</p>
-                  <p>Arquivos restaurados: {restoreState.lastResult.restoredFiles}</p>
+              {installationState?.validation.issues && installationState.validation.issues.length > 0 && (
+                <div className="p-5 border border-red-900/20 bg-[#7a6350]/5 space-y-2 mt-6">
+                  <p className="font-bold text-red-900 uppercase text-[0.65rem] tracking-widest mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" /> Alertas Críticos Identificados
+                  </p>
+                  <ul className="list-disc list-inside text-sm text-[#7a6350] italic space-y-1 ml-2">
+                    {installationState.validation.issues.map(issue => (
+                      <li key={issue}>{issue}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
-              {restoreState.status === 'error' && restoreState.error && (
-                <div className="rounded-lg border border-red-500/30 bg-[#7a6350]/10/10 p-4 text-sm text-[#7a6350] italic">
-                  {restoreState.error}
+              {installationValidationState.status === 'error' && installationValidationState.error && (
+                <div className="p-4 border border-red-900/20 bg-[#7a6350]/5 text-sm text-[#7a6350] italic mt-4">
+                  {installationValidationState.error}
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  variant="secondary"
-                  onClick={handleBackupValidation}
-                  disabled={
-                    !selectedBackupId ||
-                    restoreState.status === 'running' ||
-                    (!restoreOptions.restoreDatabase && !restoreOptions.restoreStorage)
-                  }
-                  icon={restoreState.status === 'running'
-                    ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
-                    : <Check className="w-4 h-4 flex-shrink-0" />
-                  }
+              {installationValidationState.status === 'success' && (
+                <div className="p-4 border border-[#8b6d22]/30 bg-white/40 text-[0.75rem] font-bold text-[#1e130c] uppercase tracking-wider flex items-center gap-3 mt-4">
+                  <Check className="w-4 h-4 text-[#8b6d22]" />
+                  Serviços e integrações revalidados com sucesso.
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-4 pt-8 mt-4 border-t border-[#1e130c]/10">
+                <button
+                  onClick={handleInstallationValidation}
+                  disabled={installationValidationState.status === 'running'}
+                  className="flex-1 py-3 border border-[#1e130c]/20 text-[#1e130c] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-[#1e130c]/5 transition-colors disabled:opacity-30 flex items-center justify-center gap-2"
                 >
-                  {restoreState.status === 'running' ? 'Validando...' : 'Validar Backup'}
-                </Button>
+                  {installationValidationState.status === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> : <SettingsIcon className="w-4 h-4" />}
+                  {installationValidationState.status === 'running' ? 'Diagnosticando...' : 'Revalidar Serviços'}
+                </button>
 
-                <Button
-                  variant="danger"
-                  onClick={() => setRestoreModal({ open: true, status: 'idle', error: null })}
-                  disabled={
-                    !selectedBackupId ||
-                    !(restoreState.lastResult?.backupId === selectedBackupId && restoreState.lastResult.mode === 'dry-run') ||
-                    (!restoreOptions.restoreDatabase && !restoreOptions.restoreStorage)
-                  }
-                  icon={<AlertTriangle className="w-4 h-4 flex-shrink-0" />}
+                <a
+                  href="/setup"
+                  className="flex-1 py-3 bg-[#1e130c] text-[#faf6ee] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-[#8b6d22] transition-colors flex items-center justify-center gap-2 text-center"
                 >
-                  Restaurar Backup
-                </Button>
+                  Acessar Wizard de Setup
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
               </div>
-            </div>
-
-            <div className="p-4 bg-[#faf6ee] rounded-lg space-y-1 text-sm text-[#8b6d22]">
-              <p className="font-medium text-[#1e130c]">Sobre o backup automático (cron)</p>
-              <p>O deploy agora usa Vercel Cron para backup diário e validação semanal do último backup.</p>
-              <code className="block mt-2 text-xs bg-[#faf6ee] p-2 rounded text-[#7a6350] font-mono">
-                0 5 * * * → /api/admin/backup
-              </code>
-              <code className="block mt-2 text-xs bg-[#faf6ee] p-2 rounded text-[#7a6350] font-mono">
-                0 6 * * 0 → /api/admin/backup/validate
-              </code>
-              <p className="mt-2">As rotinas usam segredo dedicado via header Authorization.</p>
-            </div>
-
-            {/* Danger zone */}
-            <div className="border border-red-500/30 rounded-lg p-4 space-y-3">
-              <div className="flex items-center gap-2 text-[#7a6350] italic font-medium">
-                <AlertTriangle className="w-5 h-5" />
-                Zona de Perigo
-              </div>
-              <p className="text-[#8b6d22] text-sm">
-                Remove banco operacional, arquivos e perfis não-admin. A instalação e os acessos
-                de administrador são preservados. Esta ação não pode ser desfeita.
-              </p>
-              <Button
-                variant="danger"
-                onClick={() => setClearModal({ open: true, password: '', status: 'idle', error: null })}
-                icon={<Trash2 className="w-5 h-5 flex-shrink-0" />}
-              >
-                Limpar Todos os Dados
-              </Button>
             </div>
           </div>
-        </Card>
-      )}
+        )}
+      </div>
 
-      {activeTab === 'installation' && (
-        <Card title="Configuração da Instalação">
-          <div className="space-y-6">
-            <div className="rounded-lg border border-[#1e130c]/15 bg-[#faf6ee] p-4 text-sm text-[#7a6350] space-y-2">
-              <p>Status: <span className="text-[#1e130c]">{installationState?.installation.status || 'indisponível'}</span></p>
-              <p>Setup completo: <span className="text-[#1e130c]">{installationState?.installation.isSetupComplete ? 'Sim' : 'Não'}</span></p>
-              <p>Etapa atual: <span className="text-[#1e130c]">{installationState?.installation.currentStep || '-'}</span></p>
-              <p>Pendências: <span className="text-[#1e130c]">{installationState?.validation.issues.length || 0}</span></p>
-            </div>
-
-            {installationState?.validation.checks?.length ? (
-              <div className="space-y-2">
-                {installationState.validation.checks.map(check => (
-                  <div
-                    key={check.key}
-                    className={`rounded-lg border p-3 text-sm ${
-                      check.status === 'ok'
-                        ? 'border-green-500/30 bg-[#1e130c]/5/10 text-[#1e130c] font-bold'
-                        : 'border-red-500/30 bg-[#7a6350]/10/10 text-[#7a6350] italic'
-                    }`}
-                  >
-                    {check.message}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            {installationState?.validation.issues && installationState.validation.issues.length > 0 && (
-              <div className="rounded-lg border border-red-500/30 bg-[#7a6350]/10/10 p-4 text-sm text-[#7a6350] italic space-y-1">
-                {installationState.validation.issues.map(issue => (
-                  <p key={issue}>{issue}</p>
-                ))}
-              </div>
+      {/* System Info Footnote */}
+      <div className="mt-8 pt-6 border-t border-[#1e130c]/10 grid grid-cols-1 sm:grid-cols-3 gap-6 font-[family-name:var(--font-lora)] px-2 opacity-80 hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-3">
+          <Globe className="w-4 h-4 text-[#8b6d22]" />
+          <div>
+            <p className="text-[0.6rem] font-bold uppercase tracking-widest text-[#7a6350]">Versão do Core</p>
+            <p className="text-sm text-[#1e130c] font-mono font-bold mt-0.5">{versionInfo?.version || '1.0.0'}</p>
+            {versionInfo?.gitHash && versionInfo.gitHash !== 'unknown' && (
+              <p className="text-[0.6rem] text-[#7a6350] font-mono mt-0.5">SHA: {versionInfo.gitHash.substring(0, 7)}</p>
             )}
-
-            {installationValidationState.status === 'error' && installationValidationState.error && (
-              <div className="rounded-lg border border-red-500/30 bg-[#7a6350]/10/10 p-3 text-sm text-[#7a6350] italic">
-                {installationValidationState.error}
-              </div>
-            )}
-
-            {installationValidationState.status === 'success' && (
-              <div className="rounded-lg border border-green-500/30 bg-[#1e130c]/5/10 p-3 text-sm text-[#1e130c] font-bold">
-                Integrações revalidadas.
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-3">
-              <Button
-                variant="secondary"
-                onClick={handleInstallationValidation}
-                disabled={installationValidationState.status === 'running'}
-                icon={installationValidationState.status === 'running'
-                  ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
-                  : <Check className="w-4 h-4 flex-shrink-0" />
-                }
-              >
-                {installationValidationState.status === 'running' ? 'Validando...' : 'Revalidar Integrações'}
-              </Button>
-
-              <a
-                href="/setup"
-                className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-[#1e130c] font-medium hover:bg-gold-300 transition-colors"
-              >
-                Abrir Setup
-                <ExternalLink className="w-4 h-4" />
-              </a>
-            </div>
           </div>
-        </Card>
-      )}
+        </div>
+        <div className="flex items-center gap-3">
+          <DatabaseIcon className="w-4 h-4 text-[#8b6d22]" />
+          <div>
+            <p className="text-[0.6rem] font-bold uppercase tracking-widest text-[#7a6350]">Infraestrutura de Dados</p>
+            <p className="text-sm text-[#1e130c] font-bold mt-0.5">Supabase</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Shield className="w-4 h-4 text-[#8b6d22]" />
+          <div>
+            <p className="text-[0.6rem] font-bold uppercase tracking-widest text-[#7a6350]">Última Compilação</p>
+            <p className="text-xs text-[#1e130c] font-mono mt-1 font-bold">
+              {versionInfo?.gitDate
+                ? new Date(versionInfo.gitDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+                : new Date().toLocaleDateString('pt-BR')}
+            </p>
+          </div>
+        </div>
+      </div>
 
-      {/* Restore confirmation modal */}
+      {/* Restore confirmation modal (Renaissance Style) */}
       {restoreModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#faf6ee] border border-red-500/30 rounded-xl p-6 w-full max-w-lg mx-4 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3 text-[#7a6350] italic">
-              <AlertTriangle className="w-6 h-6 flex-shrink-0" />
-              <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold">Confirmar restauração</h2>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#1e130c]/40 backdrop-blur-sm p-4">
+          <div className="bg-[#faf6ee] border border-[#1e130c]/20 w-full max-w-lg shadow-2xl p-8 font-[family-name:var(--font-lora)] animate-in fade-in zoom-in duration-300">
+            <div className="flex items-center gap-3 mb-6 border-b border-[#1e130c]/10 pb-4">
+              <AlertTriangle className="w-6 h-6 text-red-900" />
+              <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c]">Aviso de Sobrescrita</h2>
             </div>
 
-            <div className="text-sm text-[#7a6350] space-y-2">
-              <p>
-                Você vai aplicar o backup <span className="text-[#1e130c] font-medium">{selectedBackupId}</span>.
+            <div className="text-sm text-[#1e130c] space-y-4 mb-8">
+              <p className="leading-relaxed">
+                Você está prestes a substituir os dados operacionais atuais pelo registro fotográfico <span className="font-mono font-bold bg-[#1e130c]/5 px-1.5 py-0.5">{selectedBackupId}</span>.
               </p>
-              <p>Use isso apenas em ambiente isolado ou após validar impacto no banco atual.</p>
-            </div>
+              <p className="italic text-[#7a6350]">Recomenda-se executar esta operação estritamente em janelas de manutenção.</p>
 
-            <div className="rounded-lg bg-[#faf6ee] p-4 text-sm text-[#7a6350] space-y-1">
-              <p>Banco: <span className="text-[#1e130c]">{restoreOptions.restoreDatabase ? 'sim' : 'não'}</span></p>
-              <p>Arquivos: <span className="text-[#1e130c]">{restoreOptions.restoreStorage ? 'sim' : 'não'}</span></p>
+              <div className="grid grid-cols-2 gap-4 pt-4 mt-4 border-t border-[#1e130c]/5">
+                <div className="bg-white/50 border border-[#1e130c]/5 p-3">
+                  <p className="text-[0.6rem] font-bold uppercase tracking-widest text-[#7a6350] mb-1">Banco Relacional</p>
+                  <p className="text-[#1e130c] font-bold uppercase text-xs">{restoreOptions.restoreDatabase ? 'Autorizado' : 'Ignorado'}</p>
+                </div>
+                <div className="bg-white/50 border border-[#1e130c]/5 p-3">
+                  <p className="text-[0.6rem] font-bold uppercase tracking-widest text-[#7a6350] mb-1">Repositório de Arquivos</p>
+                  <p className="text-[#1e130c] font-bold uppercase text-xs">{restoreOptions.restoreStorage ? 'Autorizado' : 'Ignorado'}</p>
+                </div>
+              </div>
             </div>
 
             {restoreModal.error && (
-              <div className="flex items-start gap-2 p-3 bg-[#7a6350]/10/10 border border-red-500/20 rounded-lg text-[#7a6350] italic text-sm">
-                <X className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <div className="mb-6 p-4 border border-red-900/20 bg-[#7a6350]/5 text-sm text-[#7a6350] italic flex items-start gap-3">
+                <X className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-900" />
                 <span>{restoreModal.error}</span>
               </div>
             )}
 
-            <div className="flex gap-3 justify-end pt-1">
+            <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-[#1e130c]/10">
               <button
                 onClick={() => setRestoreModal({ open: false, status: 'idle', error: null })}
                 disabled={restoreModal.status === 'running'}
-                className="px-4 py-2 text-[#7a6350] hover:text-[#1e130c]-100 transition-colors disabled:opacity-50"
+                className="flex-1 py-3 border border-[#1e130c]/20 text-[#1e130c] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-[#1e130c]/5 transition-colors disabled:opacity-30"
               >
-                Cancelar
+                Abortar Operação
               </button>
-              <Button
-                variant="danger"
+              <button
                 onClick={handleBackupRestore}
                 disabled={restoreModal.status === 'running'}
-                icon={restoreModal.status === 'running'
-                  ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
-                  : <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                }
+                className="flex-2 py-3 bg-red-900 text-[#faf6ee] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-red-950 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 px-6"
               >
-                {restoreModal.status === 'running' ? 'Restaurando...' : 'Confirmar Restauração'}
-              </Button>
+                {restoreModal.status === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> : <AlertTriangle className="w-4 h-4" />}
+                {restoreModal.status === 'running' ? 'Aplicando Imagem...' : 'Confirmar Sobrescrita'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Clear data confirmation modal */}
+      {/* Clear data confirmation modal (Renaissance Style) */}
       {clearModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#faf6ee] border border-red-500/30 rounded-xl p-6 w-full max-w-md mx-4 space-y-4 shadow-2xl">
-            <div className="flex items-center gap-3 text-[#7a6350] italic">
-              <AlertTriangle className="w-6 h-6 flex-shrink-0" />
-              <h2 className="font-[family-name:var(--font-playfair)] text-lg font-semibold">Confirmar limpeza de dados</h2>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#1e130c]/60 backdrop-blur-sm p-4">
+          <div className="bg-[#faf6ee] border-t-4 border-red-900 w-full max-w-md shadow-2xl p-8 font-[family-name:var(--font-lora)] animate-in fade-in zoom-in duration-300">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-red-900/10 flex items-center justify-center border border-red-900/20">
+                <AlertTriangle className="w-6 h-6 text-red-900" />
+              </div>
+              <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c]">Expurgo Geral</h2>
             </div>
 
-            <p className="text-[#7a6350] text-sm">
-              O sistema vai remover banco operacional, storage e usuários não-admin. Digite sua
-              senha de administrador para confirmar.
-            </p>
-
             {clearModal.status === 'success' ? (
-              <div className="flex items-center gap-2 p-3 bg-[#1e130c]/5/10 border border-green-500/20 rounded-lg text-[#1e130c] font-bold">
-                <Check className="w-5 h-5" />
-                Limpeza completa concluída.
+              <div className="text-center py-6 space-y-4">
+                <div className="w-16 h-16 bg-[#1e130c]/5 mx-auto flex items-center justify-center border border-[#1e130c]/10 rounded-full">
+                  <Check className="w-8 h-8 text-[#8b6d22]" />
+                </div>
+                <p className="text-lg font-bold text-[#1e130c]">Sistema Limpo e Reinicializado.</p>
+                <button
+                  onClick={() => setClearModal({ open: false, password: '', status: 'idle', error: null })}
+                  className="mt-6 w-full py-3 bg-[#1e130c] text-[#faf6ee] font-bold uppercase tracking-[0.2em] text-[0.65rem] hover:bg-[#8b6d22] transition-colors"
+                >
+                  Fechar Painel
+                </button>
               </div>
             ) : (
               <>
+                <p className="text-sm text-[#1e130c] leading-relaxed mb-6">
+                  Esta diretiva instrui o servidor a obliterar todas as tabelas operacionais e acervos de arquivos. Assinatura administrativa exigida para prosseguir.
+                </p>
+
                 {clearModal.error && (
-                  <div className="flex items-center gap-2 p-3 bg-[#7a6350]/10/10 border border-red-500/20 rounded-lg text-[#7a6350] italic text-sm">
-                    <X className="w-4 h-4 flex-shrink-0" />
+                  <div className="mb-6 p-4 border border-red-900/20 bg-[#7a6350]/5 text-sm text-[#7a6350] italic flex items-center gap-3">
+                    <X className="w-4 h-4 flex-shrink-0 text-red-900" />
                     {clearModal.error}
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-medium text-[#1e130c] mb-2">
-                    Senha do administrador
+                <div className="mb-8">
+                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
+                    Credencial do Administrador
                   </label>
-                  <input
-                    type="password"
-                    value={clearModal.password}
-                    onChange={e => setClearModal(prev => ({ ...prev, password: e.target.value }))}
-                    onKeyDown={e => e.key === 'Enter' && clearModal.password && handleClearData()}
-                    autoFocus
-                    className="w-full px-4 py-2 bg-[#faf6ee] border border-[#1e130c]/15 rounded-lg text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <Key className="absolute left-0 top-1/2 -translate-y-1/2 w-4 h-4 text-red-900 opacity-70" />
+                    <input
+                      type="password"
+                      value={clearModal.password}
+                      onChange={e => setClearModal(prev => ({ ...prev, password: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && clearModal.password && handleClearData()}
+                      autoFocus
+                      className="w-full pl-7 pr-0 py-2 bg-transparent border-0 border-b-2 border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-red-900 transition-colors rounded-none font-mono tracking-widest text-lg"
+                      placeholder="••••••••"
+                      disabled={clearModal.status === 'running'}
+                    />
+                  </div>
                 </div>
 
-                <div className="flex gap-3 justify-end pt-1">
+                <div className="flex flex-col sm:flex-row gap-4">
                   <button
                     onClick={() => setClearModal({ open: false, password: '', status: 'idle', error: null })}
-                    className="px-4 py-2 text-[#7a6350] hover:text-[#1e130c]-100 transition-colors"
+                    className="flex-1 py-3 border border-[#1e130c]/20 text-[#1e130c] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-[#1e130c]/5 transition-colors disabled:opacity-30"
+                    disabled={clearModal.status === 'running'}
                   >
-                    Cancelar
+                    Recuar
                   </button>
-                  <Button
-                    variant="danger"
+                  <button
                     onClick={handleClearData}
                     disabled={!clearModal.password || clearModal.status === 'running'}
-                    icon={clearModal.status === 'running'
-                      ? <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
-                      : <Trash2 className="w-4 h-4 flex-shrink-0" />
-                    }
+                    className="flex-2 py-3 bg-red-900 text-[#faf6ee] font-bold uppercase tracking-[0.15em] text-[0.65rem] hover:bg-red-950 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 px-6"
                   >
-                    {clearModal.status === 'running' ? 'Removendo...' : 'Confirmar e Limpar'}
-                  </Button>
+                    {clearModal.status === 'running' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                    {clearModal.status === 'running' ? 'Obliterando...' : 'Autorizar Expurgo'}
+                  </button>
                 </div>
               </>
-            )}
-
-            {clearModal.status === 'success' && (
-              <div className="flex justify-end">
-                <button
-                  onClick={() => setClearModal({ open: false, password: '', status: 'idle', error: null })}
-                  className="px-4 py-2 text-[#7a6350] hover:text-[#1e130c]-100 transition-colors"
-                >
-                  Fechar
-                </button>
-              </div>
             )}
           </div>
         </div>
       )}
-
-      {/* System Info */}
-      <Card title={t('settings.systemInfo')}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-center gap-3 p-3 bg-[#faf6ee] rounded-lg">
-            <Globe className="w-5 h-5 text-[#8b6d22]" />
-            <div>
-              <p className="text-[#8b6d22] text-sm">{t('settings.version')}</p>
-              <p className="text-[#1e130c] font-mono text-xs">
-                {versionInfo?.version || '1.0.0'}
-              </p>
-              {versionInfo?.gitHash && versionInfo.gitHash !== 'unknown' && (
-                <p className="text-[#7a6350]/70 text-xs mt-0.5">
-                  {versionInfo.gitHash}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-[#faf6ee] rounded-lg">
-            <DatabaseIcon className="w-5 h-5 text-[#8b6d22]" />
-            <div>
-              <p className="text-[#8b6d22] text-sm">{t('settings.database')}</p>
-              <p className="text-[#1e130c]">Supabase</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 p-3 bg-[#faf6ee] rounded-lg">
-            <Shield className="w-5 h-5 text-[#8b6d22]" />
-            <div>
-              <p className="text-[#8b6d22] text-sm">{t('settings.lastUpdate')}</p>
-              <p className="text-[#1e130c] text-xs">
-                {versionInfo?.gitDate
-                  ? new Date(versionInfo.gitDate).toLocaleString('pt-BR', {
-                      dateStyle: 'short',
-                      timeStyle: 'short'
-                    })
-                  : new Date().toLocaleDateString('pt-BR')}
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
     </div>
   )
 }
