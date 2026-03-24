@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import Modal from './Modal'
 import Button from './Button'
 import { analyzeDriveItem, extractFolderId, validateDriveItem, type ItemType, type DriveItem, type ValidationError } from '@/lib/drive-import-utils'
-import { Folder, FileText, BookOpen, GraduationCap, FileCheck, Loader2, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, ChevronsDown, ChevronsUp, BarChart3, Square, CheckSquare, XCircle, ArrowLeft, Info } from 'lucide-react'
+import { Folder, FileText, BookOpen, GraduationCap, FileCheck, CheckCircle2, AlertCircle, ChevronRight, ChevronDown, ChevronsDown, ChevronsUp, BarChart3, Square, CheckSquare, XCircle, ArrowLeft, Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface ImportProgress {
@@ -893,7 +893,7 @@ useEffect(() => {
 
   const getStatusIcon = (status: ProcessedItem['status']) => {
     switch (status) {
-      case 'uploading': return <Loader2 className="w-4 h-4 animate-spin text-[#8b6d22]" />
+      case 'uploading': return <div className="w-4 h-4 border-[2px] border-[#8b6d22]/30 border-t-[#8b6d22] rounded-full animate-spin" />
       case 'success': return <CheckCircle2 className="w-4 h-4 text-[#1e130c]" />
       case 'error': return <AlertCircle className="w-4 h-4 text-[#7a6350]" />
       default: return null
@@ -1074,7 +1074,7 @@ useEffect(() => {
         {/* Checking Token */}
         {isCheckingToken && (
           <div className="text-center py-16 border border-dashed border-[#1e130c]/20 bg-[#faf6ee]/50">
-            <Loader2 className="w-8 h-8 animate-spin text-[#8b6d22] mx-auto mb-4" />
+            <div className="w-8 h-8 border-[3px] border-[#8b6d22]/30 border-t-[#8b6d22] rounded-full animate-spin mx-auto mb-4" />
             <p className="text-[#1e130c] font-[family-name:var(--font-playfair)] text-xl">Inspecionando selos de acesso...</p>
           </div>
         )}
@@ -1091,9 +1091,9 @@ useEffect(() => {
             <Button
               onClick={handleAuthenticate}
               disabled={isAuthenticating}
-              className="py-3 px-6 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-medium text-center inline-flex items-center justify-center gap-2"
+              className="py-3 px-8 bg-[#1e130c] text-[#faf6ee] border border-[#8b6d22] shadow-[3px_3px_0px_#8b6d22] hover:bg-[#8b6d22] hover:text-[#1e130c] hover:shadow-[4px_4px_0px_#1e130c] hover:-translate-y-0.5 transition-all duration-300 font-[family-name:var(--font-playfair)] tracking-widest uppercase text-sm font-bold text-center inline-flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isAuthenticating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {isAuthenticating ? <div className="w-4 h-4 border-2 border-[#faf6ee]/30 border-t-[#faf6ee] rounded-full animate-spin" /> : null}
               Apresentar Credenciais
             </Button>
           </div>
@@ -1116,23 +1116,23 @@ useEffect(() => {
             </div>
 
             {/* Import Mode Toggle */}
-            <div className="flex p-1 bg-[#1e130c]/5 border border-[#1e130c]/10">
+            <div className="flex p-1 bg-[#faf6ee] border border-[#8b6d22]/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.05)]">
               <button
                 onClick={() => setImportMode('full')}
-                className={`flex-1 py-2 px-4 text-sm font-[family-name:var(--font-playfair)] transition-colors ${
+                className={`flex-1 py-2 px-4 text-xs font-[family-name:var(--font-playfair)] font-bold tracking-widest uppercase transition-all duration-300 ${
                   importMode === 'full'
-                    ? 'bg-[#1e130c] text-[#faf6ee]'
-                    : 'text-[#1e130c]/70 hover:bg-[#1e130c]/10'
+                    ? 'bg-[#1e130c] text-[#faf6ee] shadow-[2px_2px_0px_#8b6d22]'
+                    : 'text-[#7a6350] hover:text-[#1e130c] hover:bg-[#8b6d22]/10'
                 }`}
               >
                 Acervo Completo (Curso)
               </button>
               <button
                 onClick={() => setImportMode('subject')}
-                className={`flex-1 py-2 px-4 text-sm font-[family-name:var(--font-playfair)] transition-colors ${
+                className={`flex-1 py-2 px-4 text-xs font-[family-name:var(--font-playfair)] font-bold tracking-widest uppercase transition-all duration-300 ${
                   importMode === 'subject'
-                    ? 'bg-[#1e130c] text-[#faf6ee]'
-                    : 'text-[#1e130c]/70 hover:bg-[#1e130c]/10'
+                    ? 'bg-[#1e130c] text-[#faf6ee] shadow-[2px_2px_0px_#8b6d22]'
+                    : 'text-[#7a6350] hover:text-[#1e130c] hover:bg-[#8b6d22]/10'
                 }`}
               >
                 Tomo Específico (Disciplina)
@@ -1145,7 +1145,7 @@ useEffect(() => {
                 <p className="text-[#1e130c] font-[family-name:var(--font-playfair)] text-lg mb-2">Destino do Tomo</p>
                 {loadingTargets ? (
                   <div className="flex items-center gap-2 text-[#7a6350] italic text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <div className="w-4 h-4 border-[2px] border-[#7a6350]/30 border-t-[#7a6350] rounded-full animate-spin" />
                     Consultando registros...
                   </div>
                 ) : (
@@ -1235,9 +1235,9 @@ useEffect(() => {
             <Button
               onClick={handleListItems}
               disabled={isListing || !driveUrl || (importMode === 'subject' && !selectedTargetModuleId)}
-              className="w-full py-4 px-6 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-medium text-center flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-lg font-[family-name:var(--font-playfair)]"
+              className="w-full py-4 px-6 bg-[#1e130c] text-[#faf6ee] border border-[#8b6d22] shadow-[3px_3px_0px_#8b6d22] hover:bg-[#8b6d22] hover:text-[#1e130c] hover:shadow-[4px_4px_0px_#1e130c] hover:-translate-y-0.5 transition-all duration-300 text-center flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-bold tracking-widest uppercase font-[family-name:var(--font-playfair)]"
             >
-              {isListing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+              {isListing ? <div className="w-5 h-5 border-2 border-[#faf6ee]/30 border-t-[#faf6ee] rounded-full animate-spin" /> : null}
               {isListing ? 'Explorando Arquivos...' : 'Listar Manuscritos'}
             </Button>
             {importMode === 'subject' && !selectedTargetModuleId && driveUrl && (
@@ -1257,7 +1257,7 @@ useEffect(() => {
                 onClick={handleBackToLink}
                 disabled={isImporting}
                 variant="ghost"
-                className="text-[#8b6d22] hover:text-[#1e130c] transition-colors flex items-center gap-2 text-sm disabled:opacity-50 italic"
+                className="text-[#7a6350] hover:text-[#1e130c] transition-all flex items-center gap-2 text-xs font-bold uppercase tracking-widest disabled:opacity-50 font-[family-name:var(--font-playfair)] hover:-translate-x-1"
               >
                 <ArrowLeft className="w-4 h-4" /> Retornar
               </Button>
@@ -1380,27 +1380,27 @@ useEffect(() => {
                   <Button
                     onClick={handleImportAll}
                     disabled={selectedItems.size === 0}
-                    className="py-2 px-6 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-[family-name:var(--font-playfair)] disabled:opacity-50"
+                    className="py-2 px-6 bg-[#1e130c] text-[#faf6ee] border border-[#8b6d22] shadow-[2px_2px_0px_#8b6d22] hover:bg-[#8b6d22] hover:text-[#1e130c] hover:shadow-[3px_3px_0px_#1e130c] hover:-translate-y-0.5 transition-all duration-300 text-xs font-bold tracking-widest uppercase font-[family-name:var(--font-playfair)] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {completedItems > 0 ? 'Retomar Catalogação' : 'Lavrar Registros'}
                   </Button>
                 )}
                 {isImporting && !isPaused && (
                   <>
-                    <Button onClick={handlePause} className="py-2 px-4 border border-[#1e130c] text-[#1e130c] hover:bg-[#1e130c]/5 transition-colors font-[family-name:var(--font-playfair)]">
+                    <Button onClick={handlePause} className="py-2 px-4 bg-transparent text-[#1e130c] border border-[#1e130c] shadow-[2px_2px_0px_#1e130c] hover:bg-[#1e130c] hover:text-[#faf6ee] hover:shadow-[3px_3px_0px_#8b6d22] hover:-translate-y-0.5 transition-all duration-300 text-xs font-bold tracking-widest uppercase font-[family-name:var(--font-playfair)]">
                       Pausar
                     </Button>
-                    <Button onClick={handleCancel} className="py-2 px-4 border border-[#7a6350] text-[#7a6350] hover:bg-[#7a6350]/10 transition-colors font-[family-name:var(--font-playfair)]">
+                    <Button onClick={handleCancel} className="py-2 px-4 bg-transparent text-[#7a6350] border border-[#7a6350] shadow-[2px_2px_0px_#7a6350] hover:bg-[#7a6350] hover:text-[#faf6ee] hover:shadow-[3px_3px_0px_#1e130c] hover:-translate-y-0.5 transition-all duration-300 text-xs font-bold tracking-widest uppercase font-[family-name:var(--font-playfair)]">
                       Cancelar
                     </Button>
                   </>
                 )}
                 {isPaused && (
                   <>
-                    <Button onClick={handleResume} className="py-2 px-6 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-[family-name:var(--font-playfair)]">
+                    <Button onClick={handleResume} className="py-2 px-6 bg-[#1e130c] text-[#faf6ee] border border-[#8b6d22] shadow-[2px_2px_0px_#8b6d22] hover:bg-[#8b6d22] hover:text-[#1e130c] hover:shadow-[3px_3px_0px_#1e130c] hover:-translate-y-0.5 transition-all duration-300 text-xs font-bold tracking-widest uppercase font-[family-name:var(--font-playfair)]">
                       Retomar
                     </Button>
-                    <Button onClick={handleCancel} className="py-2 px-4 border border-[#7a6350] text-[#7a6350] hover:bg-[#7a6350]/10 transition-colors font-[family-name:var(--font-playfair)]">
+                    <Button onClick={handleCancel} className="py-2 px-4 bg-transparent text-[#7a6350] border border-[#7a6350] shadow-[2px_2px_0px_#7a6350] hover:bg-[#7a6350] hover:text-[#faf6ee] hover:shadow-[3px_3px_0px_#1e130c] hover:-translate-y-0.5 transition-all duration-300 text-xs font-bold tracking-widest uppercase font-[family-name:var(--font-playfair)]">
                       Cancelar
                     </Button>
                   </>
