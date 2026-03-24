@@ -834,11 +834,11 @@ useEffect(() => {
 
   const getTypeIcon = (type: ItemType) => {
     switch (type) {
-      case 'module': return <Folder className="w-5 h-5 text-blue-400" />
-      case 'subject': return <BookOpen className="w-5 h-5 text-purple-400" />
-      case 'lesson': return <FileText className="w-5 h-5 text-[#1e130c] font-bold" />
-      case 'test': return <GraduationCap className="w-5 h-5 text-orange-400" />
-      default: return <FileCheck className="w-5 h-5 text-gray-400" />
+      case 'module': return <Folder className="w-5 h-5 text-[#8b6d22]" />
+      case 'subject': return <BookOpen className="w-5 h-5 text-[#1e130c]" />
+      case 'lesson': return <FileText className="w-5 h-5 text-[#7a6350]" />
+      case 'test': return <GraduationCap className="w-5 h-5 text-[#8b6d22]" />
+      default: return <FileCheck className="w-5 h-5 text-[#7a6350]/50" />
     }
   }
 
@@ -853,13 +853,7 @@ useEffect(() => {
   }
 
   const getTypeBadgeColors = (type: ItemType) => {
-    switch (type) {
-      case 'module': return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-      case 'subject': return 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-      case 'lesson': return 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border-green-500/30'
-      case 'test': return 'bg-orange-500/20 text-orange-300 border-orange-500/30'
-      default: return 'bg-gray-500/20 text-gray-300 border-gray-500/30'
-    }
+    return 'bg-transparent text-[#7a6350] border-[#1e130c]/20 border italic font-[family-name:var(--font-lora)]'
   }
 
   // Conta apenas itens selecionados (válidos) nos totais
@@ -899,9 +893,9 @@ useEffect(() => {
 
   const getStatusIcon = (status: ProcessedItem['status']) => {
     switch (status) {
-      case 'uploading': return <Loader2 className="w-4 h-4 animate-spin text-blue-400" />
-      case 'success': return <CheckCircle2 className="w-4 h-4 text-[#1e130c] font-bold" />
-      case 'error': return <AlertCircle className="w-4 h-4 text-[#7a6350] italic" />
+      case 'uploading': return <Loader2 className="w-4 h-4 animate-spin text-[#8b6d22]" />
+      case 'success': return <CheckCircle2 className="w-4 h-4 text-[#1e130c]" />
+      case 'error': return <AlertCircle className="w-4 h-4 text-[#7a6350]" />
       default: return null
     }
   }
@@ -925,20 +919,11 @@ useEffect(() => {
     const isSelected = selectedItems.has(item.id)
     const hasValidationErrors = item.validationErrors && item.validationErrors.length > 0
 
-    // Classes base e status
-    const borderColors = {
-      module: 'border-l-blue-500',
-      subject: 'border-l-purple-500',
-      lesson: 'border-l-green-500',
-      test: 'border-l-orange-500',
-      unknown: 'border-l-gray-500'
-    }
-
     const statusClasses = {
-      pending: isSelected ? 'opacity-100' : 'opacity-40',
-      uploading: 'bg-blue-500/5 border-blue-500/40',
-      success: 'bg-[#1e130c]/5/5',
-      error: 'bg-[#7a6350]/10/5 border-red-500/40'
+      pending: isSelected ? 'opacity-100' : 'opacity-60',
+      uploading: 'bg-[#8b6d22]/10',
+      success: 'bg-[#1e130c]/5 opacity-80',
+      error: 'bg-red-900/5'
     }
 
     return (
@@ -947,158 +932,117 @@ useEffect(() => {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.2 }}
+        className="font-[family-name:var(--font-lora)]"
       >
         <motion.div
           className={`
-            flex items-center gap-3 p-3 rounded-lg border-l-4
-            bg-navy-700/50 border border-gold-500/20
-            hover:bg-navy-700/70 hover:shadow-md
-            transition-all duration-200
-            ${borderColors[item.type]}
+            flex items-center gap-3 py-3 px-2 border-b border-dashed border-[#1e130c]/20
+            transition-colors duration-200
+            ${isSelected ? 'bg-[#1e130c]/[0.03]' : 'hover:bg-[#1e130c]/[0.02]'}
+            ${hasValidationErrors ? 'opacity-50' : ''}
             ${statusClasses[item.status]}
-            ${item.status === 'uploading' ? 'animate-pulse' : ''}
-            ${hasValidationErrors ? 'border-red-500/50 bg-[#7a6350]/10/10' : ''}
           `}
-          style={{ marginLeft: `${depth * 24}px` }}
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
+          style={{ paddingLeft: `${depth * 24 + 8}px` }}
         >
-          {/* Checkbox de seleção */}
-          <motion.button
+          <button
             onClick={() => toggleItemSelection(item.id, item)}
-            className={`p-1 rounded transition-colors flex-shrink-0 ${
+            className={`p-1 transition-colors flex-shrink-0 ${
               hasValidationErrors
-                ? 'text-[#7a6350] italic cursor-not-allowed'
-                : 'hover:bg-navy-600'
+                ? 'text-[#7a6350] cursor-not-allowed'
+                : 'hover:text-[#1e130c]'
             }`}
             disabled={hasValidationErrors || item.status === 'success'}
-            whileHover={!hasValidationErrors ? { scale: 1.1 } : {}}
-            whileTap={!hasValidationErrors ? { scale: 0.9 } : {}}
           >
             {hasValidationErrors ? (
-              <XCircle className="w-5 h-5 text-[#7a6350] italic" />
+              <XCircle className="w-5 h-5 text-[#7a6350]" />
             ) : isSelected ? (
-              <CheckSquare className="w-5 h-5 text-gold-400" />
+              <CheckSquare className="w-5 h-5 text-[#8b6d22]" />
             ) : (
-              <Square className="w-5 h-5 text-gold-400/50" />
+              <Square className="w-5 h-5 text-[#7a6350]/50" />
             )}
-          </motion.button>
+          </button>
 
-          {/* Expand/Collapse button */}
           {hasChildren && (
-            <motion.button
+            <button
               onClick={() => toggleExpand(item.id)}
-              className="p-1 hover:bg-navy-600 rounded transition-colors flex-shrink-0"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              className="p-1 hover:text-[#8b6d22] transition-colors flex-shrink-0 text-[#1e130c]"
             >
               <motion.div
                 initial={false}
                 animate={{ rotate: item.isExpanded ? 0 : -90 }}
                 transition={{ duration: 0.2 }}
               >
-                <ChevronDown className="w-4 h-4 text-gold-400" />
+                <ChevronDown className="w-4 h-4" />
               </motion.div>
-            </motion.button>
+            </button>
           )}
           {!hasChildren && <div className="w-6" />}
 
-          {/* Type icon */}
           <div className="flex-shrink-0">
             {getTypeIcon(item.type)}
           </div>
 
-          {/* Content */}
           <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-center gap-2">
-              <p className="text-gold-100 text-sm font-medium truncate">
+              <p className="text-[#1e130c] text-sm font-medium truncate font-[family-name:var(--font-playfair)]">
                 {item.name}
               </p>
-              {/* Type badge */}
-              <span className={`
-                px-2 py-0.5 rounded-full text-xs font-medium border
-                ${getTypeBadgeColors(item.type)}
-              `}>
+              <span className={`px-2 py-0.5 rounded-none text-[0.65rem] uppercase tracking-wider ${getTypeBadgeColors(item.type)}`}>
                 {getTypeLabel(item.type)}
               </span>
             </div>
 
-            {/* Code */}
             {item.code && (
-              <p className="text-gold-400 text-xs font-mono">
+              <p className="text-[#7a6350] text-xs font-mono">
                 {item.code}
               </p>
             )}
 
-            {/* Validation errors */}
             {item.validationErrors && item.validationErrors.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-[#7a6350] italic text-xs mt-1 space-y-0.5"
-              >
+              <div className="text-[#7a6350] italic text-xs mt-1 space-y-0.5">
                 {item.validationErrors.map((err, idx) => (
                   <p key={idx} className="flex items-center gap-1">
                     <XCircle className="w-3 h-3 flex-shrink-0" />
                     {err.message}
                   </p>
                 ))}
-              </motion.div>
+              </div>
             )}
 
-            {/* Error message */}
             {item.error && (
-              <motion.p
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-[#7a6350] italic text-xs mt-1 flex items-center gap-1"
-              >
+              <p className="text-[#7a6350] italic text-xs mt-1 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {item.error}
-              </motion.p>
+              </p>
             )}
 
-            {/* Answer key feedback for tests */}
             {item.type === 'test' && item.status === 'success' && item.answerKey && (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
+              <div
                 className={`
-                  text-xs px-2 py-1 rounded inline-flex items-center gap-1
-                  ${item.answerKey.success
-                    ? 'bg-[#1e130c]/5/20 text-[#1e130c] font-bold border border-green-500/30'
-                    : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
-                  }
+                  text-xs px-2 py-1 inline-flex items-center gap-1 italic mt-1
+                  ${item.answerKey.success ? 'text-[#1e130c]' : 'text-[#7a6350]'}
                 `}
               >
                 {item.answerKey.success ? (
                   <>
                     <CheckCircle2 className="w-3 h-3" />
-                    Gabarito: {item.answerKey.questionCount} questões
+                    Gabarito lavrado: {item.answerKey.questionCount} questões
                   </>
                 ) : (
                   <>
                     <AlertCircle className="w-3 h-3" />
-                    {item.answerKey.error || 'Gabarito não encontrado'}
+                    {item.answerKey.error || 'Manuscrito de gabarito não encontrado'}
                   </>
                 )}
-              </motion.div>
+              </div>
             )}
           </div>
 
-          {/* Status icon */}
           <div className="flex-shrink-0">
-            <motion.div
-              initial={item.status === 'success' ? { scale: 0 } : {}}
-              animate={item.status === 'success' ? { scale: 1 } : {}}
-              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            >
-              {getStatusIcon(item.status)}
-            </motion.div>
+            {getStatusIcon(item.status)}
           </div>
         </motion.div>
 
-        {/* Children */}
         <AnimatePresence>
           {hasChildren && item.isExpanded && (
             <motion.div
@@ -1106,7 +1050,7 @@ useEffect(() => {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
-              className="mt-1 space-y-1 overflow-hidden"
+              className="overflow-hidden"
             >
               {item.children!.map(child => renderTreeItem(child, depth + 1))}
             </motion.div>
@@ -1120,94 +1064,98 @@ useEffect(() => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Importar do Google Drive"
+      title="Catalogar Acervo do Google Drive"
       size="xl"
       onMinimize={onMinimize}
       closeOnBackdrop={!isImporting}
       closeOnEscape={!isImporting}
     >
-      <div className="space-y-6">
+      <div className="space-y-6 font-[family-name:var(--font-lora)] text-[#1e130c]">
         {/* Checking Token */}
         {isCheckingToken && (
-          <div className="text-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-[#8b6d22] mx-auto mb-3" />
-            <p className="text-[#7a6350] text-sm">Verificando autenticação...</p>
+          <div className="text-center py-16 border border-dashed border-[#1e130c]/20 bg-[#faf6ee]/50">
+            <Loader2 className="w-8 h-8 animate-spin text-[#8b6d22] mx-auto mb-4" />
+            <p className="text-[#1e130c] font-[family-name:var(--font-playfair)] text-xl">Inspecionando selos de acesso...</p>
           </div>
         )}
 
         {/* Authentication */}
         {!isCheckingToken && !accessToken && (
-          <div className="text-center py-8">
-            <p className="text-[#1e130c] mb-4">
-              Primeiro, autentique-se com sua conta Google
+          <div className="text-center py-16 border border-dashed border-[#1e130c]/20 bg-[#faf6ee]/50">
+            <p className="text-[#1e130c] font-[family-name:var(--font-playfair)] text-2xl mb-2">
+              Credenciais Necessárias
+            </p>
+            <p className="text-[#7a6350] italic mb-8">
+              Apresente suas credenciais do Google para acesso aos manuscritos.
             </p>
             <Button
               onClick={handleAuthenticate}
-              isLoading={isAuthenticating}
-              variant="primary"
+              disabled={isAuthenticating}
+              className="py-3 px-6 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-medium text-center inline-flex items-center justify-center gap-2"
             >
-              Conectar ao Google Drive
+              {isAuthenticating ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Apresentar Credenciais
             </Button>
           </div>
         )}
 
         {/* URL Input - Step: link */}
         {!isCheckingToken && accessToken && step === 'link' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-[#1e130c] font-bold text-sm flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4" />
-                Conectado ao Google Drive
+          <div className="space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[#1e130c]/10">
+              <p className="text-[#1e130c] font-medium flex items-center gap-2 text-sm font-[family-name:var(--font-playfair)] tracking-wider uppercase">
+                <CheckCircle2 className="w-4 h-4 text-[#8b6d22]" />
+                Acesso Autorizado
               </p>
               <button
                 onClick={handleDisconnect}
-                className="text-[#7a6350] italic hover:text-[#7a6350] italic text-sm underline"
+                className="text-[#7a6350] italic hover:text-[#1e130c] transition-colors text-sm"
               >
-                Desconectar
+                Revogar Acesso
               </button>
             </div>
 
             {/* Import Mode Toggle */}
-            <div className="flex gap-1 p-1 bg-[#1e130c]/5 border border-[#1e130c]/10">
+            <div className="flex p-1 bg-[#1e130c]/5 border border-[#1e130c]/10">
               <button
                 onClick={() => setImportMode('full')}
-                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                className={`flex-1 py-2 px-4 text-sm font-[family-name:var(--font-playfair)] transition-colors ${
                   importMode === 'full'
                     ? 'bg-[#1e130c] text-[#faf6ee]'
                     : 'text-[#1e130c]/70 hover:bg-[#1e130c]/10'
                 }`}
               >
-                Curso Completo
+                Acervo Completo (Curso)
               </button>
               <button
                 onClick={() => setImportMode('subject')}
-                className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+                className={`flex-1 py-2 px-4 text-sm font-[family-name:var(--font-playfair)] transition-colors ${
                   importMode === 'subject'
                     ? 'bg-[#1e130c] text-[#faf6ee]'
                     : 'text-[#1e130c]/70 hover:bg-[#1e130c]/10'
                 }`}
               >
-                Apenas Disciplina
+                Tomo Específico (Disciplina)
               </button>
             </div>
 
             {/* Course/Module Selectors (subject mode only) */}
             {importMode === 'subject' && (
-              <div className="space-y-3 p-4 bg-[#faf6ee] border border-[#1e130c]/10">
-                <p className="text-[#1e130c] text-xs font-medium mb-2 italic">Selecione o destino da disciplina:</p>
+              <div className="space-y-4 p-5 bg-[#faf6ee] border border-dashed border-[#1e130c]/20">
+                <p className="text-[#1e130c] font-[family-name:var(--font-playfair)] text-lg mb-2">Destino do Tomo</p>
                 {loadingTargets ? (
-                  <div className="flex items-center gap-2 text-[#7a6350] text-sm">
+                  <div className="flex items-center gap-2 text-[#7a6350] italic text-sm">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Carregando cursos e módulos...
+                    Consultando registros...
                   </div>
                 ) : (
-                  <>
+                  <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-[#1e130c]/70 text-xs mb-1 italic">Curso de Destino</label>
+                      <label className="block text-[#7a6350] text-sm mb-1 italic">Curso Literário</label>
                       <select
                         value={selectedTargetCourseId || ''}
                         onChange={(e) => handleCourseSelect(e.target.value)}
-                        className="w-full px-3 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm focus:outline-none focus:border-[#8b6d22]"
+                        className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:outline-none focus:border-[#8b6d22]"
                       >
                         <option value="">Selecione um curso...</option>
                         {availableCourses.map(c => (
@@ -1216,12 +1164,12 @@ useEffect(() => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[#1e130c]/70 text-xs mb-1 italic">Módulo de Destino</label>
+                      <label className="block text-[#7a6350] text-sm mb-1 italic">Módulo</label>
                       <select
                         value={selectedTargetModuleId || ''}
                         onChange={(e) => setSelectedTargetModuleId(e.target.value || null)}
                         disabled={!selectedTargetCourseId}
-                        className="w-full px-3 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] text-sm focus:outline-none focus:border-[#8b6d22] disabled:opacity-50"
+                        className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:outline-none focus:border-[#8b6d22] disabled:opacity-50"
                       >
                         <option value="">Selecione um módulo...</option>
                         {filteredModules.map(m => (
@@ -1229,103 +1177,73 @@ useEffect(() => {
                         ))}
                       </select>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             )}
 
             <div>
-              <label className="block text-[#1e130c] mb-2 text-sm font-medium">
-                URL da pasta do Google Drive
-              </label>
-
-              {/* Mensagem explícita sobre o link */}
-              <div className="mb-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-blue-300 text-xs">
+              <div className="mb-6 p-5 border border-dashed border-[#1e130c]/20 bg-[#faf6ee]/50">
+                <div className="flex items-start gap-3">
+                  <Info className="w-6 h-6 text-[#8b6d22] flex-shrink-0 mt-1" />
+                  <div>
                     {importMode === 'full' ? (
                       <>
-                        <p className="font-medium mb-1">Cole o link da pasta do curso.</p>
-                        <p className="text-blue-400/80">A pasta deve conter os módulos como subpastas. Formato: drive.google.com/drive/folders/...</p>
+                        <p className="font-[family-name:var(--font-playfair)] text-[#1e130c] text-xl mb-1">Localização do Acervo</p>
+                        <p className="text-[#7a6350] italic text-sm mb-4">Indique a coordenada exata da pasta do curso. A mesma deve conter os módulos como subpastas (ex: drive.google.com/drive/folders/...).</p>
                       </>
                     ) : (
                       <>
-                        <p className="font-medium mb-1">Cole o link da pasta do módulo que contém as disciplinas.</p>
-                        <p className="text-blue-400/80">As disciplinas dentro desse módulo serão listadas para seleção e importação.</p>
+                        <p className="font-[family-name:var(--font-playfair)] text-[#1e130c] text-xl mb-1">Localização do Tomo</p>
+                        <p className="text-[#7a6350] italic text-sm mb-4">Indique a coordenada da pasta da disciplina. A mesma deve conter os arquivos de aulas e testes.</p>
                       </>
                     )}
+                    
+                    <p className="text-[#1e130c] text-xs font-bold font-[family-name:var(--font-lora)] tracking-wider uppercase mb-3">Estrutura Esperada:</p>
+                    <div className="text-[#7a6350] text-sm space-y-2 font-mono pl-4 border-l border-[#8b6d22]/50">
+                      {importMode === 'full' ? (
+                        <>
+                          <div className="flex items-center gap-2"><Folder className="w-4 h-4 text-[#8b6d22]" /><span>Módulos (pastas raiz)</span></div>
+                          <div className="flex items-center gap-2 ml-4"><BookOpen className="w-4 h-4 text-[#1e130c]" /><span>Disciplinas (subpastas)</span></div>
+                          <div className="flex items-center gap-2 ml-8"><FileText className="w-4 h-4 text-[#1e130c]" /><span>Aulas (arquivos)</span></div>
+                          <div className="flex items-center gap-2 ml-8"><GraduationCap className="w-4 h-4 text-[#8b6d22]" /><span>Testes (arquivos)</span></div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2"><BookOpen className="w-4 h-4 text-[#1e130c]" /><span>Pasta raiz = Disciplina</span></div>
+                          <div className="flex items-center gap-2 ml-4"><FileText className="w-4 h-4 text-[#1e130c]" /><span>Aulas (arquivos)</span></div>
+                          <div className="flex items-center gap-2 ml-4"><GraduationCap className="w-4 h-4 text-[#8b6d22]" /><span>Testes (arquivos)</span></div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Estrutura esperada - conditional based on mode */}
-              {importMode === 'full' ? (
-                <div className="mb-3 p-3 bg-[#faf6ee] border border-[#1e130c]/10 rounded-none">
-                  <p className="text-[#1e130c] text-xs font-medium mb-2 italic">Estrutura esperada (Curso):</p>
-                  <div className="text-[#7a6350] text-xs space-y-1 font-mono pl-2 border-l-2 border-[#1e130c]/10">
-                    <div className="flex items-center gap-2">
-                      <Folder className="w-3 h-3 text-[#8b6d22]" />
-                      <span>Módulos (pastas raiz)</span>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <BookOpen className="w-3 h-3 text-[#1e130c]" />
-                      <span>Disciplinas (subpastas)</span>
-                    </div>
-                    <div className="flex items-center gap-2 ml-8">
-                      <FileText className="w-3 h-3 text-[#1e130c]" />
-                      <span>Aulas (arquivos)</span>
-                    </div>
-                    <div className="flex items-center gap-2 ml-8">
-                      <GraduationCap className="w-3 h-3 text-[#8b6d22]" />
-                      <span>Testes (arquivos)</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="mb-3 p-3 bg-[#faf6ee] border border-[#1e130c]/10 rounded-none">
-                  <p className="text-[#1e130c] text-xs font-medium mb-2 italic">Estrutura esperada (Disciplina):</p>
-                  <div className="text-[#7a6350] text-xs space-y-1 font-mono pl-2 border-l-2 border-[#1e130c]/10">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="w-3 h-3 text-[#1e130c]" />
-                      <span>Pasta raiz = Disciplina</span>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <FileText className="w-3 h-3 text-[#1e130c]" />
-                      <span>Aulas (arquivos)</span>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      <GraduationCap className="w-3 h-3 text-[#8b6d22]" />
-                      <span>Testes (arquivos)</span>
-                    </div>
-                  </div>
-                  <p className="text-[#7a6350] text-xs mt-2 italic">
-                    A pasta será importada como disciplina no módulo selecionado
-                  </p>
-                </div>
-              )}
-
+              <label className="block text-[#1e130c] mb-2 font-[family-name:var(--font-playfair)] text-lg">
+                Coordenada da Pasta (URL)
+              </label>
               <input
                 type="text"
                 value={driveUrl}
                 onChange={(e) => setDriveUrl(e.target.value)}
                 placeholder="Ex: https://drive.google.com/drive/folders/..."
-                className="w-full px-3 py-2 bg-transparent border border-[#1e130c]/20 text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:border-[#8b6d22] transition-colors"
+                className="w-full px-0 py-3 bg-transparent border-0 border-b-2 border-[#1e130c]/20 text-[#1e130c] placeholder-[#7a6350]/50 focus:outline-none focus:border-[#8b6d22] focus:ring-0 transition-colors text-lg"
               />
             </div>
+            
             <Button
               onClick={handleListItems}
-              isLoading={isListing}
-              disabled={!driveUrl || (importMode === 'subject' && !selectedTargetModuleId)}
-              variant="primary"
-              fullWidth
+              disabled={isListing || !driveUrl || (importMode === 'subject' && !selectedTargetModuleId)}
+              className="w-full py-4 px-6 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-medium text-center flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-lg font-[family-name:var(--font-playfair)]"
             >
-              {isListing ? 'Explorando pastas...' : 'Listar Itens'}
+              {isListing ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
+              {isListing ? 'Explorando Arquivos...' : 'Listar Manuscritos'}
             </Button>
             {importMode === 'subject' && !selectedTargetModuleId && driveUrl && (
-              <p className="text-[#7a6350] italic text-xs flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                Selecione um módulo de destino para continuar
+              <p className="text-[#7a6350] italic text-sm flex items-center gap-1 mt-2 justify-center">
+                <AlertCircle className="w-4 h-4" />
+                Selecione um módulo de destino para prosseguir
               </p>
             )}
           </div>
@@ -1333,252 +1251,156 @@ useEffect(() => {
 
         {/* Items List - Step: review */}
         {step === 'review' && items.length > 0 && (
-          <div className="space-y-4">
-            {/* Header with connection status and back button */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleBackToLink}
-                  variant="ghost"
-                  size="xs"
-                  icon={<ArrowLeft className="w-4 h-4" />}
-                  disabled={isImporting}
-                >
-                  Voltar
-                </Button>
-                <p className="text-[#1e130c] font-bold text-sm flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Conectado
-                </p>
-              </div>
-              <button
-                onClick={handleDisconnect}
-                className="text-[#7a6350] italic hover:text-[#7a6350] italic text-xs underline"
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-[#1e130c]/10 pb-4">
+              <Button
+                onClick={handleBackToLink}
                 disabled={isImporting}
+                variant="ghost"
+                className="text-[#8b6d22] hover:text-[#1e130c] transition-colors flex items-center gap-2 text-sm disabled:opacity-50 italic"
               >
-                Desconectar
-              </button>
+                <ArrowLeft className="w-4 h-4" /> Retornar
+              </Button>
+              <p className="text-[#1e130c] font-[family-name:var(--font-playfair)] tracking-widest uppercase text-sm">
+                Inspeção de Manuscritos
+              </p>
             </div>
 
             {/* Pre-import Summary */}
             {!isImporting && completedItems === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-[#faf6ee] border border-[#1e130c]/10 rounded-none shadow-sm"
-              >
-                <div className="flex items-start gap-3">
-                  <BarChart3 className="w-5 h-5 text-[#8b6d22] flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-[#1e130c] font-medium mb-3">Resumo da Importação</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      {importMode === 'full' && getSelectedItemStats().modules.total > 0 && (
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#1e130c]/20"></div>
-                          <span className="text-[#1e130c] text-sm">
-                            {getSelectedItemStats().modules.total} {getSelectedItemStats().modules.total === 1 ? 'Módulo' : 'Módulos'}
-                          </span>
-                        </div>
-                      )}
-                      {getSelectedItemStats().subjects.total > 0 && (
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#8b6d22]"></div>
-                          <span className="text-[#1e130c] text-sm">
-                            {getSelectedItemStats().subjects.total} {getSelectedItemStats().subjects.total === 1 ? 'Disciplina' : 'Disciplinas'}
-                          </span>
-                        </div>
-                      )}
-                      {getSelectedItemStats().lessons.total > 0 && (
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-[#7a6350]"></div>
-                          <span className="text-[#1e130c] text-sm">
-                            {getSelectedItemStats().lessons.total} {getSelectedItemStats().lessons.total === 1 ? 'Aula' : 'Aulas'}
-                          </span>
-                        </div>
-                      )}
-                      {getSelectedItemStats().tests.total > 0 && (
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-orange-400"></div>
-                          <span className="text-gold-200 text-sm">
-                            {getSelectedItemStats().tests.total} {getSelectedItemStats().tests.total === 1 ? 'Teste' : 'Testes'}
-                          </span>
-                        </div>
-                      )}
+              <div className="p-5 border border-dashed border-[#1e130c]/20 bg-[#faf6ee]/50 text-center">
+                <p className="font-[family-name:var(--font-playfair)] text-[#1e130c] text-xl mb-4">Sumário do Acervo</p>
+                <div className="flex flex-wrap justify-center gap-6">
+                  {importMode === 'full' && getSelectedItemStats().modules.total > 0 && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-2xl font-[family-name:var(--font-playfair)] text-[#1e130c]">{getSelectedItemStats().modules.total}</span>
+                      <span className="text-xs text-[#7a6350] uppercase tracking-wider">Módulos</span>
                     </div>
-                    <p className="text-gold-400 text-xs mt-3">
-                      ✓ Gabaritos serão extraídos automaticamente
-                    </p>
-                  </div>
+                  )}
+                  {getSelectedItemStats().subjects.total > 0 && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-2xl font-[family-name:var(--font-playfair)] text-[#1e130c]">{getSelectedItemStats().subjects.total}</span>
+                      <span className="text-xs text-[#7a6350] uppercase tracking-wider">Disciplinas</span>
+                    </div>
+                  )}
+                  {getSelectedItemStats().lessons.total > 0 && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-2xl font-[family-name:var(--font-playfair)] text-[#1e130c]">{getSelectedItemStats().lessons.total}</span>
+                      <span className="text-xs text-[#7a6350] uppercase tracking-wider">Aulas</span>
+                    </div>
+                  )}
+                  {getSelectedItemStats().tests.total > 0 && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-2xl font-[family-name:var(--font-playfair)] text-[#8b6d22]">{getSelectedItemStats().tests.total}</span>
+                      <span className="text-xs text-[#7a6350] uppercase tracking-wider">Testes</span>
+                    </div>
+                  )}
                 </div>
-              </motion.div>
+                <p className="text-[#7a6350] italic text-xs mt-4">
+                  Gabaritos serão extraídos e lavrados automaticamente se presentes.
+                </p>
+              </div>
             )}
 
             {/* Statistics Cards (during/after import) */}
             {(isImporting || completedItems > 0) && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="grid grid-cols-4 gap-3"
-              >
+              <div className="grid grid-cols-4 gap-4">
                 {[
-                  { type: 'modules', label: 'Módulos', icon: Folder, color: 'blue' },
-                  { type: 'subjects', label: 'Disciplinas', icon: BookOpen, color: 'purple' },
-                  { type: 'lessons', label: 'Aulas', icon: FileText, color: 'green' },
-                  { type: 'tests', label: 'Testes', icon: GraduationCap, color: 'orange' }
-                ].map(({ type, label, icon: Icon, color }) => {
-                  // Hide modules in subject-only mode
+                  { type: 'modules', label: 'Módulos', icon: Folder },
+                  { type: 'subjects', label: 'Disciplinas', icon: BookOpen },
+                  { type: 'lessons', label: 'Aulas', icon: FileText },
+                  { type: 'tests', label: 'Testes', icon: GraduationCap }
+                ].map(({ type, label, icon: Icon }) => {
                   if (type === 'modules' && importMode === 'subject') return null
                   const stats = getSelectedItemStats()[type as keyof ReturnType<typeof getSelectedItemStats>]
                   if (stats.total === 0) return null
 
                   return (
-                    <div
-                      key={type}
-                      className={`
-                        p-3 rounded-lg border
-                        bg-${color}-500/10 border-${color}-500/30
-                      `}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Icon className={`w-4 h-4 text-${color}-400`} />
-                        <span className="text-xs text-gold-300">{label}</span>
-                      </div>
-                      <p className={`text-lg font-bold text-${color}-300`}>
-                        {stats.completed}/{stats.total}
+                    <div key={type} className="p-3 border border-[#1e130c]/10 text-center bg-[#faf6ee]">
+                      <Icon className="w-5 h-5 mx-auto text-[#8b6d22] mb-1" />
+                      <p className="text-[0.65rem] uppercase tracking-wider text-[#7a6350] mb-1">{label}</p>
+                      <p className="text-xl font-[family-name:var(--font-playfair)] text-[#1e130c]">
+                        {stats.completed}<span className="text-[#7a6350] text-sm">/{stats.total}</span>
                       </p>
                     </div>
                   )
                 })}
-              </motion.div>
+              </div>
             )}
 
             {/* Progress Bar */}
             {(isImporting || completedItems > 0) && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-2"
-              >
+              <div className="space-y-2 py-4 border-y border-dashed border-[#1e130c]/20">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gold-300">
-                    {completedItems} de {validItems.length} itens importados
+                  <span className="text-[#1e130c] font-[family-name:var(--font-playfair)]">
+                    Catalogando... {completedItems} de {validItems.length} tomos lavrados
                   </span>
-                  <span className="text-gold-400 font-mono">
+                  <span className="text-[#8b6d22] font-mono">
                     {Math.round((completedItems / validItems.length) * 100)}%
                   </span>
                 </div>
-                <div className="h-2 bg-navy-800 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(completedItems / validItems.length) * 100}%` }}
-                    transition={{ duration: 0.3 }}
-                    className={`h-full rounded-full ${
-                      completedItems === validItems.length
-                        ? 'bg-gradient-to-r from-green-500 to-green-600'
-                        : 'bg-gradient-to-r from-blue-500 to-blue-600'
-                    }`}
+                <div className="h-1 bg-[#1e130c]/10 w-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#8b6d22] transition-all duration-300 ease-out"
+                    style={{ width: `${(completedItems / validItems.length) * 100}%` }}
                   />
                 </div>
                 {isPaused && (
-                  <p className="text-[#7a6350] italic text-xs flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    Importação pausada
+                  <p className="text-[#7a6350] italic text-xs flex items-center gap-1 justify-center">
+                    <AlertCircle className="w-3 h-3" /> Trabalhos suspensos temporariamente
                   </p>
                 )}
                 {isCancelled && (
-                  <p className="text-[#7a6350] italic text-xs flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    Importação cancelada
+                  <p className="text-[#7a6350] italic text-xs flex items-center gap-1 justify-center">
+                    <AlertCircle className="w-3 h-3" /> Trabalhos cancelados
                   </p>
                 )}
-              </motion.div>
+              </div>
             )}
 
             {/* Action Buttons */}
             <div className="flex items-center justify-between">
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  onClick={selectAllValidItems}
-                  variant="ghost"
-                  size="xs"
-                  icon={<CheckSquare className="w-3 h-3" />}
-                >
-                  Selecionar Válidos
-                </Button>
-                <Button
-                  onClick={clearSelection}
-                  variant="ghost"
-                  size="xs"
-                  icon={<Square className="w-3 h-3" />}
-                >
-                  Limpar Seleção
-                </Button>
-                <Button
-                  onClick={expandAll}
-                  variant="ghost"
-                  size="xs"
-                  icon={<ChevronsDown className="w-3 h-3" />}
-                >
-                  Expandir
-                </Button>
-                <Button
-                  onClick={collapseAll}
-                  variant="ghost"
-                  size="xs"
-                  icon={<ChevronsUp className="w-3 h-3" />}
-                >
-                  Colapsar
-                </Button>
+              <div className="flex gap-2">
+                <button onClick={selectAllValidItems} className="text-[#7a6350] hover:text-[#1e130c] text-xs transition-colors flex items-center gap-1"><CheckSquare className="w-3 h-3"/> Selecionar Todos</button>
+                <span className="text-[#1e130c]/20">|</span>
+                <button onClick={clearSelection} className="text-[#7a6350] hover:text-[#1e130c] text-xs transition-colors flex items-center gap-1"><Square className="w-3 h-3"/> Limpar</button>
+                <span className="text-[#1e130c]/20">|</span>
+                <button onClick={expandAll} className="text-[#7a6350] hover:text-[#1e130c] text-xs transition-colors flex items-center gap-1"><ChevronsDown className="w-3 h-3"/> Expandir</button>
+                <span className="text-[#1e130c]/20">|</span>
+                <button onClick={collapseAll} className="text-[#7a6350] hover:text-[#1e130c] text-xs transition-colors flex items-center gap-1"><ChevronsUp className="w-3 h-3"/> Colapsar</button>
               </div>
 
-              <div className="flex gap-2 items-center">
+              <div className="flex gap-3 items-center">
                 {selectedItems.size > 0 && !isImporting && (
-                  <span className="text-gold-400 text-xs">
+                  <span className="text-[#7a6350] italic text-xs mr-2">
                     {selectedItems.size} selecionado{selectedItems.size !== 1 ? 's' : ''}
                   </span>
                 )}
                 {!isImporting && !isCancelled && (
                   <Button
                     onClick={handleImportAll}
-                    variant="success"
-                    size="sm"
                     disabled={selectedItems.size === 0}
+                    className="py-2 px-6 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-[family-name:var(--font-playfair)] disabled:opacity-50"
                   >
-                    {completedItems > 0 ? 'Continuar Importação' : `Importar (${selectedItems.size})`}
+                    {completedItems > 0 ? 'Retomar Catalogação' : 'Lavrar Registros'}
                   </Button>
                 )}
                 {isImporting && !isPaused && (
                   <>
-                    <Button
-                      onClick={handlePause}
-                      variant="warning"
-                      size="sm"
-                    >
+                    <Button onClick={handlePause} className="py-2 px-4 border border-[#1e130c] text-[#1e130c] hover:bg-[#1e130c]/5 transition-colors font-[family-name:var(--font-playfair)]">
                       Pausar
                     </Button>
-                    <Button
-                      onClick={handleCancel}
-                      variant="danger"
-                      size="sm"
-                    >
+                    <Button onClick={handleCancel} className="py-2 px-4 border border-[#7a6350] text-[#7a6350] hover:bg-[#7a6350]/10 transition-colors font-[family-name:var(--font-playfair)]">
                       Cancelar
                     </Button>
                   </>
                 )}
                 {isPaused && (
                   <>
-                    <Button
-                      onClick={handleResume}
-                      variant="success"
-                      size="sm"
-                    >
+                    <Button onClick={handleResume} className="py-2 px-6 bg-[#1e130c] text-[#faf6ee] hover:bg-[#8b6d22] transition-colors font-[family-name:var(--font-playfair)]">
                       Retomar
                     </Button>
-                    <Button
-                      onClick={handleCancel}
-                      variant="danger"
-                      size="sm"
-                    >
+                    <Button onClick={handleCancel} className="py-2 px-4 border border-[#7a6350] text-[#7a6350] hover:bg-[#7a6350]/10 transition-colors font-[family-name:var(--font-playfair)]">
                       Cancelar
                     </Button>
                   </>
@@ -1587,7 +1409,7 @@ useEffect(() => {
             </div>
 
             {/* Items Tree */}
-            <div className="max-h-96 overflow-y-auto space-y-1 pr-2 custom-scrollbar">
+            <div className="max-h-96 overflow-y-auto border border-[#1e130c]/20 bg-[#faf6ee] p-2 custom-scrollbar">
               {items.map(item => renderTreeItem(item))}
             </div>
           </div>
@@ -1595,31 +1417,33 @@ useEffect(() => {
 
         {/* Success Message */}
         {showSuccess && !isImporting && (
-          <div className="p-4 bg-[#1e130c]/5/10 border border-green-500/30 rounded-lg">
-            <div className="flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-[#1e130c] font-bold flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-[#1e130c] font-bold font-medium mb-2">Importação concluída com sucesso!</p>
-                <div className="text-[#1e130c] font-bold text-sm space-y-1">
-                  {importMode === 'full' && (
-                    <p>• {allFlatItems.filter(it => it.type === 'module' && it.status === 'success').length} módulos importados</p>
-                  )}
-                  <p>• {allFlatItems.filter(it => it.type === 'subject' && it.status === 'success').length} disciplinas importadas</p>
-                  <p>• {allFlatItems.filter(it => it.type === 'lesson' && it.status === 'success').length} aulas importadas</p>
-                  <p>• {allFlatItems.filter(it => it.type === 'test' && it.status === 'success').length} testes importados</p>
-                  {allFlatItems.filter(it => it.status === 'error').length > 0 && (
-                    <p className="text-yellow-400 mt-2">⚠ {allFlatItems.filter(it => it.status === 'error').length} itens falharam</p>
-                  )}
-                </div>
-              </div>
+          <div className="p-6 border border-[#8b6d22]/50 bg-[#8b6d22]/5 text-center">
+            <CheckCircle2 className="w-8 h-8 text-[#8b6d22] mx-auto mb-3" />
+            <p className="font-[family-name:var(--font-playfair)] text-[#1e130c] text-2xl mb-2">Catalogação Concluída</p>
+            <p className="text-[#7a6350] italic mb-4">Os manuscritos foram incorporados ao acervo com sucesso.</p>
+            <div className="flex justify-center gap-6 text-sm font-[family-name:var(--font-playfair)]">
+              {importMode === 'full' && (
+                <span>{allFlatItems.filter(it => it.type === 'module' && it.status === 'success').length} Módulos</span>
+              )}
+              <span>{allFlatItems.filter(it => it.type === 'subject' && it.status === 'success').length} Disciplinas</span>
+              <span>{allFlatItems.filter(it => it.type === 'lesson' && it.status === 'success').length} Aulas</span>
+              <span>{allFlatItems.filter(it => it.type === 'test' && it.status === 'success').length} Exames</span>
             </div>
+            {allFlatItems.filter(it => it.status === 'error').length > 0 && (
+              <p className="text-[#7a6350] mt-4 text-sm italic">
+                ⚠ {allFlatItems.filter(it => it.status === 'error').length} itens falharam ao ser lavrados
+              </p>
+            )}
           </div>
         )}
 
         {/* Error Message */}
         {error && (
-          <div className="p-4 bg-[#7a6350]/10/10 border border-red-500/30 rounded-lg">
-            <p className="text-[#7a6350] italic text-sm">{error}</p>
+          <div className="p-4 border border-dashed border-[#7a6350]/50 bg-[#7a6350]/5 text-center">
+            <p className="text-[#7a6350] italic flex items-center justify-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </p>
           </div>
         )}
       </div>

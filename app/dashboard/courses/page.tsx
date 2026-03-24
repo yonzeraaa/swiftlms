@@ -267,7 +267,7 @@ export default function CoursesPage() {
                 <th className="px-4 py-4 text-left" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Título e Detalhes Acadêmicos</th>
                 <th className="px-4 py-4 text-left w-32" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Alunos</th>
                 <th className="px-4 py-4 text-left w-40" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Situação</th>
-                <th className="px-4 py-4 text-right w-20" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Ações</th>
+                <th className="px-4 py-4 text-center w-20" style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: MUTED }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -302,7 +302,7 @@ export default function CoursesPage() {
                       {c.is_published ? 'Publicado' : 'Rascunho'}
                     </span>
                   </td>
-                  <td className="px-4 py-6 text-right align-top">
+                  <td className="px-4 py-6 text-center align-top">
                     <button
                       onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect()
