@@ -202,11 +202,9 @@ export default function DashboardPage() {
 
       <ClassicRule style={{ width: '100%', marginBottom: '4rem', color: INK, opacity: 0.3 }} />
 
-      {/* ── Registros e Popularidade ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
-        
-        {/* Atividades Recentes */}
-        <div className="flex flex-col">
+      {/* ── Atividades Recentes ── */}
+      <div className="flex justify-center w-full pb-12">
+        <div className="flex flex-col w-full max-w-3xl">
           <h2
             style={{
               fontFamily: 'var(--font-playfair)',
@@ -222,17 +220,16 @@ export default function DashboardPage() {
           </h2>
 
           {recentActivities.length > 0 ? (
-            <div className="space-y-0">
-              {recentActivities.slice(0, 6).map((activity, idx) => (
+            <div className="space-y-0 bg-[#fdfaf6] p-6 rounded-xl shadow-sm border border-[rgba(30,19,12,0.08)]">
+              {recentActivities.slice(0, 1).map((activity, idx) => (
                 <div 
                   key={idx} 
-                  className="py-5 transition-colors hover:bg-[#1e130c]/[0.02] px-2"
-                  style={{ borderBottom: `1px dashed ${BORDER}` }}
+                  className="py-2"
                 >
                   <p 
                     style={{ 
                       fontFamily: 'var(--font-lora)', 
-                      fontSize: '1.05rem', 
+                      fontSize: '1.15rem', 
                       color: INK,
                       lineHeight: 1.6
                     }}
@@ -241,18 +238,18 @@ export default function DashboardPage() {
                     <span style={{ color: MUTED }}>{activity.action}</span>
                   </p>
                   
-                  <div className="flex justify-between items-center mt-2">
-                    <p style={{ fontFamily: 'var(--font-lora)', fontSize: '0.9rem', color: ACCENT, fontStyle: 'italic' }}>
+                  <div className="flex justify-between items-center mt-3">
+                    <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1rem', color: ACCENT, fontStyle: 'italic' }}>
                       {activity.entityName || ''}
                     </p>
-                    <p style={{ fontFamily: 'var(--font-lora)', fontSize: '0.75rem', color: MUTED, letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 600 }}>
+                    <p style={{ fontFamily: 'var(--font-lora)', fontSize: '0.85rem', color: MUTED, letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 600 }}>
                       {activity.timestamp}
                     </p>
                   </div>
                 </div>
               ))}
               
-              <div className="pt-8">
+              <div className="pt-8 flex justify-center border-t border-dashed border-[rgba(30,19,12,0.1)] mt-6">
                 <button
                   onClick={() => router.push('/dashboard/activities')}
                   className="inline-flex items-center gap-2 pb-1 transition-all hover:gap-4 group"
@@ -265,7 +262,7 @@ export default function DashboardPage() {
                     letterSpacing: '0.2em',
                     borderBottom: `2px solid ${INK}`,
                     background: 'none',
-                    border: 'none',
+                    borderTop: 'none', borderLeft: 'none', borderRight: 'none',
                     borderBottomStyle: 'solid',
                     cursor: 'pointer'
                   }}
@@ -275,61 +272,9 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            <div className="py-20 text-center border border-dashed border-[#1e130c]/10">
+            <div className="py-20 text-center border border-dashed border-[#1e130c]/10 bg-[#fdfaf6] rounded-xl">
               <p style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>
                 {t('dashboard.noRecentActivity')}
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Popularidade dos Compêndios */}
-        <div className="flex flex-col">
-          <h2
-            style={{
-              fontFamily: 'var(--font-playfair)',
-              fontSize: '2rem',
-              fontWeight: 600,
-              color: INK,
-              marginBottom: '2rem',
-              borderLeft: `4px solid ${ACCENT}`,
-              paddingLeft: '1.5rem'
-            }}
-          >
-            {t('dashboard.popularCourses')}
-          </h2>
-
-          {popularCourses.length > 0 ? (
-            <div className="space-y-8 mt-2">
-              {popularCourses.map((course, idx) => (
-                <div key={idx} className="relative group">
-                  <div className="flex justify-between items-baseline mb-3">
-                    <span style={{ fontFamily: 'var(--font-lora)', fontSize: '1.1rem', color: INK, fontWeight: 600 }}>
-                      {idx + 1}. {course.name}
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.9rem', color: MUTED, fontStyle: 'italic', flexShrink: 0 }}>
-                      {course.students} {t('dashboard.students')}
-                    </span>
-                  </div>
-                  
-                  {/* Régua de Graduação */}
-                  <div className="relative w-full h-[4px]" style={{ backgroundColor: 'rgba(30,19,12,0.05)' }}>
-                    <div
-                      className="absolute top-0 left-0 h-full transition-all duration-1000 ease-out"
-                      style={{
-                        width: `${course.percentage}%`,
-                        backgroundColor: ACCENT,
-                        boxShadow: '0 0 10px rgba(139,109,34,0.2)'
-                      }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-20 text-center border border-dashed border-[#1e130c]/10">
-              <p style={{ fontFamily: 'var(--font-lora)', fontStyle: 'italic', color: MUTED }}>
-                {t('dashboard.noCoursesYet')}
               </p>
             </div>
           )}
