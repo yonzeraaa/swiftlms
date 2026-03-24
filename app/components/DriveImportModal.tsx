@@ -1063,7 +1063,7 @@ useEffect(() => {
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={isImporting && onMinimize ? onMinimize : onClose}
       title="Catalogar Acervo do Google Drive"
       size="xl"
       onMinimize={onMinimize}
