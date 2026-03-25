@@ -2,9 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import {
+  buildImportedProfileCreatedAt,
   buildImportedFullName,
   EFRONT_IMPORT_MAX_FILE_SIZE_BYTES,
   getDefaultEfrontImportPassword,
+  getImportedDateKey,
   mapRole,
   mapStatus,
   normalizeEmail,
@@ -18,6 +20,7 @@ type ExistingProfile = {
   full_name: string | null
   role: 'student' | 'instructor' | 'admin' | null
   status: 'active' | 'frozen' | null
+  created_at: string | null
 }
 
 type AuthUserRecord = {
@@ -119,7 +122,7 @@ export async function POST(request: Request) {
 
     const { data: profilesData, error: profilesError } = await adminClient
       .from('profiles')
-      .select('id, email, full_name, role, status')
+      .select('id, email, full_name, role, status, created_at')
       .in('email', importEmails)
 
     if (profilesError) {
@@ -151,6 +154,8 @@ export async function POST(request: Request) {
         const fullName = buildImportedFullName(efrontUser)
         const role = mapRole(efrontUser.user_type)
         const status = mapStatus(efrontUser.active)
+        const importedCreatedAt = buildImportedProfileCreatedAt(efrontUser.registration_date)
+        const importedDateKey = getImportedDateKey(efrontUser.registration_date)
         const existingProfile = existingProfilesByEmail.get(email) || null
         const existingAuthUser =
           existingAuthUsersByEmail.get(email) ||
@@ -181,11 +186,40 @@ export async function POST(request: Request) {
             normalizeEmail(existingProfile.email || '') === email &&
             (existingProfile.full_name || '') === fullName &&
             (existingProfile.role || '') === role &&
-            (existingProfile.status || '') === status
+            (existingProfile.status || '') === status &&
+            (
+              !importedDateKey ||
+              getImportedDateKey(existingProfile.created_at) === importedDateKey
+            )
 
           if (authIsUpToDate && profileIsUpToDate) {
             results.ignored++
             continue
+          }
+
+          const profilePayload: {
+            id: string
+            email: string
+            full_name: string
+            phone: null
+            role: 'student' | 'instructor' | 'admin'
+            status: 'active' | 'frozen'
+            updated_at: string
+            created_at?: string
+          } = {
+            id: authUserId,
+            email,
+            full_name: fullName,
+            phone: null,
+            role,
+            status,
+            updated_at: now,
+          }
+
+          if (importedCreatedAt) {
+            profilePayload.created_at = importedCreatedAt
+          } else if (!existingProfile) {
+            profilePayload.created_at = now
           }
 
           if (!authIsUpToDate) {
@@ -203,16 +237,7 @@ export async function POST(request: Request) {
 
           const { error: profileUpdateError } = await adminClient
             .from('profiles')
-            .upsert({
-              id: authUserId,
-              email,
-              full_name: fullName,
-              phone: null,
-              role,
-              status,
-              updated_at: now,
-              ...(existingProfile ? {} : { created_at: now }),
-            })
+            .upsert(profilePayload)
 
           if (profileUpdateError) {
             results.failed++
@@ -226,6 +251,7 @@ export async function POST(request: Request) {
             full_name: fullName,
             role,
             status,
+            created_at: profilePayload.created_at || existingProfile?.created_at || null,
           }
           const updatedAuthUser: AuthUserRecord = {
             id: authUserId,
@@ -253,6 +279,7 @@ export async function POST(request: Request) {
           continue
         }
 
+        const createdAt = importedCreatedAt || now
         const { error: profileCreateError } = await adminClient
           .from('profiles')
           .upsert({
@@ -262,7 +289,7 @@ export async function POST(request: Request) {
             phone: null,
             role,
             status,
-            created_at: now,
+            created_at: createdAt,
             updated_at: now,
           })
 
@@ -283,6 +310,7 @@ export async function POST(request: Request) {
           full_name: fullName,
           role,
           status,
+          created_at: createdAt,
         })
         existingAuthUsersByEmail.set(email, {
           id: authData.user.id,

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildImportedProfileCreatedAt,
   buildImportedFullName,
+  getImportedDateKey,
   mapRole,
   mapStatus,
   parseAndValidateEfrontImport,
@@ -73,6 +75,8 @@ describe('eFront import utils', () => {
     expect(mapRole('teacher')).toBe('instructor')
     expect(mapStatus('true')).toBe('active')
     expect(mapStatus('0')).toBe('frozen')
+    expect(getImportedDateKey('05/04/2017')).toBe('2017-04-05')
+    expect(buildImportedProfileCreatedAt('05/04/2017')).toBe('2017-04-05T12:00:00.000Z')
   })
 
   it('parses the serialized eFront users dump format', () => {

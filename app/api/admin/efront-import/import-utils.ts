@@ -42,6 +42,50 @@ export function getDefaultEfrontImportPassword() {
   return process.env.EFRONT_IMPORT_DEFAULT_PASSWORD?.trim() || FALLBACK_EFRONT_IMPORT_PASSWORD
 }
 
+export function buildImportedProfileCreatedAt(registrationDate: string | null | undefined) {
+  const dateKey = getImportedDateKey(registrationDate)
+  if (!dateKey) return null
+
+  // Use noon UTC to preserve the calendar day when rendered in common time zones.
+  return `${dateKey}T12:00:00.000Z`
+}
+
+export function getImportedDateKey(value: string | null | undefined) {
+  const normalized = toSafeString(value)
+  if (!normalized) return null
+
+  const dayMonthYearMatch = normalized.match(/^(\d{2})[\/.-](\d{2})[\/.-](\d{4})$/)
+  if (dayMonthYearMatch) {
+    const [, day, month, year] = dayMonthYearMatch
+    return isValidDateParts(Number(year), Number(month), Number(day))
+      ? `${year}-${month}-${day}`
+      : null
+  }
+
+  const isoDateMatch = normalized.match(/^(\d{4})[-/](\d{2})[-/](\d{2})(?:$|[T\s])/)
+  if (isoDateMatch) {
+    const [, year, month, day] = isoDateMatch
+    return isValidDateParts(Number(year), Number(month), Number(day))
+      ? `${year}-${month}-${day}`
+      : null
+  }
+
+  if (/^\d{10,13}$/.test(normalized)) {
+    const timestamp = Number.parseInt(normalized, 10)
+    const milliseconds = normalized.length === 13 ? timestamp : timestamp * 1000
+    const date = new Date(milliseconds)
+
+    if (!Number.isNaN(date.getTime())) {
+      const year = date.getUTCFullYear()
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(date.getUTCDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+  }
+
+  return null
+}
+
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase()
 }
@@ -398,4 +442,18 @@ function normalizeRegistrationDate(timestampValue: unknown) {
   const year = date.getUTCFullYear()
 
   return `${day}/${month}/${year}`
+}
+
+function isValidDateParts(year: number, month: number, day: number) {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return false
+  }
+
+  const date = new Date(Date.UTC(year, month - 1, day))
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  )
 }

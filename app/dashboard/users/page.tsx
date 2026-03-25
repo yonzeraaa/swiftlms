@@ -67,6 +67,8 @@ const MUTED = '#7a6350'
 const PARCH = '#faf6ee'
 const BORDER = 'rgba(30,19,12,0.14)'
 const EFRONT_IMPORT_MAX_FILE_SIZE_MB = 5
+const EFRONT_IMPORT_RESULT_PAGE_SIZE = 5
+const USERS_PAGE_SIZE = 10
 
 const formatPhone = (value: string) => {
   const numbers = value.replace(/\D/g, '').slice(0, 11)
@@ -74,6 +76,87 @@ const formatPhone = (value: string) => {
   if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
   if (numbers.length <= 10) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`
   return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`
+}
+
+type PaginatedMessageListProps = {
+  title: string
+  items: string[]
+  page: number
+  onPageChange: (page: number) => void
+  color: string
+}
+
+function PaginatedMessageList({ title, items, page, onPageChange, color }: PaginatedMessageListProps) {
+  if (items.length === 0) return null
+
+  const totalPages = Math.max(1, Math.ceil(items.length / EFRONT_IMPORT_RESULT_PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const startIndex = (currentPage - 1) * EFRONT_IMPORT_RESULT_PAGE_SIZE
+  const visibleItems = items.slice(startIndex, startIndex + EFRONT_IMPORT_RESULT_PAGE_SIZE)
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="flex items-center justify-between gap-4">
+        <p style={{ color, fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          {title}
+        </p>
+        {totalPages > 1 && (
+          <p style={{ color: MUTED, fontSize: '0.8rem' }}>
+            Página {currentPage} de {totalPages}
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {visibleItems.map((item, index) => (
+          <p key={`${title}-${startIndex + index}`} style={{ color, fontSize: '0.8rem' }}>
+            {item}
+          </p>
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-4 pt-2">
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            style={{
+              padding: '0.45rem 0.9rem',
+              border: `1px solid ${BORDER}`,
+              background: 'transparent',
+              color: currentPage === 1 ? MUTED : INK,
+              cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+              opacity: currentPage === 1 ? 0.45 : 1,
+              fontSize: '0.78rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: '0.45rem 0.9rem',
+              border: `1px solid ${BORDER}`,
+              background: 'transparent',
+              color: currentPage === totalPages ? MUTED : INK,
+              cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+              opacity: currentPage === totalPages ? 0.45 : 1,
+              fontSize: '0.78rem',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+            }}
+          >
+            Próxima
+          </button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function UsersPage() {
@@ -120,7 +203,12 @@ export default function UsersPage() {
   const [showEfrontImportModal, setShowEfrontImportModal] = useState(false)
   const [efrontFile, setEfrontFile] = useState<File | null>(null)
   const [efrontImporting, setEfrontImporting] = useState(false)
+  const [efrontImportProgress, setEfrontImportProgress] = useState(0)
+  const [efrontImportPhase, setEfrontImportPhase] = useState<'idle' | 'uploading' | 'processing'>('idle')
+  const [efrontErrorsPage, setEfrontErrorsPage] = useState(1)
+  const [efrontWarningsPage, setEfrontWarningsPage] = useState(1)
   const [efrontResult, setEfrontResult] = useState<EfrontImportResult | null>(null)
+  const [usersPage, setUsersPage] = useState(1)
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -137,6 +225,20 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
+
+  useEffect(() => {
+    if (!efrontImporting || efrontImportPhase !== 'processing') return
+
+    const timer = window.setInterval(() => {
+      setEfrontImportProgress(current => (current >= 98 ? current : current + 1))
+    }, 250)
+
+    return () => window.clearInterval(timer)
+  }, [efrontImporting, efrontImportPhase])
+
+  useEffect(() => {
+    setUsersPage(1)
+  }, [searchTerm, filterRole, filterStatus, users.length])
 
   const loadCourses = async () => {
     if (loadingCourses || courses.length > 0) return
@@ -249,41 +351,112 @@ export default function UsersPage() {
     } catch (err: any) { setError(err.message) } finally { setDummyLoading(false) }
   }
 
+  const resetEfrontFeedback = () => {
+    setEfrontImportProgress(0)
+    setEfrontImportPhase('idle')
+    setEfrontErrorsPage(1)
+    setEfrontWarningsPage(1)
+  }
+
+  const closeEfrontImportModal = () => {
+    setShowEfrontImportModal(false)
+    setEfrontFile(null)
+    setEfrontResult(null)
+    resetEfrontFeedback()
+  }
+
+  const submitEfrontImport = (formData: FormData) => new Promise<{ status: number; data: any }>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', '/api/admin/efront-import')
+    xhr.withCredentials = true
+    xhr.responseType = 'text'
+
+    xhr.upload.onloadstart = () => {
+      setEfrontImportPhase('uploading')
+      setEfrontImportProgress(5)
+    }
+
+    xhr.upload.onprogress = (event) => {
+      setEfrontImportPhase('uploading')
+
+      if (event.lengthComputable && event.total > 0) {
+        const nextProgress = Math.min(95, Math.max(8, Math.round((event.loaded / event.total) * 95)))
+        setEfrontImportProgress(current => Math.max(current, nextProgress))
+        return
+      }
+
+      setEfrontImportProgress(current => (current >= 80 ? current : current + 10))
+    }
+
+    xhr.upload.onload = () => {
+      setEfrontImportPhase('processing')
+      setEfrontImportProgress(current => Math.max(current, 95))
+    }
+
+    xhr.onerror = () => reject(new Error('Erro de rede ao importar usuários'))
+    xhr.onabort = () => reject(new Error('Importação cancelada antes da conclusão'))
+    xhr.onload = () => {
+      setEfrontImportPhase('processing')
+      setEfrontImportProgress(100)
+
+      const responseText = typeof xhr.response === 'string' ? xhr.response : xhr.responseText
+      let data: any = null
+
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText)
+        } catch {
+          data = null
+        }
+      }
+
+      resolve({ status: xhr.status, data })
+    }
+
+    xhr.send(formData)
+  })
+
   const handleEfrontImport = async () => {
     if (!efrontFile) return
-    setEfrontImporting(true); setEfrontResult(null);
+    setEfrontImporting(true)
+    setEfrontResult(null)
+    resetEfrontFeedback()
     let errorHandled = false
     try {
       const formData = new FormData()
       formData.append('file', efrontFile)
-      const res = await fetch('/api/admin/efront-import', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData
-      })
-      const data = await res.json()
-      if (!res.ok) {
+      const { status, data } = await submitEfrontImport(formData)
+      const payload = data && typeof data === 'object' ? data : {}
+
+      if (status < 200 || status >= 300) {
         setEfrontResult({
           imported: 0,
           created: 0,
           updated: 0,
           ignored: 0,
           failed: 0,
-          errors: Array.isArray(data.errors) && data.errors.length > 0 ? data.errors : [data.error || 'Erro ao importar usuários'],
+          errors: Array.isArray(payload.errors) && payload.errors.length > 0 ? payload.errors : [payload.error || 'Erro ao importar usuários'],
           warnings: [],
           initialPassword: null,
           format: null,
         })
         errorHandled = true
-        throw new Error(data.error || 'Erro ao importar usuários')
+        throw new Error(payload.error || 'Erro ao importar usuários')
       }
+
       setEfrontResult({
-        ...data.results,
-        initialPassword: data.initialPassword || null,
-        format: data.format || null,
+        imported: payload.results?.imported || 0,
+        created: payload.results?.created || 0,
+        updated: payload.results?.updated || 0,
+        ignored: payload.results?.ignored || 0,
+        failed: payload.results?.failed || 0,
+        errors: Array.isArray(payload.results?.errors) ? payload.results.errors : [],
+        warnings: Array.isArray(payload.results?.warnings) ? payload.results.warnings : [],
+        initialPassword: payload.initialPassword || null,
+        format: payload.format || null,
       })
-      showToast(data.message)
-      if (data.results.imported > 0) fetchUsers()
+      showToast(payload.message || 'Importação concluída com sucesso.')
+      if (payload.results?.imported > 0) fetchUsers()
     } catch (err: any) {
       if (!errorHandled) {
         setEfrontResult({
@@ -298,11 +471,15 @@ export default function UsersPage() {
           format: null,
         })
       }
-    } finally { setEfrontImporting(false) }
+    } finally {
+      setEfrontImporting(false)
+      setEfrontImportPhase('idle')
+    }
   }
 
   const handleEfrontFileChange = (file: File | null) => {
     setEfrontResult(null)
+    resetEfrontFeedback()
 
     if (!file) {
       setEfrontFile(null)
@@ -388,6 +565,13 @@ export default function UsersPage() {
     const mStatus = filterStatus === 'all' || (filterStatus === 'active' ? user.status !== 'frozen' : user.status === 'frozen')
     return mSearch && mRole && mStatus
   })
+
+  const totalUsersPages = Math.max(1, Math.ceil(filteredUsers.length / USERS_PAGE_SIZE))
+  const currentUsersPage = Math.min(usersPage, totalUsersPages)
+  const paginatedUsers = filteredUsers.slice(
+    (currentUsersPage - 1) * USERS_PAGE_SIZE,
+    currentUsersPage * USERS_PAGE_SIZE
+  )
 
   return (
     <div className="flex flex-col w-full">
@@ -488,7 +672,7 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((u) => (
+              {paginatedUsers.map((u) => (
                 <tr key={u.id} style={{ borderBottom: `1px dashed ${BORDER}` }} className="hover:bg-[#1e130c]/[0.02] transition-colors group">
                   <td className="px-4 py-6 align-top">
                     <div>
@@ -550,6 +734,54 @@ export default function UsersPage() {
           </table>
           {!loading && filteredUsers.length === 0 && (
             <div className="py-24 text-center italic text-[#7a6350] border border-dashed border-[#1e130c]/10 mt-4 w-full">Nenhum registro encontrado para os filtros informados.</div>
+          )}
+          {filteredUsers.length > 0 && (
+            <div className="mt-6 flex flex-col gap-4 border-t border-[#1e130c]/10 pt-5 md:flex-row md:items-center md:justify-between">
+              <p style={{ color: MUTED, fontSize: '0.9rem' }}>
+                Exibindo {paginatedUsers.length} de {filteredUsers.length} registros filtrados
+              </p>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setUsersPage(currentUsersPage - 1)}
+                  disabled={currentUsersPage === 1}
+                  style={{
+                    padding: '0.6rem 1rem',
+                    border: `1px solid ${BORDER}`,
+                    background: 'transparent',
+                    color: currentUsersPage === 1 ? MUTED : INK,
+                    cursor: currentUsersPage === 1 ? 'not-allowed' : 'pointer',
+                    opacity: currentUsersPage === 1 ? 0.45 : 1,
+                    fontSize: '0.8rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  Anterior
+                </button>
+                <span style={{ color: INK, fontSize: '0.9rem', fontWeight: 600 }}>
+                  Página {currentUsersPage} de {totalUsersPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setUsersPage(currentUsersPage + 1)}
+                  disabled={currentUsersPage === totalUsersPages}
+                  style={{
+                    padding: '0.6rem 1rem',
+                    border: `1px solid ${BORDER}`,
+                    background: 'transparent',
+                    color: currentUsersPage === totalUsersPages ? MUTED : INK,
+                    cursor: currentUsersPage === totalUsersPages ? 'not-allowed' : 'pointer',
+                    opacity: currentUsersPage === totalUsersPages ? 0.45 : 1,
+                    fontSize: '0.8rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                  }}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -866,7 +1098,7 @@ export default function UsersPage() {
               <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.5rem', color: INK, fontWeight: 700 }}>
                 Importar eFront
               </h2>
-              <button onClick={() => { setShowEfrontImportModal(false); setEfrontFile(null); setEfrontResult(null); }} className="text-[#1e130c]/40 hover:text-[#1e130c] transition-colors"><X size={32} /></button>
+              <button onClick={closeEfrontImportModal} className="text-[#1e130c]/40 hover:text-[#1e130c] transition-colors"><X size={32} /></button>
             </div>
 
             <div className="space-y-8">
@@ -890,6 +1122,30 @@ export default function UsersPage() {
                 <p style={{ color: MUTED, fontSize: '0.9rem', fontStyle: 'italic' }}>
                   Arquivo selecionado: {efrontFile.name}
                 </p>
+              )}
+
+              {efrontImporting && (
+                <div className="space-y-3 p-5 bg-[#8b6d22]/[0.06] border border-[#8b6d22]/20">
+                  <div className="flex items-center justify-between gap-4">
+                    <p style={{ color: INK, fontSize: '0.9rem', fontWeight: 600 }}>
+                      {efrontImportPhase === 'processing'
+                        ? 'Arquivo recebido. Processando importação...'
+                        : 'Enviando arquivo para importação...'}
+                    </p>
+                    <span style={{ color: ACCENT, fontSize: '0.85rem', fontWeight: 700 }}>
+                      {Math.round(efrontImportProgress)}%
+                    </span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-[#1e130c]/10">
+                    <div
+                      className={efrontImportPhase === 'processing' ? 'h-full animate-pulse transition-all duration-300' : 'h-full transition-all duration-300'}
+                      style={{
+                        width: `${Math.max(6, efrontImportProgress)}%`,
+                        background: `linear-gradient(90deg, ${INK} 0%, ${ACCENT} 100%)`,
+                      }}
+                    />
+                  </div>
+                </div>
               )}
 
               {efrontResult && (
@@ -918,32 +1174,26 @@ export default function UsersPage() {
                       Senha inicial aplicada aos novos usuários: <strong>{efrontResult.initialPassword}</strong>
                     </p>
                   )}
-                  {efrontResult.errors.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      {efrontResult.errors.slice(0, 5).map((err, i) => (
-                        <p key={i} style={{ color: MUTED, fontSize: '0.8rem' }}>{err}</p>
-                      ))}
-                      {efrontResult.errors.length > 5 && (
-                        <p style={{ color: MUTED, fontSize: '0.8rem' }}>...e mais {efrontResult.errors.length - 5} erros</p>
-                      )}
-                    </div>
-                  )}
-                  {efrontResult.warnings.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      {efrontResult.warnings.slice(0, 5).map((warning, i) => (
-                        <p key={`warning-${i}`} style={{ color: ACCENT, fontSize: '0.8rem' }}>{warning}</p>
-                      ))}
-                      {efrontResult.warnings.length > 5 && (
-                        <p style={{ color: ACCENT, fontSize: '0.8rem' }}>...e mais {efrontResult.warnings.length - 5} avisos</p>
-                      )}
-                    </div>
-                  )}
+                  <PaginatedMessageList
+                    title="Erros"
+                    items={efrontResult.errors}
+                    page={efrontErrorsPage}
+                    onPageChange={setEfrontErrorsPage}
+                    color={MUTED}
+                  />
+                  <PaginatedMessageList
+                    title="Avisos"
+                    items={efrontResult.warnings}
+                    page={efrontWarningsPage}
+                    onPageChange={setEfrontWarningsPage}
+                    color={ACCENT}
+                  />
                 </div>
               )}
             </div>
 
             <div className="flex justify-end gap-6 pt-10 border-t border-[#1e130c]/10">
-              <button onClick={() => { setShowEfrontImportModal(false); setEfrontFile(null); setEfrontResult(null); }} style={{ padding: '0.85rem 2rem', background: 'none', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.85rem' }}>Fechar</button>
+              <button onClick={closeEfrontImportModal} style={{ padding: '0.85rem 2rem', background: 'none', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.85rem' }}>Fechar</button>
               <button onClick={handleEfrontImport} disabled={!efrontFile || efrontImporting} style={{ padding: '0.85rem 3rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: efrontFile && !efrontImporting ? 'pointer' : 'not-allowed', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.85rem', opacity: efrontFile && !efrontImporting ? 1 : 0.5 }}>
                 {efrontImporting ? 'Importando...' : 'Importar Usuários'}
               </button>

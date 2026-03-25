@@ -71,7 +71,10 @@ describe('POST /api/admin/efront-import', () => {
         phone: null,
       },
     })
-    expect(adminClient.fromProfilesUpsert).toHaveBeenCalled()
+    expect(adminClient.fromProfilesUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'joao@example.com',
+      created_at: '2017-04-05T12:00:00.000Z',
+    }))
   })
 
   it('updates an existing user instead of failing on duplicated email in auth', async () => {
@@ -121,6 +124,10 @@ describe('POST /api/admin/efront-import', () => {
         phone: null,
       },
     })
+    expect(adminClient.fromProfilesUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'joao@example.com',
+      created_at: '2017-04-05T12:00:00.000Z',
+    }))
   })
 
   it('rolls back the auth user when profile creation fails', async () => {
@@ -186,6 +193,10 @@ describe('POST /api/admin/efront-import', () => {
       updated: 0,
       failed: 0,
     })
+    expect(adminClient.fromProfilesUpsert).toHaveBeenCalledWith(expect.objectContaining({
+      email: 'joao@example.com',
+      created_at: '2024-05-03T12:00:00.000Z',
+    }))
   })
 })
 
@@ -240,6 +251,7 @@ function makeAdminClient(params: {
     full_name: string | null
     role: 'student' | 'instructor' | 'admin' | null
     status: 'active' | 'frozen' | null
+    created_at?: string | null
   }>
   createdAuthUser?: { id: string; email: string }
   profileUpsertErrorMessage?: string
