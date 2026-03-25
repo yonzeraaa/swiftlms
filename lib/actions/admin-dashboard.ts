@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { resolveActivityEntityName } from '@/lib/utils/activity-log-display'
 
 /**
  * Get admin dashboard data
@@ -81,6 +82,10 @@ export async function getAdminDashboardData() {
       progress: enrollment.progress || 0
     })) || []
 
+    const courseTitlesById = new Map(
+      (courses || []).map((course: any) => [course.id, course.title])
+    )
+
     // Helper function to determine icon based on entity_type and action
     const getActivityIcon = (entityType: string, action: string): 'user' | 'course' | 'enrollment' | 'award' => {
       // Certificate-related actions
@@ -116,7 +121,7 @@ export async function getAdminDashboardData() {
         userId: activity.user_id,
         userName: userProfile?.full_name || 'Usuário desconhecido',
         action: activity.action,
-        entityName: activity.entity_name,
+        entityName: resolveActivityEntityName(activity, courseTitlesById),
         entityType: activity.entity_type,
         metadata: activity.metadata,
         timestamp: activity.created_at,

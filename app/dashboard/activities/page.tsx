@@ -85,7 +85,13 @@ export default function ActivitiesPage() {
     }
 
     if (selectedAction !== 'all') {
-      filtered = filtered.filter(activity => activity.action === selectedAction)
+      filtered = filtered.filter(activity => {
+        if (selectedAction === 'enrolled_in_course') {
+          return ['enrolled_in_course', 'student_enrolled', 'enroll_students'].includes(activity.action)
+        }
+
+        return activity.action === selectedAction
+      })
     }
 
     setFilteredActivities(filtered)
@@ -108,9 +114,15 @@ export default function ActivitiesPage() {
         }
       case 'enrolled_in_course':
       case 'student_enrolled':
+      case 'enroll_students':
         return { 
           icon: <Sparkles className="w-6 h-6" />, 
-          text: action === 'enrolled_in_course' ? (t('dashboard.enrolledInCourse') || 'matriculou-se no curso') : (t('dashboard.newStudentEnrolled') || 'novo aluno matriculado em'),
+          text:
+            action === 'enrolled_in_course'
+              ? (t('dashboard.enrolledInCourse') || 'matriculou-se no curso')
+              : action === 'student_enrolled'
+                ? (t('dashboard.newStudentEnrolled') || 'novo aluno matriculado em')
+                : (t('dashboard.enrolledStudents') || 'matriculou alunos em'),
           color: INK 
         }
       case 'completed_course':

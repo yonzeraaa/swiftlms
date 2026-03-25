@@ -62,6 +62,12 @@ export async function POST(request: NextRequest) {
       userId: session.user.id
     })
 
+    const { data: course } = await supabase
+      .from('courses')
+      .select('title')
+      .eq('id', courseId)
+      .maybeSingle()
+
     // Buscar módulos do curso para validar seleção
     const { data: courseModules, error: modulesError } = await supabase
       .from('course_modules')
@@ -176,8 +182,10 @@ export async function POST(request: NextRequest) {
         action: 'enroll_students',
         entity_type: 'course',
         entity_id: courseId,
-        entity_name: `${studentPayload.length} alunos`,
+        entity_name: course?.title || `${studentPayload.length} aluno(s)`,
         metadata: {
+          courseTitle: course?.title || null,
+          studentCount: studentPayload.length,
           studentIds: studentPayload.map(student => student.studentId),
           enrollmentCount: data.length,
           modulesAssigned: moduleAssignments.length

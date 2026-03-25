@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft, BookOpen, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Playfair_Display, Lora } from 'next/font/google'
 import { getBrowsableCourses } from '@/lib/actions/browse-enroll'
+import Spinner from '@/app/components/ui/Spinner'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -98,6 +99,27 @@ type CourseWithStructure = {
   modules: ModuleWithSubjects[]
 }
 
+function normalizeCourseText(text: string | null | undefined) {
+  if (!text) return []
+
+  return text
+    .replace(/\r\n?/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|ul|ol|h[1-6])>/gi, '\n')
+    .replace(/<(p|div|li|ul|ol|h[1-6])[^>]*>/gi, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .split(/\n{2,}|\n/)
+    .map(paragraph => paragraph.trim())
+    .filter(Boolean)
+}
+
 // ─── CourseDescription ────────────────────────────────────────────────────────
 
 function CourseDescription({
@@ -111,8 +133,10 @@ function CourseDescription({
   isExpanded: boolean
   onToggle: (id: string) => void
 }) {
-  const { truncated, isTruncated } = truncateDescription(description)
-  const paragraphs = description.split(/\n\n+/).map(p => p.trim()).filter(Boolean)
+  const contentRef = useRef<HTMLDivElement | null>(null)
+  const [canExpand, setCanExpand] = useState(false)
+  const paragraphs = normalizeCourseText(description)
+  const collapsedMaxHeight = '6.3rem'
 
   const textStyle: React.CSSProperties = {
     fontFamily: 'var(--font-lora)',
@@ -121,24 +145,88 @@ function CourseDescription({
     lineHeight: 1.75,
   }
 
+  useEffect(() => {
+    const measureTruncation = () => {
+      const element = contentRef.current
+      if (!element) return
+
+      const firstParagraph = element.querySelector('p')
+      const lineHeight = Number.parseFloat(
+        window.getComputedStyle(firstParagraph ?? element).lineHeight
+      )
+      const collapsedHeight = lineHeight * 4
+
+      setCanExpand(element.scrollHeight > collapsedHeight + 1)
+    }
+
+    measureTruncation()
+    window.addEventListener('resize', measureTruncation)
+
+    return () => {
+      window.removeEventListener('resize', measureTruncation)
+    }
+  }, [description, paragraphs.length])
+
   return (
     <div>
-      {isExpanded ? (
-        <div className="space-y-3">
+      <div className="relative">
+        <div
+          ref={contentRef}
+          className="space-y-3 overflow-hidden"
+          style={{
+            maxHeight: isExpanded ? 'none' : collapsedMaxHeight,
+          }}
+        >
           {paragraphs.map((paragraph, i) => (
             <p key={i} style={textStyle}>{paragraph}</p>
           ))}
         </div>
-      ) : (
-        <p style={textStyle}>{truncated}</p>
-      )}
-      {isTruncated && (
+        {!isExpanded && canExpand && (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 flex h-16 items-end justify-end pr-1"
+            style={{
+              background: 'linear-gradient(180deg, rgba(250,246,238,0) 0%, rgba(250,246,238,0.86) 60%, #faf6ee 100%)',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'var(--font-playfair)',
+                color: INK,
+                fontSize: '1.25rem',
+                letterSpacing: '0.08em',
+                lineHeight: 1,
+              }}
+            >
+              ...
+            </span>
+          </div>
+        )}
+      </div>
+      {canExpand && (
         <button
           onClick={() => onToggle(courseId)}
-          className="mt-3 transition-colors duration-150 hover:underline"
-          style={{ fontFamily: 'var(--font-lora)', color: ACCENT, fontSize: '0.82rem', fontStyle: 'italic' }}
+          aria-expanded={isExpanded}
+          className="group mt-5 inline-flex items-center gap-2 pb-1 transition-all duration-200 hover:gap-3"
+          style={{
+            fontFamily: 'var(--font-lora)',
+            color: INK,
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.16em',
+            background: 'none',
+            borderTop: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
+            borderBottom: `1px solid ${INK}`,
+            cursor: 'pointer',
+            padding: 0,
+          }}
         >
-          {isExpanded ? 'Mostrar menos' : 'Mostrar mais'}
+          {isExpanded ? 'Ver menos' : 'Ver mais'}
+          <span style={{ color: ACCENT, fontSize: '0.95rem', lineHeight: 1 }}>
+            {isExpanded ? '↑' : '→'}
+          </span>
         </button>
       )}
     </div>
@@ -146,17 +234,6 @@ function CourseDescription({
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-
-// Truncates text to the first paragraph or first 50 words, whichever is shorter.
-// Returns { truncated, full, isTruncated }.
-function truncateDescription(text: string) {
-  const firstParagraph = text.split(/\n\n+/)[0].trim()
-  const words = firstParagraph.split(/\s+/)
-  const shortened = words.length > 50 ? words.slice(0, 50).join(' ') + '…' : firstParagraph
-
-  const isTruncated = shortened !== text.trim()
-  return { truncated: shortened, full: text.trim(), isTruncated }
-}
 
 export default function BrowseCoursesPage() {
   const [courses, setCourses]               = useState<CourseWithStructure[]>([])
@@ -220,11 +297,6 @@ export default function BrowseCoursesPage() {
       }
 
       setCourses(processedCourses)
-
-      if (processedCourses.length > 0) {
-        const firstModuleIds = processedCourses.map(c => c.modules[0]?.id).filter(Boolean)
-        setExpandedModules(new Set(firstModuleIds))
-      }
     } catch (err) {
       console.error('Erro ao buscar cursos:', err)
       setError('Erro ao carregar os cursos. Tente novamente mais tarde.')
@@ -258,34 +330,7 @@ export default function BrowseCoursesPage() {
   // ─── Loading ──────────────────────────────────────────────────────────────
 
   if (loading) {
-    return (
-      <div
-        className={`min-h-screen w-full flex items-center justify-center ${playfair.variable} ${lora.variable}`}
-        style={{ backgroundColor: '#f0e6d2' }}
-      >
-        <div className="flex flex-col items-center gap-4">
-          <div
-            className="w-14 h-14 flex items-center justify-center"
-            style={{ border: `1px solid ${BORDER}` }}
-          >
-            <span
-              className="inline-block w-5 h-5 border-2 rounded-full animate-spin"
-              style={{ borderColor: `${ACCENT} transparent transparent transparent` }}
-            />
-          </div>
-          <p
-            style={{
-              fontFamily: 'var(--font-lora)',
-              color: MUTED,
-              fontSize: '0.9rem',
-              fontStyle: 'italic',
-            }}
-          >
-            Carregando acervo...
-          </p>
-        </div>
-      </div>
-    )
+    return <Spinner fullPage size="xl" />
   }
 
   // ─── Main render ─────────────────────────────────────────────────────────
@@ -498,7 +543,24 @@ export default function BrowseCoursesPage() {
 
           // ── Course list ────────────────────────────────────────────────────
           <div className="space-y-10">
-            {courses.map((course, index) => (
+            {courses.map((course, index) => {
+              const summaryParagraphs = normalizeCourseText(course.summary)
+              const descriptionParagraphs = normalizeCourseText(course.description)
+              const summaryText = summaryParagraphs.join('\n\n')
+              const shouldRenderSummaryAsQuote = (
+                summaryParagraphs.length === 1 &&
+                summaryText.length <= 220 &&
+                descriptionParagraphs.length > 0
+              )
+              const bodyParagraphs = [
+                ...(shouldRenderSummaryAsQuote ? [] : summaryParagraphs),
+                ...descriptionParagraphs,
+              ].filter((paragraph, paragraphIndex, allParagraphs) => (
+                allParagraphs.indexOf(paragraph) === paragraphIndex
+              ))
+              const bodyText = bodyParagraphs.join('\n\n')
+
+              return (
               <motion.div
                 key={course.id}
                 initial={{ opacity: 0, y: 28 }}
@@ -585,7 +647,7 @@ export default function BrowseCoursesPage() {
                       </h2>
 
                       {/* Summary (block quote style) */}
-                      {course.summary && (
+                      {shouldRenderSummaryAsQuote && (
                         <p
                           className="mb-4 pl-4"
                           style={{
@@ -597,15 +659,15 @@ export default function BrowseCoursesPage() {
                             borderLeft: `2px solid rgba(139,109,34,0.25)`,
                           }}
                         >
-                          &ldquo;{course.summary}&rdquo;
+                          &ldquo;{summaryText}&rdquo;
                         </p>
                       )}
 
                       {/* Description with truncation */}
-                      {course.description && (
+                      {bodyText && (
                         <CourseDescription
                           courseId={course.id}
-                          description={course.description}
+                          description={bodyText}
                           isExpanded={expandedDescriptions.has(course.id)}
                           onToggle={toggleDescription}
                         />
@@ -734,7 +796,8 @@ export default function BrowseCoursesPage() {
                   </div>
                 </div>
               </motion.div>
-            ))}
+              )
+            })}
           </div>
         )}
       </main>

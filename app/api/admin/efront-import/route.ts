@@ -8,7 +8,7 @@ import {
   mapRole,
   mapStatus,
   normalizeEmail,
-  parseAndValidateEfrontCsv,
+  parseAndValidateEfrontImport,
   type EFrontUser,
 } from './import-utils'
 
@@ -71,11 +71,16 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    const supportedExtensions = ['.csv', '.txt', '.1']
+    const hasSupportedExtension = supportedExtensions.some(extension =>
+      file.name.toLowerCase().endsWith(extension)
+    )
+
+    if (!hasSupportedExtension) {
       return NextResponse.json(
         {
           error: 'Formato de arquivo inválido.',
-          errors: ['Envie um arquivo com extensão .csv.'],
+          errors: ['Envie um arquivo `.csv`, `.txt` ou `.1` exportado do eFront.'],
         },
         { status: 400 }
       )
@@ -86,7 +91,8 @@ export async function POST(request: Request) {
       users: efrontUsers,
       errors: validationErrors,
       warnings: validationWarnings,
-    } = parseAndValidateEfrontCsv(csvText)
+      format: detectedFormat,
+    } = parseAndValidateEfrontImport(csvText)
 
     if (validationErrors.length > 0) {
       return NextResponse.json(
@@ -302,6 +308,7 @@ export async function POST(request: Request) {
       success: true,
       message: `Importação concluída: ${results.created} criados, ${results.updated} atualizados, ${results.ignored} inalterados e ${results.failed} falharam.`,
       initialPassword: defaultPassword,
+      format: detectedFormat,
       results,
     })
   } catch (error: any) {

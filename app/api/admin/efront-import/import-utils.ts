@@ -1,3 +1,5 @@
+import { parseSerializedEfrontDump } from './serialized-dump'
+
 export interface EFrontUser {
   users_login: string
   users_email: string
@@ -25,8 +27,16 @@ const REQUIRED_HEADERS = [
 
 const SUPPORTED_DELIMITERS = [',', ';', '\t'] as const
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const SERIALIZED_DUMP_PREFIX_REGEX = /^\s*a:\d+:\{/
 
 type NormalizedHeader = (typeof REQUIRED_HEADERS)[number] | 'language' | 'registration_date'
+
+export type ParsedEfrontImport = {
+  users: EFrontUser[]
+  errors: string[]
+  warnings: string[]
+  format: 'csv' | 'serialized'
+}
 
 export function getDefaultEfrontImportPassword() {
   return process.env.EFRONT_IMPORT_DEFAULT_PASSWORD?.trim() || FALLBACK_EFRONT_IMPORT_PASSWORD
@@ -63,7 +73,15 @@ export function mapStatus(active: string): 'active' | 'frozen' {
     : 'frozen'
 }
 
-export function parseAndValidateEfrontCsv(csvText: string) {
+export function parseAndValidateEfrontImport(inputText: string): ParsedEfrontImport {
+  if (looksLikeSerializedDump(inputText)) {
+    return parseAndValidateSerializedEfrontDump(inputText)
+  }
+
+  return parseAndValidateEfrontCsv(inputText)
+}
+
+export function parseAndValidateEfrontCsv(csvText: string): ParsedEfrontImport {
   const normalizedText = csvText.replace(/^\uFEFF/, '').trim()
 
   if (!normalizedText) {
@@ -71,6 +89,7 @@ export function parseAndValidateEfrontCsv(csvText: string) {
       users: [] as EFrontUser[],
       errors: ['O arquivo CSV está vazio.'],
       warnings: [] as string[],
+      format: 'csv',
     }
   }
 
@@ -82,6 +101,7 @@ export function parseAndValidateEfrontCsv(csvText: string) {
       users: [] as EFrontUser[],
       errors: ['Não foi possível ler o conteúdo do CSV.'],
       warnings: [] as string[],
+      format: 'csv',
     }
   }
 
@@ -103,6 +123,7 @@ export function parseAndValidateEfrontCsv(csvText: string) {
         `Cabeçalhos obrigatórios ausentes: ${missingHeaders.join(', ')}.`,
       ],
       warnings: [] as string[],
+      format: 'csv',
     }
   }
 
@@ -162,7 +183,74 @@ export function parseAndValidateEfrontCsv(csvText: string) {
     errors.push('Nenhum usuário válido foi encontrado no arquivo.')
   }
 
-  return { users, errors, warnings }
+  return { users, errors, warnings, format: 'csv' }
+}
+
+function parseAndValidateSerializedEfrontDump(serializedText: string): ParsedEfrontImport {
+  try {
+    const records = parseSerializedEfrontDump(serializedText)
+    const users: EFrontUser[] = []
+    const errors: string[] = []
+    const warnings: string[] = []
+    const seenEmails = new Set<string>()
+
+    records.forEach((record, index) => {
+      const rowNumber = index + 1
+      const email = normalizeEmail(toSafeString(record.email))
+
+      if (!email) {
+        errors.push(`Registro ${rowNumber}: email é obrigatório.`)
+        return
+      }
+
+      if (!EMAIL_REGEX.test(email)) {
+        errors.push(`Registro ${rowNumber}: email inválido (${email}).`)
+        return
+      }
+
+      if (seenEmails.has(email)) {
+        warnings.push(`Registro ${rowNumber}: email duplicado ignorado (${email}).`)
+        return
+      }
+      seenEmails.add(email)
+
+      const login = toSafeString(record.login)
+      if (!login) {
+        errors.push(`Registro ${rowNumber}: login é obrigatório.`)
+        return
+      }
+
+      users.push({
+        users_login: login,
+        users_email: email,
+        language: toSafeString(record.languages_NAME),
+        users_name: toSafeString(record.name),
+        users_surname: toSafeString(record.surname),
+        active: toSafeString(record.active),
+        user_type: toSafeString(record.user_type),
+        registration_date: normalizeRegistrationDate(record.timestamp),
+        rowNumber,
+      })
+    })
+
+    if (users.length === 0 && errors.length === 0) {
+      errors.push('Nenhum usuário válido foi encontrado no dump serializado.')
+    }
+
+    return {
+      users,
+      errors,
+      warnings,
+      format: 'serialized',
+    }
+  } catch (error: any) {
+    return {
+      users: [],
+      errors: [error.message || 'Não foi possível interpretar o dump serializado do eFront.'],
+      warnings: [],
+      format: 'serialized',
+    }
+  }
 }
 
 function normalizeHeader(header: string): NormalizedHeader | null {
@@ -279,4 +367,35 @@ function parseCsvRows(csvText: string, delimiter: string) {
   }
 
   return rows
+}
+
+function looksLikeSerializedDump(inputText: string) {
+  return SERIALIZED_DUMP_PREFIX_REGEX.test(inputText.replace(/^\uFEFF/, ''))
+}
+
+function toSafeString(value: unknown) {
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  return ''
+}
+
+function normalizeRegistrationDate(timestampValue: unknown) {
+  const raw = toSafeString(timestampValue)
+  if (!raw) return ''
+
+  const timestamp = Number.parseInt(raw, 10)
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    return raw
+  }
+
+  const date = new Date(timestamp * 1000)
+  if (Number.isNaN(date.getTime())) {
+    return raw
+  }
+
+  const day = String(date.getUTCDate()).padStart(2, '0')
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const year = date.getUTCFullYear()
+
+  return `${day}/${month}/${year}`
 }

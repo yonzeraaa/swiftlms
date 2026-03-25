@@ -4,6 +4,7 @@ import {
   buildImportedFullName,
   mapRole,
   mapStatus,
+  parseAndValidateEfrontImport,
   parseAndValidateEfrontCsv,
 } from '../efront-import/import-utils'
 
@@ -72,5 +73,38 @@ describe('eFront import utils', () => {
     expect(mapRole('teacher')).toBe('instructor')
     expect(mapStatus('true')).toBe('active')
     expect(mapStatus('0')).toBe('frozen')
+  })
+
+  it('parses the serialized eFront users dump format', () => {
+    const serializedDump = [
+      'a:1:{',
+      'i:0;a:8:{',
+      's:5:"login";s:4:"joao";',
+      's:5:"email";s:16:"joao@example.com";',
+      's:14:"languages_NAME";s:9:"brazilian";',
+      's:4:"name";s:5:"João";',
+      's:7:"surname";s:5:"Silva";',
+      's:6:"active";s:1:"1";',
+      's:9:"user_type";s:7:"student";',
+      's:9:"timestamp";s:10:"1714778220";',
+      '}}',
+    ].join('')
+
+    const result = parseAndValidateEfrontImport(serializedDump)
+
+    expect(result.format).toBe('serialized')
+    expect(result.errors).toEqual([])
+    expect(result.users).toHaveLength(1)
+    expect(result.users[0]).toMatchObject({
+      users_login: 'joao',
+      users_email: 'joao@example.com',
+      language: 'brazilian',
+      users_name: 'João',
+      users_surname: 'Silva',
+      active: '1',
+      user_type: 'student',
+      registration_date: '03/05/2024',
+      rowNumber: 1,
+    })
   })
 })

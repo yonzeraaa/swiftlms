@@ -58,6 +58,7 @@ interface EfrontImportResult {
   errors: string[]
   warnings: string[]
   initialPassword?: string | null
+  format?: 'csv' | 'serialized' | null
 }
 
 const INK = '#1e130c'
@@ -271,6 +272,7 @@ export default function UsersPage() {
           errors: Array.isArray(data.errors) && data.errors.length > 0 ? data.errors : [data.error || 'Erro ao importar usuários'],
           warnings: [],
           initialPassword: null,
+          format: null,
         })
         errorHandled = true
         throw new Error(data.error || 'Erro ao importar usuários')
@@ -278,6 +280,7 @@ export default function UsersPage() {
       setEfrontResult({
         ...data.results,
         initialPassword: data.initialPassword || null,
+        format: data.format || null,
       })
       showToast(data.message)
       if (data.results.imported > 0) fetchUsers()
@@ -292,6 +295,7 @@ export default function UsersPage() {
           errors: [err.message],
           warnings: [],
           initialPassword: null,
+          format: null,
         })
       }
     } finally { setEfrontImporting(false) }
@@ -305,9 +309,14 @@ export default function UsersPage() {
       return
     }
 
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    const supportedExtensions = ['.csv', '.txt', '.1']
+    const hasSupportedExtension = supportedExtensions.some(extension =>
+      file.name.toLowerCase().endsWith(extension)
+    )
+
+    if (!hasSupportedExtension) {
       setEfrontFile(null)
-      showToast('Selecione um arquivo CSV válido para a importação eFront.')
+      showToast('Selecione um arquivo `.csv`, `.txt` ou `.1` válido para a importação eFront.')
       return
     }
 
@@ -863,15 +872,15 @@ export default function UsersPage() {
             <div className="space-y-8">
               <div className="p-6 bg-[#1e130c]/[0.02] border border-[#1e130c]/5">
                 <p style={{ color: MUTED, fontSize: '0.95rem', lineHeight: 1.6 }}>
-                  Selecione o arquivo CSV exportado do eFront. A importação valida o lote antes de processar e usa a senha inicial configurada no servidor para os novos usuários.
+                  Selecione o CSV exportado do eFront ou o dump serializado de usuários. A importação valida o lote antes de processar e usa a senha inicial configurada no servidor para os novos usuários.
                 </p>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: MUTED, marginBottom: '0.5rem' }}>Arquivo CSV</label>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: MUTED, marginBottom: '0.5rem' }}>Arquivo do eFront</label>
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.txt,.1"
                   onChange={(e) => handleEfrontFileChange(e.target.files?.[0] || null)}
                   style={{ width: '100%', padding: '0.85rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)', fontSize: '1rem' }}
                 />
@@ -891,6 +900,11 @@ export default function UsersPage() {
                   <p style={{ color: MUTED, fontSize: '0.9rem' }}>
                     {efrontResult.updated} usuários atualizados
                   </p>
+                  {efrontResult.format && (
+                    <p style={{ color: MUTED, fontSize: '0.9rem' }}>
+                      Formato detectado: {efrontResult.format === 'serialized' ? 'dump serializado' : 'CSV'}
+                    </p>
+                  )}
                   <p style={{ color: MUTED, fontSize: '0.9rem' }}>
                     {efrontResult.ignored} usuários já estavam alinhados
                   </p>

@@ -31,6 +31,13 @@ describe('POST /api/courses/enroll', () => {
   })
 
   it('creates enrollments, links all modules by default and logs activity', async () => {
+    const courseEq = vi.fn(() => ({
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { title: 'Curso de Teste' },
+        error: null
+      })
+    }))
+
     const courseModulesEq = vi.fn().mockResolvedValue({
       data: [
         { id: 'module-required', is_required: true },
@@ -63,6 +70,11 @@ describe('POST /api/courses/enroll', () => {
         })
       },
       from: vi.fn((table: string) => {
+        if (table === 'courses') {
+          return {
+            select: vi.fn(() => ({ eq: courseEq }))
+          }
+        }
         if (table === 'course_modules') {
           return {
             select: vi.fn(() => ({ eq: courseModulesEq }))
@@ -124,11 +136,23 @@ describe('POST /api/courses/enroll', () => {
 
     expect(activityInsert).toHaveBeenCalledWith(expect.objectContaining({
       user_id: 'admin-id',
-      action: 'enroll_students'
+      action: 'enroll_students',
+      entity_name: 'Curso de Teste',
+      metadata: expect.objectContaining({
+        courseTitle: 'Curso de Teste',
+        studentCount: 2
+      })
     }))
   })
 
   it('respects optional module selection for individual students', async () => {
+    const courseEq = vi.fn(() => ({
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: { title: 'Curso de Teste' },
+        error: null
+      })
+    }))
+
     const courseModulesEq = vi.fn().mockResolvedValue({
       data: [
         { id: 'module-required', is_required: true },
@@ -159,6 +183,11 @@ describe('POST /api/courses/enroll', () => {
         })
       },
       from: vi.fn((table: string) => {
+        if (table === 'courses') {
+          return {
+            select: vi.fn(() => ({ eq: courseEq }))
+          }
+        }
         if (table === 'course_modules') {
           return {
             select: vi.fn(() => ({ eq: courseModulesEq }))

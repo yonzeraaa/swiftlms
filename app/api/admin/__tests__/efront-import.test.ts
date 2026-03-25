@@ -20,6 +20,20 @@ const validCsv = [
   'joao,joao@example.com,brazilian,João,Silva,1,student,05/04/2017',
 ].join('\n')
 
+const serializedDump = [
+  'a:1:{',
+  'i:0;a:8:{',
+  's:5:"login";s:4:"joao";',
+  's:5:"email";s:16:"joao@example.com";',
+  's:14:"languages_NAME";s:9:"brazilian";',
+  's:4:"name";s:5:"João";',
+  's:7:"surname";s:5:"Silva";',
+  's:6:"active";s:1:"1";',
+  's:9:"user_type";s:7:"student";',
+  's:9:"timestamp";s:10:"1714778220";',
+  '}}',
+].join('')
+
 describe('POST /api/admin/efront-import', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -149,6 +163,29 @@ describe('POST /api/admin/efront-import', () => {
     expect(response.status).toBe(400)
     expect(data.error).toBe('Arquivo CSV inválido para importação.')
     expect(data.errors).toEqual(['Cabeçalhos obrigatórios ausentes: users_email.'])
+  })
+
+  it('accepts the serialized dump exported by eFront', async () => {
+    const adminClient = makeAdminClient({
+      authUsers: [],
+      existingProfiles: [],
+      createdAuthUser: { id: 'auth-user-serialized', email: 'joao@example.com' },
+    })
+
+    createClientMock.mockResolvedValue(makeServerClient('admin') as any)
+    createAdminClientMock.mockReturnValue(adminClient as any)
+
+    const response = await POST(makeRequest(serializedDump, 'users.1'))
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.format).toBe('serialized')
+    expect(data.results).toMatchObject({
+      imported: 1,
+      created: 1,
+      updated: 0,
+      failed: 0,
+    })
   })
 })
 
