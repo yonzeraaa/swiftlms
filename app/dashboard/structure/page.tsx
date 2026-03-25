@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import {
   Library,
   ChevronRight,
-  ChevronDown,
   Edit,
   Trash2,
   GraduationCap,
@@ -49,6 +48,52 @@ interface AssociationOption {
   statusColorClass: string
 }
 
+const treeTypeOrder: Record<TreeNode['type'], number> = {
+  course: 0,
+  module: 1,
+  subject: 2,
+  lesson: 3,
+  test: 4
+}
+
+const compareTreeNodesByCode = (a: TreeNode, b: TreeNode) => {
+  if (a.type !== b.type) {
+    return treeTypeOrder[a.type] - treeTypeOrder[b.type]
+  }
+
+  const codeA = typeof a.data?.code === 'string' ? a.data.code.trim() : ''
+  const codeB = typeof b.data?.code === 'string' ? b.data.code.trim() : ''
+
+  if (codeA && codeB) {
+    const codeCompare = codeA.localeCompare(codeB, 'pt-BR', {
+      sensitivity: 'base',
+      numeric: true
+    })
+    if (codeCompare !== 0) return codeCompare
+  } else if (codeA || codeB) {
+    return codeA ? -1 : 1
+  }
+
+  const titleCompare = a.title.localeCompare(b.title, 'pt-BR', {
+    sensitivity: 'base',
+    numeric: true
+  })
+  if (titleCompare !== 0) return titleCompare
+
+  const orderA = typeof a.order === 'number' ? a.order : Number.MAX_SAFE_INTEGER
+  const orderB = typeof b.order === 'number' ? b.order : Number.MAX_SAFE_INTEGER
+  return orderA - orderB
+}
+
+const sortTreeNodes = (nodes: TreeNode[]): TreeNode[] => {
+  return [...nodes]
+    .sort(compareTreeNodesByCode)
+    .map(node => ({
+      ...node,
+      children: node.children ? sortTreeNodes(node.children) : node.children
+    }))
+}
+
 export default function StructurePage() {
   const [treeData, setTreeData] = useState<TreeNode[]>([])
   const [loading, setLoading] = useState(true)
@@ -76,7 +121,7 @@ export default function StructurePage() {
       setLoading(true)
       const { tree, courses: fetchedCourses } = await getHierarchicalData()
 
-      setTreeData(tree)
+      setTreeData(sortTreeNodes(tree))
       setCourses(fetchedCourses)
       if (fetchedCourses && fetchedCourses.length > 0 && !selectedCourseId) {
         setSelectedCourseId(fetchedCourses[0].id)
@@ -251,6 +296,15 @@ export default function StructurePage() {
       const isExpanded = expandedNodes.has(node.id)
       const hasChildren = node.children && node.children.length > 0
       const isSelected = selectedNode?.id === node.id
+      const nodeTypeLabel = node.type === 'course'
+        ? 'Curso'
+        : node.type === 'module'
+          ? 'Módulo'
+          : node.type === 'subject'
+            ? 'Disciplina'
+            : node.type === 'lesson'
+              ? 'Aula'
+              : 'Teste'
 
       return (
         <div key={node.id} className="select-none">
@@ -262,7 +316,7 @@ export default function StructurePage() {
               hover:bg-[#8b6d22]/5 transition-all group
               ${isSelected ? 'bg-[#8b6d22]/10' : ''}
             `}
-            style={{ paddingLeft: `${level * 24 + 12}px` }}
+            style={{ paddingLeft: `${level * 32 + 12}px` }}
             onClick={() => {
               setSelectedNode(node)
               if (hasChildren) toggleNode(node.id)
@@ -276,31 +330,27 @@ export default function StructurePage() {
                 }}
                 className="p-0.5 hover:bg-[#1e130c]/5 rounded"
               >
-                {isExpanded ? (
-                  <ChevronDown className="w-4 h-4 text-[#8b6d22]" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-[#8b6d22]" />
-                )}
+                <ChevronRight
+                  className={`w-4 h-4 text-[#8b6d22] transition-transform ${isExpanded ? 'rotate-45' : ''}`}
+                />
               </button>
             )}
             
             {!hasChildren && <div className="w-5" />}
             
             {getNodeIcon(node.type, isExpanded)}
-            
-            <span className="flex-1 text-[#1e130c]">{node.title}</span>
-            
-            <span className={`
-              px-2 py-0.5 rounded-full text-xs font-medium border
-              ${getTypeColor(node.type)}
-            `}>
-              {node.type === 'course' ? 'Curso' :
-               node.type === 'module' ? 'Módulo' :
-               node.type === 'subject' ? 'Disciplina' :
-               node.type === 'lesson' ? 'Aula' : 'Teste'}
-            </span>
 
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className={`
+                px-2 py-0.5 rounded-full text-xs font-medium border flex-shrink-0
+                ${getTypeColor(node.type)}
+              `}>
+                {nodeTypeLabel}
+              </span>
+              <span className="min-w-0 truncate text-[#1e130c]">{node.title}</span>
+            </div>
+
+            <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               {/* Associate modules button for courses */}
               {node.type === 'course' && (
                 <button
@@ -427,17 +477,17 @@ export default function StructurePage() {
                 <Library className="w-4 h-4 text-[#1e130c]" />
                 <span className="text-sm font-medium text-[#1e130c]">Curso</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-[#1e130c]/20" />
+              <ChevronRight className="w-4 h-4 text-[#1e130c]/20 rotate-45" />
               <div className="flex items-center gap-2">
                 <BookMarked className="w-4 h-4 text-[#8b6d22]" />
                 <span className="text-sm font-medium text-[#1e130c]">Módulos</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-[#1e130c]/20" />
+              <ChevronRight className="w-4 h-4 text-[#1e130c]/20 rotate-45" />
               <div className="flex items-center gap-2">
                 <GraduationCap className="w-4 h-4 text-[#7a6350]" />
                 <span className="text-sm font-medium text-[#1e130c]">Disciplinas</span>
               </div>
-              <ChevronRight className="w-4 h-4 text-[#1e130c]/20" />
+              <ChevronRight className="w-4 h-4 text-[#1e130c]/20 rotate-45" />
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <ScrollText className="w-4 h-4 text-[#4a3b32]" />

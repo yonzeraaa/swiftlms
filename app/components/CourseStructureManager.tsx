@@ -33,6 +33,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 interface Module {
   id: string;
+  code: string | null;
   title: string;
   description: string | null;
   order_index: number;
@@ -56,6 +57,7 @@ interface ModuleSubject {
 
 interface Lesson {
   id: string;
+  code: string | null;
   title: string;
   description: string | null;
   order_index: number;
@@ -73,6 +75,18 @@ interface SortableSubjectProps {
   index: number;
   isDragging?: boolean;
 }
+
+const formatTitleWithCode = (code?: string | null, title?: string | null) => {
+  const normalizedCode = code?.trim() || '';
+  const normalizedTitle = title?.trim() || '';
+
+  if (!normalizedCode) return normalizedTitle;
+  if (!normalizedTitle) return normalizedCode;
+
+  return normalizedTitle.startsWith(normalizedCode)
+    ? normalizedTitle
+    : `${normalizedCode} - ${normalizedTitle}`;
+};
 
 function SortableSubject({ subject, index }: SortableSubjectProps) {
   const {
@@ -353,13 +367,16 @@ export default function CourseStructureManager({
             <div className="flex items-center gap-2 text-[#1e130c] mb-4">
               <ScrollText className="w-5 h-5" />
               <h3 className="font-semibold">
-                Reordenar Aulas - {modules.find(m => m.id === editingModuleId)?.title}
+                Reordenar Aulas - {formatTitleWithCode(
+                  modules.find(m => m.id === editingModuleId)?.code,
+                  modules.find(m => m.id === editingModuleId)?.title
+                )}
               </h3>
             </div>
             <OrderableList
               items={(lessons[editingModuleId] || []).map(l => ({
                 id: l.id,
-                name: l.title,
+                name: formatTitleWithCode(l.code, l.title),
                 description: l.description || undefined
               }))}
               onReorder={(items) => handleReorderLessons(editingModuleId, items)}
@@ -395,7 +412,7 @@ export default function CourseStructureManager({
                   <BookMarked className="w-5 h-5 text-[#8b6d22]" />
                   <div className="flex-1">
                     <h3 className="font-semibold text-[#1e130c]">
-                      Módulo {moduleIndex + 1}: {module.title}
+                      Módulo {moduleIndex + 1}: {formatTitleWithCode(module.code, module.title)}
                     </h3>
                     {module.description && (
                       <p className="text-sm text-[#7a6350]/80">{module.description}</p>
@@ -551,7 +568,7 @@ export default function CourseStructureManager({
                             <span className="text-xs text-[#7a6350]/60 w-6">{index + 1}.</span>
                             <div className="flex-1">
                               <span className="text-sm text-[#1e130c]">
-                                {lesson.title}
+                                {formatTitleWithCode(lesson.code, lesson.title)}
                               </span>
                               {lesson.description && (
                                 <p className="text-xs text-[#7a6350]/80 mt-1">

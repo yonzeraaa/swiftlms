@@ -23,6 +23,18 @@ interface AssociationOption {
   statusColorClass: string
 }
 
+const formatTitleWithCode = (code?: string | null, title?: string | null) => {
+  const normalizedCode = code?.trim() || ''
+  const normalizedTitle = title?.trim() || ''
+
+  if (!normalizedCode) return normalizedTitle
+  if (!normalizedTitle) return normalizedCode
+
+  return normalizedTitle.startsWith(normalizedCode)
+    ? normalizedTitle
+    : `${normalizedCode} - ${normalizedTitle}`
+}
+
 export async function getHierarchicalData() {
   const supabase = await createClient()
 
@@ -61,7 +73,7 @@ export async function getHierarchicalData() {
       const moduleNode: TreeNode = {
         id: module.id,
         type: 'module',
-        title: module.title,
+        title: formatTitleWithCode(module.code, module.title),
         parentId: course.id,
         data: module,
         order: module.order_index,
@@ -74,16 +86,10 @@ export async function getHierarchicalData() {
 
       const moduleSubjectsData = subjects.filter((s: any) => moduleSubjectIds.includes(s.id))
       moduleSubjectsData.forEach((subject: any) => {
-        // Evita duplicar o código no título caso o nome já comece com ele
-        // Ex: code="DCMD0101", name="DCMD0101-CENÁRIO..." → exibe "DCMD0101-CENÁRIO..." (sem re-prefixar)
-        const subjectTitle = subject.code && !subject.name.startsWith(subject.code)
-          ? `${subject.code} - ${subject.name}`
-          : subject.name
-
         const subjectNode: TreeNode = {
           id: subject.id,
           type: 'subject',
-          title: subjectTitle,
+          title: formatTitleWithCode(subject.code, subject.name),
           parentId: module.id,
           data: subject,
           children: []
@@ -98,7 +104,7 @@ export async function getHierarchicalData() {
           subjectNode.children!.push({
             id: lesson.id,
             type: 'lesson',
-            title: lesson.title,
+            title: formatTitleWithCode(lesson.code, lesson.title),
             parentId: subject.id,
             data: lesson,
             order: lesson.order_index
@@ -110,7 +116,7 @@ export async function getHierarchicalData() {
           subjectNode.children!.push({
             id: test.id,
             type: 'test',
-            title: test.title,
+            title: formatTitleWithCode(test.code, test.title),
             parentId: subject.id,
             data: test
           })
@@ -151,7 +157,13 @@ export async function getAvailableItemsForAssociation(
       .eq('course_id', parentId)
       .order('order_index')
 
-    return { items: allModules || [], options: [] }
+    return {
+      items: (allModules || []).map((module: any) => ({
+        ...module,
+        title: formatTitleWithCode(module.code, module.title)
+      })),
+      options: []
+    }
   }
 
   if (associateType === 'subject' && parentType === 'module') {
@@ -177,9 +189,7 @@ export async function getAvailableItemsForAssociation(
 
       return {
         id: subject.id,
-        displayName: subject.code && !subject.name.startsWith(subject.code)
-          ? `${subject.code} - ${subject.name}`
-          : subject.name,
+        displayName: formatTitleWithCode(subject.code, subject.name),
         description: subject.description,
         availability,
         statusText:
@@ -202,7 +212,7 @@ export async function getAvailableItemsForAssociation(
 
   if (associateType === 'lesson' && parentType === 'subject') {
     const [{ data: allLessons }, { data: lessonLinks }] = await Promise.all([
-      supabase.from('lessons').select('id, title, description').order('title'),
+      supabase.from('lessons').select('id, code, title, description').order('title'),
       supabase.from('subject_lessons').select('subject_id, lesson_id')
     ])
 
@@ -231,7 +241,7 @@ export async function getAvailableItemsForAssociation(
 
       return {
         id: lesson.id,
-        displayName: lesson.title,
+        displayName: formatTitleWithCode(lesson.code, lesson.title),
         description: lesson.description,
         availability,
         statusText,
@@ -248,7 +258,10 @@ export async function getAvailableItemsForAssociation(
   }
 
   if (associateType === 'test' && parentType === 'subject') {
-    const { data: allTests } = await supabase.from('tests').select('id, title, description, subject_id').order('title')
+    const { data: allTests } = await supabase
+      .from('tests')
+      .select('id, code, title, description, subject_id')
+      .order('title')
 
     const options: AssociationOption[] = (allTests || []).map((test: any) => {
       const availability: AssociationOption['availability'] = !test.subject_id
@@ -259,7 +272,7 @@ export async function getAvailableItemsForAssociation(
 
       return {
         id: test.id,
-        displayName: test.title,
+        displayName: formatTitleWithCode(test.code, test.title),
         description: test.description,
         availability,
         statusText:
