@@ -73,7 +73,7 @@ export default function StaticFieldMapper({
         </button>
 
         {isOpen && (
-          <div className="absolute z-[100] w-full mt-1 bg-[#faf6ee] border border-[#1e130c]/20 shadow-2xl rounded-none py-2 max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute z-[100] w-full mt-1 bg-[#faf6ee] border border-[#1e130c]/20 shadow-2xl rounded-none py-2 max-h-60 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-200">
             <button
               onClick={() => {
                 onFieldChange(cell.address, null)

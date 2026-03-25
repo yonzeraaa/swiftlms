@@ -6,31 +6,57 @@
 @import './styles/spacing.css';
 @import './styles/animations.css';
 
-/* Custom scrollbar styles */
+/* Global scrollbar styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 109, 34, 0.42) rgba(30, 19, 12, 0.08);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(30, 19, 12, 0.08);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(139, 109, 34, 0.42);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(122, 99, 80, 0.62);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 109, 34, 0.42) transparent;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 6px;
+  height: 6px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #001a33;
-  border-radius: 6px;
+  background: transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #FFD700;
-  border-radius: 6px;
-  border: 2px solid #001a33;
+  background: rgba(139, 109, 34, 0.42);
+  border-radius: 999px;
+  border: none;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #FFC700;
-}
-
-/* Firefox scrollbar */
-.custom-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #FFD700 #001a33;
+  background: rgba(122, 99, 80, 0.62);
 }
 
 /* Import Premium Design System */

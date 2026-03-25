@@ -235,7 +235,7 @@ export default function DataTable<T extends Record<string, any>>({
       )}
 
       {/* Tabela */}
-      <div className={`overflow-x-auto ${maxHeight ? 'overflow-y-auto' : ''} ${borderless ? '' : 'border border-gold-500/20'} rounded-lg bg-navy-900/30`} style={{ maxHeight }}>
+      <div className={`overflow-x-auto custom-scrollbar ${maxHeight ? 'overflow-y-auto' : ''} ${borderless ? '' : 'border border-gold-500/20'} rounded-lg bg-navy-900/30`} style={{ maxHeight }}>
         <table className="w-full">
           <thead className={`${stickyHeader ? 'sticky top-0 z-10' : ''} bg-navy-800/80 backdrop-blur-sm`}>
             <tr className="border-b border-gold-500/20">

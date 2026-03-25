@@ -301,7 +301,7 @@ export default function CourseProgressPage() {
   const activityContent = (
     <div className="h-full">
       <h3 className="text-lg font-semibold text-gold mb-4">Atividade Recente</h3>
-      <div className="space-y-3 max-h-96 overflow-y-auto">
+      <div className="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
         {progressData.recentActivity.map((activity, index) => (
           <div key={index} className="flex items-center gap-3 p-3 bg-navy-800/30 rounded-lg">
             <div className={`w-3 h-3 rounded-full ${

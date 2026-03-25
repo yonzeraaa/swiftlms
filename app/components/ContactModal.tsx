@@ -133,7 +133,7 @@ export default function ContactModal({ isOpen, onClose }: ContactModalProps) {
           transition={{ duration: 0.18 }}
         >
           <motion.div
-            className="relative max-w-md w-full max-h-[90vh] overflow-y-auto"
+            className="relative max-w-md w-full max-h-[90vh] overflow-y-auto custom-scrollbar"
             style={{
               backgroundColor: '#faf6ee',
               border: `1px solid ${BORDER}`,

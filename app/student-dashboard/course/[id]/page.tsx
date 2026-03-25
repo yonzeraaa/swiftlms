@@ -439,7 +439,7 @@ export default function CoursePage() {
                       {selectedLesson.content_type === 'video' ? (
                         selectedLesson.content_url ? <VideoPlayer url={selectedLesson.content_url} title={selectedLesson.title} /> : <p className="text-white italic">Rolo de filme não encontrado</p>
                       ) : (
-                        <div className="bg-[#faf6ee] w-full h-full p-8 overflow-y-auto">
+                        <div className="bg-[#faf6ee] w-full h-full p-8 overflow-y-auto custom-scrollbar">
                           {selectedLesson.content_url ? <DocumentViewer url={selectedLesson.content_url} title={selectedLesson.title} /> : <div dangerouslySetInnerHTML={{ __html: selectedLesson.content || '' }} className="prose-classic" />}
                         </div>
                       )}

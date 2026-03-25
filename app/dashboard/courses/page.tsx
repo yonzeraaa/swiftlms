@@ -390,7 +390,7 @@ export default function CoursesPage() {
 
       {/* Modais (Mantendo a lógica mas garantindo alinhamento interno) */}
       {(showNewCourseModal || (showEditModal && selectedCourse)) && (
-        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto custom-scrollbar">
           <div className="relative bg-[#faf6ee] w-full max-w-2xl p-8 md:p-10 shadow-2xl border border-[#1e130c]/20 my-8">
             <div className="flex items-center justify-between mb-8 relative z-10">
               <h2 className="font-[family-name:var(--font-playfair)] text-2xl md:text-3xl font-bold text-[#1e130c] border-b-2 border-[#8b6d22] pb-2 pr-8">
@@ -521,7 +521,7 @@ export default function CoursesPage() {
       {/* Manage Students Modal */}
       {showManageStudentsModal && selectedCourse && (
         <div className="fixed inset-0 bg-[#1e130c]/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
-          <div className="bg-[#faf6ee] w-full max-w-3xl relative border border-[#1e130c] shadow-2xl p-12 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#faf6ee] w-full max-w-3xl relative border border-[#1e130c] shadow-2xl p-12 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center mb-10 border-b border-[#1e130c]/10 pb-6">
               <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2rem', color: INK, fontWeight: 700 }}>Registros de Matrícula</h2>
               <button onClick={() => setShowManageStudentsModal(false)} className="text-[#1e130c]/40 hover:text-[#1e130c] transition-colors"><X size={32} /></button>
@@ -556,7 +556,7 @@ export default function CoursesPage() {
       {/* Structure Manager Modal Alinhado */}
       {showSubjectsModal && selectedCourse && (
         <div className="fixed inset-0 bg-[#1e130c]/70 backdrop-blur-md flex items-center justify-center z-[10000] p-4">
-          <div className="bg-[#faf6ee] w-full max-w-6xl relative border border-[#1e130c] shadow-2xl p-10 md:p-16 max-h-[95vh] overflow-y-auto">
+          <div className="bg-[#faf6ee] w-full max-w-6xl relative border border-[#1e130c] shadow-2xl p-10 md:p-16 max-h-[95vh] overflow-y-auto custom-scrollbar">
             <div className="flex justify-between items-center mb-10 border-b border-[#1e130c]/10 pb-6">
               <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.2rem', color: INK, fontWeight: 700 }}>Estrutura de Ementa: {selectedCourse.title}</h2>
               <button onClick={() => setShowSubjectsModal(false)} className="text-[#1e130c]/40 hover:text-[#1e130c] transition-colors"><X size={32} /></button>

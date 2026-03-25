@@ -721,7 +721,7 @@ export default function SubjectsPage() {
       {loading ? (
         <Spinner fullPage size="xl" />
       ) : (
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-sm sm:text-base border-collapse">
           <thead className="bg-transparent sticky top-0 z-10 border-b-2 border-[#1e130c]/30">
             <tr>
@@ -847,7 +847,7 @@ export default function SubjectsPage() {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto custom-scrollbar">
           <div className="relative bg-[#faf6ee] w-full max-w-xl p-8 md:p-10 shadow-2xl border border-[#1e130c]/20 my-8">
 
             <div className="flex items-center justify-between mb-8 relative z-10">
@@ -965,7 +965,7 @@ export default function SubjectsPage() {
 
       {/* Lessons Association Modal */}
       {showLessonsModal && selectedSubjectForLessons && (
-        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto custom-scrollbar">
           <div className="relative bg-[#faf6ee] w-full max-w-3xl p-8 md:p-10 shadow-2xl border border-[#1e130c]/20 my-8">
 
             <div className="flex items-start justify-between mb-8 relative z-10">

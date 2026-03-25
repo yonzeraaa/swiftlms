@@ -582,7 +582,7 @@ export default function StudentDashboardLayout({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed inset-y-0 left-0 w-[280px] z-50 flex flex-col overflow-y-auto"
+              className="fixed inset-y-0 left-0 w-[280px] z-50 flex flex-col overflow-y-auto custom-scrollbar"
               style={{
                 backgroundColor: INK,
                 borderRight: `1px solid rgba(139,109,34,0.2)`,
@@ -733,13 +733,6 @@ export default function StudentDashboardLayout({
           </>
         )}
       </AnimatePresence>
-
-      <style dangerouslySetInnerHTML={{__html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(139,109,34,0.3); border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(139,109,34,0.6); }
-      `}} />
     </div>
   )
 }

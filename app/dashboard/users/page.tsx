@@ -542,7 +542,7 @@ export default function UsersPage() {
       
       {(showNewUserModal || (showEditModal && selectedUser)) && (
         <div className="fixed inset-0 bg-[#1e130c]/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
-          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c]/20 shadow-2xl p-10 md:p-16 max-h-[90vh] overflow-y-auto font-[family-name:var(--font-lora)] text-left">
+          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c]/20 shadow-2xl p-10 md:p-16 max-h-[90vh] overflow-y-auto custom-scrollbar font-[family-name:var(--font-lora)] text-left">
             <div className="absolute top-4 left-4 w-10 h-10 text-[#1e130c]/5"><CornerBracket size={40} /></div>
             <div className="absolute top-4 right-4 w-10 h-10 text-[#1e130c]/5 rotate-90"><CornerBracket size={40} /></div>
             
@@ -638,7 +638,7 @@ export default function UsersPage() {
       {/* Matrícula em Curso Padronizada */}
       {showEnrollModal && selectedUser && (
         <div className="fixed inset-0 bg-[#1e130c]/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
-          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c]/20 shadow-2xl p-10 md:p-16 max-h-[90vh] overflow-y-auto font-[family-name:var(--font-lora)] text-left">
+          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c]/20 shadow-2xl p-10 md:p-16 max-h-[90vh] overflow-y-auto custom-scrollbar font-[family-name:var(--font-lora)] text-left">
             <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.5rem', color: INK, marginBottom: '2rem', fontWeight: 700 }} className="pb-4 border-b border-[#1e130c]/10">Matricular Aluno</h2>
             
             <div className="mb-8 p-6 bg-[#1e130c]/[0.02] border border-[#1e130c]/5">

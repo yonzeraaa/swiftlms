@@ -843,7 +843,7 @@ export default function TestsManagementPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="space-y-4 max-h-96 overflow-y-auto pr-2 text-[#1e130c]">
+                  <div className="space-y-4 max-h-96 overflow-y-auto custom-scrollbar pr-2 text-[#1e130c]">
                     {gabaritoData.map((item, index) => (
                       <div key={`gabarito-detail-${index}-${item.questionNumber}`} className="p-4 bg-white border border-[#1e130c]/10 relative text-[#1e130c]">
                         <div className="flex items-center gap-4 mb-2 border-b border-dashed border-[#1e130c]/10 pb-2">
@@ -1040,7 +1040,7 @@ export default function TestsManagementPage() {
               
               {/* Visualização detalhada com justificativas */}
               {showJustifications && (
-                <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-4 text-[#1e130c]">
+                <div className="space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar pr-4 text-[#1e130c]">
                   {viewingAnswerKey.map((item, index) => (
                     <div 
                       key={`detail-${item.question_number}-${index}`}

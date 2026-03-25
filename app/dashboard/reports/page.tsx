@@ -1948,7 +1948,7 @@ export default function ReportsPage() {
       {/* ── Modal de Seleção de Aluno e Curso para Histórico ── */}
       {showStudentHistoryModal && (
         <div className="fixed inset-0 bg-[#1e130c]/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
-          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c] shadow-2xl p-10 md:p-16 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c] shadow-2xl p-10 md:p-16 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div className="absolute top-6 left-6 w-12 h-12 text-[#1e130c]/10"><CornerBracket size={48} /></div>
             <div className="absolute top-6 right-6 w-12 h-12 text-[#1e130c]/10 rotate-90"><CornerBracket size={48} /></div>
 

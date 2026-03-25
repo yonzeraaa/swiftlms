@@ -614,7 +614,7 @@ return (
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar">
           {sortMode === 'structure' ? (
             <DndContext
               sensors={sensors}
@@ -712,7 +712,7 @@ return (
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto custom-scrollbar">
           <div className="relative bg-[#faf6ee] w-full max-w-xl p-8 md:p-10 shadow-2xl border border-[#1e130c]/20 my-8">
 
             <div className="flex items-center justify-between mb-8 relative z-10">

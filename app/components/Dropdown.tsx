@@ -179,7 +179,7 @@ export default function Dropdown({
           )}
 
           {/* Options list */}
-          <div className="max-h-60 overflow-y-auto py-1">
+          <div className="max-h-60 overflow-y-auto custom-scrollbar py-1">
             {filteredOptions.length === 0 ? (
               <div className="px-4 py-3 text-gold-400/50 text-center">
                 No options found

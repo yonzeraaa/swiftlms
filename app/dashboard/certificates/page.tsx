@@ -403,7 +403,7 @@ export default function CertificatesPage() {
       {/* ── Modais Redesenhados ── */}
       {showCertificateModal && selectedCertificate && (
         <div className="fixed inset-0 bg-[#1e130c]/70 backdrop-blur-md flex items-center justify-center z-[10000] p-4">
-          <div className="bg-[#faf6ee] w-full max-w-3xl relative border-2 border-[#1e130c] shadow-2xl p-12 text-center font-[family-name:var(--font-lora)] overflow-y-auto max-h-[95vh]">
+          <div className="bg-[#faf6ee] w-full max-w-3xl relative border-2 border-[#1e130c] shadow-2xl p-12 text-center font-[family-name:var(--font-lora)] overflow-y-auto custom-scrollbar max-h-[95vh]">
             <CornerBracket className="absolute top-6 left-6 w-12 h-12 text-[#1e130c]/10" />
             <CornerBracket className="absolute top-6 right-6 w-12 h-12 text-[#1e130c]/10 rotate-90" />
             

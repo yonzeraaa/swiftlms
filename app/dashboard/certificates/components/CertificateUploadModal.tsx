@@ -156,7 +156,7 @@ export default function CertificateUploadModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
           {/* Upload Area */}
           <div
             onDragEnter={handleDrag}

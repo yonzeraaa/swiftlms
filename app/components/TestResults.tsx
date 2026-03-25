@@ -229,7 +229,7 @@ export default function TestResults({
             >
               <h3 className="text-lg font-semibold text-gold mb-3">Suas Respostas</h3>
               
-              <div className="max-h-96 overflow-y-auto space-y-2">
+              <div className="max-h-96 overflow-y-auto custom-scrollbar space-y-2">
                 {questionsDetail.map((question) => (
                   <div
                     key={question.questionNumber}

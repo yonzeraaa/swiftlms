@@ -82,7 +82,7 @@ export default function TestAnswerPanel({
                 </button>
               </div>
                 
-              <div className="p-4 overflow-y-auto max-h-[60vh] bg-navy-900">
+              <div className="p-4 overflow-y-auto custom-scrollbar max-h-[60vh] bg-navy-900">
                 {questionCount === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 text-gold-300">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500 mb-4"></div>
@@ -155,7 +155,7 @@ export default function TestAnswerPanel({
             </div>
 
             {/* Grid de questões */}
-            <div className="flex-1 overflow-y-auto p-4 bg-navy-900">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 bg-navy-900">
               {questionCount === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-gold-300">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500 mb-4"></div>

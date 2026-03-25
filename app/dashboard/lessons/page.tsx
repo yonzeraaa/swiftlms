@@ -618,7 +618,7 @@ export default function LessonsPage() {
       {loading ? (
         <Spinner fullPage size="xl" />
       ) : (
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto custom-scrollbar">
         <table className="w-full text-sm sm:text-base border-collapse">
           <thead className="bg-transparent sticky top-0 z-10 border-b-2 border-[#1e130c]/30">
             <tr>
@@ -812,7 +812,7 @@ export default function LessonsPage() {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#1e130c]/40 backdrop-blur-sm flex items-center justify-center p-4 z-[9999] overflow-y-auto custom-scrollbar">
           <div className="relative bg-[#faf6ee] w-full max-w-xl p-8 shadow-xl border border-[#1e130c]/10 my-8">
 
             <div className="flex items-center justify-between mb-6">
@@ -979,7 +979,7 @@ export default function LessonsPage() {
 
       {/* Modal de Preview da Aula */}
       {showPreviewModal && previewLesson && (
-        <div className="fixed inset-0 bg-[#1e130c]/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-[#1e130c]/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-y-auto custom-scrollbar">
           <div className="relative bg-[#faf6ee] w-full max-w-6xl shadow-2xl border border-[#1e130c]/20 my-8">
 
             {/* Header */}

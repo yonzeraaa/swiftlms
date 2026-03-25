@@ -215,7 +215,7 @@ export default function ExploreCourses() {
       {/* Details Modal */}
       {showDetailsModal && selectedCourse && (
         <div className="fixed inset-0 bg-[#1e130c]/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c] shadow-2xl p-8 md:p-12 font-[family-name:var(--font-lora)] overflow-y-auto max-h-[90vh]">
+          <div className="bg-[#faf6ee] w-full max-w-2xl relative border border-[#1e130c] shadow-2xl p-8 md:p-12 font-[family-name:var(--font-lora)] overflow-y-auto custom-scrollbar max-h-[90vh]">
             <CornerBracket className="absolute top-4 left-4 w-10 h-10 text-[#1e130c]/40" />
             <CornerBracket className="absolute top-4 right-4 w-10 h-10 text-[#1e130c]/40 rotate-90" />
             
@@ -261,7 +261,7 @@ export default function ExploreCourses() {
       {/* Preview Modal */}
       {showPreviewModal && selectedCourse && (
         <div className="fixed inset-0 bg-[#1e130c]/80 backdrop-blur-md flex items-center justify-center z-[60] p-4">
-          <div className="bg-[#faf6ee] w-full max-w-3xl relative border-2 border-[#1e130c] shadow-2xl p-8 md:p-12 font-[family-name:var(--font-lora)] overflow-y-auto max-h-[90vh]">
+          <div className="bg-[#faf6ee] w-full max-w-3xl relative border-2 border-[#1e130c] shadow-2xl p-8 md:p-12 font-[family-name:var(--font-lora)] overflow-y-auto custom-scrollbar max-h-[90vh]">
             <div className="flex justify-between items-center mb-8 border-b border-[#1e130c]/10 pb-4">
               <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '1.75rem', color: INK }}>Conteúdo do Curso</h2>
               <button onClick={() => setShowPreviewModal(false)} className="text-[#1e130c]/40 hover:text-[#1e130c]"><X size={24} /></button>
