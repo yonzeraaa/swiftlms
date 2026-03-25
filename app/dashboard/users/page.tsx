@@ -49,11 +49,23 @@ interface EditUserForm {
   role: 'student' | 'instructor' | 'admin'
 }
 
+interface EfrontImportResult {
+  imported: number
+  created: number
+  updated: number
+  ignored: number
+  failed: number
+  errors: string[]
+  warnings: string[]
+  initialPassword?: string | null
+}
+
 const INK = '#1e130c'
 const ACCENT = '#8b6d22'
 const MUTED = '#7a6350'
 const PARCH = '#faf6ee'
 const BORDER = 'rgba(30,19,12,0.14)'
+const EFRONT_IMPORT_MAX_FILE_SIZE_MB = 5
 
 const formatPhone = (value: string) => {
   const numbers = value.replace(/\D/g, '').slice(0, 11)
@@ -103,6 +115,11 @@ export default function UsersPage() {
   const [showDummyModal, setShowDummyModal] = useState(false)
   const [dummyLoading, setDummyLoading] = useState(false)
   const [dummyResult, setDummyResult] = useState<{ email: string; password: string; userId?: string; stats?: Record<string, number> } | null>(null)
+
+  const [showEfrontImportModal, setShowEfrontImportModal] = useState(false)
+  const [efrontFile, setEfrontFile] = useState<File | null>(null)
+  const [efrontImporting, setEfrontImporting] = useState(false)
+  const [efrontResult, setEfrontResult] = useState<EfrontImportResult | null>(null)
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -231,6 +248,78 @@ export default function UsersPage() {
     } catch (err: any) { setError(err.message) } finally { setDummyLoading(false) }
   }
 
+  const handleEfrontImport = async () => {
+    if (!efrontFile) return
+    setEfrontImporting(true); setEfrontResult(null);
+    let errorHandled = false
+    try {
+      const formData = new FormData()
+      formData.append('file', efrontFile)
+      const res = await fetch('/api/admin/efront-import', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setEfrontResult({
+          imported: 0,
+          created: 0,
+          updated: 0,
+          ignored: 0,
+          failed: 0,
+          errors: Array.isArray(data.errors) && data.errors.length > 0 ? data.errors : [data.error || 'Erro ao importar usuários'],
+          warnings: [],
+          initialPassword: null,
+        })
+        errorHandled = true
+        throw new Error(data.error || 'Erro ao importar usuários')
+      }
+      setEfrontResult({
+        ...data.results,
+        initialPassword: data.initialPassword || null,
+      })
+      showToast(data.message)
+      if (data.results.imported > 0) fetchUsers()
+    } catch (err: any) {
+      if (!errorHandled) {
+        setEfrontResult({
+          imported: 0,
+          created: 0,
+          updated: 0,
+          ignored: 0,
+          failed: 0,
+          errors: [err.message],
+          warnings: [],
+          initialPassword: null,
+        })
+      }
+    } finally { setEfrontImporting(false) }
+  }
+
+  const handleEfrontFileChange = (file: File | null) => {
+    setEfrontResult(null)
+
+    if (!file) {
+      setEfrontFile(null)
+      return
+    }
+
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      setEfrontFile(null)
+      showToast('Selecione um arquivo CSV válido para a importação eFront.')
+      return
+    }
+
+    if (file.size > EFRONT_IMPORT_MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setEfrontFile(null)
+      showToast(`O arquivo do eFront deve ter no máximo ${EFRONT_IMPORT_MAX_FILE_SIZE_MB}MB.`)
+      return
+    }
+
+    setEfrontFile(file)
+  }
+
   const getRoleLabel = (role: string | null) => {
     switch(role) {
       case 'admin': return 'Administrador'
@@ -307,6 +396,12 @@ export default function UsersPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-4">
+          <button
+            onClick={() => setShowEfrontImportModal(true)}
+            style={{ padding: '1rem 2rem', backgroundColor: 'transparent', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+          >
+            Importar eFront
+          </button>
           <button
             onClick={() => setShowDummyModal(true)}
             style={{ padding: '1rem 2rem', backgroundColor: 'transparent', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}
@@ -746,6 +841,98 @@ export default function UsersPage() {
             <div className="flex gap-6">
               <button onClick={() => setShowDeleteModal(false)} style={{ flex: 1, padding: '1rem', background: 'none', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem' }}>Cancelar</button>
               <button onClick={deleteUser} style={{ flex: 1, padding: '1rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.8rem' }}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Importar eFront Modal */}
+      {showEfrontImportModal && (
+        <div className="fixed inset-0 bg-[#1e130c]/70 backdrop-blur-sm flex items-center justify-center z-[10000] p-4">
+          <div className="bg-[#faf6ee] w-full max-w-lg relative border border-[#1e130c]/20 shadow-2xl p-10 md:p-16 max-h-[90vh] overflow-y-auto custom-scrollbar font-[family-name:var(--font-lora)] text-left">
+            <div className="absolute top-4 left-4 w-10 h-10 text-[#1e130c]/5"><CornerBracket size={40} /></div>
+            <div className="absolute top-4 right-4 w-10 h-10 text-[#1e130c]/5 rotate-90"><CornerBracket size={40} /></div>
+
+            <div className="flex justify-between items-center mb-8 pb-4 border-b border-[#1e130c]/10">
+              <h2 style={{ fontFamily: 'var(--font-playfair)', fontSize: '2.5rem', color: INK, fontWeight: 700 }}>
+                Importar eFront
+              </h2>
+              <button onClick={() => { setShowEfrontImportModal(false); setEfrontFile(null); setEfrontResult(null); }} className="text-[#1e130c]/40 hover:text-[#1e130c] transition-colors"><X size={32} /></button>
+            </div>
+
+            <div className="space-y-8">
+              <div className="p-6 bg-[#1e130c]/[0.02] border border-[#1e130c]/5">
+                <p style={{ color: MUTED, fontSize: '0.95rem', lineHeight: 1.6 }}>
+                  Selecione o arquivo CSV exportado do eFront. A importação valida o lote antes de processar e usa a senha inicial configurada no servidor para os novos usuários.
+                </p>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: MUTED, marginBottom: '0.5rem' }}>Arquivo CSV</label>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => handleEfrontFileChange(e.target.files?.[0] || null)}
+                  style={{ width: '100%', padding: '0.85rem', backgroundColor: 'transparent', border: `1px solid ${BORDER}`, color: INK, fontFamily: 'var(--font-lora)', fontSize: '1rem' }}
+                />
+              </div>
+
+              {efrontFile && (
+                <p style={{ color: MUTED, fontSize: '0.9rem', fontStyle: 'italic' }}>
+                  Arquivo selecionado: {efrontFile.name}
+                </p>
+              )}
+
+              {efrontResult && (
+                <div className="p-6 bg-[#1e130c]/[0.02] border border-[#1e130c]/5">
+                  <p style={{ color: INK, fontWeight: 600, marginBottom: '0.5rem' }}>
+                    {efrontResult.created} novos usuários criados
+                  </p>
+                  <p style={{ color: MUTED, fontSize: '0.9rem' }}>
+                    {efrontResult.updated} usuários atualizados
+                  </p>
+                  <p style={{ color: MUTED, fontSize: '0.9rem' }}>
+                    {efrontResult.ignored} usuários já estavam alinhados
+                  </p>
+                  {efrontResult.failed > 0 && (
+                    <p style={{ color: MUTED, fontSize: '0.9rem' }}>
+                      {efrontResult.failed} falhas
+                    </p>
+                  )}
+                  {efrontResult.initialPassword && efrontResult.created > 0 && (
+                    <p style={{ color: INK, fontSize: '0.9rem', marginTop: '0.75rem' }}>
+                      Senha inicial aplicada aos novos usuários: <strong>{efrontResult.initialPassword}</strong>
+                    </p>
+                  )}
+                  {efrontResult.errors.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {efrontResult.errors.slice(0, 5).map((err, i) => (
+                        <p key={i} style={{ color: MUTED, fontSize: '0.8rem' }}>{err}</p>
+                      ))}
+                      {efrontResult.errors.length > 5 && (
+                        <p style={{ color: MUTED, fontSize: '0.8rem' }}>...e mais {efrontResult.errors.length - 5} erros</p>
+                      )}
+                    </div>
+                  )}
+                  {efrontResult.warnings.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {efrontResult.warnings.slice(0, 5).map((warning, i) => (
+                        <p key={`warning-${i}`} style={{ color: ACCENT, fontSize: '0.8rem' }}>{warning}</p>
+                      ))}
+                      {efrontResult.warnings.length > 5 && (
+                        <p style={{ color: ACCENT, fontSize: '0.8rem' }}>...e mais {efrontResult.warnings.length - 5} avisos</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-6 pt-10 border-t border-[#1e130c]/10">
+              <button onClick={() => { setShowEfrontImportModal(false); setEfrontFile(null); setEfrontResult(null); }} style={{ padding: '0.85rem 2rem', background: 'none', border: `1px solid ${INK}`, color: INK, cursor: 'pointer', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: '0.85rem' }}>Fechar</button>
+              <button onClick={handleEfrontImport} disabled={!efrontFile || efrontImporting} style={{ padding: '0.85rem 3rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: efrontFile && !efrontImporting ? 'pointer' : 'not-allowed', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.85rem', opacity: efrontFile && !efrontImporting ? 1 : 0.5 }}>
+                {efrontImporting ? 'Importando...' : 'Importar Usuários'}
+              </button>
             </div>
           </div>
         </div>
