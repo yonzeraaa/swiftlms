@@ -150,11 +150,7 @@ export default function StudentEvaluationsPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-        <Spinner size="xl" />
-      </div>
-    )
+    return <Spinner fullPage size="xl" />
   }
 
   const totalTests = courseTests.reduce((acc, course) => acc + course.tests.length, 0)
