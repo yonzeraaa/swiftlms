@@ -7,6 +7,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Playfair_Display, Lora } from 'next/font/google'
 import ContactModal from './components/ContactModal'
 import ForgotPasswordModal from './components/ForgotPasswordModal'
+import {
+  clearRememberedLoginPreference,
+  getRememberedBrowserCredential,
+  getRememberedEmail,
+  rememberLoginPreference,
+  shouldRememberLogin,
+  storeRememberedBrowserCredential,
+} from '@/lib/auth/remembered-login'
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -133,6 +141,45 @@ export default function LoginPageClient({
     return () => clearInterval(timer)
   }, [quotes.length])
 
+  useEffect(() => {
+    let isCancelled = false
+
+    const hydrateRememberedLogin = async () => {
+      if (!shouldRememberLogin()) {
+        return
+      }
+
+      setRememberMe(true)
+
+      const rememberedEmail = getRememberedEmail()
+      if (rememberedEmail) {
+        setEmail(rememberedEmail)
+      }
+
+      const rememberedCredential = await getRememberedBrowserCredential()
+      if (isCancelled || !rememberedCredential) {
+        return
+      }
+
+      setEmail(rememberedCredential.email)
+      setPassword(rememberedCredential.password)
+    }
+
+    void hydrateRememberedLogin()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [])
+
+  const handleRememberMeChange = (checked: boolean) => {
+    setRememberMe(checked)
+
+    if (!checked) {
+      clearRememberedLoginPreference()
+    }
+  }
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setIsLoading(true)
@@ -160,6 +207,13 @@ export default function LoginPageClient({
 
       if (data.success) {
         setSuccess(true)
+        if (rememberMe) {
+          rememberLoginPreference(email)
+          await storeRememberedBrowserCredential(email, password)
+        } else {
+          clearRememberedLoginPreference()
+        }
+
         const { SessionManager } = await import('@/lib/auth/session-manager')
         SessionManager.getInstance().startSession()
         await new Promise((resolve) => setTimeout(resolve, 800))
@@ -349,7 +403,7 @@ export default function LoginPageClient({
 
             <ClassicRule className="w-full my-6" style={{ color: INK } as React.CSSProperties} />
 
-            <form onSubmit={handleSubmit} className="space-y-7">
+            <form onSubmit={handleSubmit} className="space-y-7" autoComplete="on">
               <div>
                 <label
                   style={{
@@ -367,11 +421,12 @@ export default function LoginPageClient({
                 </label>
                 <input
                   type="email"
+                  name="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   required
                   placeholder="seu@email.com"
-                  autoComplete="email"
+                  autoComplete="username"
                   className="w-full bg-transparent px-0 py-3 focus:outline-none transition-colors duration-200 placeholder:italic"
                   style={{
                     fontFamily: 'var(--font-lora)',
@@ -409,6 +464,7 @@ export default function LoginPageClient({
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    name="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     required
@@ -466,7 +522,7 @@ export default function LoginPageClient({
                     type="checkbox"
                     className="hidden"
                     checked={rememberMe}
-                    onChange={(event) => setRememberMe(event.target.checked)}
+                    onChange={(event) => handleRememberMeChange(event.target.checked)}
                   />
                 </label>
 
