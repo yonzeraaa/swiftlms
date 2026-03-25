@@ -1,6 +1,8 @@
 import { getGradesUserInfo } from '@/lib/actions/student-grades'
 import Card from '@/app/components/Card'
 import GradesPageClient from './GradesPageClient'
+import Spinner from '@/app/components/ui/Spinner'
+import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,19 +11,22 @@ export default async function StudentGradesPage() {
 
   if (!userInfo) {
     return (
-      <Card className="text-center py-12">
-        <p className="text-gold-400">Erro ao carregar informações do usuário.</p>
-      </Card>
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Spinner size="xl" />
+      </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Spinner size="xl" />
+      </div>
+    }>
       <GradesPageClient
         userId={userInfo.id}
         userName={userInfo.fullName}
       />
-    </div>
+    </Suspense>
   )
 }

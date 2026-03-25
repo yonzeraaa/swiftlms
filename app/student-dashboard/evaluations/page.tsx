@@ -1,13 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FileCheck, FileText, Clock, Target, RotateCcw, AlertCircle, ChevronRight, ChevronDown, Search, CheckCircle, Eye, BookOpen, X } from 'lucide-react'
+import { FileText, Clock, Target, RotateCcw, AlertCircle, ChevronRight, ChevronDown, Search, CheckCircle, Eye, BookOpen, X } from 'lucide-react'
 import { Tables } from '@/lib/database.types'
-import Card from '@/app/components/Card'
-import Button from '@/app/components/Button'
-import EmptyState from '@/app/components/EmptyState'
-import { SkeletonCard } from '@/app/components/Skeleton'
+import Spinner from '@/app/components/ui/Spinner'
 import Link from 'next/link'
+import { ClassicRule } from '../../components/ui/RenaissanceSvgs'
+
+const INK = '#1e130c'
+const ACCENT = '#8b6d22'
+const MUTED = '#7a6350'
+const PARCH = '#faf6ee'
+const BORDER = 'rgba(30,19,12,0.14)'
 
 type Test = Tables<'tests'>
 type TestGrade = Tables<'test_grades'>
@@ -38,12 +42,10 @@ export default function StudentEvaluationsPage() {
 
   const loadTests = async () => {
     try {
-      // Buscar testes via API server-side (onde a sessão está disponível)
       const response = await fetch('/api/student/tests')
 
       if (!response.ok) {
         if (response.status === 401) {
-          // Usuário não autenticado - redirecionar
           window.location.href = '/'
           return
         }
@@ -58,7 +60,6 @@ export default function StudentEvaluationsPage() {
         const courseTests = result.data.courseTests || []
         setCourseTests(courseTests)
 
-        // Expandir automaticamente todos os cursos que têm testes
         const courseIds = courseTests
           .filter((ct: CourseWithTests) => ct.tests.length > 0)
           .map((ct: CourseWithTests) => ct.course.id)
@@ -86,7 +87,6 @@ export default function StudentEvaluationsPage() {
   const getFilteredTests = (tests: TestWithDetails[]) => {
     let filtered = tests
 
-    // Filtro por status
     switch (filter) {
       case 'pending':
         filtered = filtered.filter((t: any) => {
@@ -101,7 +101,6 @@ export default function StudentEvaluationsPage() {
         break
     }
 
-    // Filtro por busca
     if (searchTerm) {
       filtered = filtered.filter((t: any) =>
         t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -117,9 +116,9 @@ export default function StudentEvaluationsPage() {
     if (!test.grade) {
       return {
         label: 'Não realizado',
-        color: 'text-gray-400',
-        bgColor: 'bg-gray-500/20',
-        icon: <AlertCircle className="w-4 h-4" />
+        color: MUTED,
+        bgColor: `${MUTED}/10`,
+        icon: <AlertCircle size={16} />
       }
     }
 
@@ -129,35 +128,31 @@ export default function StudentEvaluationsPage() {
     if (passed) {
       return {
         label: 'Aprovado',
-        color: 'text-[#1e130c] font-bold',
-        bgColor: 'bg-[#1e130c]/5/20',
-        icon: <CheckCircle className="w-4 h-4" />
+        color: ACCENT,
+        bgColor: `${ACCENT}/10`,
+        icon: <CheckCircle size={16} />
       }
     } else if (hasAttemptsLeft) {
       return {
         label: 'Em progresso',
-        color: 'text-yellow-400',
-        bgColor: 'bg-yellow-500/20',
-        icon: <Clock className="w-4 h-4" />
+        color: '#b8860b',
+        bgColor: 'rgba(184,134,11,0.1)',
+        icon: <Clock size={16} />
       }
     } else {
       return {
         label: 'Reprovado',
-        color: 'text-[#7a6350] italic',
-        bgColor: 'bg-[#7a6350]/10/20',
-        icon: <X className="w-4 h-4" />
+        color: MUTED,
+        bgColor: `${MUTED}/10`,
+        icon: <X size={16} />
       }
     }
   }
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid gap-6">
-          {[1, 2, 3].map(i => (
-            <SkeletonCard key={i} />
-          ))}
-        </div>
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Spinner size="xl" />
       </div>
     )
   }
@@ -176,110 +171,133 @@ export default function StudentEvaluationsPage() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col w-full">
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gold flex items-center gap-2">
-          <FileCheck className="w-8 h-8 text-gold-400" />
+      {/* ── Cabeçalho ── */}
+      <div className="text-center flex flex-col items-center mb-12">
+        <h1 style={{
+          fontFamily: 'var(--font-playfair)',
+          fontSize: 'clamp(2rem, 5vw, 3rem)',
+          fontWeight: 700,
+          color: INK,
+          lineHeight: 1,
+          marginBottom: '0.5rem'
+        }}>
           Minhas Avaliações
         </h1>
-        <p className="text-gold-300 mt-1">Testes e trabalhos dos seus cursos</p>
+        <p style={{
+          fontFamily: 'var(--font-lora)',
+          fontSize: '1.1rem',
+          fontStyle: 'italic',
+          color: MUTED,
+          marginBottom: '2rem'
+        }}>
+          Testes e trabalhos dos seus cursos
+        </p>
+        <ClassicRule style={{ width: '100%', maxWidth: '300px', color: INK }} />
       </div>
 
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 border-gold-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Total de Avaliações</p>
-              <p className="text-2xl font-bold text-gold">{totalTests}</p>
-            </div>
-            <FileText className="w-8 h-8 text-gold-400" />
-          </div>
-        </Card>
+      {/* ── Estatísticas ── */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-x-8 gap-y-10 mb-14 px-4">
+        {[
+          { label: 'Total de Avaliações', value: totalTests },
+          { label: 'Concluídas', value: completedTests },
+          { label: 'Pendentes', value: pendingTests },
+        ].map((stat, idx) => (
+          <div key={idx} className="flex flex-col items-center text-center relative">
+            <span style={{
+              fontFamily: 'var(--font-lora)',
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              color: MUTED,
+              textTransform: 'uppercase',
+              letterSpacing: '0.15em',
+              marginBottom: '1rem'
+            }}>
+              {stat.label}
+            </span>
+            <span style={{
+              fontFamily: 'var(--font-playfair)',
+              fontSize: '3rem',
+              fontWeight: 700,
+              color: INK,
+              lineHeight: 1,
+            }}>
+              {stat.value}
+            </span>
 
-        <Card className="p-4 border-green-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Concluídas</p>
-              <p className="text-2xl font-bold text-[#1e130c] font-bold">{completedTests}</p>
-            </div>
-            <CheckCircle className="w-8 h-8 text-[#1e130c] font-bold" />
+            {idx !== 2 && (
+              <div className="hidden md:block absolute right-[-2rem] top-[15%] bottom-[15%] w-px opacity-20" style={{ backgroundColor: INK }} />
+            )}
           </div>
-        </Card>
-
-        <Card className="p-4 border-yellow-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gold-300 text-sm">Pendentes</p>
-              <p className="text-2xl font-bold text-yellow-400">{pendingTests}</p>
-            </div>
-            <Clock className="w-8 h-8 text-yellow-400" />
-          </div>
-        </Card>
+        ))}
       </div>
 
-      {/* Filtros */}
-      <Card className="p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Busca */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gold-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Buscar avaliação..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-navy-900/50 border border-gold-500/30 rounded-lg text-gold-100 placeholder-gold-400/50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-focus)]"
-              />
-            </div>
-          </div>
-
-          {/* Filtro por Status */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                filter === 'all'
-                  ? 'bg-gold-500 text-navy-900 font-medium'
-                  : 'bg-navy-800/50 text-gold-300 hover:bg-navy-700/50'
-              }`}
-            >
-              Todas
-            </button>
-            <button
-              onClick={() => setFilter('pending')}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                filter === 'pending'
-                  ? 'bg-gold-500 text-navy-900 font-medium'
-                  : 'bg-navy-800/50 text-gold-300 hover:bg-navy-700/50'
-              }`}
-            >
-              Pendentes
-            </button>
-            <button
-              onClick={() => setFilter('completed')}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                filter === 'completed'
-                  ? 'bg-gold-500 text-navy-900 font-medium'
-                  : 'bg-navy-800/50 text-gold-300 hover:bg-navy-700/50'
-              }`}
-            >
-              Concluídas
-            </button>
+      {/* ── Filtros ── */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        {/* Busca */}
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2" size={18} style={{ color: MUTED }} />
+            <input
+              type="text"
+              placeholder="Buscar avaliação..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                paddingLeft: '2.75rem',
+                paddingRight: '1rem',
+                paddingTop: '0.75rem',
+                paddingBottom: '0.75rem',
+                backgroundColor: 'transparent',
+                border: `1px solid ${BORDER}`,
+                color: INK,
+                fontFamily: 'var(--font-lora)',
+                fontSize: '0.95rem',
+                outline: 'none',
+              }}
+            />
           </div>
         </div>
-      </Card>
 
-      {/* Lista de Avaliações por Curso (Dropdown) */}
+        {/* Filtro por Status */}
+        <div className="flex gap-2">
+          {[
+            { key: 'all', label: 'Todas' },
+            { key: 'pending', label: 'Pendentes' },
+            { key: 'completed', label: 'Concluídas' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key as any)}
+              style={{
+                padding: '0.6rem 1.25rem',
+                borderRadius: '4px',
+                fontFamily: 'var(--font-lora)',
+                fontSize: '0.85rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                backgroundColor: filter === key ? ACCENT : 'transparent',
+                color: filter === key ? PARCH : MUTED,
+                border: `1px solid ${filter === key ? ACCENT : BORDER}`,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Lista de Avaliações por Curso ── */}
       {courseTests.length === 0 ? (
-        <EmptyState
-          icon={<FileText className="w-16 h-16 text-gold-400/50" />}
-          title="Nenhuma avaliação disponível"
-          description="Você ainda não tem avaliações para realizar."
-        />
+        <div className="text-center py-16">
+          <FileText size={48} style={{ color: MUTED, opacity: 0.5, margin: '0 auto 1rem' }} />
+          <p style={{ fontFamily: 'var(--font-lora)', fontSize: '1rem', color: MUTED, fontStyle: 'italic' }}>
+            Você ainda não tem avaliações para realizar.
+          </p>
+        </div>
       ) : (
         <div className="space-y-4">
           {courseTests.map(({ course, tests }) => {
@@ -289,45 +307,63 @@ export default function StudentEvaluationsPage() {
             if (filteredTests.length === 0 && filter !== 'all') return null
 
             return (
-              <Card key={course.id} className="overflow-hidden">
-                {/* Header do Curso - Clicável */}
+              <div
+                key={course.id}
+                style={{
+                  backgroundColor: PARCH,
+                  border: `1px solid ${BORDER}`,
+                  boxShadow: '0 2px 8px rgba(30,19,12,0.06)',
+                  borderRadius: '8px',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Header do Curso */}
                 <button
                   onClick={() => toggleCourseExpansion(course.id)}
-                  className="w-full p-4 flex items-center justify-between hover:bg-navy-800/30 transition-all"
+                  className="w-full p-5 flex items-center justify-between transition-all hover:bg-black/5"
                 >
-                  <div className="flex items-center gap-3">
-                    {isExpanded ? (
-                      <ChevronDown className="w-5 h-5 text-gold-400" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-gold-400" />
-                    )}
-                    <BookOpen className="w-5 h-5 text-gold-400" />
+                  <div className="flex items-center gap-4">
+                    <div style={{ color: ACCENT }}>
+                      {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                    </div>
+                    <BookOpen size={20} style={{ color: ACCENT }} />
                     <div className="text-left">
-                      <h3 className="text-lg font-semibold text-gold">{course.title}</h3>
-                      <p className="text-sm text-gold-300">
+                      <h3 style={{
+                        fontFamily: 'var(--font-playfair)',
+                        fontSize: '1.2rem',
+                        fontWeight: 600,
+                        color: INK,
+                      }}>
+                        {course.title}
+                      </h3>
+                      <p style={{
+                        fontFamily: 'var(--font-lora)',
+                        fontSize: '0.85rem',
+                        color: MUTED,
+                      }}>
                         {filteredTests.length} {filteredTests.length === 1 ? 'avaliação' : 'avaliações'}
                       </p>
                     </div>
                   </div>
 
                   {/* Resumo de Status */}
-                  <div className="flex gap-4">
+                  <div className="flex gap-6">
                     {tests.filter((t: any) => t.grade && t.grade.best_score >= (t.passing_score || 70)).length > 0 && (
-                      <span className="text-sm text-[#1e130c] font-bold">
+                      <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.85rem', color: ACCENT, fontWeight: 600 }}>
                         {tests.filter((t: any) => t.grade && t.grade.best_score >= (t.passing_score || 70)).length} aprovadas
                       </span>
                     )}
                     {tests.filter((t: any) => !t.grade || (t.grade.best_score < (t.passing_score || 70) && (t.grade.total_attempts || 0) < (t.max_attempts || 3))).length > 0 && (
-                      <span className="text-sm text-yellow-400">
+                      <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.85rem', color: '#b8860b' }}>
                         {tests.filter((t: any) => !t.grade || (t.grade.best_score < (t.passing_score || 70) && (t.grade.total_attempts || 0) < (t.max_attempts || 3))).length} pendentes
                       </span>
                     )}
                   </div>
                 </button>
 
-                {/* Lista de Testes - Expandível */}
+                {/* Lista de Testes */}
                 {isExpanded && filteredTests.length > 0 && (
-                  <div className="border-t border-gold-500/20">
+                  <div className="border-t" style={{ borderColor: BORDER }}>
                     {filteredTests.map((test: any) => {
                       const status = getTestStatus(test)
                       const canTakeTest = !test.grade || (test.grade.total_attempts || 0) < (test.max_attempts || 3)
@@ -335,48 +371,64 @@ export default function StudentEvaluationsPage() {
                       return (
                         <div
                           key={test.id}
-                          className="p-4 border-b border-gold-500/10 last:border-b-0 hover:bg-navy-800/20 transition-all"
+                          className="p-5 border-b last:border-b-0 transition-all hover:bg-black/[0.02]"
+                          style={{ borderColor: BORDER }}
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
-                              <div className="flex items-start gap-3">
-                                <div className={`p-2 rounded-lg ${status.bgColor}`}>
+                              <div className="flex items-start gap-4">
+                                <div
+                                  className="p-2 rounded-sm flex-shrink-0"
+                                  style={{ backgroundColor: status.bgColor, color: status.color }}
+                                >
                                   {status.icon}
                                 </div>
                                 <div className="flex-1">
-                                  <h4 className="font-semibold text-gold-100">{test.title}</h4>
+                                  <h4 style={{
+                                    fontFamily: 'var(--font-lora)',
+                                    fontSize: '1rem',
+                                    fontWeight: 600,
+                                    color: INK,
+                                  }}>
+                                    {test.title}
+                                  </h4>
                                   {test.description && (
-                                    <p className="text-sm text-gold-300 mt-1">{test.description}</p>
+                                    <p style={{
+                                      fontFamily: 'var(--font-lora)',
+                                      fontSize: '0.85rem',
+                                      color: MUTED,
+                                      marginTop: '0.25rem'
+                                    }}>
+                                      {test.description}
+                                    </p>
                                   )}
 
-                                  <div className="flex flex-wrap gap-4 mt-2">
+                                  <div className="flex flex-wrap gap-4 mt-3">
                                     {test.subject && (
-                                      <span className="text-xs text-gold-400">
+                                      <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', color: MUTED }}>
                                         Disciplina: {test.subject.name}
                                       </span>
                                     )}
                                     {test.duration_minutes && (
-                                      <span className="text-xs text-gold-400 flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        {test.duration_minutes} min
+                                      <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', color: MUTED, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                        <Clock size={14} /> {test.duration_minutes} min
                                       </span>
                                     )}
-                                    <span className="text-xs text-gold-400 flex items-center gap-1">
-                                      <Target className="w-3 h-3" />
-                                      Nota mínima: {test.passing_score || 70}
+                                    <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', color: MUTED, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                      <Target size={14} /> Nota mínima: {test.passing_score || 70}
                                     </span>
                                     {test.grade && (
                                       <>
-                                        <span className="text-xs text-gold-400 flex items-center gap-1">
-                                          <RotateCcw className="w-3 h-3" />
-                                          Tentativas: {test.grade.total_attempts || 0}/{test.max_attempts || 3}
+                                        <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.8rem', color: MUTED, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <RotateCcw size={14} /> Tentativas: {test.grade.total_attempts || 0}/{test.max_attempts || 3}
                                         </span>
                                         {test.grade.best_score !== null && (
-                                          <span className={`text-xs font-medium ${
-                                            test.grade.best_score >= (test.passing_score || 70)
-                                              ? 'text-[#1e130c] font-bold'
-                                              : 'text-[#7a6350] italic'
-                                          }`}>
+                                          <span style={{
+                                            fontFamily: 'var(--font-lora)',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 600,
+                                            color: test.grade.best_score >= (test.passing_score || 70) ? ACCENT : MUTED
+                                          }}>
                                             Melhor nota: {test.grade.best_score.toFixed(1)}
                                           </span>
                                         )}
@@ -387,24 +439,53 @@ export default function StudentEvaluationsPage() {
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
+                            <div className="flex items-center gap-3">
+                              <span
+                                className="px-3 py-1 rounded-full text-xs font-medium"
+                                style={{
+                                  backgroundColor: status.bgColor,
+                                  color: status.color,
+                                  fontFamily: 'var(--font-lora)',
+                                  fontWeight: 600,
+                                }}
+                              >
                                 {status.label}
                               </span>
 
                               {canTakeTest && (
                                 <Link href={`/student-dashboard/evaluations/${test.id}`}>
-                                  <Button variant="primary" size="sm">
+                                  <button
+                                    style={{
+                                      padding: '0.5rem 1.25rem',
+                                      borderRadius: '4px',
+                                      backgroundColor: ACCENT,
+                                      color: PARCH,
+                                      border: 'none',
+                                      fontFamily: 'var(--font-lora)',
+                                      fontSize: '0.85rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
                                     {test.grade ? 'Refazer' : 'Iniciar'}
-                                  </Button>
+                                  </button>
                                 </Link>
                               )}
 
                               {test.grade && (
                                 <Link href={`/student-dashboard/evaluations/${test.id}/results`}>
-                                  <Button variant="secondary" size="sm">
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
+                                  <button
+                                    style={{
+                                      padding: '0.5rem',
+                                      borderRadius: '4px',
+                                      backgroundColor: 'transparent',
+                                      color: MUTED,
+                                      border: `1px solid ${BORDER}`,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    <Eye size={18} />
+                                  </button>
                                 </Link>
                               )}
                             </div>
@@ -416,11 +497,13 @@ export default function StudentEvaluationsPage() {
                 )}
 
                 {isExpanded && filteredTests.length === 0 && (
-                  <div className="p-8 text-center text-gold-400">
-                    <p>Nenhuma avaliação encontrada com os filtros aplicados.</p>
+                  <div className="p-8 text-center" style={{ backgroundColor: `${INK}/3` }}>
+                    <p style={{ fontFamily: 'var(--font-lora)', fontSize: '0.95rem', color: MUTED, fontStyle: 'italic' }}>
+                      Nenhuma avaliação encontrada com os filtros aplicados.
+                    </p>
                   </div>
                 )}
-              </Card>
+              </div>
             )
           })}
         </div>

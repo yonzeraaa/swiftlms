@@ -17,11 +17,13 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  ArrowLeft,
+  Eye,
   Menu,
   X,
   Medal,
-  Eye
+  ChevronDown,
+  TrendingUp,
+  Award
 } from 'lucide-react'
 import { getStudentProfile } from '@/lib/actions/student-layout'
 import PageTransition from '../components/ui/PageTransition'
@@ -63,6 +65,33 @@ export default function StudentDashboardLayout({
   const [isAdmin, setIsAdmin] = useState(false)
   const pathname = usePathname()
 
+  const isProgressPath = pathname.startsWith('/student-dashboard/progress') ||
+                         pathname.startsWith('/student-dashboard/calendar')
+
+  const isEvaluationsPath = pathname.startsWith('/student-dashboard/evaluations') ||
+                             pathname.startsWith('/student-dashboard/grades')
+
+  const isLearningPath = pathname.startsWith('/student-dashboard/courses') ||
+                         pathname.startsWith('/student-dashboard/my-courses')
+
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+    'Progresso': isProgressPath,
+    'Avaliações': isEvaluationsPath,
+    'Aprendizado': isLearningPath,
+  })
+
+  useEffect(() => {
+    if (isProgressPath) {
+      setOpenMenus(prev => ({ ...prev, 'Progresso': true }))
+    }
+    if (isEvaluationsPath) {
+      setOpenMenus(prev => ({ ...prev, 'Avaliações': true }))
+    }
+    if (isLearningPath) {
+      setOpenMenus(prev => ({ ...prev, 'Aprendizado': true }))
+    }
+  }, [isProgressPath, isEvaluationsPath, isLearningPath])
+
   useEffect(() => {
     const savedState = localStorage.getItem('sidebarOpen')
     if (savedState !== null) {
@@ -92,19 +121,42 @@ export default function StudentDashboardLayout({
 
   const menuItems = [
     { name: 'Painel Geral', href: '/student-dashboard', icon: Library },
-    { name: 'Explorar Cursos', href: '/student-dashboard/courses', icon: Compass },
-    { name: 'Meus Cursos', href: '/student-dashboard/my-courses', icon: Scroll },
-    { name: 'Progresso', href: '/student-dashboard/progress', icon: Mortarboard },
-    { name: 'Calendário', href: '/student-dashboard/calendar', icon: Calendar },
-    { name: 'Minhas Avaliações', href: '/student-dashboard/evaluations', icon: ClipboardCheck },
-    { name: 'Minhas Notas', href: '/student-dashboard/grades', icon: StickyNote },
+    {
+      name: 'Aprendizado',
+      icon: Compass,
+      subItems: [
+        { name: 'Explorar Cursos', href: '/student-dashboard/courses', icon: Compass },
+        { name: 'Meus Cursos', href: '/student-dashboard/my-courses', icon: Scroll },
+      ]
+    },
+    {
+      name: 'Progresso',
+      icon: TrendingUp,
+      subItems: [
+        { name: 'Acompanhar Progresso', href: '/student-dashboard/progress', icon: Mortarboard },
+        { name: 'Calendário', href: '/student-dashboard/calendar', icon: Calendar },
+      ]
+    },
+    {
+      name: 'Avaliações',
+      icon: ClipboardCheck,
+      subItems: [
+        { name: 'Minhas Avaliações', href: '/student-dashboard/evaluations', icon: ClipboardCheck },
+        { name: 'Minhas Notas', href: '/student-dashboard/grades', icon: StickyNote },
+      ]
+    },
     { name: 'Certificados', href: '/student-dashboard/certificates', icon: Medal },
     { name: 'Configurações', href: '/student-dashboard/settings', icon: PenTool },
   ]
 
-  const isActive = (href: string) => {
-    if (href === '/student-dashboard') return pathname === href
-    return pathname.startsWith(href)
+  const isActive = (href: string | undefined) => {
+    if (!href) return false
+    return href === '/student-dashboard' ? pathname === href : pathname.startsWith(href)
+  }
+
+  const toggleSubMenu = (menuName: string) => {
+    setOpenMenus(prev => ({ ...prev, [menuName]: !prev[menuName] }))
+    if (!sidebarOpen) setSidebarOpen(true)
   }
 
   const handleLogout = async () => {
@@ -155,6 +207,7 @@ export default function StudentDashboardLayout({
       >
         <button
           onClick={() => setMobileMenuOpen(true)}
+          aria-label="Abrir menu"
           style={{ color: PARCH, background: 'none', border: 'none', cursor: 'pointer' }}
         >
           <Menu size={24} />
@@ -193,9 +246,11 @@ export default function StudentDashboardLayout({
             boxShadow: '4px 0 24px rgba(30,19,12,0.15)',
           }}
         >
+          {/* Botão toggle */}
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="absolute -right-4 top-8 w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+            aria-label={sidebarOpen ? 'Fechar menu lateral' : 'Abrir menu lateral'}
+            className="absolute -right-4 top-8 w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-[rgba(139,109,34,0.1)]"
             style={{
               backgroundColor: INK,
               border: `1px solid ${ACCENT}`,
@@ -208,7 +263,7 @@ export default function StudentDashboardLayout({
           </button>
 
           <div className="flex flex-col h-full py-6 px-3 overflow-y-auto overflow-x-hidden custom-scrollbar">
-            
+
             <div className="flex items-center gap-3 px-2 mb-6 min-h-[40px]">
               <div style={{ width: sidebarOpen ? '3.5rem' : '2.5rem', color: ACCENT, transition: 'width 0.3s' }}>
                 <SwiftMark />
@@ -245,50 +300,159 @@ export default function StudentDashboardLayout({
             <nav className="flex-1 flex flex-col gap-1">
               {menuItems.map((item) => {
                 const Icon = item.icon
-                const active = isActive(item.href)
-                const hovered = hoveredItem === item.href
+                const active = item.href ? isActive(item.href) : (item.subItems?.some(sub => isActive(sub.href)))
+                const hovered = hoveredItem === (item.href || item.name)
+                const isOpen = openMenus[item.name]
 
                 return (
-                  <div
-                    key={item.href}
-                    className="relative"
-                    onMouseEnter={() => setHoveredItem(item.href)}
-                    onMouseLeave={() => setHoveredItem(null)}
-                  >
-                    <Link
-                      href={item.href}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-sm transition-all duration-200"
-                      style={{
-                        color: active ? ACCENT : hovered ? PARCH : `rgba(250,246,238,0.6)`,
-                        backgroundColor: active
-                          ? 'rgba(139,109,34,0.1)'
-                          : hovered
-                          ? 'rgba(250,246,238,0.04)'
-                          : 'transparent',
-                        fontFamily: 'var(--font-lora)',
-                        fontSize: '0.95rem',
-                        fontWeight: active ? 600 : 400,
-                        textDecoration: 'none',
-                        whiteSpace: 'nowrap',
-                        borderLeft: active ? `2px solid ${ACCENT}` : '2px solid transparent',
-                      }}
+                  <div key={item.href || item.name} className="flex flex-col">
+                    <div
+                      className="relative"
+                      onMouseEnter={() => setHoveredItem(item.href || item.name)}
+                      onMouseLeave={() => setHoveredItem(null)}
                     >
-                      <Icon size={18} style={{ flexShrink: 0 }} />
-                      
+                      {item.href ? (
+                        <Link
+                          href={item.href}
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-sm transition-all duration-200"
+                          style={{
+                            color: active ? ACCENT : hovered ? PARCH : `rgba(250,246,238,0.6)`,
+                            backgroundColor: active
+                              ? 'rgba(139,109,34,0.1)'
+                              : hovered
+                              ? 'rgba(250,246,238,0.04)'
+                              : 'transparent',
+                            fontFamily: 'var(--font-lora)',
+                            fontSize: '0.95rem',
+                            fontWeight: active ? 600 : 400,
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap',
+                            borderLeft: active ? `2px solid ${ACCENT}` : '2px solid transparent',
+                          }}
+                        >
+                          <Icon size={18} style={{ flexShrink: 0 }} />
+
+                          <AnimatePresence>
+                            {sidebarOpen && (
+                              <motion.span
+                                initial={{ opacity: 0, width: 0 }}
+                                animate={{ opacity: 1, width: 'auto' }}
+                                exit={{ opacity: 0, width: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="flex-1 truncate"
+                              >
+                                {item.name}
+                              </motion.span>
+                            )}
+                          </AnimatePresence>
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() => toggleSubMenu(item.name)}
+                          className="w-full flex items-center justify-between px-3 py-2.5 rounded-sm transition-all duration-200 cursor-pointer border-none text-left"
+                          style={{
+                            color: active || isOpen ? ACCENT : hovered ? PARCH : `rgba(250,246,238,0.6)`,
+                            backgroundColor: active && !isOpen
+                              ? 'rgba(139,109,34,0.1)'
+                              : hovered
+                              ? 'rgba(250,246,238,0.04)'
+                              : 'transparent',
+                            fontFamily: 'var(--font-lora)',
+                            fontSize: '0.95rem',
+                            fontWeight: active || isOpen ? 600 : 400,
+                            borderLeft: active || isOpen ? `2px solid ${ACCENT}` : '2px solid transparent',
+                          }}
+                        >
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <Icon size={18} style={{ flexShrink: 0 }} />
+                            <AnimatePresence>
+                              {sidebarOpen && (
+                                <motion.span
+                                  initial={{ opacity: 0, width: 0 }}
+                                  animate={{ opacity: 1, width: 'auto' }}
+                                  exit={{ opacity: 0, width: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="flex-1 truncate"
+                                >
+                                  {item.name}
+                                </motion.span>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                          {sidebarOpen && (
+                            <ChevronDown
+                              size={16}
+                              className="transition-transform duration-200 flex-shrink-0"
+                              style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                            />
+                          )}
+                        </button>
+                      )}
+
                       <AnimatePresence>
-                        {sidebarOpen && (
-                          <motion.span
-                            initial={{ opacity: 0, width: 0 }}
-                            animate={{ opacity: 1, width: 'auto' }}
-                            exit={{ opacity: 0, width: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="flex-1 truncate"
+                        {!sidebarOpen && hovered && (
+                          <motion.div
+                            initial={{ opacity: 0, x: -5 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -5 }}
+                            className="absolute left-full top-1/2 -translate-y-1/2 ml-4 z-50 py-1.5 px-3 whitespace-nowrap"
+                            style={{
+                              backgroundColor: PARCH,
+                              border: `1px solid ${BORDER}`,
+                              boxShadow: '0 4px 12px rgba(30,19,12,0.15)',
+                            }}
                           >
-                            {item.name}
-                          </motion.span>
+                            <span style={{ fontFamily: 'var(--font-lora)', fontSize: '0.9rem', color: INK }}>
+                              {item.name}
+                            </span>
+                          </motion.div>
                         )}
                       </AnimatePresence>
-                    </Link>
+                    </div>
+
+                    <AnimatePresence>
+                      {item.subItems && sidebarOpen && isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="flex flex-col gap-1 overflow-hidden"
+                        >
+                          {item.subItems.map((sub) => {
+                            const SubIcon = sub.icon
+                            const subActive = isActive(sub.href)
+                            const subHovered = hoveredItem === sub.href
+                            return (
+                              <Link
+                                key={sub.href}
+                                href={sub.href}
+                                onMouseEnter={() => setHoveredItem(sub.href)}
+                                onMouseLeave={() => setHoveredItem(null)}
+                                className="flex items-center gap-3 pl-10 pr-3 py-2 rounded-sm transition-all duration-200"
+                                style={{
+                                  color: subActive ? ACCENT : subHovered ? PARCH : `rgba(250,246,238,0.5)`,
+                                  backgroundColor: subActive
+                                    ? 'rgba(139,109,34,0.05)'
+                                    : subHovered
+                                    ? 'rgba(250,246,238,0.02)'
+                                    : 'transparent',
+                                  fontFamily: 'var(--font-lora)',
+                                  fontSize: '0.85rem',
+                                  fontWeight: subActive ? 500 : 400,
+                                  textDecoration: 'none',
+                                  whiteSpace: 'nowrap',
+                                  borderLeft: '2px solid transparent',
+                                }}
+                              >
+                                <SubIcon size={16} style={{ flexShrink: 0 }} />
+                                <span className="flex-1 truncate">{sub.name}</span>
+                              </Link>
+                            )
+                          })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
                 )
               })}
@@ -316,7 +480,7 @@ export default function StudentDashboardLayout({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  <ArrowLeft size={18} style={{ flexShrink: 0 }} />
+                  <Eye size={18} style={{ flexShrink: 0 }} />
                   <AnimatePresence>
                     {sidebarOpen && (
                       <motion.span
@@ -374,7 +538,7 @@ export default function StudentDashboardLayout({
         {/* ── Área de Conteúdo Única ── */}
         <main className="flex-1 overflow-y-auto relative z-10 h-full w-full custom-scrollbar">
           <div className="min-h-full w-full px-6 py-8 sm:px-10 lg:px-16 relative">
-            
+
             {/* Cantoneiras Decorativas Globais */}
             <div className="absolute top-6 left-6 w-12 h-12 pointer-events-none" style={{ color: ACCENT }}>
               <CornerBracket />
@@ -399,6 +563,176 @@ export default function StudentDashboardLayout({
           </div>
         </main>
       </div>
+
+      {/* ── Mobile Drawer ── */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 z-40 lg:hidden"
+              style={{ backgroundColor: 'rgba(30,19,12,0.6)', backdropFilter: 'blur(2px)' }}
+            />
+
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-y-0 left-0 w-[280px] z-50 flex flex-col overflow-y-auto"
+              style={{
+                backgroundColor: INK,
+                borderRight: `1px solid rgba(139,109,34,0.2)`,
+                boxShadow: '4px 0 24px rgba(30,19,12,0.2)',
+              }}
+            >
+              <div className="flex items-center justify-between p-6 flex-shrink-0">
+                <div style={{ width: '3rem', color: ACCENT }}>
+                  <SwiftMark />
+                </div>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  style={{ color: `rgba(250,246,238,0.5)`, background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="px-6 opacity-40">
+                <ClassicRule style={{ color: PARCH }} />
+              </div>
+
+              <nav className="flex-1 px-4 py-6 flex flex-col gap-2">
+                {menuItems.map(item => {
+                  const Icon = item.icon
+                  const active = item.href ? isActive(item.href) : (item.subItems?.some(sub => isActive(sub.href)))
+                  const isOpen = openMenus[item.name]
+
+                  return (
+                    <div key={item.href || item.name} className="flex flex-col gap-1">
+                      {item.href ? (
+                        <Link
+                          href={item.href}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 rounded-sm"
+                          style={{
+                            color: active ? ACCENT : `rgba(250,246,238,0.7)`,
+                            backgroundColor: active ? 'rgba(139,109,34,0.12)' : 'transparent',
+                            fontFamily: 'var(--font-lora)',
+                            textDecoration: 'none',
+                            borderLeft: active ? `2px solid ${ACCENT}` : '2px solid transparent',
+                          }}
+                        >
+                          <Icon size={18} />
+                          <span>{item.name}</span>
+                        </Link>
+                      ) : (
+                        <button
+                          onClick={() => setOpenMenus(prev => ({ ...prev, [item.name]: !prev[item.name] }))}
+                          className="w-full flex items-center justify-between px-4 py-3 rounded-sm border-none text-left"
+                          style={{
+                            color: active || isOpen ? ACCENT : `rgba(250,246,238,0.7)`,
+                            backgroundColor: active && !isOpen ? 'rgba(139,109,34,0.12)' : 'transparent',
+                            fontFamily: 'var(--font-lora)',
+                            borderLeft: active || isOpen ? `2px solid ${ACCENT}` : '2px solid transparent',
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon size={18} />
+                            <span>{item.name}</span>
+                          </div>
+                          <ChevronDown
+                            size={16}
+                            className="transition-transform duration-200"
+                            style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                          />
+                        </button>
+                      )}
+
+                      <AnimatePresence>
+                        {item.subItems && isOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="flex flex-col overflow-hidden"
+                          >
+                            {item.subItems.map(sub => {
+                              const SubIcon = sub.icon
+                              const subActive = isActive(sub.href)
+                              return (
+                                <Link
+                                  key={sub.href}
+                                  href={sub.href}
+                                  onClick={() => setMobileMenuOpen(false)}
+                                  className="flex items-center gap-3 pl-12 pr-4 py-2.5 rounded-sm"
+                                  style={{
+                                    color: subActive ? ACCENT : `rgba(250,246,238,0.6)`,
+                                    backgroundColor: subActive ? 'rgba(139,109,34,0.06)' : 'transparent',
+                                    fontFamily: 'var(--font-lora)',
+                                    fontSize: '0.9rem',
+                                    textDecoration: 'none',
+                                    borderLeft: '2px solid transparent',
+                                  }}
+                                >
+                                  <SubIcon size={16} />
+                                  <span>{sub.name}</span>
+                                </Link>
+                              )
+                            })}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )
+                })}
+              </nav>
+
+              <div className="p-4 border-t" style={{ borderColor: 'rgba(139,109,34,0.2)' }}>
+                {isAdmin && (
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 mb-2 rounded-sm"
+                    style={{
+                      color: MUTED,
+                      fontFamily: 'var(--font-lora)',
+                      fontSize: '0.95rem',
+                      fontStyle: 'italic',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <Eye size={18} />
+                    <span>Portal Admin</span>
+                  </Link>
+                )}
+
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-sm"
+                  style={{
+                    color: `rgba(250,246,238,0.5)`,
+                    fontFamily: 'var(--font-lora)',
+                    fontSize: '0.95rem',
+                    background: 'none',
+                    border: 'none',
+                    cursor: loggingOut ? 'not-allowed' : 'pointer',
+                    opacity: loggingOut ? 0.5 : 1,
+                  }}
+                >
+                  <LogOut size={18} />
+                  <span>{loggingOut ? 'Saindo...' : 'Sair'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
