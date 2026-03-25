@@ -1,21 +1,18 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Save, Bell, Shield, Palette, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail, Settings as SettingsIcon, HardDriveDownload, ExternalLink, Loader2, Trash2, AlertTriangle } from 'lucide-react'
+import { Save, Bell, Shield, Globe, Database as DatabaseIcon, User, Key, Check, X, Camera, Phone, Mail, Settings as SettingsIcon, HardDriveDownload, ExternalLink, Loader2, Trash2, AlertTriangle } from 'lucide-react'
 import Spinner from '../../components/ui/Spinner'
 import { Database } from '@/lib/database.types'
-import { useTheme } from '../../contexts/ThemeContext'
-import { useLanguage, useTranslation } from '../../contexts/LanguageContext'
+import { useTranslation } from '../../contexts/LanguageContext'
 import { getUserProfileData, updateUserProfile } from '@/lib/actions/admin-settings'
 import type { BackupSummary } from '@/lib/backup/types'
 import type { SetupWizardState } from '@/lib/setup/types'
 import { ClassicRule } from '../../components/ui/RenaissanceSvgs'
 
 const INK = '#1e130c'
-const ACCENT = '#8b6d22'
 const MUTED = '#7a6350'
 const PARCH = '#faf6ee'
-const BORDER = 'rgba(30,19,12,0.14)'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -25,11 +22,6 @@ interface UserSettings {
     courseUpdates: boolean
     newEnrollments: boolean
     systemUpdates: boolean
-  }
-  appearance: {
-    theme: 'light' | 'dark' | 'auto'
-    language: string
-    dateFormat: string
   }
   privacy: {
     profileVisibility: 'public' | 'private' | 'connections'
@@ -59,8 +51,6 @@ export default function SettingsPage() {
     newPassword: '',
     confirmPassword: ''
   })
-  const { theme, setTheme } = useTheme()
-  const { language, setLanguage } = useLanguage()
   const { t } = useTranslation()
   const [settings, setSettings] = useState<UserSettings>({
     notifications: {
@@ -68,11 +58,6 @@ export default function SettingsPage() {
       courseUpdates: true,
       newEnrollments: true,
       systemUpdates: false
-    },
-    appearance: {
-      theme: theme as 'light' | 'dark' | 'auto',
-      language: language,
-      dateFormat: 'DD/MM/YYYY'
     },
     privacy: {
       profileVisibility: 'public',
@@ -411,7 +396,6 @@ export default function SettingsPage() {
     { id: 'profile', label: t('settings.profile'), icon: User },
     { id: 'password', label: t('settings.password'), icon: Key },
     { id: 'notifications', label: t('settings.notifications'), icon: Bell },
-    { id: 'appearance', label: t('settings.appearance'), icon: Palette },
     { id: 'privacy', label: t('settings.privacy'), icon: Shield },
     { id: 'backup', label: 'Backup', icon: HardDriveDownload },
     { id: 'installation', label: 'Instalação', icon: DatabaseIcon }
@@ -681,103 +665,6 @@ export default function SettingsPage() {
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   {saving ? 'Gravando...' : 'Salvar Preferências'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Appearance Tab */}
-        {activeTab === 'appearance' && (
-          <div className="space-y-8 max-w-2xl">
-            <h2 className="font-[family-name:var(--font-playfair)] text-2xl font-bold text-[#1e130c] mb-6 pb-2 border-b border-[#1e130c]/5">Aparência e Localização</h2>
-            
-            <div className="space-y-8 font-[family-name:var(--font-lora)]">
-              <div>
-                <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-4">
-                  Tema da Interface
-                </label>
-                <div className="grid grid-cols-3 gap-4">
-                  {(['light', 'dark', 'auto'] as const).map((themeOption) => (
-                    <button
-                      key={themeOption}
-                      onClick={() => {
-                        setSettings({
-                          ...settings,
-                          appearance: { ...settings.appearance, theme: themeOption }
-                        })
-                        setTheme(themeOption)
-                      }}
-                      className={`p-4 border transition-all ${
-                        settings.appearance.theme === themeOption
-                          ? 'border-[#8b6d22] bg-[#8b6d22]/5'
-                          : 'border-[#1e130c]/15 hover:border-[#8b6d22]/30 bg-[#faf6ee]'
-                      }`}
-                    >
-                      <Palette className={`w-5 h-5 mx-auto mb-3 ${
-                        settings.appearance.theme === themeOption ? 'text-[#1e130c]' : 'text-[#7a6350]'
-                      }`} />
-                      <p className={`text-[0.65rem] font-bold uppercase tracking-widest text-center ${
-                        settings.appearance.theme === themeOption ? 'text-[#1e130c]' : 'text-[#7a6350]'
-                      }`}>
-                        {themeOption === 'light' ? 'Claro' : themeOption === 'dark' ? 'Escuro' : 'Auto'}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                <div>
-                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
-                    Idioma
-                  </label>
-                  <select
-                    value={settings.appearance.language}
-                    onChange={(e) => {
-                      const newLanguage = e.target.value as any
-                      setSettings({
-                        ...settings,
-                        appearance: { ...settings.appearance, language: newLanguage }
-                      })
-                      setLanguage(newLanguage)
-                    }}
-                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer text-sm font-bold"
-                  >
-                    <option value="pt-BR" className="bg-[#faf6ee]">Português (Brasil)</option>
-                    <option value="en-US" className="bg-[#faf6ee]">English (US)</option>
-                    <option value="es-ES" className="bg-[#faf6ee]">Español</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[0.65rem] font-bold uppercase text-[#7a6350] tracking-[0.2em] mb-2">
-                    Formato de Data
-                  </label>
-                  <select
-                    value={settings.appearance.dateFormat}
-                    onChange={(e) => setSettings({
-                      ...settings,
-                      appearance: { ...settings.appearance, dateFormat: e.target.value }
-                    })}
-                    className="w-full px-0 py-2 bg-transparent border-0 border-b border-[#1e130c]/30 text-[#1e130c] focus:ring-0 focus:border-[#8b6d22] transition-colors rounded-none cursor-pointer text-sm font-bold"
-                  >
-                    <option value="DD/MM/YYYY" className="bg-[#faf6ee]">DD/MM/AAAA</option>
-                    <option value="MM/DD/YYYY" className="bg-[#faf6ee]">MM/DD/AAAA</option>
-                    <option value="YYYY-MM-DD" className="bg-[#faf6ee]">AAAA-MM-DD</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-4">
-                <button
-                  onClick={handleSettingsSave}
-                  disabled={saving}
-                  style={{ padding: '0.75rem 2rem', backgroundColor: INK, color: PARCH, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-lora)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.15em', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                  className="hover:bg-[#8b6d22] transition-colors disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  {saving ? 'Gravando...' : 'Salvar Aparência'}
                 </button>
               </div>
             </div>
