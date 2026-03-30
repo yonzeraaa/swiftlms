@@ -496,8 +496,8 @@ useEffect(() => {
     // Busca todas as páginas de resultados (a API retorna até 1000 por vez)
     do {
       const url: string = pageToken
-        ? `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=nextPageToken,files(id,name,mimeType)&pageSize=1000&pageToken=${pageToken}`
-        : `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents&fields=nextPageToken,files(id,name,mimeType)&pageSize=1000`
+        ? `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=nextPageToken,files(id,name,mimeType)&pageSize=1000&pageToken=${pageToken}`
+        : `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+trashed=false&fields=nextPageToken,files(id,name,mimeType)&pageSize=1000`
 
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken}` }
